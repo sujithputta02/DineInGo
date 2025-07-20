@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <circle cx="128" cy="128" r="120" fill="#FFD93D"/>
+  <!-- Happy Eyes -->
+  <path d="M80 108C80 108 92 98 104 108" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M152 108C152 108 164 98 176 108" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+  <!-- Laughing Mouth -->
+  <path d="M88 140C88 140 104 180 128 180C152 180 168 140 168 140" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M88 160L168 160" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+</svg> 

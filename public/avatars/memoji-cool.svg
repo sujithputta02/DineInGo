@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <circle cx="128" cy="128" r="120" fill="#FFD93D"/>
+  <!-- Sunglasses -->
+  <path d="M60 108H196" stroke="#4A4A4A" stroke-width="8"/>
+  <path d="M76 108C76 108 76 128 92 128C108 128 108 108 108 108" fill="#4A4A4A"/>
+  <path d="M148 108C148 108 148 128 164 128C180 128 180 108 180 108" fill="#4A4A4A"/>
+  <!-- Cool Smile -->
+  <path d="M96 148C96 148 112 158 128 158C144 158 160 148 160 148" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+</svg> 

@@ -1,0 +1,73 @@
+import mongoose, { Document, Schema, Model } from 'mongoose';
+
+export interface IActivity {
+  type: 'signup' | 'login' | 'logout';
+  timestamp: Date;
+  deviceInfo?: string;
+  ipAddress?: string;
+  source?: string; // 'google', 'email', etc.
+}
+
+export interface IUser extends Document {
+  uid: string;
+  email: string;
+  displayName: string;
+  name: string;
+  photoURL: string | null;
+  lastLogin: Date;
+  createdAt: Date;
+  emailVerified: boolean;
+  activities: IActivity[];
+  password?: string;
+  isAdmin?: boolean;
+}
+
+// Add interface for static methods
+interface IUserModel extends Model<IUser> {
+  checkActivities(uid: string): Promise<IActivity[] | null>;
+}
+
+const activitySchema = new Schema<IActivity>({
+  type: { type: String, enum: ['signup', 'login', 'logout'], required: true },
+  timestamp: { type: Date, default: Date.now },
+  deviceInfo: { type: String },
+  ipAddress: { type: String },
+  source: { type: String }
+}, { _id: false });
+
+const userSchema = new Schema<IUser>({
+  uid: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  displayName: { type: String, required: true },
+  name: { type: String, required: true },
+  photoURL: { type: String, default: null },
+  lastLogin: { type: Date, default: Date.now },
+  createdAt: { type: Date, default: Date.now },
+  emailVerified: { type: Boolean, default: false },
+  activities: [activitySchema],
+  password: { type: String },
+  isAdmin: { type: Boolean, default: false }
+});
+
+// Static method to log activities for a user
+userSchema.statics.checkActivities = async function(uid: string): Promise<IActivity[] | null> {
+  try {
+    const user = await this.findOne({ uid });
+    if (!user) {
+      console.log(`No user found with uid: ${uid}`);
+      return null;
+    }
+    
+    console.log(`User ${user.email} (${uid}) has ${user.activities.length} activities:`);
+    user.activities.forEach((activity: IActivity, i: number) => {
+      console.log(`  ${i+1}. ${activity.type} (${activity.source || 'unknown'}) - ${activity.timestamp}`);
+    });
+    
+    return user.activities;
+  } catch (error) {
+    console.error('Error checking activities:', error);
+    return null;
+  }
+};
+
+export const User = mongoose.model<IUser, IUserModel>('User', userSchema); 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <circle cx="128" cy="128" r="120" fill="#FFD93D"/>
+  <!-- Eyes -->
+  <circle cx="92" cy="108" r="12" fill="#4A4A4A"/>
+  <circle cx="164" cy="108" r="12" fill="#4A4A4A"/>
+  <!-- Mouth with Tongue -->
+  <path d="M88 140C88 140 104 168 128 168C152 168 168 140 168 140" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+  <path d="M118 168C118 168 128 188 138 168" fill="#FF6B6B"/>
+</svg> 

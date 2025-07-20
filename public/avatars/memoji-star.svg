@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <circle cx="128" cy="128" r="120" fill="#FFD93D"/>
+  <!-- Star Eyes -->
+  <path d="M92 108L82 98L92 88L102 98L92 108ZM92 98L82 108L92 118L102 108L92 98Z" fill="#FFD700" stroke="#4A4A4A" stroke-width="2"/>
+  <path d="M164 108L154 98L164 88L174 98L164 108ZM164 98L154 108L164 118L174 108L164 98Z" fill="#FFD700" stroke="#4A4A4A" stroke-width="2"/>
+  <!-- Big Smile -->
+  <path d="M88 148C88 148 104 188 128 188C152 188 168 148 168 148" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+</svg> 

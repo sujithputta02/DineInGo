@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <circle cx="128" cy="128" r="120" fill="#FFD93D"/>
+  <!-- Eyes -->
+  <circle cx="92" cy="108" r="12" fill="#4A4A4A"/>
+  <circle cx="164" cy="108" r="12" fill="#4A4A4A"/>
+  <!-- Peace Sign -->
+  <circle cx="128" cy="148" r="24" stroke="#4A4A4A" stroke-width="8"/>
+  <path d="M128 124V172" stroke="#4A4A4A" stroke-width="8"/>
+  <path d="M128 148L108 168" stroke="#4A4A4A" stroke-width="8"/>
+  <path d="M128 148L148 168" stroke="#4A4A4A" stroke-width="8"/>
+</svg> 

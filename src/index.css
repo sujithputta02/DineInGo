@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Leaflet map styles */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2) !important;
+}
+
+.leaflet-control-zoom a {
+  background-color: white !important;
+  color: #333 !important;
+  border: none !important;
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 8px !important;
+  padding: 8px !important;
+}
+
+.leaflet-popup-tip {
+  background: white !important;
+}

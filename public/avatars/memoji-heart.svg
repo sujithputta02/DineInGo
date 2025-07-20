@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Face -->
+  <circle cx="128" cy="128" r="120" fill="#FFD93D"/>
+  <!-- Heart Eyes -->
+  <path d="M82 108C82 108 92 98 102 108C112 98 122 108 122 108" stroke="#FF6B6B" stroke-width="8" fill="#FF6B6B"/>
+  <path d="M134 108C134 108 144 98 154 108C164 98 174 108 174 108" stroke="#FF6B6B" stroke-width="8" fill="#FF6B6B"/>
+  <!-- Smile -->
+  <path d="M88 148C88 148 104 178 128 178C152 178 168 148 168 148" stroke="#4A4A4A" stroke-width="8" stroke-linecap="round"/>
+</svg> 
