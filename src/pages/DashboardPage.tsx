@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { bookingsApi } from '../services/api';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 import UserActivityFeed from '../components/UserActivityFeed';
 import Notifications from '../components/Notifications';
 import WalletSection from '../components/WalletSection';
 import EmailTestButton from '../components/EmailTestButton';
 import Header from '../components/Header';
+import AIChatbot from '../components/AIChatbot';
 import { UserData } from '../types';
 import dayjs from 'dayjs';
 import { CreditCard, FileText, Apple, Chrome } from 'lucide-react';
@@ -133,21 +134,68 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
   };
 
   const handleCancel = async (booking: any) => {
+    // Confirm cancellation
+    const confirmCancel = window.confirm(
+      'Are you sure you want to cancel this booking? This action cannot be undone.'
+    );
+    
+    if (!confirmCancel) {
+      return;
+    }
+
     setCancellingId(booking._id);
     try {
       console.log('Cancelling booking:', booking);
+      console.log('Booking details:', {
+        _id: booking._id,
+        date: booking.date,
+        time: booking.time,
+        table: booking.table,
+        tableId: booking.tableId,
+        restaurantId: booking.restaurantId,
+        userId: booking.userId
+      });
       
       // Format date properly - handle both Date objects and strings
       let dateStr = booking.date;
       if (booking.date instanceof Date) {
         dateStr = booking.date.toISOString().split('T')[0];
-      } else if (typeof booking.date === 'string' && booking.date.includes('T')) {
-        dateStr = booking.date.split('T')[0];
+      } else if (typeof booking.date === 'string') {
+        // Handle various date formats
+        if (booking.date.includes('T')) {
+          dateStr = booking.date.split('T')[0];
+        } else if (booking.date.includes('/')) {
+          // Convert MM/DD/YYYY or DD/MM/YYYY to YYYY-MM-DD
+          const parts = booking.date.split('/');
+          if (parts.length === 3) {
+            // Assume MM/DD/YYYY format
+            const month = parts[0].padStart(2, '0');
+            const day = parts[1].padStart(2, '0');
+            const year = parts[2];
+            dateStr = `${year}-${month}-${day}`;
+          }
+        }
+      }
+      
+      // Get restaurant ID - handle both populated and non-populated cases
+      let restaurantId = booking.restaurantId;
+      if (typeof restaurantId === 'object' && restaurantId !== null) {
+        restaurantId = restaurantId._id || restaurantId.id;
+      }
+      
+      // Get table ID - try multiple possible field names
+      const tableId = booking.table || booking.tableId || booking.tableNumber;
+      
+      if (!tableId) {
+        console.error('No table ID found in booking:', booking);
+        toast.error('Cannot cancel: Table information missing');
+        setCancellingId(null);
+        return;
       }
       
       const cancelData = {
-        restaurantId: booking.restaurantId?._id || booking.restaurantId,
-        tableId: booking.tableId || booking.table,
+        restaurantId: String(restaurantId),
+        tableId: String(tableId),
         date: dateStr,
         time: booking.time,
         userId: booking.userId || auth.currentUser?.uid
@@ -160,10 +208,24 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
       console.log('Cancel result:', result);
       
       toast.success('Booking cancelled successfully!');
-      fetchBookingsFromAPI();
+      
+      // Refresh bookings after a short delay to ensure backend has updated
+      setTimeout(() => {
+        fetchBookingsFromAPI();
+      }, 500);
+      
     } catch (error: any) {
       console.error('Failed to cancel booking:', error);
-      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to cancel booking';
+      console.error('Error details:', {
+        response: error?.response,
+        message: error?.message,
+        data: error?.response?.data
+      });
+      
+      const errorMessage = error?.response?.data?.message || 
+                          error?.response?.data?.error || 
+                          error?.message || 
+                          'Failed to cancel booking. Please try again.';
       toast.error(errorMessage);
     } finally {
       setCancellingId(null);

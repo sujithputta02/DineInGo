@@ -22,6 +22,7 @@ import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { auth, onAuthStateChanged } from './firebase';
+import AIChatbot from './components/AIChatbot';
 
 // Custom hook to set the document title based on the current route
 function usePageTitle() {
@@ -73,6 +74,7 @@ const App: React.FC = () => {
               pauseOnHover
               theme="light"
             />
+            <AIChatbot />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<LoginPage />} />

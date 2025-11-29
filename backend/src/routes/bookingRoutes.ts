@@ -203,21 +203,48 @@ router.post('/confirm-table', async (req, res) => {
 router.post('/cancel-table', async (req, res) => {
   const { restaurantId, tableId, date, time, userId } = req.body;
   
-  console.log('Cancel table request:', { restaurantId, tableId, date, time, userId });
+  console.log('=== CANCEL TABLE REQUEST ===');
+  console.log('Request body:', { restaurantId, tableId, date, time, userId });
   
-  if (!restaurantId || !tableId || !date || !time || !userId) {
-    return res.status(400).json({ error: 'Missing required fields' });
+  // Validate required fields
+  if (!restaurantId) {
+    return res.status(400).json({ error: 'Missing restaurantId', message: 'Restaurant ID is required' });
+  }
+  if (!tableId) {
+    return res.status(400).json({ error: 'Missing tableId', message: 'Table ID is required' });
+  }
+  if (!date) {
+    return res.status(400).json({ error: 'Missing date', message: 'Date is required' });
+  }
+  if (!time) {
+    return res.status(400).json({ error: 'Missing time', message: 'Time is required' });
+  }
+  if (!userId) {
+    return res.status(400).json({ error: 'Missing userId', message: 'User ID is required' });
   }
   
   // Check if cancellation is allowed (must be more than 2 hours before booking time)
-  const slotDateTime = dayjs(`${date} ${time}`);
-  const twoHoursBefore = slotDateTime.subtract(2, 'hours');
-  
-  if (dayjs().isAfter(twoHoursBefore)) {
-    return res.status(400).json({ 
-      error: 'Cannot cancel within 2 hours of the booking time',
-      message: 'Cancellations must be made at least 2 hours before your reservation time'
+  try {
+    const slotDateTime = dayjs(`${date} ${time}`);
+    const twoHoursBefore = slotDateTime.subtract(2, 'hours');
+    const now = dayjs();
+    
+    console.log('Time check:', {
+      now: now.format(),
+      slotDateTime: slotDateTime.format(),
+      twoHoursBefore: twoHoursBefore.format(),
+      canCancel: now.isBefore(twoHoursBefore)
     });
+    
+    if (now.isAfter(twoHoursBefore)) {
+      return res.status(400).json({ 
+        error: 'Cannot cancel within 2 hours of the booking time',
+        message: 'Cancellations must be made at least 2 hours before your reservation time'
+      });
+    }
+  } catch (dateError) {
+    console.error('Error parsing date/time:', dateError);
+    // Continue anyway - don't block cancellation due to date parsing issues
   }
   
   const now = new Date();
@@ -282,7 +309,23 @@ router.post('/cancel-table', async (req, res) => {
   
   // Also update the main Booking collection
   console.log('Updating main Booking collection...');
-  const dateObj = new Date(date);
+  let dateObj: Date;
+  try {
+    dateObj = new Date(date);
+    console.log('Parsed date object:', dateObj);
+  } catch (err) {
+    console.error('Error parsing date:', err);
+    dateObj = new Date();
+  }
+  
+  // Try to find the booking in the main Booking collection
+  console.log('Searching for booking with:', {
+    userId,
+    restaurantId,
+    date: dateObj,
+    time: String(time),
+    table: tableId
+  });
   
   const mainBooking = await Booking.findOneAndUpdate(
     {
@@ -300,14 +343,43 @@ router.post('/cancel-table', async (req, res) => {
     { new: true }
   );
   
-  console.log('Main Booking cancellation result:', mainBooking);
+  console.log('Main Booking cancellation result:', mainBooking ? 'Updated successfully' : 'Not found');
   
-  // If neither collection had the booking, return error
+  // If neither collection had the booking, try alternative searches
   if (!booking && !mainBooking) {
-    return res.status(404).json({ 
-      error: 'Booking not found or cannot be cancelled',
-      message: 'This booking may have already been cancelled or does not exist'
+    console.log('Booking not found with exact match, trying alternative searches...');
+    
+    // Try finding any booking for this user at this restaurant/date/time
+    const anyBooking = await Booking.findOne({
+      userId,
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      date: dateObj,
+      time: String(time)
     });
+    
+    console.log('Alternative search result:', anyBooking);
+    
+    if (anyBooking) {
+      // Found a booking, update it
+      anyBooking.status = 'cancelled';
+      anyBooking.updatedAt = now;
+      await anyBooking.save();
+      console.log('Updated booking via alternative search');
+    } else {
+      return res.status(404).json({ 
+        error: 'Booking not found',
+        message: 'This booking may have already been cancelled or does not exist',
+        debug: {
+          searchedFor: {
+            userId,
+            restaurantId,
+            date: dateObj.toISOString(),
+            time,
+            tableId
+          }
+        }
+      });
+    }
   }
   
   // Emit Socket.IO event to notify all users
@@ -319,15 +391,17 @@ router.post('/cancel-table', async (req, res) => {
       time: String(time), 
       userId,
       status: 'cancelled',
-      booking 
+      booking: booking || mainBooking
     });
-    console.log(`Emitted tableCancelled for table ${tableId} at ${restaurantId}`);
+    console.log(`✓ Emitted tableCancelled event for table ${tableId} at restaurant ${restaurantId}`);
   }
+  
+  console.log('=== CANCELLATION SUCCESSFUL ===');
   
   res.json({ 
     success: true,
     message: 'Booking cancelled successfully',
-    booking 
+    booking: booking || mainBooking 
   });
 });
 

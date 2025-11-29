@@ -10,11 +10,12 @@ DineInGo is a next-generation restaurant and event reservation platform designed
 ## Key Features
 
 - **Effortless Reservations**: Users can easily browse, search, and reserve tables at top restaurants or book seats for exclusive events.
+- **AI Assistant (Dino)**: Chat with Dino, your friendly AI assistant powered by advanced language models, for instant help with bookings, restaurant recommendations, and platform guidance.
 - **Digital Invoices & Wallet Passes**: Receive PDF invoices and Apple/Google Wallet passes as email attachments after booking.
 - **Multi-Language Support**: DineInGo is accessible in English, Hindi, Tamil, Kannada, Telugu, and Malayalam, ensuring inclusivity for a diverse user base.
 - **Personalized Profiles**: Customers can manage their profiles, update avatars, and set preferred locations for tailored recommendations.
 - **Favorites & Recommendations**: Save favorite restaurants and events for quick access and receive personalized suggestions.
-- **Real-Time Notifications**: Stay updated with instant notifications about bookings, events, and special offers.
+- **Real-Time Notifications**: Stay updated with instant notifications about bookings, events, and special offers via Socket.IO.
 - **Dark/Light Mode**: Enjoy a visually appealing interface with support for both dark and light themes.
 - **Responsive Design**: Optimized for both mobile and desktop, providing a smooth experience everywhere.
 - **Business Insights**: (For partners) Access analytics and booking trends to optimize operations and customer engagement.
@@ -47,6 +48,8 @@ DineInGo is a next-generation restaurant and event reservation platform designed
 - **Frontend**: React, TypeScript, Tailwind CSS, Framer Motion, Lucide Icons
 - **Backend**: Node.js, Express, MongoDB, Firebase Admin SDK
 - **Authentication**: Firebase Auth (email/password & Google)
+- **Real-Time**: Socket.IO for live notifications and updates
+- **AI Integration**: OpenRouter API with Google Gemma models for chatbot
 - **APIs & Services**: RESTful API, Firestore, Storage, Geocoding, Email
 
 ---
@@ -115,6 +118,8 @@ For partnership inquiries, business integration, or a product demo, please conta
 
 ## New Features & Improvements (2025)
 
+- **AI Chatbot (Dino)**: Intelligent conversational assistant for 24/7 customer support, powered by OpenRouter and Google Gemma models.
+- **Real-Time Notifications**: Socket.IO integration for instant booking updates, event alerts, and system notifications.
 - **Wallet Pass Delivery**: After booking, users receive Apple Wallet (.pkpass) and Google Wallet passes via email for easy check-in.
 - **Digital Invoicing**: Automated PDF invoices are sent to your email for every reservation.
 - **Feedback System**: Submit feedback directly from the app, sent securely to the team inbox.

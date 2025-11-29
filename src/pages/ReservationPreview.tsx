@@ -71,21 +71,30 @@ const ReservationPreview: React.FC = () => {
       dataReady: dataReady
     });
     
-    if (!dataReady || !restaurant?.menu) {
-      console.log('Data not ready or no restaurant menu available');
+    if (!restaurant?.menu || Object.keys(selectedMenuItems).length === 0) {
+      console.log('No restaurant menu or no selected items');
       return 0;
     }
     
     const total = Object.entries(selectedMenuItems).reduce((sum, [itemId, count]) => {
-      const item = restaurant.menu?.find(m => m.id === itemId);
-      const itemPrice = item?.price || 0;
+      // Try to find the item in the menu
+      const item = restaurant.menu?.find(m => String(m.id) === String(itemId));
+      
+      if (!item) {
+        console.warn(`Item not found in menu: ${itemId}`);
+        console.log('Available menu items:', restaurant.menu?.map(m => ({ id: m.id, name: m.name })));
+        return sum;
+      }
+      
+      const itemPrice = Number(item.price) || 0;
       const itemTotal = itemPrice * count;
-      console.log(`Item ${itemId}: ${item?.name} - Price: ${itemPrice}, Count: ${count}, Total: ${itemTotal}`); // Debug log
+      console.log(`Item ${itemId}: ${item.name} - Price: ${itemPrice}, Count: ${count}, Total: ${itemTotal}`);
       return sum + itemTotal;
     }, 0);
-    console.log('Total price calculated:', total); // Debug log
+    
+    console.log('Total price calculated:', total);
     return total;
-  }, [restaurant?.menu, selectedMenuItems, dataReady]);
+  }, [restaurant?.menu, selectedMenuItems]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -467,18 +476,23 @@ const ReservationPreview: React.FC = () => {
             {Object.keys(selectedMenuItems).length > 0 ? (
               <div className="mt-8 border-t border-gray-200 pt-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Your Order Details</h3>
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Your Order Details
+                  </h3>
                   <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col items-end">
                       <span className="text-sm text-gray-600">Total Items: {Object.values(selectedMenuItems).reduce((sum, count) => sum + count, 0)}</span>
-                      <span className="text-sm font-medium">Total Amount: ₹{getTotalPrice}</span>
+                      <span className="text-lg font-bold text-emerald-600">Total Amount: ₹{getTotalPrice}</span>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowMenuItems(!showMenuItems)}
                       className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                     >
-                      <span className="font-medium">Menu</span>
+                      <span className="font-medium">{showMenuItems ? 'Hide' : 'Show'} Menu</span>
                       <svg 
                         className={`w-5 h-5 transform transition-transform duration-200 ${showMenuItems ? 'rotate-180' : ''}`}
                         fill="none" 

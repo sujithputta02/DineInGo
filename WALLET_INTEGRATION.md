@@ -44,7 +44,7 @@ When a booking is confirmed, customers receive an email with:
 - Booking confirmation details
 - PDF invoice
 - Apple Wallet pass (.pkpass file)
-- Google Wallet pass (JSON file)
+- Google Wallet pass 492731 (JSON file)
 
 ## Technical Implementation
 
