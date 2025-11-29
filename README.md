@@ -57,6 +57,13 @@ DineInGo is a next-generation restaurant and event reservation platform designed
 
 ### Quick Setup
 
+#### For Team Members (Shared Development):
+```bash
+# One-command setup with shared dev credentials
+node scripts/setup-team-env.js
+```
+
+#### For Individual Setup:
 1. **Copy environment templates:**
    ```bash
    cp .env.example .env
@@ -65,7 +72,7 @@ DineInGo is a next-generation restaurant and event reservation platform designed
 
 2. **Fill in your credentials** in the `.env` files
 
-3. **Or use the setup script:**
+3. **Or use the interactive setup script:**
    ```bash
    node scripts/setup-env.js
    ```
