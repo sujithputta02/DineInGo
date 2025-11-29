@@ -44,6 +44,9 @@ interface BaseUser {
   email: string;
   phoneNumber?: string;
   photoURL?: string | null;
+  currentAvatar?: string;
+  avatars?: string[];
+  language?: string;
   address?: UserAddress;
   locationSettings?: LocationSettings;
   preferences?: UserPreferences;
@@ -54,7 +57,6 @@ interface BaseUser {
   phoneVerified?: boolean;
   createdAt?: Date | string;
   updatedAt?: Date | string;
-  avatars?: string[];
 }
 
 // Firebase Auth user properties

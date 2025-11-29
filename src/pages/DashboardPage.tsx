@@ -103,11 +103,30 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleConfirm = async (bookingId: string) => {
     setConfirmingId(bookingId);
     try {
+      // Update booking status to confirmed
       await bookingsApi.update(bookingId, { status: 'confirmed' });
-      toast.success('Booking confirmed!');
+      
+      // Find the booking to get table details
+      const booking = bookings.find(b => b._id === bookingId);
+      
+      // If booking has table information, also update TableBooking collection
+      if (booking && booking.table && booking.restaurantId) {
+        const restaurantId = booking.restaurantId?._id || booking.restaurantId;
+        await bookingsApi.confirmTable({
+          restaurantId,
+          tableId: booking.table,
+          date: booking.date,
+          time: booking.time,
+          userId: auth.currentUser?.uid || booking.userId
+        });
+      }
+      
+      toast.success('Booking confirmed successfully!');
       fetchBookingsFromAPI();
-    } catch (error) {
-      toast.error('Failed to confirm booking.');
+    } catch (error: any) {
+      console.error('Failed to confirm booking:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to confirm booking';
+      toast.error(errorMessage);
     } finally {
       setConfirmingId(null);
     }
@@ -116,18 +135,36 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
   const handleCancel = async (booking: any) => {
     setCancellingId(booking._id);
     try {
-      // Call cancel API (adjust endpoint as needed)
-      await bookingsApi.cancelTable({
+      console.log('Cancelling booking:', booking);
+      
+      // Format date properly - handle both Date objects and strings
+      let dateStr = booking.date;
+      if (booking.date instanceof Date) {
+        dateStr = booking.date.toISOString().split('T')[0];
+      } else if (typeof booking.date === 'string' && booking.date.includes('T')) {
+        dateStr = booking.date.split('T')[0];
+      }
+      
+      const cancelData = {
         restaurantId: booking.restaurantId?._id || booking.restaurantId,
-        tableId: booking.tableId,
-        date: booking.date,
+        tableId: booking.tableId || booking.table,
+        date: dateStr,
         time: booking.time,
-        userId: booking.userId
-      });
-      toast.success('Booking cancelled!');
+        userId: booking.userId || auth.currentUser?.uid
+      };
+      
+      console.log('Cancel request data:', cancelData);
+      
+      // Call cancel API
+      const result = await bookingsApi.cancelTable(cancelData);
+      console.log('Cancel result:', result);
+      
+      toast.success('Booking cancelled successfully!');
       fetchBookingsFromAPI();
-    } catch (error) {
-      toast.error('Failed to cancel booking.');
+    } catch (error: any) {
+      console.error('Failed to cancel booking:', error);
+      const errorMessage = error?.response?.data?.message || error?.message || 'Failed to cancel booking';
+      toast.error(errorMessage);
     } finally {
       setCancellingId(null);
     }
@@ -209,7 +246,8 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                   {bookings.map((booking) => {
                     const name = booking.restaurantName || booking.eventName || booking.restaurantId?.name || booking.eventId?.title || 'Unknown';
                     const type = booking.restaurantId ? 'Restaurant' : booking.eventId ? 'Event' : '';
-                    const canCancel = booking.status === 'confirmed' && dayjs().isBefore(dayjs(`${booking.date} ${booking.time}`).subtract(1, 'hour'));
+                    // Allow cancellation only if booking is more than 2 hours away
+                    const canCancel = booking.status === 'confirmed' && dayjs().isBefore(dayjs(`${booking.date} ${booking.time}`).subtract(2, 'hours'));
                     
                     return (
                       <div key={booking._id} className="bg-white rounded-xl shadow-lg p-6">
@@ -256,17 +294,26 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
                             {/* Booking Actions */}
                             <div className="flex gap-2">
                               {booking.status === 'pending' && (
-                                <button
-                                  className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors"
-                                  onClick={() => handleConfirm(booking._id)}
-                                  disabled={confirmingId === booking._id}
-                                >
-                                  {confirmingId === booking._id ? 'Confirming...' : 'Confirm'}
-                                </button>
+                                <>
+                                  <button
+                                    className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => handleConfirm(booking._id)}
+                                    disabled={confirmingId === booking._id || cancellingId === booking._id}
+                                  >
+                                    {confirmingId === booking._id ? 'Confirming...' : 'Confirm'}
+                                  </button>
+                                  <button
+                                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                    onClick={() => handleCancel(booking)}
+                                    disabled={cancellingId === booking._id || confirmingId === booking._id}
+                                  >
+                                    {cancellingId === booking._id ? 'Cancelling...' : 'Cancel'}
+                                  </button>
+                                </>
                               )}
-                              {canCancel && (
+                              {booking.status === 'confirmed' && canCancel && (
                                 <button
-                                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
+                                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                   onClick={() => handleCancel(booking)}
                                   disabled={cancellingId === booking._id}
                                 >

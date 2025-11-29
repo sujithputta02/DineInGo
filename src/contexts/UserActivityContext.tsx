@@ -31,8 +31,8 @@ export const UserActivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [activities, setActivities] = useState<UserActivity[]>([]);
 
   useEffect(() => {
-    // Connect to socket
-    const socket = socketService.connect();
+    // Connect to socket (only if not already connected)
+    socketService.connect();
 
     // Listen for user activities
     const handleUserActivity = (data: UserActivity) => {
@@ -44,10 +44,10 @@ export const UserActivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     socketService.onUserActivity(handleUserActivity);
 
-    // Cleanup on unmount
+    // Cleanup on unmount - only remove listener, don't disconnect
     return () => {
       socketService.removeUserActivityListener();
-      socketService.disconnect();
+      // Don't disconnect socket here - it should persist across component remounts
     };
   }, []);
 

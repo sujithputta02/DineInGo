@@ -240,6 +240,12 @@ export const bookingsApi = {
     const url = `${API_URL}/bookings/booked-tables?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
     return apiRequest(url, 'GET');
   },
+
+  // Cancel a table booking
+  cancelTable: async (data: { restaurantId: string; tableId: string; date: string; time: string; userId: string }) => {
+    const url = `${API_URL}/bookings/cancel-table`;
+    return apiRequest(url, 'POST', data);
+  },
 };
 
 export interface UserData {

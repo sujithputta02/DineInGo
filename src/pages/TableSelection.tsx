@@ -58,6 +58,25 @@ const TableSelection: React.FC = () => {
     return () => clearInterval(interval);
   }, [restaurantId, searchParams]);
 
+  // Function to fetch unavailable tables immediately (for real-time updates)
+  const fetchUnavailableTablesNow = async () => {
+    if (!restaurantId) return;
+    const date = searchParams.get('date');
+    const time = searchParams.get('time');
+    if (!date || !time) return;
+    
+    console.log('Fetching unavailable tables for:', { restaurantId, date, time });
+    try {
+      // Use Booking collection for confirmed tables (excludes cancelled)
+      const bookedTables = await bookingsApi.getBookedTables(restaurantId, date, time);
+      console.log('Fetched booked tables:', bookedTables);
+      setUnavailableTables(Array.isArray(bookedTables) ? bookedTables : []);
+    } catch (error) {
+      console.error('Error fetching unavailable tables:', error);
+      setUnavailableTables([]);
+    }
+  };
+
   // Real-time fetch unavailable tables for selected date/time
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -68,7 +87,7 @@ const TableSelection: React.FC = () => {
       if (!date || !time) return;
       setLoadingTables(true);
       try {
-        // Use Booking collection for confirmed tables
+        // Use Booking collection for confirmed tables (excludes cancelled)
         const bookedTables = await bookingsApi.getBookedTables(restaurantId, date, time);
         setUnavailableTables(Array.isArray(bookedTables) ? bookedTables : []);
       } catch {
@@ -83,35 +102,73 @@ const TableSelection: React.FC = () => {
 
   // Real-time Socket.IO event listeners
   useEffect(() => {
+    if (!restaurantId) return;
+    
     // Connect to Socket.IO
     const socket = socketService.connect();
+    
     // Join restaurant room for real-time updates
-    if (socket && restaurantId) {
-      socket.emit('joinRestaurant', restaurantId);
-    }
+    socket.emit('joinRestaurant', restaurantId);
+    console.log('Joined restaurant room:', restaurantId);
+    
     // Real-time event handlers
-    const handleTableEvent = () => {
-      // Refetch unavailable tables on any table event
-      fetchUnavailable();
-    };
-    if (socket) {
-      socket.on('tableBlocked', handleTableEvent);
-      socket.on('tableConfirmed', handleTableEvent);
-      socket.on('tableCancelled', handleTableEvent);
-      socket.on('tableAutoConfirmed', handleTableEvent);
-      socket.on('bookingUpdated', handleTableEvent);
-    }
-    return () => {
-      if (socket) {
-        socket.off('tableBlocked', handleTableEvent);
-        socket.off('tableConfirmed', handleTableEvent);
-        socket.off('tableCancelled', handleTableEvent);
-        socket.off('tableAutoConfirmed', handleTableEvent);
-        socket.off('bookingUpdated', handleTableEvent);
-        socketService.disconnect();
+    const handleTableEvent = (data: any) => {
+      console.log('Table event received:', data);
+      const date = searchParams.get('date');
+      const time = searchParams.get('time');
+      
+      // Only update if the event is for the current date/time
+      if (data.date === date && data.time === time) {
+        console.log('Event matches current date/time, refetching tables...');
+        
+        // Refetch unavailable tables immediately
+        fetchUnavailableTablesNow();
+        
+        // For cancelled tables, also refetch after a short delay to ensure DB is updated
+        if (data.status === 'cancelled') {
+          setTimeout(() => {
+            console.log('Refetching tables after cancellation...');
+            fetchUnavailableTablesNow();
+          }, 500);
+        }
+        
+        // Show toast notification
+        if (data.tableId) {
+          let message = 'Table updated';
+          if (data.status === 'reserved') {
+            message = 'Table reserved';
+            toast.warning(`${message}: ${data.tableId}`, { autoClose: 2000 });
+          } else if (data.status === 'confirmed') {
+            message = 'Table confirmed';
+            toast.info(`${message}: ${data.tableId}`, { autoClose: 2000 });
+          } else if (data.status === 'cancelled') {
+            message = 'Table now available';
+            toast.success(`${message}: ${data.tableId}`, { autoClose: 3000 });
+          } else {
+            toast.info(`${message}: ${data.tableId}`, { autoClose: 2000 });
+          }
+        }
+      } else {
+        console.log('Event date/time does not match current selection, ignoring');
       }
     };
-  }, [restaurantId, searchParams]);
+    
+    socket.on('tableBlocked', handleTableEvent);
+    socket.on('tableConfirmed', handleTableEvent);
+    socket.on('tableCancelled', handleTableEvent);
+    socket.on('tableAutoConfirmed', handleTableEvent);
+    socket.on('bookingUpdated', handleTableEvent);
+    
+    return () => {
+      socket.off('tableBlocked', handleTableEvent);
+      socket.off('tableConfirmed', handleTableEvent);
+      socket.off('tableCancelled', handleTableEvent);
+      socket.off('tableAutoConfirmed', handleTableEvent);
+      socket.off('bookingUpdated', handleTableEvent);
+      socket.emit('leaveRestaurant', restaurantId);
+      console.log('Left restaurant room:', restaurantId);
+    };
+  }, [restaurantId, searchParams, fetchUnavailableTablesNow]);
 
   // Table layout configuration
   const floors = {
@@ -137,9 +194,12 @@ const TableSelection: React.FC = () => {
     const date = searchParams.get('date');
     const time = searchParams.get('time');
     const guests = Number(searchParams.get('guests')) || 1;
+    
+    console.log('Reserving table:', { restaurantId, tableId: selectedTable, date, time, userId: user.uid });
+    
     // Reserve the table in real time
     try {
-      await bookingsApi.reserveTable({
+      const result = await bookingsApi.reserveTable({
           restaurantId: restaurantId!,
         tableId: selectedTable,
         date: date!,
@@ -148,6 +208,7 @@ const TableSelection: React.FC = () => {
         guests,
         status: 'reserved'
       });
+      console.log('Table reserved successfully:', result);
     } catch (err) {
       alert('Failed to reserve table. Please try again.');
         setLoadingTables(false);
@@ -225,38 +286,22 @@ const TableSelection: React.FC = () => {
   // Helper to check if a table is unavailable
   const isTableUnavailable = (tableId: string) => Array.isArray(unavailableTables) && unavailableTables.includes(tableId);
 
-  // Block table immediately on selection
-  const handleTableSelect = async (table: string) => {
+  // Select table (visual only, no blocking until proceed)
+  const handleTableSelect = (table: string) => {
     if (isTableUnavailable(table) || loadingTables) {
-      toast.error('This table is already booked or pending confirmation for the selected slot. Please choose another table.');
+      toast.error('This table is already booked. Please choose another table.');
       return;
     }
-    setSelectedTable(table); // Immediate UI feedback
-    setTimeout(async () => {
-      const user = auth.currentUser;
-      if (!user) {
-        alert('You must be logged in to block a table.');
-        setSelectedTable(null);
-        return;
-      }
-      const date = searchParams.get('date');
-      const time = searchParams.get('time');
-      const guests = Number(searchParams.get('guests')) || 1;
-      try {
-        await bookingsApi.reserveTable({
-          restaurantId: restaurantId!,
-          tableId: table,
-          date: date!,
-          time: time!,
-          userId: user.uid,
-          guests,
-          status: 'blocked'
-        });
-      } catch (err) {
-        alert('Failed to block table. Please try again.');
-        setSelectedTable(null);
-      }
-    }, 0);
+    
+    const user = auth.currentUser;
+    if (!user) {
+      toast.error('You must be logged in to select a table.');
+      return;
+    }
+    
+    // Just update the selected table visually
+    // Don't block it until user clicks "Proceed"
+    setSelectedTable(table);
   };
 
   return (

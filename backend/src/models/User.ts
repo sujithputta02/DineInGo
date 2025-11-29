@@ -14,8 +14,33 @@ export interface IUser extends Document {
   displayName: string;
   name: string;
   photoURL: string | null;
+  phoneNumber?: string;
+  address?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+  };
+  locationSettings?: {
+    type?: string;
+    coordinates?: {
+      lat: number;
+      lng: number;
+    };
+    address?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+    searchRadius?: number;
+  };
+  avatars?: string[];
+  currentAvatar?: string;
+  language?: string;
   lastLogin: Date;
   createdAt: Date;
+  updatedAt?: Date;
   emailVerified: boolean;
   activities: IActivity[];
   password?: string;
@@ -41,8 +66,33 @@ const userSchema = new Schema<IUser>({
   displayName: { type: String, required: true },
   name: { type: String, required: true },
   photoURL: { type: String, default: null },
+  phoneNumber: { type: String, default: '' },
+  address: {
+    street: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    country: { type: String, default: 'India' },
+    zipCode: { type: String, default: '' }
+  },
+  locationSettings: {
+    type: { type: String, default: 'manual' },
+    coordinates: {
+      lat: { type: Number },
+      lng: { type: Number }
+    },
+    address: { type: String, default: '' },
+    city: { type: String, default: '' },
+    state: { type: String, default: '' },
+    country: { type: String, default: 'India' },
+    zipCode: { type: String, default: '' },
+    searchRadius: { type: Number, default: 10 }
+  },
+  avatars: { type: [String], default: [] },
+  currentAvatar: { type: String, default: '' },
+  language: { type: String, default: 'english' },
   lastLogin: { type: Date, default: Date.now },
   createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
   emailVerified: { type: Boolean, default: false },
   activities: [activitySchema],
   password: { type: String },

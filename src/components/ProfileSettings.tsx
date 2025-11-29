@@ -14,6 +14,7 @@ import DialogContent from '@mui/material/DialogContent';
 import Button from '@mui/material/Button';
 import Slider from '@mui/material/Slider';
 import socketService from '../utils/socketService';
+import API_CONFIG from '../config/api';
 
 // Type guard to check if user has Firebase Auth methods
 const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
@@ -147,6 +148,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // State for loading and UI
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -219,13 +221,21 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       }
       if (!res.ok) throw new Error('Failed to fetch profile');
       const profile = await res.json();
-      setPreviewUrl(profile.currentAvatar || profile.avatarUrl || null);
+      console.log('Loaded profile data:', profile);
+      
+      // Get avatar URL with full backend URL
+      const avatarUrl = profile.currentAvatar || profile.avatarUrl || profile.photoURL;
+      const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
+      
+      console.log('Avatar URL:', fullAvatarUrl);
+      setPreviewUrl(fullAvatarUrl);
+      
       setFormData((prev: FormDataState) => ({
         ...prev,
         displayName: profile.displayName || prev.displayName,
-        name: profile.fullName || prev.name,
+        name: profile.fullName || profile.name || prev.name,
         phoneNumber: profile.phoneNumber || prev.phoneNumber,
-        photoURL: profile.currentAvatar || profile.avatarUrl || prev.photoURL,
+        photoURL: fullAvatarUrl || prev.photoURL,
         address: profile.address || prev.address,
       }));
     } catch (error) {
@@ -238,9 +248,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   // Real-time profile updates via Socket.IO
   useEffect(() => {
+    if (!authUser?.uid) return;
+    
     const socket = socketService.connect();
-    socket.on('profile_updated', (data: any) => {
-      if (data.uid === authUser?.uid) {
+    
+    const handleProfileUpdate = (data: any) => {
+      if (data.uid === authUser.uid) {
         const profile = data.profile;
         setPreviewUrl(profile.currentAvatar || profile.avatarUrl || null);
         setFormData((prev: FormDataState) => ({
@@ -252,12 +265,15 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           address: profile.address || prev.address,
         }));
       }
-    });
-    return () => {
-      socket.off('profile_updated');
-      socketService.disconnect();
     };
-  }, [authUser]);
+    
+    socket.on('profile_updated', handleProfileUpdate);
+    
+    return () => {
+      // Only remove the listener, don't disconnect
+      socket.off('profile_updated', handleProfileUpdate);
+    };
+  }, [authUser?.uid]);
 
   // Handle file upload
   const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -317,10 +333,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   // Prepare user updates for submission
   const prepareUserUpdates = useCallback(() => {
-    const updates: Partial<User> = {
+    const updates: any = {
       displayName: formData.displayName.trim(),
       name: formData.name.trim(),
       photoURL: formData.photoURL, // Preserve null to use initials
+      currentAvatar: formData.photoURL, // Set currentAvatar same as photoURL
       phoneNumber: formData.phoneNumber.replace(/\D/g, ''),
       address: {
         street: formData.address?.street?.trim() || '',
@@ -355,8 +372,15 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     try {
       console.log('Preparing user data for MongoDB...');
       
-      // Get Firebase ID token
-      const idToken = await authUser.getIdToken().catch(tokenError => {
+      // Get Firebase ID token from Firebase Auth (not from the prop user)
+      const firebaseAuth = getAuth();
+      const currentUser = firebaseAuth.currentUser;
+      
+      if (!currentUser) {
+        throw new Error('No authenticated user found. Please sign in again.');
+      }
+      
+      const idToken = await currentUser.getIdToken().catch(tokenError => {
         console.error('Error getting ID token:', tokenError);
         throw new Error('Failed to authenticate. Please try signing in again.');
       });
@@ -497,33 +521,72 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       let avatarsArr: string[] = [];
       // If a new avatar blob is pending, upload it first
       if ((formData as any)._pendingAvatarBlob && authUser) {
-        const formDataUpload = new FormData();
-        formDataUpload.append('avatar', (formData as any)._pendingAvatarBlob, 'avatar.jpg');
-        const res = await fetch(`/api/profile/${authUser.uid}/avatar`, {
-          method: 'POST',
-          body: formDataUpload,
-        });
-        if (!res.ok) throw new Error('Failed to upload avatar');
-        const data = await res.json();
-        avatarUrl = data.profile.currentAvatar || data.avatarUrl;
-        avatarsArr = data.profile.avatars || [];
+        setIsUploading(true);
+        try {
+          const formDataUpload = new FormData();
+          formDataUpload.append('avatar', (formData as any)._pendingAvatarBlob, 'avatar.jpg');
+          
+          const res = await fetch(`${API_CONFIG.BASE_URL}/api/profile/${authUser.uid}/avatar`, {
+            method: 'POST',
+            body: formDataUpload,
+          });
+          
+          if (!res.ok) {
+            const errorText = await res.text();
+            console.error('Avatar upload failed:', errorText);
+            throw new Error('Failed to upload avatar');
+          }
+          
+          const data = await res.json();
+          console.log('Avatar upload response:', data);
+          
+          // Get the avatar URL with full backend URL
+          const relativeUrl = data.profile?.currentAvatar || data.avatarUrl;
+          avatarUrl = API_CONFIG.getAssetUrl(relativeUrl);
+          
+          // Get avatars array with full URLs
+          avatarsArr = (data.profile?.avatars || []).map((url: string) => 
+            API_CONFIG.getAssetUrl(url)
+          ).filter(Boolean) as string[];
+          
+          console.log('Avatar URL:', avatarUrl);
+          console.log('Avatars array:', avatarsArr);
+        } catch (uploadError) {
+          console.error('Error uploading avatar:', uploadError);
+          toast.error('Failed to upload avatar. Please try again.');
+          throw uploadError;
+        } finally {
+          setIsUploading(false);
+        }
       }
       // Prepare updates
       const updates = prepareUserUpdates();
       updates.photoURL = avatarUrl;
+      updates.currentAvatar = avatarUrl; // Set currentAvatar
+      
       // Add avatarUrl to avatars array if not present
       if (avatarUrl) {
-        if (!avatarsArr.includes(avatarUrl)) avatarsArr.push(avatarUrl);
+        if (!avatarsArr.length) {
+          avatarsArr = [avatarUrl];
+        } else if (!avatarsArr.includes(avatarUrl)) {
+          avatarsArr.push(avatarUrl);
+        }
         updates.avatars = avatarsArr;
       }
+      
+      console.log('Prepared updates:', updates);
       // Update profile in Firebase Auth if display name or photo URL changed
-      if (hasFirebaseAuth(authUser)) {
+      const firebaseAuth = getAuth();
+      const currentUser = firebaseAuth.currentUser;
+      
+      if (currentUser) {
         try {
-          await updateProfile(authUser, {
-            displayName: updates.displayName || authUser.displayName || undefined,
+          await updateProfile(currentUser, {
+            displayName: updates.displayName || currentUser.displayName || undefined,
             photoURL: updates.photoURL
           });
         } catch (authError) {
+          console.error('Error updating Firebase Auth profile:', authError);
           toast.warning('Profile updated, but could not update authentication details');
         }
       }
@@ -532,17 +595,28 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       if (saved) {
         toast.success('Profile updated successfully!');
         if (onUpdate) {
-          const userUpdate: User = {
-            ...authUser,
-            ...updates,
+          // Create user update object, filtering out undefined values
+          const userUpdate: any = {
             uid: authUser.uid,
             email: authUser.email || '',
             emailVerified: false,
-            phoneNumber: authUser.phoneNumber ?? undefined,
           };
+          
+          // Only add defined values from updates
+          const updatesAny = updates as any;
+          if (updates.displayName !== undefined) userUpdate.displayName = updates.displayName;
+          if (updates.name !== undefined) userUpdate.name = updates.name;
+          if (updates.photoURL !== undefined) userUpdate.photoURL = updates.photoURL;
+          if (updates.phoneNumber !== undefined) userUpdate.phoneNumber = updates.phoneNumber;
+          if (updates.address !== undefined) userUpdate.address = updates.address;
+          if (updates.locationSettings !== undefined) userUpdate.locationSettings = updates.locationSettings;
+          if (updates.avatars !== undefined) userUpdate.avatars = updates.avatars;
+          if (updatesAny.currentAvatar !== undefined) userUpdate.currentAvatar = updatesAny.currentAvatar;
+          
           try {
-            await onUpdate(userUpdate);
+            await onUpdate(userUpdate as User);
           } catch (updateError) {
+            console.error('Error in onUpdate callback:', updateError);
             // Don't fail the entire operation if onUpdate fails
           }
         }
@@ -551,6 +625,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           const { _pendingAvatarBlob, ...rest } = prev as any;
           return rest;
         });
+        
+        // Switch back to view mode after successful save
+        setIsEditMode(false);
+        
         return true;
       }
       return false;
@@ -757,9 +835,24 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       style={pageStyles.container}
       className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}
     >
-      <h1 style={pageStyles.title}>
-        {pageType === 'dashboard' ? 'Profile' : 'Profile Settings'}
-      </h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 style={pageStyles.title} className="mb-0">
+          {pageType === 'dashboard' ? 'Profile' : 'Profile Settings'}
+        </h1>
+        
+        {!isEditMode && (
+          <button
+            type="button"
+            onClick={() => setIsEditMode(true)}
+            className="px-6 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors flex items-center gap-2"
+          >
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.333 2.00004C11.5081 1.82494 11.716 1.68605 11.9447 1.59129C12.1735 1.49653 12.4187 1.44775 12.6663 1.44775C12.914 1.44775 13.1592 1.49653 13.3879 1.59129C13.6167 1.68605 13.8246 1.82494 13.9997 2.00004C14.1748 2.17513 14.3137 2.383 14.4084 2.61178C14.5032 2.84055 14.552 3.08575 14.552 3.33337C14.552 3.58099 14.5032 3.82619 14.4084 4.05497C14.3137 4.28374 14.1748 4.49161 13.9997 4.66671L5.33301 13.3334L1.33301 14.6667L2.66634 10.6667L11.333 2.00004Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Edit Profile
+          </button>
+        )}
+      </div>
       
       <form onSubmit={handleSubmit} style={pageStyles.form}>
         {/* Profile Picture Upload */}
@@ -776,13 +869,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 <LucideUser className="w-12 h-12 text-gray-400" />
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute bottom-0 right-0 w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-emerald-600 transition-colors border-2 border-white"
-              style={{ transform: 'translate(30%, 30%)' }}
-              disabled={isUploading}
-            >
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute bottom-0 right-0 w-8 h-8 bg-emerald-500 text-white rounded-full flex items-center justify-center shadow-lg hover:bg-emerald-600 transition-colors border-2 border-white"
+                style={{ transform: 'translate(30%, 30%)' }}
+                disabled={isUploading}
+              >
               {isUploading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
@@ -791,22 +885,24 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                   <path d="M4 10H16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
               )}
-            </button>
+              </button>
+            )}
             <input
               type="file"
               ref={fileInputRef}
               onChange={handleFileChange}
               accept="image/*"
               className="hidden"
-              disabled={isUploading}
+              disabled={isUploading || !isEditMode}
             />
           </div>
           <div>
             <h2 className="text-lg font-medium">Profile Picture</h2>
             <p className="text-sm text-gray-500">Recommended size: 200x200 pixels</p>
-            <button
-              type="button"
-              onClick={() => {
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => {
                 // Generate avatar URL based on name
                 const avatarUrl = getAvatarUrl(formData.displayName || formData.name);
                 
@@ -818,8 +914,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 setSafePreviewUrl(avatarUrl);
                 
                 // Update Firebase Auth if available
-                if (hasFirebaseAuth(authUser)) {
-                  updateProfile(authUser, {
+                const firebaseAuth = getAuth();
+                const currentUser = firebaseAuth.currentUser;
+                
+                if (currentUser) {
+                  updateProfile(currentUser, {
                     photoURL: avatarUrl
                   }).then(() => {
                     toast.success("Using generated avatar");
@@ -835,7 +934,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               }`}
             >
               {!previewUrl || previewUrl.includes('ui-avatars.com') ? "Using Initials" : "Use Initials Avatar"}
-            </button>
+              </button>
+            )}
           </div>
         </div>
 
@@ -844,15 +944,21 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <label htmlFor="displayName" className="block text-sm font-medium mb-1">
             Display Name
           </label>
-          <input
-            type="text"
-            id="displayName"
-            name="displayName"
-            value={formData.displayName || ""}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md ${formData.errors.displayName ? 'border-red-500' : 'border-gray-300'}`}
-            placeholder="Enter your display name"
-          />
+          {isEditMode ? (
+            <input
+              type="text"
+              id="displayName"
+              name="displayName"
+              value={formData.displayName || ""}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border rounded-md ${formData.errors.displayName ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your display name"
+            />
+          ) : (
+            <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+              {formData.displayName || "Not set"}
+            </div>
+          )}
           {formData.errors.displayName && (
             <p className="mt-1 text-sm text-red-600">{formData.errors.displayName}</p>
           )}
@@ -863,16 +969,22 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <label htmlFor="name" className="block text-sm font-medium mb-1">
             Full Name *
           </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            value={formData.name || ""}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md ${formData.errors.name ? 'border-red-500' : 'border-gray-300'}`}
-            placeholder="Enter your full name"
-            required
-          />
+          {isEditMode ? (
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={formData.name || ""}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border rounded-md ${formData.errors.name ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your full name"
+              required
+            />
+          ) : (
+            <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+              {formData.name || "Not set"}
+            </div>
+          )}
           {formData.errors.name && (
             <p className="mt-1 text-sm text-red-600">{formData.errors.name}</p>
           )}
@@ -883,16 +995,22 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           <label htmlFor="phoneNumber" className="block text-sm font-medium mb-1">
             Phone Number *
           </label>
-          <input
-            type="tel"
-            id="phoneNumber"
-            name="phoneNumber"
-            value={formData.phoneNumber || ""}
-            onChange={handleChange}
-            className={`w-full px-3 py-2 border rounded-md ${formData.errors.phoneNumber ? 'border-red-500' : 'border-gray-300'}`}
-            placeholder="Enter your phone number"
-            required
-          />
+          {isEditMode ? (
+            <input
+              type="tel"
+              id="phoneNumber"
+              name="phoneNumber"
+              value={formData.phoneNumber || ""}
+              onChange={handleChange}
+              className={`w-full px-3 py-2 border rounded-md ${formData.errors.phoneNumber ? 'border-red-500' : 'border-gray-300'}`}
+              placeholder="Enter your phone number"
+              required
+            />
+          ) : (
+            <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+              {formData.phoneNumber || "Not set"}
+            </div>
+          )}
           {formData.errors.phoneNumber && (
             <p className="mt-1 text-sm text-red-600">{formData.errors.phoneNumber}</p>
           )}
@@ -907,66 +1025,91 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               <label htmlFor="address.street" className="block text-sm font-medium mb-1">
                 Street Address
               </label>
-              <input
-                type="text"
-                id="address.street"
-                name="address.street"
-                value={formData.address.street || ""}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="Enter street address"
-              />
+              {isEditMode ? (
+                <input
+                  type="text"
+                  id="address.street"
+                  name="address.street"
+                  value={formData.address.street || ""}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter street address"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+                  {formData.address.street || "Not set"}
+                </div>
+              )}
             </div>
             
             <div>
               <label htmlFor="address.city" className="block text-sm font-medium mb-1">
                 City
               </label>
-              <input
-                type="text"
-                id="address.city"
-                name="address.city"
-                value={formData.address.city || ""}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="Enter city"
-              />
+              {isEditMode ? (
+                <input
+                  type="text"
+                  id="address.city"
+                  name="address.city"
+                  value={formData.address.city || ""}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter city"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+                  {formData.address.city || "Not set"}
+                </div>
+              )}
             </div>
             
             <div>
               <label htmlFor="address.state" className="block text-sm font-medium mb-1">
                 State
               </label>
-              <input
-                type="text"
-                id="address.state"
-                name="address.state"
-                value={formData.address.state || ""}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="Enter state"
-              />
+              {isEditMode ? (
+                <input
+                  type="text"
+                  id="address.state"
+                  name="address.state"
+                  value={formData.address.state || ""}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter state"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+                  {formData.address.state || "Not set"}
+                </div>
+              )}
             </div>
             
             <div>
               <label htmlFor="address.zipCode" className="block text-sm font-medium mb-1">
                 ZIP Code
               </label>
-              <input
-                type="text"
-                id="address.zipCode"
-                name="address.zipCode"
-                value={formData.address.zipCode || ""}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                placeholder="Enter ZIP code"
-              />
+              {isEditMode ? (
+                <input
+                  type="text"
+                  id="address.zipCode"
+                  name="address.zipCode"
+                  value={formData.address.zipCode || ""}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                  placeholder="Enter ZIP code"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 border border-gray-200 rounded-md bg-gray-50">
+                  {formData.address.zipCode || "Not set"}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
         {/* Location Settings */}
-        <div className="border-t pt-6">
+        {isEditMode && (
+          <div className="border-t pt-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-medium">Location Settings</h2>
             <div className="flex items-center space-x-2">
@@ -1106,25 +1249,39 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
 
-        {/* Submit Button */}
-        <div className="pt-4">
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="px-6 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 flex items-center"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
-                Saving...
-              </>
-            ) : (
-              'Save Changes'
-            )}
-          </button>
-        </div>
+        {/* Submit Button - Only show in edit mode */}
+        {isEditMode && (
+          <div className="pt-4 flex gap-3">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-6 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 flex items-center"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsEditMode(false);
+                // Reload data to discard changes
+                loadUserData();
+              }}
+              className="px-6 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
       </form>
 
       {/* Cropper Modal */}

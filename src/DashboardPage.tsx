@@ -19,6 +19,8 @@ import NotificationBell from './components/NotificationBell';
 import { useNotifications } from './contexts/NotificationContext';
 import { User, LocationSettings } from './types/user';
 import { favoritesApi } from './services/favoritesApi';
+import socketService from './utils/socketService';
+import API_CONFIG from './config/api';
 
 interface UserData {
   uid: string;
@@ -733,42 +735,112 @@ export default function DashboardPage() {
             // Continue with session even if tracking fails
           }
           
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (userDoc.exists()) {
-            const parsedData = userDoc.data();
+          // Load profile data from MongoDB (primary source of truth)
+          try {
+            const profileRes = await fetch(`/api/profile/${user.uid}`);
+            if (profileRes.ok) {
+              const profile = await profileRes.json();
+              console.log('Loaded profile from MongoDB:', profile);
+              
+              // Use MongoDB data as the source of truth
+              const avatarUrl = profile.currentAvatar || profile.photoURL || profile.avatarUrl;
+              const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
+              
+              const newUserData = {
+                uid: user.uid,
+                email: user.email || profile.email || '',
+                displayName: profile.displayName || user.displayName || user.email?.split('@')[0] || '',
+                name: profile.fullName || profile.name || user.displayName || user.email?.split('@')[0] || '',
+                photoURL: fullAvatarUrl,
+                avatars: (profile.avatars || []).map((url: string) => API_CONFIG.getAssetUrl(url)).filter(Boolean),
+                location: profile.locationSettings?.city ? {
+                  city: profile.locationSettings.city,
+                  state: profile.locationSettings.state || '',
+                  country: profile.locationSettings.country || 'India'
+                } : defaultLocation,
+                lastLogin: new Date(),
+                createdAt: profile.createdAt ? new Date(profile.createdAt) : new Date()
+              };
+              
+              setUserData(newUserData);
+              
+              // Set language from profile
+              if (profile.language && ['english', 'hindi', 'tamil', 'kannada', 'telugu', 'malayalam'].includes(profile.language)) {
+                setLanguage(profile.language as Language);
+              }
+              
+              // Sync to Firestore for backup (optional)
+              await setDoc(doc(db, 'users', user.uid), {
+                displayName: newUserData.displayName,
+                name: newUserData.name,
+                photoURL: newUserData.photoURL,
+                email: newUserData.email,
+                updatedAt: new Date()
+              }, { merge: true });
+            } else if (profileRes.status === 404) {
+              // Profile doesn't exist in MongoDB, create it
+              console.log('Profile not found in MongoDB, creating...');
+              const newUserData = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || user.email?.split('@')[0] || '',
+                name: user.displayName || user.email?.split('@')[0] || '',
+                photoURL: null,
+                location: defaultLocation,
+                lastLogin: new Date(),
+                createdAt: new Date()
+              };
+              
+              // Create profile in MongoDB
+              await fetch(`/api/profile/${user.uid}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  uid: user.uid,
+                  displayName: newUserData.displayName,
+                  fullName: newUserData.name,
+                  email: newUserData.email,
+                  phoneNumber: '',
+                  avatars: [],
+                  currentAvatar: null,
+                  address: {}
+                })
+              });
+              
+              setUserData(newUserData);
+            }
+          } catch (profileError) {
+            console.error('Error loading profile from MongoDB:', profileError);
             
-            // Determine the appropriate photo URL
-            let photoURL = parsedData.photoURL;
-            // Update user data while preserving existing data
-            const newUserData = {
-              uid: user.uid,
-              email: user.email || parsedData.email || '',
-              displayName: user.displayName || parsedData.displayName || user.email?.split('@')[0] || '',
-              name: user.displayName || parsedData.name || user.email?.split('@')[0] || '',
-              // Force photoURL to be null initially if it doesn't exist in Firestore
-              // This ensures we'll use initials by default instead of any Google profile picture
-              photoURL: parsedData.photoURL !== undefined ? parsedData.photoURL : null,
-              location: parsedData.location || defaultLocation,
-              lastLogin: new Date(),
-              createdAt: parsedData.createdAt || new Date()
-            };
-            await setDoc(doc(db, 'users', user.uid), newUserData);
-            setUserData(newUserData);
-          } else {
-            // Create new user data if document doesn't exist
-            const newUserData = {
-              uid: user.uid,
-              email: user.email || '',
-              displayName: user.displayName || user.email?.split('@')[0] || '',
-              name: user.displayName || user.email?.split('@')[0] || '',
-              // Force photoURL to be null for new users to use initials avatar
-              photoURL: null,
-              location: defaultLocation,
-              lastLogin: new Date(),
-              createdAt: new Date()
-            };
-            await setDoc(doc(db, 'users', user.uid), newUserData);
-            setUserData(newUserData);
+            // Fallback to Firestore if MongoDB fails
+            const userDoc = await getDoc(doc(db, 'users', user.uid));
+            if (userDoc.exists()) {
+              const parsedData = userDoc.data();
+              const newUserData = {
+                uid: user.uid,
+                email: user.email || parsedData.email || '',
+                displayName: user.displayName || parsedData.displayName || user.email?.split('@')[0] || '',
+                name: user.displayName || parsedData.name || user.email?.split('@')[0] || '',
+                photoURL: parsedData.photoURL !== undefined ? parsedData.photoURL : null,
+                location: parsedData.location || defaultLocation,
+                lastLogin: new Date(),
+                createdAt: parsedData.createdAt || new Date()
+              };
+              setUserData(newUserData);
+            } else {
+              // Create new user data
+              const newUserData = {
+                uid: user.uid,
+                email: user.email || '',
+                displayName: user.displayName || user.email?.split('@')[0] || '',
+                name: user.displayName || user.email?.split('@')[0] || '',
+                photoURL: null,
+                location: defaultLocation,
+                lastLogin: new Date(),
+                createdAt: new Date()
+              };
+              setUserData(newUserData);
+            }
           }
         } catch (error) {
           console.error('Error fetching user data:', error);
@@ -784,13 +856,45 @@ export default function DashboardPage() {
     return () => unsubscribe();
   }, [navigate]);
 
-  // Load saved favorites from localStorage on component mount
+  // Real-time profile updates via Socket.IO
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('dineInGoLanguage');
-    if (savedLanguage && ['english', 'hindi', 'tamil', 'kannada', 'telugu', 'malayalam'].includes(savedLanguage)) {
-      setLanguage(savedLanguage as Language);
-    }
-  }, []);
+    if (!userData?.uid) return;
+    
+    // Connect to Socket.IO only once
+    const socket = socketService.connect();
+    
+    // Handler for profile updates
+    const handleProfileUpdate = (data: any) => {
+      if (data.uid === userData.uid) {
+        console.log('Profile updated via Socket.IO:', data.profile);
+        const profile = data.profile;
+        
+        // Update local state with the latest profile data
+        setUserData(prev => {
+          if (!prev) return null;
+          return {
+            ...prev,
+            displayName: profile.displayName || prev.displayName,
+            name: profile.fullName || profile.name || prev.name,
+            photoURL: profile.currentAvatar || profile.avatarUrl || profile.photoURL,
+            avatars: profile.avatars || prev.avatars,
+          };
+        });
+        
+        toast.info('Profile updated!', { autoClose: 2000 });
+      }
+    };
+    
+    socket.on('profile_updated', handleProfileUpdate);
+    
+    return () => {
+      // Only remove the listener, don't disconnect (other components might be using it)
+      socket.off('profile_updated', handleProfileUpdate);
+    };
+  }, [userData?.uid]);
+
+  // Language is now loaded from MongoDB profile (see auth useEffect above)
+  // No need for localStorage anymore
 
   // Fetch favorites from backend when userData, restaurants, or events change
   useEffect(() => {
@@ -931,8 +1035,37 @@ export default function DashboardPage() {
     return favorites.some(fav => fav.id === itemId && fav.type === type);
   };
 
-  const handleLanguageChange = (newLanguage: Language) => {
+  const handleLanguageChange = async (newLanguage: Language) => {
     setLanguage(newLanguage);
+    
+    // Save language preference to MongoDB
+    if (userData?.uid) {
+      try {
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/users/update`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: userData.uid,
+            updates: {
+              language: newLanguage
+            }
+          })
+        });
+        
+        if (response.ok) {
+          console.log('Language preference saved:', newLanguage);
+          toast.success(`Language changed to ${newLanguage.charAt(0).toUpperCase() + newLanguage.slice(1)}`, {
+            autoClose: 2000
+          });
+        } else {
+          console.error('Failed to save language preference');
+        }
+      } catch (error) {
+        console.error('Error saving language preference:', error);
+      }
+    }
   };
 
   const handleLogout = async () => {
@@ -1849,25 +1982,53 @@ export default function DashboardPage() {
                       await updateProfile(auth.currentUser, authUpdates);
                     }
                     
-                    // Update in Firestore - merge the updates to avoid overwriting other fields
-                    await setDoc(doc(db, 'users', auth.currentUser.uid), {
-                      ...updates,
+                    // Update in Firestore - filter out undefined values to avoid Firestore errors
+                    const firestoreUpdates: any = {
                       updatedAt: new Date()
-                    }, { merge: true });
+                    };
                     
-                    // Update local state immediately for better UX
-                    setUserData(prev => {
-                      if (!prev) return null;
-                      return {
-                        ...prev,
-                        ...(updates.displayName && { displayName: updates.displayName }),
-                        ...(updates.name && { name: updates.name }),
-                        ...(updates.photoURL !== undefined && { photoURL: updates.photoURL }),
-                        // Convert any string dates to Date objects to maintain type consistency
-                        createdAt: prev.createdAt,
-                        lastLogin: prev.lastLogin
-                      };
-                    });
+                    // Only add defined values to Firestore update
+                    if (updates.displayName !== undefined) firestoreUpdates.displayName = updates.displayName;
+                    if (updates.name !== undefined) firestoreUpdates.name = updates.name;
+                    if (updates.photoURL !== undefined) firestoreUpdates.photoURL = updates.photoURL;
+                    if (updates.email !== undefined) firestoreUpdates.email = updates.email;
+                    
+                    await setDoc(doc(db, 'users', auth.currentUser.uid), firestoreUpdates, { merge: true });
+                    
+                    // Fetch the latest profile data from backend to ensure sync
+                    try {
+                      const res = await fetch(`/api/profile/${auth.currentUser.uid}`);
+                      if (res.ok) {
+                        const profile = await res.json();
+                        // Update local state with the latest data from backend
+                        setUserData(prev => {
+                          if (!prev) return null;
+                          return {
+                            ...prev,
+                            displayName: profile.displayName || prev.displayName,
+                            name: profile.fullName || profile.name || prev.name,
+                            photoURL: profile.currentAvatar || profile.avatarUrl || profile.photoURL,
+                            avatars: profile.avatars || prev.avatars,
+                            createdAt: prev.createdAt,
+                            lastLogin: prev.lastLogin
+                          };
+                        });
+                      }
+                    } catch (fetchError) {
+                      console.error('Error fetching updated profile:', fetchError);
+                      // Fallback to updating with the provided updates
+                      setUserData(prev => {
+                        if (!prev) return null;
+                        return {
+                          ...prev,
+                          ...(updates.displayName && { displayName: updates.displayName }),
+                          ...(updates.name && { name: updates.name }),
+                          ...(updates.photoURL !== undefined && { photoURL: updates.photoURL }),
+                          createdAt: prev.createdAt,
+                          lastLogin: prev.lastLogin
+                        };
+                      });
+                    }
 
                     // Show success message
                     toast.success('Profile updated successfully!');

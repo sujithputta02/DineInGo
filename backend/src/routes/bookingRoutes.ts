@@ -37,14 +37,52 @@ router.post('/table-booking', async (req, res) => {
     if (!restaurantId || !tableId || !date || !time || !userId || !guests || !status) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
+    
+    // Check if table is already booked
+    const existingBooking = await TableBooking.findOne({
+      restaurantId,
+      tableId,
+      date,
+      time,
+      status: { $in: ['reserved', 'confirmed', 'blocked'] }
+    });
+    
+    if (existingBooking && existingBooking.userId !== userId) {
+      return res.status(409).json({ 
+        error: 'Table already booked',
+        message: 'This table has already been reserved by another user'
+      });
+    }
+    
     // Upsert: one booking per table/date/time
     const booking = await TableBooking.findOneAndUpdate(
       { restaurantId, tableId, date, time },
       { userId, guests, status, createdAt: new Date() },
       { upsert: true, new: true }
     );
+    
+    // Emit Socket.IO event for real-time updates
+    const io = getIO();
+    if (io) {
+      const eventName = status === 'reserved' ? 'tableBlocked' : 
+                       status === 'confirmed' ? 'tableConfirmed' : 
+                       status === 'cancelled' ? 'tableCancelled' : 'bookingUpdated';
+      
+      io.to(restaurantId).emit(eventName, {
+        tableId,
+        date,
+        time,
+        userId,
+        status,
+        booking
+      });
+      
+      console.log(`Emitted ${eventName} for table ${tableId} at ${restaurantId}`);
+    }
+    
     res.status(201).json(booking);
   } catch (error) {
+    console.error('Error in table booking:', error);
     res.status(500).json({ error: 'Failed to book table' });
   }
 });
@@ -84,30 +122,24 @@ router.get('/booked-tables', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid required fields' });
   }
   try {
-    const startOfDay = new Date(String(date));
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date(String(date));
-    endOfDay.setHours(23, 59, 59, 999);
-
-    let restaurantObjectId;
-    try {
-      restaurantObjectId = new mongoose.Types.ObjectId(restaurantId);
-    } catch (e) {
-      // Invalid ObjectId, return empty result
-      return res.json([]);
-    }
-
-    const query: any = {
-      restaurantId: restaurantObjectId,
-      date: { $gte: startOfDay, $lte: endOfDay },
-      time,
-      status: { $in: ['pending', 'confirmed'] },
-      table: { $ne: null }
-    };
-
-    const bookings = await Booking.find(query);
-    const bookedTables = Array.isArray(bookings) ? bookings.map(b => b.table) : [];
-    res.json(bookedTables);
+    console.log('Fetching booked tables for:', { restaurantId, date, time });
+    
+    // Query TableBooking collection for ONLY reserved/confirmed/blocked tables (exclude cancelled)
+    const tableBookings = await TableBooking.find({
+      restaurantId: restaurantId,
+      date: String(date),
+      time: String(time),
+      status: { $in: ['reserved', 'confirmed', 'blocked'] },
+      // Explicitly exclude cancelled bookings
+      $nor: [{ status: 'cancelled' }]
+    });
+    
+    console.log('Found active table bookings:', tableBookings.length);
+    
+    const bookedTableIds = tableBookings.map(b => b.tableId);
+    console.log('Booked table IDs:', bookedTableIds);
+    
+    res.json(bookedTableIds);
   } catch (error) {
     console.error('Error in /bookings/booked-tables:', error, { restaurantId, date, time });
     res.status(500).json({
@@ -167,28 +199,136 @@ router.post('/confirm-table', async (req, res) => {
   res.json(booking);
 });
 
-// Cancel a table booking (only if more than 1 hour before slot)
+// Cancel a table booking (only if more than 2 hours before slot)
 router.post('/cancel-table', async (req, res) => {
   const { restaurantId, tableId, date, time, userId } = req.body;
+  
+  console.log('Cancel table request:', { restaurantId, tableId, date, time, userId });
+  
   if (!restaurantId || !tableId || !date || !time || !userId) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+  
+  // Check if cancellation is allowed (must be more than 2 hours before booking time)
   const slotDateTime = dayjs(`${date} ${time}`);
-  if (dayjs().isAfter(slotDateTime.subtract(1, 'hour'))) {
-    return res.status(400).json({ error: 'Cannot cancel within 1 hour of the slot' });
+  const twoHoursBefore = slotDateTime.subtract(2, 'hours');
+  
+  if (dayjs().isAfter(twoHoursBefore)) {
+    return res.status(400).json({ 
+      error: 'Cannot cancel within 2 hours of the booking time',
+      message: 'Cancellations must be made at least 2 hours before your reservation time'
+    });
   }
+  
   const now = new Date();
-  // Allow cancelling if status is 'blocked' or 'confirmed'
-  const booking = await TableBooking.findOneAndUpdate(
-    { restaurantId, tableId, date, time, userId, status: { $in: ['blocked', 'confirmed'] } },
-    { status: 'cancelled', cancelledAt: now, blockedUntil: undefined },
+  
+  // First, let's see what bookings exist for this table
+  const existingBookings = await TableBooking.find({
+    restaurantId,
+    tableId,
+    date: String(date),
+    time: String(time)
+  });
+  console.log('Existing bookings for this table:', existingBookings);
+  
+  // Try to find and cancel in TableBooking collection first
+  console.log('Searching TableBooking with:', { 
+    restaurantId, 
+    tableId, 
+    date: String(date), 
+    time: String(time), 
+    userId 
+  });
+  
+  // Try with userId first
+  let booking = await TableBooking.findOneAndUpdate(
+    { 
+      restaurantId, 
+      tableId, 
+      date: String(date), 
+      time: String(time), 
+      userId, 
+      status: { $in: ['reserved', 'confirmed', 'blocked'] }
+    },
+    { 
+      status: 'cancelled', 
+      cancelledAt: now, 
+      blockedUntil: undefined 
+    },
     { new: true }
   );
+  
+  // If not found with userId, try without userId (in case userId doesn't match)
   if (!booking) {
-    return res.status(404).json({ error: 'Booking not found or cannot be cancelled' });
+    console.log('Not found with userId, trying without userId...');
+    booking = await TableBooking.findOneAndUpdate(
+      { 
+        restaurantId, 
+        tableId, 
+        date: String(date), 
+        time: String(time), 
+        status: { $in: ['reserved', 'confirmed', 'blocked'] }
+      },
+      { 
+        status: 'cancelled', 
+        cancelledAt: now, 
+        blockedUntil: undefined 
+      },
+      { new: true }
+    );
   }
-  getIO().to(restaurantId).emit('tableCancelled', { tableId, date, time, userId });
-  res.json(booking);
+  
+  console.log('TableBooking cancellation result:', booking ? 'Updated successfully' : 'Not found');
+  
+  // Also update the main Booking collection
+  console.log('Updating main Booking collection...');
+  const dateObj = new Date(date);
+  
+  const mainBooking = await Booking.findOneAndUpdate(
+    {
+      userId,
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      date: dateObj,
+      time: String(time),
+      table: tableId,
+      status: { $in: ['pending', 'confirmed'] }
+    },
+    {
+      status: 'cancelled',
+      updatedAt: now
+    },
+    { new: true }
+  );
+  
+  console.log('Main Booking cancellation result:', mainBooking);
+  
+  // If neither collection had the booking, return error
+  if (!booking && !mainBooking) {
+    return res.status(404).json({ 
+      error: 'Booking not found or cannot be cancelled',
+      message: 'This booking may have already been cancelled or does not exist'
+    });
+  }
+  
+  // Emit Socket.IO event to notify all users
+  const io = getIO();
+  if (io) {
+    io.to(restaurantId).emit('tableCancelled', { 
+      tableId, 
+      date: String(date), 
+      time: String(time), 
+      userId,
+      status: 'cancelled',
+      booking 
+    });
+    console.log(`Emitted tableCancelled for table ${tableId} at ${restaurantId}`);
+  }
+  
+  res.json({ 
+    success: true,
+    message: 'Booking cancelled successfully',
+    booking 
+  });
 });
 
 // Get table status for a restaurant/date/time
