@@ -48,6 +48,48 @@ DineInGo is a next-generation restaurant and event reservation platform designed
 - **Backend**: Node.js, Express, MongoDB, Firebase Admin SDK
 - **Authentication**: Firebase Auth (email/password & Google)
 - **APIs & Services**: RESTful API, Firestore, Storage, Geocoding, Email
+
+---
+
+## 🔐 Security
+
+**Important:** This project uses environment variables to store sensitive information like API keys, database credentials, and secrets.
+
+### Quick Setup
+
+1. **Copy environment templates:**
+   ```bash
+   cp .env.example .env
+   cp backend/.env.example backend/.env
+   ```
+
+2. **Fill in your credentials** in the `.env` files
+
+3. **Or use the setup script:**
+   ```bash
+   node scripts/setup-env.js
+   ```
+
+### Security Best Practices
+
+- ✅ Never commit `.env` files to Git
+- ✅ Use different credentials for development and production
+- ✅ Rotate API keys and secrets regularly
+- ✅ Enable API key restrictions in Google Cloud Console
+- ✅ Use strong passwords (20+ characters)
+
+**📖 Read [SECURITY.md](SECURITY.md) for detailed security guidelines**
+
+### What's Protected
+
+- MongoDB connection strings
+- Firebase credentials
+- Gmail app passwords
+- JWT secrets
+- Admin access codes
+- API keys (Google Maps, Mapbox, etc.)
+
+---
 - **State Management**: React Context API
 
 ---

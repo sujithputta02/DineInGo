@@ -2,8 +2,8 @@ import express, { Request, Response } from 'express';
 
 const router = express.Router();
 
-// Secret 6-digit admin code (do NOT expose this to the frontend)
-const ADMIN_CODE = '492731';
+// Secret 6-digit admin code from environment variable
+const ADMIN_CODE = process.env.ADMIN_CODE || '492731'; // Default for development only
 
 router.post('/', async (req: Request, res: Response) => {
   console.log('Admin login route hit', req.body);

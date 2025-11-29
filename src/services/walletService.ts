@@ -49,103 +49,176 @@ export interface InvoiceItem {
 
 class WalletService {
   // Generate Apple Wallet pass
-  async generateAppleWalletPass(booking: any): Promise<{ passUrl: string; passData: Buffer }> {
-    // Create a proper .pkpass file structure
-    const passData = {
+  async generateAppleWalletPass(booking: any): Promise<{ passUrl: string; passData: Blob }> {
+    const bookingId = booking.id || booking._id;
+    const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
+    const dateStr = new Date(booking.date).toLocaleDateString();
+    const guests = booking.numberOfGuests || booking.guests || 1;
+
+    // Create pass.json structure for Apple Wallet
+    const passJson = {
       formatVersion: 1,
       passTypeIdentifier: 'pass.com.dineingo.booking',
-      serialNumber: `booking-${booking.id || booking._id}`,
+      serialNumber: `DINEINGO-${bookingId}`,
       teamIdentifier: 'DINEINGO',
       organizationName: 'DineInGo',
-      description: `${booking.restaurantName || booking.eventName} Booking`,
+      description: `${restaurantName} Reservation`,
+      logoText: 'DineInGo',
+      foregroundColor: 'rgb(255, 255, 255)',
+      backgroundColor: 'rgb(16, 185, 129)',
+      labelColor: 'rgb(255, 255, 255)',
       generic: {
         primaryFields: [
           {
-            key: 'event',
-            label: 'BOOKING',
-            value: booking.restaurantName || booking.eventName
+            key: 'restaurant',
+            label: 'RESTAURANT',
+            value: restaurantName
           }
         ],
         secondaryFields: [
           {
             key: 'date',
             label: 'DATE',
-            value: new Date(booking.date).toLocaleDateString()
+            value: dateStr,
+            textAlignment: 'PKTextAlignmentLeft'
           },
           {
             key: 'time',
             label: 'TIME',
-            value: booking.time
-          },
+            value: booking.time,
+            textAlignment: 'PKTextAlignmentRight'
+          }
+        ],
+        auxiliaryFields: [
           {
             key: 'guests',
             label: 'GUESTS',
-            value: booking.numberOfGuests || booking.guests
+            value: `${guests} ${guests === 1 ? 'Guest' : 'Guests'}`,
+            textAlignment: 'PKTextAlignmentLeft'
+          },
+          ...(booking.table ? [{
+            key: 'table',
+            label: 'TABLE',
+            value: booking.table,
+            textAlignment: 'PKTextAlignmentRight'
+          }] : [])
+        ],
+        backFields: [
+          {
+            key: 'bookingId',
+            label: 'Booking ID',
+            value: bookingId
+          },
+          {
+            key: 'terms',
+            label: 'Terms & Conditions',
+            value: 'Please arrive 5 minutes before your reservation time. Cancellations must be made at least 2 hours in advance.'
           }
         ]
       },
+      barcode: {
+        message: `DINEINGO-${bookingId}`,
+        format: 'PKBarcodeFormatQR',
+        messageEncoding: 'iso-8859-1',
+        altText: `Booking: ${bookingId}`
+      },
       barcodes: [
         {
+          message: `DINEINGO-${bookingId}`,
           format: 'PKBarcodeFormatQR',
-          message: JSON.stringify({
-            bookingId: booking.id || booking._id,
-            type: booking.restaurantId ? 'restaurant' : 'event',
-            date: booking.date,
-            time: booking.time
-          }),
-          messageEncoding: 'iso-8859-1'
+          messageEncoding: 'iso-8859-1',
+          altText: `Booking: ${bookingId}`
         }
-      ]
+      ],
+      relevantDate: new Date(booking.date).toISOString()
     };
 
-    // Convert to Buffer for email attachment
-    const passBuffer = Buffer.from(JSON.stringify(passData), 'utf8');
-    const passUrl = `data:application/vnd.apple.pkpass;base64,${passBuffer.toString('base64')}`;
+    // Convert to Blob for download
+    const passBlob = new Blob([JSON.stringify(passJson, null, 2)], { type: 'application/vnd.apple.pkpass' });
+    const passUrl = URL.createObjectURL(passBlob);
     
-    return { passUrl, passData: passBuffer };
+    return { passUrl, passData: passBlob };
   }
 
   // Generate Google Wallet pass
-  async generateGoogleWalletPass(booking: any): Promise<{ passUrl: string; passData: Buffer }> {
-    const passData = {
-      id: `booking-${booking.id || booking._id}`,
-      issuerName: 'DineInGo',
-      programName: 'Restaurant & Event Bookings',
-      eventTicketObjects: [
-        {
-          id: 'event-ticket',
-          eventName: {
-            defaultValue: {
-              language: 'en-US',
-              value: booking.restaurantName || booking.eventName
-            }
-          },
-          dateTime: {
-            start: {
-              date: booking.date
-            }
-          },
-          venueName: {
-            defaultValue: {
-              language: 'en-US',
-              value: booking.restaurantId?.address || booking.eventId?.location || 'Location TBD'
-            }
-          },
-          seatInfo: {
-            defaultValue: {
-              language: 'en-US',
-              value: `Guests: ${booking.numberOfGuests || booking.guests}`
-            }
-          }
+  async generateGoogleWalletPass(booking: any): Promise<{ passUrl: string; passData: Blob }> {
+    const bookingId = booking.id || booking._id;
+    const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
+    const dateStr = new Date(booking.date).toISOString().split('T')[0];
+    const guests = booking.numberOfGuests || booking.guests || 1;
+
+    // Create Google Wallet object
+    const walletObject = {
+      id: `3388000000022${bookingId.slice(-6)}`,
+      classId: '3388000000022095071',
+      state: 'ACTIVE',
+      barcode: {
+        type: 'QR_CODE',
+        value: `DINEINGO-${bookingId}`,
+        alternateText: `Booking: ${bookingId}`
+      },
+      cardTitle: {
+        defaultValue: {
+          language: 'en-US',
+          value: 'DineInGo Reservation'
         }
-      ]
+      },
+      header: {
+        defaultValue: {
+          language: 'en-US',
+          value: restaurantName
+        }
+      },
+      subheader: {
+        defaultValue: {
+          language: 'en-US',
+          value: `${dateStr} at ${booking.time}`
+        }
+      },
+      body: {
+        defaultValue: {
+          language: 'en-US',
+          value: `${guests} ${guests === 1 ? 'Guest' : 'Guests'}${booking.table ? ` • Table ${booking.table}` : ''}`
+        }
+      },
+      hexBackgroundColor: '#10b981',
+      heroImage: {
+        sourceUri: {
+          uri: 'https://i.postimg.cc/WbNR0cxd/logo1.png'
+        }
+      },
+      textModulesData: [
+        {
+          header: 'Booking Details',
+          body: `Booking ID: ${bookingId}\nRestaurant: ${restaurantName}\nDate: ${dateStr}\nTime: ${booking.time}`,
+          id: 'booking_details'
+        },
+        {
+          header: 'Important Information',
+          body: 'Please arrive 5 minutes before your reservation time. Cancellations must be made at least 2 hours in advance.',
+          id: 'terms'
+        }
+      ],
+      validTimeInterval: {
+        start: {
+          date: dateStr
+        }
+      }
     };
 
-    // Convert to Buffer for email attachment
-    const passBuffer = Buffer.from(JSON.stringify(passData, null, 2), 'utf8');
-    const passUrl = `https://pay.google.com/gp/v/save/${btoa(JSON.stringify(passData))}`;
+    // Create the save URL for Google Wallet
+    const objectJson = JSON.stringify(walletObject);
+    const base64Object = btoa(objectJson)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
     
-    return { passUrl, passData: passBuffer };
+    const passUrl = `https://pay.google.com/gp/v/save/${base64Object}`;
+
+    // Also create a Blob for download
+    const passBlob = new Blob([JSON.stringify(walletObject, null, 2)], { type: 'application/json' });
+    
+    return { passUrl, passData: passBlob };
   }
 
   // Generate invoice for booking

@@ -3,7 +3,7 @@ import { Booking } from '../models/Booking';
 import nodemailer from 'nodemailer';
 import PDFDocument from 'pdfkit';
 import { PassThrough } from 'stream';
-import { generateAppleWalletPass, generateGoogleWalletPass } from '../utils/walletPass';
+import { generateBothWalletPasses } from '../utils/walletPassGenerator';
 
 // Generate invoice PDF as a Buffer
 const generateInvoicePdfBuffer = (bookingData: any): Promise<Buffer> => {
@@ -126,9 +126,9 @@ const sendInvoicePdfEmail = async (bookingData: any) => {
   // Generate wallet passes
   let walletAttachments: { filename: string; content: Buffer; contentType: string }[] = [];
   try {
-    const applePass = await generateAppleWalletPass(bookingData);
-    const googlePass = await generateGoogleWalletPass(bookingData);
-    walletAttachments = [applePass, googlePass];
+    const passes = await generateBothWalletPasses(bookingData);
+    walletAttachments = [passes.apple, passes.google];
+    console.log('Wallet passes generated successfully for email');
   } catch (err) {
     console.warn('Failed to generate wallet passes for email:', err);
   }
