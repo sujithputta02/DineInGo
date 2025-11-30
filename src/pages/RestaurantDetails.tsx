@@ -159,7 +159,7 @@ const RestaurantDetails = () => {
   };
 
   const handleEventRegistration = () => {
-    navigate(`/restaurant/${id}/preview?type=event&date=${event?.date}&time=${event?.time}&guests=1&eventName=${event?.name}&eventCategory=${event?.category}&eventPrice=${event?.price}&eventOrganizer=${event?.organizer}&eventImage=${event?.image}`);
+    navigate(`/event/${id}/register`);
   };
 
   if (loading) {

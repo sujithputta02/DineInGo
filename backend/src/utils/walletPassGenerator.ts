@@ -22,7 +22,7 @@ interface BookingData {
  * This creates a basic pass structure that can be enhanced with proper signing
  */
 export async function generateAppleWalletPass(booking: BookingData): Promise<{ filename: string; content: Buffer; contentType: string }> {
-  const bookingId = booking._id || booking.id || 'unknown';
+  const bookingId = String(booking._id || booking.id || 'unknown');
   const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
   const dateStr = booking.date instanceof Date ? booking.date.toLocaleDateString() : new Date(booking.date).toLocaleDateString();
   const guests = booking.numberOfGuests || booking.guests || 1;
@@ -136,7 +136,7 @@ export async function generateAppleWalletPass(booking: BookingData): Promise<{ f
  * Creates a JWT token that can be used with Google Wallet API
  */
 export async function generateGoogleWalletPass(booking: BookingData): Promise<{ filename: string; content: Buffer; contentType: string; url: string }> {
-  const bookingId = booking._id || booking.id || 'unknown';
+  const bookingId = String(booking._id || booking.id || 'unknown');
   const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
   const dateStr = booking.date instanceof Date ? booking.date.toISOString().split('T')[0] : new Date(booking.date).toISOString().split('T')[0];
   const guests = booking.numberOfGuests || booking.guests || 1;

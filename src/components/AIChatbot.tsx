@@ -58,7 +58,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
         // Show welcome message if no history
         setMessages([{
           role: 'assistant',
-          content: "👋 Hello! I'm Dino, your friendly DineInGo assistant. I'm here to help you with:\n\n• Making reservations\n• Finding restaurants\n• Account management\n• Answering questions\n• Handling feedback\n\nHow can I assist you today?",
+          content: "🦖 Rawr! Hello! I'm Dino, your friendly DineInGo assistant. I'm here to help you with:\n\n• 🍽️ Making restaurant reservations\n• 🎉 Booking events\n• 📍 Finding the perfect dining spot\n• 👤 Account management\n• ❓ Answering your questions\n• 💬 Handling feedback\n\nI know everything about DineInGo - from table bookings to event tickets, cancellation policies to digital wallet passes. How can I assist you today?",
           timestamp: new Date()
         }]);
       }
@@ -67,7 +67,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
       // Show welcome message on error
       setMessages([{
         role: 'assistant',
-        content: "👋 Hello! I'm Dino, your friendly DineInGo assistant. How can I help you today?",
+        content: "🦖 Rawr! Hello! I'm Dino, your friendly DineInGo assistant. How can I help you today?",
         timestamp: new Date()
       }]);
     } finally {
@@ -145,7 +145,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
       setMessages([{
         role: 'assistant',
-        content: "Chat history cleared. How can I help you today?",
+        content: "🦖 Chat history cleared! Ready for a fresh start. How can I help you today?",
         timestamp: new Date()
       }]);
       
@@ -169,19 +169,25 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
   return (
     <>
-      {/* Chatbot Button */}
+      {/* Chatbot Button - Dino Icon */}
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 group"
+          className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 group animate-bounce"
           aria-label="Open AI Assistant"
+          style={{ animationDuration: '2s' }}
         >
-          <MessageCircle className="w-6 h-6" />
+          {/* Dino Icon Image */}
+          <img 
+            src="/images/Dino Icon.svg" 
+            alt="Dino Assistant" 
+            className="w-12 h-12 object-contain"
+          />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
           
           {/* Tooltip */}
           <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            Chat with Dino
+            🦖 Chat with Dino - Ready to Help!
           </div>
         </button>
       )}
@@ -192,12 +198,17 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                <MessageCircle className="w-5 h-5" />
+              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center p-2">
+                {/* Dino Icon */}
+                <img 
+                  src="/images/Dino Icon.svg" 
+                  alt="Dino" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div>
-                <h3 className="font-semibold">Dino</h3>
-                <p className="text-xs text-white/80">Your DineInGo Assistant</p>
+                <h3 className="font-semibold">🦖 Dino</h3>
+                <p className="text-xs text-white/80">Your Dining Assistant</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

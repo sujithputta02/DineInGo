@@ -17,6 +17,9 @@ import FoodMenu from './pages/FoodMenu';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AuthActionHandler from './pages/AuthActionHandler';
+import EventRegistration from './pages/EventRegistration';
+import EventPreview from './pages/EventPreview';
+import EventsPage from './pages/EventsPage';
 import { UserData, CityLocation } from './types';
 import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -39,6 +42,9 @@ function usePageTitle() {
     else if (location.pathname.startsWith('/restaurant/') && location.pathname.endsWith('/table-selection')) title = 'Table Selection | DineInGo';
     else if (location.pathname.startsWith('/restaurant/') && location.pathname.endsWith('/reservation')) title = 'Reservation Details | DineInGo';
     else if (location.pathname.startsWith('/restaurant/')) title = 'Restaurant Details | DineInGo';
+    else if (location.pathname.startsWith('/event/') && location.pathname.endsWith('/preview')) title = 'Event Registration Preview | DineInGo';
+    else if (location.pathname.startsWith('/event/') && location.pathname.endsWith('/register')) title = 'Event Registration | DineInGo';
+    else if (location.pathname.startsWith('/events')) title = 'Events | DineInGo';
     else if (location.pathname.startsWith('/terms')) title = 'Terms & Conditions | DineInGo';
     else if (location.pathname.startsWith('/feedback')) title = 'Feedback | DineInGo';
     else if (location.pathname.startsWith('/debug')) title = 'Debug | DineInGo';
@@ -89,6 +95,9 @@ const App: React.FC = () => {
               <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
               <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
               <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
+              <Route path="/events" element={<EventsPage />} />
+              <Route path="/event/:id/register" element={<EventRegistration />} />
+              <Route path="/event/:id/preview" element={<EventPreview />} />
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               <Route path="/admin-login" element={<AdminLoginPage />} />
             </Routes>

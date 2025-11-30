@@ -30,6 +30,16 @@ export const getRestaurantById = async (id: string) => {
       return getMockRestaurantById('1'); // Default to first mock restaurant
     }
 
+    // Check if this is a mock restaurant ID (simple numeric IDs 1-6)
+    // If it's a simple number and not a MongoDB ObjectId, use mock data directly
+    const isMockId = /^[1-9]$/.test(id) || /^[1-9][0-9]$/.test(id);
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
+    
+    if (isMockId && !isObjectId) {
+      console.log(`Using mock data for restaurant ID: ${id}`);
+      return getMockRestaurantById(id);
+    }
+
     const timestamp = Date.now();
     const maxRetries = 3;
     let lastError;
@@ -49,7 +59,7 @@ export const getRestaurantById = async (id: string) => {
         
         if (!response.ok) {
           if (response.status === 404) {
-            console.log(`Restaurant with ID ${id} not found, using mock data`);
+            console.log(`Restaurant with ID ${id} not found in database, using mock data`);
             return getMockRestaurantById(id);
           }
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -58,14 +68,14 @@ export const getRestaurantById = async (id: string) => {
         const data = await response.json();
         // If backend wraps in { success, data }, unwrap
         return data.data || data;
-      } catch (error) {
+      } catch (error: any) {
         console.log(`Attempt ${attempt} failed:`, error);
         lastError = error;
         
         // If this is a CORS error or network error, fall back to mock data
-        if (error.message.includes('Failed to fetch') || 
+        if (error.message && (error.message.includes('Failed to fetch') || 
             error.message.includes('NetworkError') || 
-            error.message.includes('CORS')) {
+            error.message.includes('CORS'))) {
           console.log('Network/CORS error detected, falling back to mock data');
           return getMockRestaurantById(id);
         }

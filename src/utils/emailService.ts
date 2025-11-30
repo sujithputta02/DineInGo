@@ -211,10 +211,16 @@ export const emailService = {
           
           <h3 style="color: #374151;">Booking Details</h3>
           <div class="invoice-details">
-            <p><strong>Restaurant/Event:</strong> ${invoice.restaurantName || invoice.eventName}</p>
+            <p><strong>${invoice.eventName ? 'Event' : 'Restaurant'}:</strong> ${invoice.restaurantName || invoice.eventName}</p>
             <p><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</p>
             <p><strong>Time:</strong> ${booking.time}</p>
-            <p><strong>Guests:</strong> ${booking.numberOfGuests || booking.guests}</p>
+            ${booking.selectedSeats && booking.selectedSeats.length > 0 ? `
+              <p><strong>Selected Seats:</strong> ${booking.selectedSeats.join(', ')}</p>
+              <p><strong>Total Seats:</strong> ${booking.selectedSeats.length}</p>
+            ` : `
+              <p><strong>${invoice.eventName ? 'Attendees' : 'Guests'}:</strong> ${booking.numberOfGuests || booking.guests || 1}</p>
+            `}
+            ${booking.table ? `<p><strong>Table:</strong> ${booking.table}</p>` : ''}
           </div>
           
           ${invoice.items && invoice.items.length > 0 ? `

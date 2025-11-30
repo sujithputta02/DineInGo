@@ -51,9 +51,21 @@ class WalletService {
   // Generate Apple Wallet pass
   async generateAppleWalletPass(booking: any): Promise<{ passUrl: string; passData: Blob }> {
     const bookingId = booking.id || booking._id;
-    const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
+    const name = booking.restaurantName || booking.eventName || 'DineInGo';
     const dateStr = new Date(booking.date).toLocaleDateString();
-    const guests = booking.numberOfGuests || booking.guests || 1;
+    const isEvent = !!(booking.eventId || booking.eventName);
+    
+    // Determine guest/seat information
+    let guestsLabel = 'GUESTS';
+    let guestsValue = '';
+    
+    if (booking.selectedSeats && booking.selectedSeats.length > 0) {
+      guestsLabel = 'SEATS';
+      guestsValue = booking.selectedSeats.join(', ');
+    } else {
+      const guests = booking.numberOfGuests || booking.guests || 1;
+      guestsValue = `${guests} ${guests === 1 ? (isEvent ? 'Ticket' : 'Guest') : (isEvent ? 'Tickets' : 'Guests')}`;
+    }
 
     // Create pass.json structure for Apple Wallet
     const passJson = {
@@ -62,17 +74,17 @@ class WalletService {
       serialNumber: `DINEINGO-${bookingId}`,
       teamIdentifier: 'DINEINGO',
       organizationName: 'DineInGo',
-      description: `${restaurantName} Reservation`,
+      description: `${name} ${isEvent ? 'Event Ticket' : 'Reservation'}`,
       logoText: 'DineInGo',
       foregroundColor: 'rgb(255, 255, 255)',
-      backgroundColor: 'rgb(16, 185, 129)',
+      backgroundColor: isEvent ? 'rgb(147, 51, 234)' : 'rgb(16, 185, 129)',
       labelColor: 'rgb(255, 255, 255)',
       generic: {
         primaryFields: [
           {
-            key: 'restaurant',
-            label: 'RESTAURANT',
-            value: restaurantName
+            key: 'name',
+            label: isEvent ? 'EVENT' : 'RESTAURANT',
+            value: name
           }
         ],
         secondaryFields: [
@@ -92,14 +104,20 @@ class WalletService {
         auxiliaryFields: [
           {
             key: 'guests',
-            label: 'GUESTS',
-            value: `${guests} ${guests === 1 ? 'Guest' : 'Guests'}`,
+            label: guestsLabel,
+            value: guestsValue,
             textAlignment: 'PKTextAlignmentLeft'
           },
           ...(booking.table ? [{
             key: 'table',
             label: 'TABLE',
             value: booking.table,
+            textAlignment: 'PKTextAlignmentRight'
+          }] : []),
+          ...(booking.totalAmount ? [{
+            key: 'amount',
+            label: 'TOTAL',
+            value: `₹${booking.totalAmount}`,
             textAlignment: 'PKTextAlignmentRight'
           }] : [])
         ],
@@ -109,6 +127,11 @@ class WalletService {
             label: 'Booking ID',
             value: bookingId
           },
+          ...(booking.selectedSeats && booking.selectedSeats.length > 0 ? [{
+            key: 'seats',
+            label: 'Your Seats',
+            value: booking.selectedSeats.join(', ')
+          }] : []),
           {
             key: 'terms',
             label: 'Terms & Conditions',
@@ -143,9 +166,37 @@ class WalletService {
   // Generate Google Wallet pass
   async generateGoogleWalletPass(booking: any): Promise<{ passUrl: string; passData: Blob }> {
     const bookingId = booking.id || booking._id;
-    const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
+    const name = booking.restaurantName || booking.eventName || 'DineInGo';
     const dateStr = new Date(booking.date).toISOString().split('T')[0];
-    const guests = booking.numberOfGuests || booking.guests || 1;
+    const isEvent = !!(booking.eventId || booking.eventName);
+    
+    // Determine guest/seat information
+    let bodyText = '';
+    if (booking.selectedSeats && booking.selectedSeats.length > 0) {
+      bodyText = `Seats: ${booking.selectedSeats.join(', ')}`;
+    } else {
+      const guests = booking.numberOfGuests || booking.guests || 1;
+      bodyText = `${guests} ${guests === 1 ? (isEvent ? 'Ticket' : 'Guest') : (isEvent ? 'Tickets' : 'Guests')}`;
+    }
+    
+    if (booking.table) {
+      bodyText += ` • Table ${booking.table}`;
+    }
+    
+    if (booking.totalAmount) {
+      bodyText += ` • ₹${booking.totalAmount}`;
+    }
+
+    // Create booking details text
+    let bookingDetailsText = `Booking ID: ${bookingId}\n${isEvent ? 'Event' : 'Restaurant'}: ${name}\nDate: ${dateStr}\nTime: ${booking.time}`;
+    
+    if (booking.selectedSeats && booking.selectedSeats.length > 0) {
+      bookingDetailsText += `\nSeats: ${booking.selectedSeats.join(', ')}`;
+    }
+    
+    if (booking.totalAmount) {
+      bookingDetailsText += `\nTotal: ₹${booking.totalAmount}`;
+    }
 
     // Create Google Wallet object
     const walletObject = {
@@ -160,13 +211,13 @@ class WalletService {
       cardTitle: {
         defaultValue: {
           language: 'en-US',
-          value: 'DineInGo Reservation'
+          value: isEvent ? 'DineInGo Event Ticket' : 'DineInGo Reservation'
         }
       },
       header: {
         defaultValue: {
           language: 'en-US',
-          value: restaurantName
+          value: name
         }
       },
       subheader: {
@@ -178,10 +229,10 @@ class WalletService {
       body: {
         defaultValue: {
           language: 'en-US',
-          value: `${guests} ${guests === 1 ? 'Guest' : 'Guests'}${booking.table ? ` • Table ${booking.table}` : ''}`
+          value: bodyText
         }
       },
-      hexBackgroundColor: '#10b981',
+      hexBackgroundColor: isEvent ? '#9333ea' : '#10b981',
       heroImage: {
         sourceUri: {
           uri: 'https://i.postimg.cc/WbNR0cxd/logo1.png'
@@ -190,7 +241,7 @@ class WalletService {
       textModulesData: [
         {
           header: 'Booking Details',
-          body: `Booking ID: ${bookingId}\nRestaurant: ${restaurantName}\nDate: ${dateStr}\nTime: ${booking.time}`,
+          body: bookingDetailsText,
           id: 'booking_details'
         },
         {
@@ -226,10 +277,61 @@ class WalletService {
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const user = auth.currentUser;
     
-    const items = booking.selectedItems || [];
-    const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-    const tax = subtotal * 0.18;
-    const total = subtotal + tax;
+    let items: InvoiceItem[] = [];
+    let subtotal = 0;
+    
+    // Check if it's an event booking with seats
+    const isEvent = !!(booking.eventId || booking.eventName);
+    
+    if (isEvent && booking.selectedSeats && booking.selectedSeats.length > 0) {
+      // Event booking with seat selection
+      items = booking.selectedSeats.map((seatId: string) => ({
+        name: `Seat ${seatId}`,
+        description: `Event: ${booking.eventName || 'Event Ticket'}`,
+        quantity: 1,
+        unitPrice: booking.totalAmount ? Math.round(booking.totalAmount / booking.selectedSeats.length) : 0,
+        total: booking.totalAmount ? Math.round(booking.totalAmount / booking.selectedSeats.length) : 0
+      }));
+      subtotal = booking.totalAmount || 0;
+    } else if (isEvent) {
+      // Event booking without seat selection (general admission)
+      const guests = booking.guests || booking.numberOfGuests || 1;
+      const pricePerPerson = booking.totalAmount ? Math.round(booking.totalAmount / guests) : 0;
+      items = [{
+        name: `${booking.eventName || 'Event'} - General Admission`,
+        description: `${guests} ${guests === 1 ? 'Ticket' : 'Tickets'}`,
+        quantity: guests,
+        unitPrice: pricePerPerson,
+        total: booking.totalAmount || 0
+      }];
+      subtotal = booking.totalAmount || 0;
+    } else if (booking.selectedItems && booking.selectedItems.length > 0) {
+      // Restaurant booking with menu items
+      items = booking.selectedItems.map((item: any) => ({
+        name: item.name,
+        description: item.description || '',
+        quantity: item.quantity,
+        unitPrice: item.price,
+        total: item.price * item.quantity
+      }));
+      subtotal = items.reduce((sum: number, item: InvoiceItem) => sum + item.total, 0);
+    } else {
+      // Restaurant booking without items (table reservation only)
+      const guests = booking.guests || booking.numberOfGuests || 1;
+      items = [{
+        name: `Table Reservation - ${booking.restaurantName || 'Restaurant'}`,
+        description: `${guests} ${guests === 1 ? 'Guest' : 'Guests'}${booking.table ? ` - Table ${booking.table}` : ''}`,
+        quantity: 1,
+        unitPrice: booking.totalAmount || 0,
+        total: booking.totalAmount || 0
+      }];
+      subtotal = booking.totalAmount || 0;
+    }
+    
+    // If totalAmount is provided, it already includes tax
+    // Calculate tax backwards from total
+    const total = booking.totalAmount || (subtotal * 1.18);
+    const tax = total - subtotal;
 
     return {
       id: `invoice-${Date.now()}`,
@@ -242,13 +344,7 @@ class WalletService {
       customerPhone: booking.phoneNumber || '',
       restaurantName: booking.restaurantName,
       eventName: booking.eventName,
-      items: items.map((item: any) => ({
-        name: item.name,
-        description: item.description || '',
-        quantity: item.quantity,
-        unitPrice: item.price,
-        total: item.price * item.quantity
-      })),
+      items,
       subtotal,
       tax,
       total,

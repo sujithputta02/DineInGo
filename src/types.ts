@@ -62,7 +62,11 @@ export interface Event {
 
 export interface Booking {
   id: string;
-  restaurantName: string;
+  _id?: string;
+  restaurantName?: string;
+  restaurantId?: string;
+  eventName?: string;
+  eventId?: string;
   date: string;
   time: string;
   guests: number;
@@ -73,6 +77,7 @@ export interface Booking {
     price: number;
     quantity: number;
   }[];
+  selectedSeats?: string[];
   totalAmount?: number;
   fullName?: string;
   email?: string;

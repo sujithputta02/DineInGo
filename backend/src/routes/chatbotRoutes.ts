@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { chatbotService } from '../services/chatbotService';
+import { enhancedChatbotService } from '../services/enhancedChatbotService';
 
 const router = express.Router();
 
@@ -31,12 +31,12 @@ router.post('/message', async (req: Request, res: Response) => {
 
     console.log(`Chatbot message from user ${userId}: ${message.substring(0, 50)}...`);
 
-    const response = await chatbotService.sendMessage(userId, message, userContext);
+    const result = await enhancedChatbotService.sendMessage(userId, message, userContext);
 
     res.json({
       success: true,
-      response,
-      timestamp: new Date().toISOString()
+      response: result.response,
+      timestamp: result.timestamp.toISOString()
     });
 
   } catch (error: any) {
@@ -60,7 +60,7 @@ router.get('/history/:userId', async (req: Request, res: Response) => {
       });
     }
 
-    const history = chatbotService.getChatHistory(userId);
+    const history = await enhancedChatbotService.getChatHistory(userId);
 
     res.json({
       success: true,
@@ -89,7 +89,7 @@ router.delete('/session/:userId', async (req: Request, res: Response) => {
       });
     }
 
-    chatbotService.clearSession(userId);
+    await enhancedChatbotService.clearSession(userId);
 
     res.json({
       success: true,
@@ -117,7 +117,7 @@ router.get('/stats/:userId', async (req: Request, res: Response) => {
       });
     }
 
-    const stats = chatbotService.getSessionStats(userId);
+    const stats = await enhancedChatbotService.getSessionStats(userId);
 
     res.json({
       success: true,

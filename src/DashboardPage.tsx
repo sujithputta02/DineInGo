@@ -613,8 +613,10 @@ export default function DashboardPage() {
   const [filteredCities, setFilteredCities] = useState(indianCities);
   const [homeSection, setHomeSection] = useState<'restaurants' | 'events'>('restaurants');
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
+  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [markingAsRead, setMarkingAsRead] = useState(false);
   
-  const { unreadCount, markAllAsRead, notifications: notificationContextNotifications } = useNotifications();
+  const { unreadCount, markAllAsRead, notifications: notificationContextNotifications, markAsRead: markSingleAsRead, isRead } = useNotifications();
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -661,7 +663,35 @@ export default function DashboardPage() {
         
         // Then load restaurants and events
         setRestaurants(mockRestaurants);
-        setEvents(mockEvents);
+        
+        // Fetch events from API
+        try {
+          const response = await fetch('http://localhost:5000/api/events');
+          if (response.ok) {
+            const data = await response.json();
+            const apiEvents = (data.data || data).map((event: any) => ({
+              id: event._id,
+              name: event.title,
+              description: event.description,
+              date: new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+              time: event.time,
+              location: event.location,
+              image: event.imageUrl,
+              price: event.price,
+              category: event.category,
+              organizer: event.organizer,
+              capacity: event.capacity,
+              registeredCount: event.registeredCount
+            }));
+            setEvents(apiEvents);
+          } else {
+            console.error('Failed to fetch events from API');
+            setEvents([]);
+          }
+        } catch (error) {
+          console.error('Error fetching events:', error);
+          setEvents([]);
+        }
         
         // Check if the user's photoURL is valid
         if (userData && userData.photoURL && !isValidImageUrl(userData.photoURL)) {
@@ -968,21 +998,32 @@ export default function DashboardPage() {
   };
 
   const toggleFavorite = async (item: Restaurant | Event) => {
-    if (!userData?.uid) return;
+    if (!userData?.uid) {
+      toast.error('Please log in to add favorites');
+      return;
+    }
+    
+    const itemName = 'name' in item ? item.name : '';
+    const isCurrentlyFavorite = favorites.some(fav => fav.id === item.id);
+    
     try {
       if ('rating' in item) {
         // Restaurant
         if (favorites.some(fav => fav.id === item.id && fav.type === 'restaurant')) {
           await favoritesApi.removeRestaurant(userData.uid, item.id);
+          toast.success(`Removed ${itemName} from favorites`);
         } else {
           await favoritesApi.addRestaurant(userData.uid, item.id);
+          toast.success(`Added ${itemName} to favorites`);
         }
       } else {
         // Event
         if (favorites.some(fav => fav.id === item.id && fav.type === 'event')) {
           await favoritesApi.removeEvent(userData.uid, item.id);
+          toast.success(`Removed ${itemName} from favorites`);
         } else {
           await favoritesApi.addEvent(userData.uid, item.id);
+          toast.success(`Added ${itemName} to favorites`);
         }
       }
       // Always re-fetch from backend after any change
@@ -1028,6 +1069,7 @@ export default function DashboardPage() {
       setFavorites(newFavorites);
     } catch (err) {
       console.error('Failed to update favorite:', err);
+      toast.error(`Failed to ${isCurrentlyFavorite ? 'remove' : 'add'} favorite. Please try again.`);
     }
   };
 
@@ -1360,7 +1402,7 @@ export default function DashboardPage() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredEvents.map(event => (
-                  <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/restaurant/${event.id}?type=event`)}>
+                  <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
                     <div className="relative h-48">
                       <img 
                         src={event.image} 
@@ -1556,7 +1598,7 @@ export default function DashboardPage() {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {events.map(event => (
-                      <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/restaurant/${event.id}?type=event`)}>
+                      <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
                         <div className="relative h-48">
                           <img 
                             src={event.image} 
@@ -1691,7 +1733,7 @@ export default function DashboardPage() {
             </h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {events.map(event => (
-                <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/restaurant/${event.id}?type=event`)}>
+                <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
                   <div className="relative h-48">
                     <img 
                       src={event.image} 
@@ -1903,29 +1945,142 @@ export default function DashboardPage() {
                                 </p>
                               </div>
                             )}
-                            {booking.status === 'pending' && isValidMongoId && (
-                              <div className="flex gap-2 mt-4">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBookingAction(bookingId, 'confirm');
-                                  }}
-                                  className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
-                                >
-                                  Confirm
-                                </button>
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleBookingAction(bookingId, 'cancel');
-                                  }}
-                                  className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                                >
-                                  Cancel
-                                </button>
-                              </div>
-                            )}
-                            {booking.status === 'pending' && !isValidMongoId && (
+                            {isValidMongoId && (() => {
+                              // Calculate time difference - properly parse date and time
+                              let bookingDateTime: Date;
+                              try {
+                                // Handle different date formats
+                                const dateStr = typeof booking.date === 'string' ? booking.date : new Date(booking.date).toISOString();
+                                let timeStr = booking.time || '00:00';
+                                
+                                // Parse date (handle ISO format or regular date string)
+                                let datePart: string;
+                                if (dateStr.includes('T')) {
+                                  datePart = dateStr.split('T')[0];
+                                } else {
+                                  // Handle date formats like "1/25/2026" or "2026-01-25"
+                                  const dateObj = new Date(dateStr);
+                                  datePart = dateObj.toISOString().split('T')[0];
+                                }
+                                
+                                // Convert 12-hour time to 24-hour format if needed
+                                if (timeStr.includes('AM') || timeStr.includes('PM')) {
+                                  const isPM = timeStr.includes('PM');
+                                  timeStr = timeStr.replace(/AM|PM/gi, '').trim();
+                                  const [hours, minutes] = timeStr.split(':').map(s => parseInt(s.trim()));
+                                  let hour24 = hours;
+                                  
+                                  if (isPM && hours !== 12) {
+                                    hour24 = hours + 12;
+                                  } else if (!isPM && hours === 12) {
+                                    hour24 = 0;
+                                  }
+                                  
+                                  timeStr = `${hour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                                }
+                                
+                                // Create the datetime
+                                bookingDateTime = new Date(`${datePart}T${timeStr}:00`);
+                                
+                                // Validate the date
+                                if (isNaN(bookingDateTime.getTime())) {
+                                  throw new Error('Invalid date');
+                                }
+                              } catch (error) {
+                                console.error('Error parsing booking date/time:', error, { date: booking.date, time: booking.time });
+                                // Fallback: just use the date
+                                bookingDateTime = new Date(booking.date);
+                              }
+                              
+                              const now = new Date();
+                              const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+                              const canCancel = hoursUntilBooking > 2;
+                              
+                              // Debug log
+                              console.log('Booking debug:', {
+                                name: bookingName,
+                                status: booking.status,
+                                date: booking.date,
+                                time: booking.time,
+                                bookingDateTime: bookingDateTime.toISOString(),
+                                now: now.toISOString(),
+                                hoursUntilBooking,
+                                canCancel
+                              });
+
+                              if (booking.status === 'pending') {
+                                return (
+                                  <div className="flex gap-2 mt-4">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBookingAction(bookingId, 'confirm');
+                                      }}
+                                      className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
+                                    >
+                                      Confirm
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleBookingAction(bookingId, 'cancel');
+                                      }}
+                                      className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                );
+                              } else if (booking.status === 'confirmed') {
+                                const hoursLeft = Math.floor(hoursUntilBooking);
+                                const minutesLeft = Math.floor((hoursUntilBooking - hoursLeft) * 60);
+                                
+                                if (canCancel) {
+                                  return (
+                                    <div className="mt-4">
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (window.confirm('Are you sure you want to cancel this confirmed booking?')) {
+                                            handleBookingAction(bookingId, 'cancel');
+                                          }
+                                        }}
+                                        className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                                      >
+                                        Cancel Booking
+                                      </button>
+                                      <p className="text-xs text-center mt-2 text-gray-500">
+                                        {hoursLeft > 24 
+                                          ? `${Math.floor(hoursLeft / 24)} day(s) until booking`
+                                          : `${hoursLeft}h ${minutesLeft}m until booking`
+                                        }
+                                      </p>
+                                    </div>
+                                  );
+                                } else if (hoursUntilBooking > 0) {
+                                  return (
+                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                      <p className="text-xs text-yellow-800 text-center font-medium">
+                                        ⚠️ Cancellation not available
+                                      </p>
+                                      <p className="text-xs text-yellow-700 text-center mt-1">
+                                        Less than 2 hours until booking ({hoursLeft}h {minutesLeft}m left)
+                                      </p>
+                                    </div>
+                                  );
+                                } else {
+                                  return (
+                                    <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                                      <p className="text-xs text-gray-600 text-center font-medium">
+                                        🎉 Booking time has passed
+                                      </p>
+                                    </div>
+                                  );
+                                }
+                              }
+                              return null;
+                            })()}
+                            {!isValidMongoId && (
                               <div className="text-xs text-red-500 mt-2">
                                 This booking cannot be confirmed/cancelled (invalid ID)
                               </div>
@@ -2291,6 +2446,7 @@ export default function DashboardPage() {
         // @ts-ignore: Notification id may be _id or id depending on backend
         const mappedNotifications = notificationContextNotifications.map((n) => ({
           id: (n as any).id || (n as any)._id,
+          title: n.title || 'Notification',
           message: n.message || n.title || '',
           read: Array.isArray(n.readBy) && typeof userData?.uid === 'string' ? n.readBy.includes(userData.uid) : false,
           timestamp: n.createdAt ? new Date(n.createdAt) : new Date(),
@@ -2337,14 +2493,15 @@ export default function DashboardPage() {
                 {mappedNotifications.map((notification, index) => (
                   <div
                     key={index}
-                    className={`flex items-start p-4 rounded-xl transition-colors ${
+                    onClick={() => setSelectedNotification(notification)}
+                    className={`flex items-start p-4 rounded-xl transition-colors cursor-pointer ${
                       isDarkMode
                         ? notification.read
-                          ? 'bg-gray-800'
-                          : 'bg-gray-800/80 ring-1 ring-emerald-500'
+                          ? 'bg-gray-800 hover:bg-gray-750'
+                          : 'bg-gray-800/80 ring-1 ring-emerald-500 hover:bg-gray-800'
                         : notification.read
-                          ? 'bg-white'
-                          : 'bg-white/90 ring-1 ring-emerald-500'
+                          ? 'bg-white hover:bg-gray-50'
+                          : 'bg-white/90 ring-1 ring-emerald-500 hover:bg-emerald-50'
                     }`}
                   >
                     <Bell
@@ -2358,8 +2515,13 @@ export default function DashboardPage() {
                       size={20}
                     />
                     <div className="ml-4 flex-1">
-                      <p className={`text-sm ${
-                        isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                      <h3 className={`text-sm font-semibold mb-1 ${
+                        isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                      }`}>
+                        {notification.title}
+                      </h3>
+                      <p className={`text-sm line-clamp-2 ${
+                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
                       }`}>
                         {notification.message}
                       </p>
@@ -2369,6 +2531,11 @@ export default function DashboardPage() {
                         {formatTimestamp(notification.timestamp)}
                       </p>
                     </div>
+                    {!notification.read && (
+                      <div className="ml-2 flex-shrink-0">
+                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -3037,6 +3204,96 @@ export default function DashboardPage() {
         {isLocationModalOpen && renderLocationModal()}
         {/* Avatar Modal */}
         {renderAvatarModal()}
+
+        {/* Notification Detail Modal */}
+        {selectedNotification && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setSelectedNotification(null)}
+          >
+            <div 
+              className={`rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden ${
+                isDarkMode ? 'bg-gray-800' : 'bg-white'
+              }`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className={`flex items-start justify-between p-6 border-b ${
+                isDarkMode ? 'border-gray-700' : 'border-gray-200'
+              }`}>
+                <div className="flex-1 pr-4">
+                  <h2 className={`text-2xl font-bold ${
+                    isDarkMode ? 'text-white' : 'text-gray-800'
+                  }`}>
+                    {selectedNotification.title}
+                  </h2>
+                  <p className={`text-sm mt-1 ${
+                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    {formatTimestamp(selectedNotification.timestamp)}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setSelectedNotification(null)}
+                  className={`transition-colors ${
+                    isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
+                  }`}
+                  title="Close"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 overflow-y-auto max-h-[50vh]">
+                <div className={`whitespace-pre-line leading-relaxed ${
+                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                }`}>
+                  {selectedNotification.message}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className={`flex items-center justify-end gap-3 p-6 border-t ${
+                isDarkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
+              }`}>
+                <button
+                  onClick={() => setSelectedNotification(null)}
+                  className={`px-6 py-2 border rounded-lg transition-colors ${
+                    isDarkMode 
+                      ? 'text-gray-300 bg-gray-700 border-gray-600 hover:bg-gray-600' 
+                      : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-100'
+                  }`}
+                >
+                  Close
+                </button>
+                {!isRead(selectedNotification.id) ? (
+                  <button
+                    onClick={async () => {
+                      setMarkingAsRead(true);
+                      try {
+                        await markSingleAsRead(selectedNotification.id);
+                        setSelectedNotification(null);
+                      } finally {
+                        setMarkingAsRead(false);
+                      }
+                    }}
+                    disabled={markingAsRead}
+                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Check size={18} />
+                    {markingAsRead ? 'Marking...' : 'Mark as Read'}
+                  </button>
+                ) : (
+                  <div className="flex items-center gap-2 text-emerald-600 font-medium">
+                    <Check size={18} />
+                    Already Read
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -6,7 +6,7 @@ Create a `.env` file in the backend directory with the following variables:
 
 ```env
 # MongoDB Configuration
-MONGODB_URI=mongodb+srv://your_username:your_password@your_cluster.mongodb.net/?retryWrites=true&w=majority
+MONGODB_URI=mongodb+srv://your_username:your_password@your_cluster.mongodb.net/your_database?retryWrites=true&w=majority
 
 # Email Configuration (Gmail)
 EMAIL_USER=your_email@gmail.com

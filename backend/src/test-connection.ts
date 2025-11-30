@@ -1,6 +1,14 @@
 import { MongoClient } from 'mongodb';
+import dotenv from 'dotenv';
 
-const uri = "mongodb+srv://dineingo_admin:DineInGo2024Secure!@dineingo.alnkgkg.mongodb.net/?retryWrites=true&w=majority";
+dotenv.config();
+
+const uri = process.env.MONGODB_URI || '';
+
+if (!uri) {
+    console.error('❌ MONGODB_URI not found in environment variables');
+    process.exit(1);
+}
 
 async function testConnection() {
     const client = new MongoClient(uri);

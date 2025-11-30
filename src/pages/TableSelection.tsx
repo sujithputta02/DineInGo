@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Store, Wine, X, ChevronRight } from 'lucide-react';
 import { getMockRestaurantById } from '../services/restaurantService';
 import { bookingsApi } from '../services/api';
 import { auth } from '../firebase';
@@ -27,8 +27,8 @@ const TableSelection: React.FC = () => {
       if (restaurant) {
         setRestaurantName(restaurant.name || 'Restaurant');
         // If the mock restaurant has a real _id, use it for API calls
-        if (restaurant._id) {
-          setRestaurantId(restaurant._id);
+        if ('_id' in restaurant && restaurant._id) {
+          setRestaurantId(restaurant._id as string);
         }
       } else {
         setRestaurantName('Restaurant');
@@ -107,6 +107,11 @@ const TableSelection: React.FC = () => {
     // Connect to Socket.IO
     const socket = socketService.connect();
     
+    if (!socket) {
+      console.error('Failed to connect to socket service');
+      return;
+    }
+    
     // Join restaurant room for real-time updates
     socket.emit('joinRestaurant', restaurantId);
     console.log('Joined restaurant room:', restaurantId);
@@ -160,23 +165,104 @@ const TableSelection: React.FC = () => {
     socket.on('bookingUpdated', handleTableEvent);
     
     return () => {
-      socket.off('tableBlocked', handleTableEvent);
-      socket.off('tableConfirmed', handleTableEvent);
-      socket.off('tableCancelled', handleTableEvent);
-      socket.off('tableAutoConfirmed', handleTableEvent);
-      socket.off('bookingUpdated', handleTableEvent);
-      socket.emit('leaveRestaurant', restaurantId);
-      console.log('Left restaurant room:', restaurantId);
+      if (socket) {
+        socket.off('tableBlocked', handleTableEvent);
+        socket.off('tableConfirmed', handleTableEvent);
+        socket.off('tableCancelled', handleTableEvent);
+        socket.off('tableAutoConfirmed', handleTableEvent);
+        socket.off('bookingUpdated', handleTableEvent);
+        socket.emit('leaveRestaurant', restaurantId);
+        console.log('Left restaurant room:', restaurantId);
+      }
     };
   }, [restaurantId, searchParams, fetchUnavailableTablesNow]);
 
-  // Table layout configuration
-  const floors = {
-    ground: Array(8).fill(null).map((_, i) => `G${i + 1}`),
-    first: Array(8).fill(null).map((_, i) => `F${i + 1}`),
-    second: Array(8).fill(null).map((_, i) => `S${i + 1}`),
-    third: Array(8).fill(null).map((_, i) => `T${i + 1}`)
-  };
+  // Floor data with visual layout
+  const [activeFloorId, setActiveFloorId] = useState<string>('ground');
+  
+  const floors = useMemo(() => [
+    {
+      id: 'ground',
+      name: 'Ground Floor',
+      tables: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8'],
+      layout: [
+        { id: 'G1', x: 20, y: 30, seats: 4 },
+        { id: 'G2', x: 50, y: 30, seats: 4 },
+        { id: 'G3', x: 80, y: 30, seats: 4 },
+        { id: 'G4', x: 20, y: 55, seats: 2 },
+        { id: 'G5', x: 50, y: 55, seats: 2 },
+        { id: 'G6', x: 80, y: 55, seats: 2 },
+        { id: 'G7', x: 30, y: 15, seats: 6 },
+        { id: 'G8', x: 70, y: 15, seats: 6 },
+      ],
+      features: [
+        { type: 'entrance', x: 50, y: 98, width: 20, height: 2 },
+        { type: 'reception', label: 'Reception', x: 50, y: 85, width: 20, height: 8 },
+        { type: 'window', x: 2, y: 40, width: 2, height: 60 },
+        { type: 'window', x: 98, y: 40, width: 2, height: 60 },
+        { type: 'plant', x: 10, y: 10, width: 5, height: 5 },
+        { type: 'plant', x: 90, y: 10, width: 5, height: 5 },
+      ]
+    },
+    {
+      id: 'first',
+      name: 'First Floor',
+      tables: ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'],
+      layout: [
+        { id: 'F1', x: 20, y: 35, seats: 2 },
+        { id: 'F2', x: 80, y: 35, seats: 2 },
+        { id: 'F3', x: 35, y: 45, seats: 4 },
+        { id: 'F4', x: 65, y: 45, seats: 4 },
+        { id: 'F5', x: 20, y: 65, seats: 4 },
+        { id: 'F6', x: 50, y: 65, seats: 4 },
+        { id: 'F7', x: 80, y: 65, seats: 4 },
+        { id: 'F8', x: 50, y: 85, seats: 8 },
+      ],
+      features: [
+        { type: 'bar', label: 'Lounge Bar', x: 50, y: 10, width: 40, height: 12 },
+        { type: 'window', x: 2, y: 50, width: 2, height: 80 },
+        { type: 'window', x: 98, y: 50, width: 2, height: 80 },
+      ]
+    },
+    {
+      id: 'second',
+      name: 'Second Floor',
+      tables: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'],
+      layout: [
+        { id: 'S1', x: 25, y: 20, seats: 4 },
+        { id: 'S2', x: 75, y: 20, seats: 4 },
+        { id: 'S3', x: 20, y: 50, seats: 2 },
+        { id: 'S4', x: 40, y: 50, seats: 2 },
+        { id: 'S5', x: 60, y: 50, seats: 2 },
+        { id: 'S6', x: 80, y: 50, seats: 2 },
+        { id: 'S7', x: 30, y: 80, seats: 6 },
+        { id: 'S8', x: 70, y: 80, seats: 6 },
+      ],
+      features: [
+        { type: 'window', x: 50, y: 2, width: 80, height: 2 },
+      ]
+    },
+    {
+      id: 'third',
+      name: 'Third Floor',
+      tables: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'],
+      layout: [
+        { id: 'T1', x: 20, y: 25, seats: 4 },
+        { id: 'T2', x: 20, y: 50, seats: 4 },
+        { id: 'T3', x: 20, y: 75, seats: 4 },
+        { id: 'T4', x: 80, y: 25, seats: 4 },
+        { id: 'T5', x: 80, y: 50, seats: 4 },
+        { id: 'T6', x: 80, y: 75, seats: 4 },
+        { id: 'T7', x: 50, y: 20, seats: 2 },
+        { id: 'T8', x: 50, y: 80, seats: 2 },
+      ],
+      features: [
+        { type: 'wall', x: 50, y: 50, width: 2, height: 60 },
+      ]
+    }
+  ], []);
+
+  const activeFloor = useMemo(() => floors.find(f => f.id === activeFloorId), [floors, activeFloorId]);
 
   const handleProceed = async () => {
     if (!selectedTable) {
@@ -276,7 +362,7 @@ const TableSelection: React.FC = () => {
       }
       return await response.json();
     } catch (error) {
-      return { success: false, error: error.message };
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   };
 
@@ -304,130 +390,237 @@ const TableSelection: React.FC = () => {
     setSelectedTable(table);
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      {/* Back Navigation */}
-      <div className="mb-8">
-        <button 
-          onClick={() => navigate(`/restaurant/${id}/preview?${searchParams.toString()}`)}
-          className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl shadow-sm hover:bg-gray-50 transition-colors"
+  // Feature Renderer Component
+  const FeatureRenderer = ({ feature }: { feature: any }) => {
+    const style: React.CSSProperties = {
+      position: 'absolute',
+      left: `${feature.x}%`,
+      top: `${feature.y}%`,
+      width: `${feature.width}%`,
+      height: `${feature.height}%`,
+      transform: `translate(-50%, -50%)`,
+    };
+
+    switch (feature.type) {
+      case 'reception':
+        return (
+          <div style={style} className="flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl">
+            <Store size={14} className="text-amber-500 mb-1"/>
+            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{feature.label}</span>
+          </div>
+        );
+      case 'window':
+        return (
+          <div style={style} className="bg-cyan-900/20 border border-cyan-500/30 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent"></div>
+            <div className="w-full h-[1px] bg-cyan-500/20 absolute top-1/3"></div>
+            <div className="w-full h-[1px] bg-cyan-500/20 absolute top-2/3"></div>
+          </div>
+        );
+      case 'entrance':
+        return (
+          <div style={style} className="flex flex-col items-center justify-end pb-1 border-b-4 border-emerald-500">
+            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-[0.2em]">ENTRANCE</span>
+          </div>
+        );
+      case 'bar':
+        return (
+          <div style={style} className="bg-slate-800 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-slate-900">
+            <Wine size={14} className="text-purple-400 mr-2" />
+            <span className="text-purple-200 text-xs font-bold tracking-widest uppercase">{feature.label}</span>
+          </div>
+        );
+      case 'plant':
+        return (
+          <div style={style} className="bg-emerald-900/50 rounded-full border border-emerald-800/50 flex items-center justify-center">
+            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+          </div>
+        );
+      case 'wall':
+        return (
+          <div style={style} className="bg-slate-800 border-x border-slate-700 shadow-inner"></div>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Table Renderer Component
+  const TableRenderer = ({ tableData }: { tableData: any }) => {
+    const isSelected = selectedTable === tableData.id;
+    const isUnavailable = isTableUnavailable(tableData.id);
+    
+    let bgGradient = "";
+    let borderColor = "";
+    let textColor = "";
+    
+    if (isUnavailable) {
+      bgGradient = "bg-slate-900";
+      borderColor = "border-slate-800";
+      textColor = "text-slate-700";
+    } else if (isSelected) {
+      bgGradient = "bg-emerald-500";
+      borderColor = "border-emerald-400";
+      textColor = "text-white";
+    } else {
+      bgGradient = "bg-gradient-to-br from-slate-600 to-slate-800";
+      borderColor = "border-slate-500";
+      textColor = "text-slate-300";
+    }
+
+    return (
+      <div 
+        className="absolute flex items-center justify-center transition-all duration-300"
+        style={{ 
+          left: `${tableData.x}%`, 
+          top: `${tableData.y}%`, 
+          transform: 'translate(-50%, -50%)',
+          zIndex: 10
+        }}
+      >
+        {/* Chair indicators */}
+        {Array.from({ length: tableData.seats }).map((_, i) => {
+          const angle = (i * (360 / tableData.seats)) * (Math.PI / 180);
+          const radius = 60;
+          return (
+            <div 
+              key={i}
+              className={`absolute w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-slate-600'} opacity-40`}
+              style={{
+                top: `${50 + (radius * Math.sin(angle))}%`,
+                left: `${50 + (radius * Math.cos(angle))}%`,
+                transform: 'translate(-50%, -50%)'
+              }}
+            />
+          );
+        })}
+
+        <button
+          onClick={() => handleTableSelect(tableData.id)}
+          disabled={isUnavailable || loadingTables}
+          className={`relative flex items-center justify-center border-t-2 border-b-4 ${borderColor} ${bgGradient} ${textColor}
+            shadow-lg transition-all active:scale-95 active:border-b-0 active:translate-y-1
+            w-12 md:w-16 h-12 md:h-16 rounded-lg`}
         >
-          <ArrowLeft size={20} className="text-gray-700" />
-          <span className="text-gray-700 font-medium">Back to Preview</span>
+          <div className="flex flex-col items-center leading-none">
+            <span className="font-bold text-sm md:text-base drop-shadow-md">{tableData.id}</span>
+            {tableData.seats > 0 && <span className="text-[9px] opacity-60 mt-0.5">{tableData.seats}</span>}
+          </div>
         </button>
       </div>
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="text-2xl font-semibold mb-6">Select Your Table</h2>
-          <p className="text-gray-600 mb-8">Choose a table from our available seating options.</p>
-          <div className="space-y-8">
-            {/* Ground Floor */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Ground Floor</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {floors.ground.map((table) => (
-                  <button
-                    key={table}
-                    onClick={() => handleTableSelect(table)}
-                    disabled={isTableUnavailable(table) || loadingTables}
-                    className={`p-4 text-center border rounded-xl transition-colors ${
-                      isTableUnavailable(table)
-                        ? 'bg-gray-300 text-gray-400 border-gray-300 cursor-not-allowed'
-                        : selectedTable === table
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Table {table}
-                    {isTableUnavailable(table) && <span className="block text-xs text-red-500 mt-1">Unavailable</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* First Floor */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">First Floor</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {floors.first.map((table) => (
-                  <button
-                    key={table}
-                    onClick={() => handleTableSelect(table)}
-                    disabled={isTableUnavailable(table) || loadingTables}
-                    className={`p-4 text-center border rounded-xl transition-colors ${
-                      isTableUnavailable(table)
-                        ? 'bg-gray-300 text-gray-400 border-gray-300 cursor-not-allowed'
-                        : selectedTable === table
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Table {table}
-                    {isTableUnavailable(table) && <span className="block text-xs text-red-500 mt-1">Unavailable</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Second Floor */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Second Floor</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {floors.second.map((table) => (
-                  <button
-                    key={table}
-                    onClick={() => handleTableSelect(table)}
-                    disabled={isTableUnavailable(table) || loadingTables}
-                    className={`p-4 text-center border rounded-xl transition-colors ${
-                      isTableUnavailable(table)
-                        ? 'bg-gray-300 text-gray-400 border-gray-300 cursor-not-allowed'
-                        : selectedTable === table
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Table {table}
-                    {isTableUnavailable(table) && <span className="block text-xs text-red-500 mt-1">Unavailable</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-            {/* Third Floor */}
-            <div>
-              <h3 className="text-lg font-semibold mb-4">Third Floor</h3>
-              <div className="grid grid-cols-4 gap-4">
-                {floors.third.map((table) => (
-                  <button
-                    key={table}
-                    onClick={() => handleTableSelect(table)}
-                    disabled={isTableUnavailable(table) || loadingTables}
-                    className={`p-4 text-center border rounded-xl transition-colors ${
-                      isTableUnavailable(table)
-                        ? 'bg-gray-300 text-gray-400 border-gray-300 cursor-not-allowed'
-                        : selectedTable === table
-                        ? 'bg-emerald-500 text-white border-emerald-500'
-                        : 'border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
-                    }`}
-                  >
-                    Table {table}
-                    {isTableUnavailable(table) && <span className="block text-xs text-red-500 mt-1">Unavailable</span>}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="flex justify-end mt-8">
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
+      {/* Header */}
+      <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 px-6 py-4 flex justify-between items-center z-30 shadow-lg">
+        <button 
+          onClick={() => navigate(`/restaurant/${id}/preview?${searchParams.toString()}`)}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors text-slate-200"
+        >
+          <ArrowLeft size={20} />
+          <span className="font-medium">Back</span>
+        </button>
+        
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-white">{restaurantName}</h2>
+          <p className="text-sm text-slate-400">Table Selection</p>
+        </div>
+
+        {/* Floor Tabs */}
+        <div className="flex bg-slate-900/50 p-1 rounded-lg border border-slate-700 overflow-x-auto max-w-[200px] md:max-w-none gap-1">
+          {floors.map(f => (
             <button
-              onClick={handleProceed}
-              className={`px-6 py-3 rounded-xl transition-colors ${
-                selectedTable
-                  ? 'bg-black text-white hover:bg-gray-800'
-                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              key={f.id}
+              onClick={() => setActiveFloorId(f.id)}
+              className={`px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${
+                activeFloorId === f.id 
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
+                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
               }`}
             >
-              Proceed to Confirmation
+              {f.name}
             </button>
+          ))}
+        </div>
+      </header>
+
+      <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* MAP CANVAS */}
+        <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex flex-col items-center justify-center p-4 md:p-8">
+          {/* Floor Container */}
+          <div className="relative w-full max-w-[700px] aspect-[4/3] bg-slate-800/30 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-sm transition-all duration-500 p-4">
+            {/* Features Layer */}
+            {activeFloor?.features.map((feat, idx) => (
+              <FeatureRenderer key={idx} feature={feat} />
+            ))}
+
+            {/* Tables Layer */}
+            {activeFloor?.layout.map(table => (
+              <TableRenderer key={table.id} tableData={table} />
+            ))}
+          </div>
+
+          {/* Legend */}
+          <div className="mt-6 bg-slate-800/80 backdrop-blur-md rounded-2xl px-6 py-4 flex items-center gap-6 shadow-2xl border border-slate-700/50 overflow-x-auto max-w-[90vw]">
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <div className="w-4 h-4 rounded bg-gradient-to-br from-slate-600 to-slate-800 border border-slate-500 shadow-sm"></div>
+              <span className="text-xs font-semibold text-slate-300 uppercase">Available</span>
+            </div>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <div className="w-4 h-4 rounded bg-emerald-500 border border-emerald-400 shadow-sm"></div>
+              <span className="text-xs font-semibold text-slate-300 uppercase">Selected</span>
+            </div>
+            <div className="flex items-center gap-2 whitespace-nowrap">
+              <div className="w-4 h-4 rounded bg-slate-900 border border-slate-800 shadow-sm"></div>
+              <span className="text-xs font-semibold text-slate-300 uppercase">Booked</span>
+            </div>
           </div>
         </div>
-      </div>
+
+        {/* SIDEBAR SUMMARY */}
+        {selectedTable && (
+          <div className="absolute bottom-0 w-full md:static md:w-80 bg-slate-800/95 backdrop-blur-md border-t md:border-t-0 md:border-l border-slate-700/50 flex flex-col z-40 shadow-2xl animate-in slide-in-from-bottom md:slide-in-from-right duration-300">
+            <div className="p-6 border-b border-slate-700/50">
+              <h2 className="text-xl font-bold text-white tracking-tight">Your Selection</h2>
+              <p className="text-sm text-slate-400 mt-1">1 table selected</p>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="bg-slate-900/50 border border-slate-700/50 p-4 rounded-xl flex justify-between items-center hover:bg-slate-900/70 transition-colors">
+                <div>
+                  <div className="font-bold text-white">{selectedTable}</div>
+                  <div className="text-xs text-slate-500 font-medium mt-1 flex items-center gap-2">
+                    {activeFloor?.name} • {activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0} Guests
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setSelectedTable(null)}
+                  className="w-8 h-8 flex items-center justify-center bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6 bg-slate-900/50 border-t border-slate-700/50">
+              <button 
+                onClick={handleProceed}
+                disabled={!selectedTable || loadingTables}
+                className={`w-full py-4 rounded-xl font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 transform ${
+                  selectedTable && !loadingTables
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 active:scale-95'
+                    : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                }`}
+              >
+                {loadingTables ? 'Processing...' : 'Confirm Booking'}
+                <ChevronRight size={18} />
+              </button>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 };

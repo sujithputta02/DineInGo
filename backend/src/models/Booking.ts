@@ -24,13 +24,20 @@ export interface IBooking extends Document {
     price: number;
     quantity: number;
   }>;
+  selectedSeats?: string[];
   totalAmount?: number;
 }
 
 const bookingSchema = new Schema<IBooking>({
   userId: { type: String, required: true },
-  restaurantId: { type: Schema.Types.ObjectId, ref: 'Restaurant' },
-  eventId: { type: Schema.Types.ObjectId, ref: 'Event' },
+  restaurantId: { 
+    type: Schema.Types.Mixed, // Changed to Mixed to accept both ObjectId and string
+    ref: 'Restaurant' 
+  },
+  eventId: { 
+    type: Schema.Types.Mixed, // Changed to Mixed to accept both ObjectId and string
+    ref: 'Event' 
+  },
   date: { type: Date, required: true },
   time: { type: String, required: true },
   guests: { type: Number, required: true },
@@ -57,6 +64,7 @@ const bookingSchema = new Schema<IBooking>({
       quantity: { type: Number }
     }
   ],
+  selectedSeats: [{ type: String }],
   totalAmount: { type: Number },
 });
 

@@ -48,15 +48,29 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
     }
   };
 
-  // Calculate subtotal based on guests and selected items
-  const perPersonPrice = 0; // Base price per person, assuming food items cover the main cost
-  const diningReservationPrice = Number(booking.guests) > 0 ? 25.99 : 0; // Example base price for reservation
+  // Calculate amounts from booking data
+  const isEvent = !!(booking.eventId || booking.eventName);
+  const bookingName = booking.eventName || booking.restaurantName || 'Booking';
   
-  const itemsTotal = (booking.selectedItems ?? []).reduce((sum: number, item: { price: number; quantity: number }) => sum + (item.price * item.quantity), 0);
-  const subtotal = diningReservationPrice + itemsTotal;
-  const tax = subtotal * 0.18; // 18% tax
-  const total = subtotal + tax;
-  const invoiceNumber = `INV-${booking.id}-${new Date().getFullYear()}`;
+  // Use totalAmount from booking if available, otherwise calculate
+  let subtotal = 0;
+  let total = 0;
+  
+  if (booking.totalAmount) {
+    // If totalAmount exists, calculate backwards (totalAmount includes tax)
+    total = Number(booking.totalAmount);
+    subtotal = total / 1.18; // Remove 18% tax to get subtotal
+  } else {
+    // Fallback calculation if totalAmount is not available
+    const itemsTotal = (booking.selectedItems ?? []).reduce((sum: number, item: { price: number; quantity: number }) => sum + (item.price * item.quantity), 0);
+    subtotal = itemsTotal;
+    total = subtotal * 1.18;
+  }
+  
+  const tax = total - subtotal; // 18% tax
+  const pricePerUnit = Number(booking.guests) > 0 ? subtotal / Number(booking.guests) : subtotal;
+  
+  const invoiceNumber = `INV-${booking._id || booking.id}-${new Date().getFullYear()}`;
   const invoiceDate = new Date().toLocaleDateString();
 
   return (
@@ -130,8 +144,8 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
             <h3 className="text-lg font-semibold mb-2">Booking Details:</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <p className="text-gray-600">Restaurant:</p>
-                <p className="font-medium">{booking.restaurantName}</p>
+                <p className="text-gray-600">{isEvent ? 'Event:' : 'Restaurant:'}</p>
+                <p className="font-medium">{bookingName}</p>
               </div>
               <div>
                 <p className="text-gray-600">Date & Time:</p>
@@ -145,13 +159,21 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
                 </p>
               </div>
               <div>
-                <p className="text-gray-600">Guests:</p>
+                <p className="text-gray-600">{isEvent ? 'Attendees:' : 'Guests:'}</p>
                 <p className="font-medium">{booking.guests} {Number(booking.guests) === 1 ? 'Person' : 'People'}</p>
               </div>
-              <div>
-                <p className="text-gray-600">Table:</p>
-                <p className="font-medium">{booking.table ? `Table ${booking.table}` : 'Not assigned'}</p>
-              </div>
+              {!isEvent && (
+                <div>
+                  <p className="text-gray-600">Table:</p>
+                  <p className="font-medium">{booking.table ? `Table ${booking.table}` : 'Not assigned'}</p>
+                </div>
+              )}
+              {isEvent && booking.selectedSeats && booking.selectedSeats.length > 0 && (
+                <div>
+                  <p className="text-gray-600">Seats:</p>
+                  <p className="font-medium">{booking.selectedSeats.join(', ')}</p>
+                </div>
+              )}
               {booking.specialRequest && (
                 <div className="col-span-2">
                   <p className="text-gray-600">Special Request:</p>
@@ -173,16 +195,17 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
                 </tr>
               </thead>
               <tbody>
-                {/* Display Dining Reservation if applicable */}
-                {diningReservationPrice > 0 && (
-                  <tr className="border-b border-gray-200">
-                    <td className="py-3">Dining Reservation - {booking.restaurantName}</td>
-                    <td className="py-3 text-right">{booking.guests}</td>
-                    <td className="py-3 text-right">₹{diningReservationPrice.toFixed(2)}</td>
-                    <td className="py-3 text-right">₹{(diningReservationPrice * Number(booking.guests)).toFixed(2)}</td>
-                  </tr>
-                )}
-                {/* Display Selected Food Items */}
+                {/* Display main booking item */}
+                <tr className="border-b border-gray-200">
+                  <td className="py-3">
+                    {isEvent ? 'Event Registration' : 'Dining Reservation'} - {bookingName}
+                  </td>
+                  <td className="py-3 text-right">{booking.guests}</td>
+                  <td className="py-3 text-right">₹{pricePerUnit.toFixed(2)}</td>
+                  <td className="py-3 text-right">₹{subtotal.toFixed(2)}</td>
+                </tr>
+                
+                {/* Display Selected Food Items if any */}
                 {(booking.selectedItems ?? []).map((item: { id: string; name: string; price: number; quantity: number }, idx: number) => (
                   <tr key={item.id || idx} className="border-b border-gray-200">
                     <td className="py-3">{item.name}</td>
@@ -191,14 +214,6 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
                     <td className="py-3 text-right">₹{(item.price * item.quantity).toFixed(2)}</td>
                   </tr>
                 ))}
-                {booking.occasion && (
-                  <tr className="border-b border-gray-200">
-                    <td className="py-3">Special Occasion - {booking.occasion}</td>
-                    <td className="py-3 text-right">1</td>
-                    <td className="py-3 text-right">₹0.00</td>
-                    <td className="py-3 text-right">₹0.00</td>
-                  </tr>
-                )}
               </tbody>
             </table>
           </div>

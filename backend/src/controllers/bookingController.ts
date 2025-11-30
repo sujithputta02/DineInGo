@@ -1,13 +1,23 @@
 import { Request, Response } from 'express';
 import { Booking } from '../models/Booking';
 import nodemailer from 'nodemailer';
-import PDFDocument from 'pdfkit';
-import { PassThrough } from 'stream';
 import { generateBothWalletPasses } from '../utils/walletPassGenerator';
+import mongoose from 'mongoose';
+
+// Dynamically import pdfkit if available
+let PDFDocument: any;
+try {
+  PDFDocument = require('pdfkit');
+} catch (e) {
+  console.warn('pdfkit not installed, PDF generation will be disabled');
+}
 
 // Generate invoice PDF as a Buffer
 const generateInvoicePdfBuffer = (bookingData: any): Promise<Buffer> => {
   return new Promise((resolve, reject) => {
+    if (!PDFDocument) {
+      return reject(new Error('pdfkit not installed'));
+    }
     const doc = new PDFDocument({ margin: 40 });
     const buffers: Buffer[] = [];
     doc.on('data', buffers.push.bind(buffers));
@@ -113,6 +123,10 @@ const sendInvoicePdfEmail = async (bookingData: any) => {
     console.error('Email credentials not configured for invoice PDF email');
     return;
   }
+  if (!PDFDocument) {
+    console.warn('Skipping PDF invoice generation - pdfkit not installed');
+    return;
+  }
   const pdfBuffer = await generateInvoicePdfBuffer(bookingData);
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -164,7 +178,37 @@ const getBookingDisplayName = (booking: any) => {
 // Create a new booking
 export const createBooking = async (req: Request, res: Response): Promise<void> => {
   try {
-    const booking = new Booking({
+    console.log('Creating booking with data:', req.body);
+    
+    // Validate required fields
+    if (!req.body.userId) {
+      res.status(400).json({ message: 'User ID is required' });
+      return;
+    }
+    
+    if (!req.body.date) {
+      res.status(400).json({ message: 'Date is required' });
+      return;
+    }
+    
+    if (!req.body.time) {
+      res.status(400).json({ message: 'Time is required' });
+      return;
+    }
+    
+    if (!req.body.guests || req.body.guests < 1) {
+      res.status(400).json({ message: 'Number of guests is required and must be at least 1' });
+      return;
+    }
+    
+    // Ensure at least one of restaurantId or eventId is provided
+    if (!req.body.restaurantId && !req.body.eventId) {
+      res.status(400).json({ message: 'Either restaurant ID or event ID is required' });
+      return;
+    }
+    
+    // Convert restaurantId and eventId to ObjectId if they are valid, otherwise keep as string
+    const bookingData: any = {
       ...req.body,
       restaurantName: req.body.restaurantName,
       eventName: req.body.eventName,
@@ -172,32 +216,105 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
       totalAmount: req.body.totalAmount,
       createdAt: new Date(),
       updatedAt: new Date()
-    });
-    await booking.save();
+    };
     
-    // Populate restaurant and event details after saving
-    await booking.populate('restaurantId');
-    await booking.populate('eventId');
-    
-    // Send confirmation email
-    try {
-      await sendReservationConfirmationEmail(booking, req.body);
-    } catch (emailError) {
-      console.error('Error sending confirmation email:', emailError);
-      // Don't fail the booking creation if email fails
+    // Try to convert to ObjectId if it looks like one (24 hex characters)
+    if (bookingData.restaurantId && typeof bookingData.restaurantId === 'string') {
+      if (/^[0-9a-fA-F]{24}$/.test(bookingData.restaurantId)) {
+        try {
+          bookingData.restaurantId = new mongoose.Types.ObjectId(bookingData.restaurantId);
+        } catch (e) {
+          console.log('Could not convert restaurantId to ObjectId, keeping as string');
+        }
+      }
     }
     
-    // Send invoice PDF email (new, separate)
+    if (bookingData.eventId && typeof bookingData.eventId === 'string') {
+      if (/^[0-9a-fA-F]{24}$/.test(bookingData.eventId)) {
+        try {
+          bookingData.eventId = new mongoose.Types.ObjectId(bookingData.eventId);
+        } catch (e) {
+          console.log('Could not convert eventId to ObjectId, keeping as string');
+        }
+      }
+    }
+    
+    const booking = new Booking(bookingData);
+    
+    await booking.save();
+    console.log('Booking saved successfully:', booking._id);
+    
+    // Only populate if the IDs are ObjectIds
     try {
-      await sendInvoicePdfEmail(booking);
-    } catch (invoiceError) {
-      console.error('Error sending invoice PDF email:', invoiceError);
+      if (booking.restaurantId && mongoose.Types.ObjectId.isValid(booking.restaurantId as any)) {
+        await booking.populate('restaurantId');
+      }
+      if (booking.eventId && mongoose.Types.ObjectId.isValid(booking.eventId as any)) {
+        await booking.populate('eventId');
+      }
+    } catch (populateError) {
+      console.log('Could not populate references, continuing without population');
+    }
+    
+    // Check if this is an event booking
+    const isEventBooking = !!(booking.eventId || req.body.eventId);
+    
+    if (isEventBooking) {
+      // Send event-specific confirmation email with event pass
+      try {
+        const { sendEventConfirmationEmail } = require('../services/eventEmailService');
+        await sendEventConfirmationEmail({
+          ...booking.toObject(),
+          ...req.body
+        });
+        console.log('Event confirmation email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending event confirmation email:', emailError);
+        // Don't fail the booking creation if email fails
+      }
+    } else {
+      // Send restaurant reservation confirmation email
+      try {
+        await sendReservationConfirmationEmail(booking, req.body);
+      } catch (emailError) {
+        console.error('Error sending confirmation email:', emailError);
+        // Don't fail the booking creation if email fails
+      }
+      
+      // Send invoice PDF email for restaurants
+      try {
+        await sendInvoicePdfEmail(booking);
+      } catch (invoiceError) {
+        console.error('Error sending invoice PDF email:', invoiceError);
+      }
     }
     
     res.status(201).json(booking);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating booking:', error);
-    res.status(500).json({ message: 'Error creating booking' });
+    
+    // Provide more specific error messages
+    if (error.name === 'ValidationError') {
+      const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      res.status(400).json({ 
+        message: 'Validation error', 
+        errors: validationErrors 
+      });
+      return;
+    }
+    
+    if (error.name === 'CastError') {
+      res.status(400).json({ 
+        message: 'Invalid ID format', 
+        field: error.path 
+      });
+      return;
+    }
+    
+    res.status(500).json({ 
+      message: 'Error creating booking',
+      error: error.message 
+    });
   }
 };
 
@@ -216,7 +333,7 @@ const sendReservationConfirmationEmail = async (booking: any, bookingData: any) 
   }
 
   // Use the provided direct image link for the logo
-  const logoUrl = 'https://i.postimg.cc/WbNR0cxd/logo1.png';
+  const logoUrl = 'https://i.postimg.cc/KYpqtvPC/Dine-In-Go-Logo.png';
   const bookingName = getBookingDisplayName(bookingData);
   // Create dynamic HTML email template
   const htmlBody = `
@@ -469,10 +586,38 @@ export const getUserBookings = async (req: Request, res: Response): Promise<void
   try {
     const userId = req.params.userId;
     const bookings = await Booking.find({ userId })
-      .sort({ date: 1, time: 1 })
-      .populate({ path: 'restaurantId', select: 'name image' })
-      .populate({ path: 'eventId', select: 'name image' });
-    res.json(bookings);
+      .sort({ date: 1, time: 1 });
+    
+    // Manually populate only valid ObjectIds
+    const populatedBookings = await Promise.all(
+      bookings.map(async (booking) => {
+        const bookingObj = booking.toObject();
+        
+        // Try to populate restaurantId if it's a valid ObjectId
+        if (bookingObj.restaurantId && mongoose.Types.ObjectId.isValid(bookingObj.restaurantId as any)) {
+          try {
+            const populated = await booking.populate({ path: 'restaurantId', select: 'name image' });
+            bookingObj.restaurantId = populated.restaurantId;
+          } catch (e) {
+            console.log('Could not populate restaurantId');
+          }
+        }
+        
+        // Try to populate eventId if it's a valid ObjectId
+        if (bookingObj.eventId && mongoose.Types.ObjectId.isValid(bookingObj.eventId as any)) {
+          try {
+            const populated = await booking.populate({ path: 'eventId', select: 'name image' });
+            bookingObj.eventId = populated.eventId;
+          } catch (e) {
+            console.log('Could not populate eventId');
+          }
+        }
+        
+        return bookingObj;
+      })
+    );
+    
+    res.json(populatedBookings);
   } catch (error) {
     console.error('Error fetching user bookings:', error);
     res.status(500).json({ message: 'Error fetching bookings' });
@@ -482,13 +627,24 @@ export const getUserBookings = async (req: Request, res: Response): Promise<void
 // Get a specific booking
 export const getBooking = async (req: Request, res: Response): Promise<void> => {
   try {
-    const booking = await Booking.findById(req.params.id)
-      .populate('restaurantId')
-      .populate('eventId');
+    const booking = await Booking.findById(req.params.id);
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
+    
+    // Try to populate, but handle errors gracefully
+    try {
+      if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
+        await booking.populate('restaurantId');
+      }
+      if (booking.eventId && mongoose.Types.ObjectId.isValid(String(booking.eventId))) {
+        await booking.populate('eventId');
+      }
+    } catch (populateError) {
+      console.warn('Could not populate booking references:', populateError);
+    }
+    
     res.json(booking);
   } catch (error) {
     console.error('Error fetching booking:', error);
@@ -503,13 +659,25 @@ export const updateBooking = async (req: Request, res: Response): Promise<void> 
       req.params.id,
       { ...req.body, updatedAt: new Date() },
       { new: true }
-    )
-      .populate('restaurantId')
-      .populate('eventId');
+    );
+    
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
+    
+    // Try to populate, but handle errors gracefully
+    try {
+      if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
+        await booking.populate('restaurantId');
+      }
+      if (booking.eventId && mongoose.Types.ObjectId.isValid(String(booking.eventId))) {
+        await booking.populate('eventId');
+      }
+    } catch (populateError) {
+      console.warn('Could not populate booking references:', populateError);
+    }
+    
     res.json(booking);
   } catch (error) {
     console.error('Error updating booking:', error);
@@ -520,33 +688,200 @@ export const updateBooking = async (req: Request, res: Response): Promise<void> 
 // Cancel a booking
 export const cancelBooking = async (req: Request, res: Response): Promise<void> => {
   try {
+    // First, update the booking without populate to avoid casting errors
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
       { status: 'cancelled', updatedAt: new Date() },
       { new: true }
-    )
-      .populate('restaurantId')
-      .populate('eventId');
+    );
+    
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
-    // Emit real-time update for table availability
-    if (booking.restaurantId && booking.date && booking.time) {
-      let restaurantId: string;
-      if (typeof booking.restaurantId === 'object' && booking.restaurantId !== null && '_id' in booking.restaurantId) {
-        restaurantId = String((booking.restaurantId as any)._id);
-      } else {
-        restaurantId = String(booking.restaurantId);
+    
+    // Try to populate, but handle errors gracefully
+    try {
+      // Only populate if the IDs are valid ObjectIds
+      if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
+        await booking.populate('restaurantId');
       }
-      const date = booking.date instanceof Date ? booking.date.toISOString().slice(0,10) : booking.date;
-      const time = booking.time;
-      require('../utils/socket').getIO().to(restaurantId).emit('bookingUpdated', { restaurantId, date, time });
+      if (booking.eventId && mongoose.Types.ObjectId.isValid(String(booking.eventId))) {
+        await booking.populate('eventId');
+      }
+    } catch (populateError) {
+      console.warn('Could not populate booking references:', populateError);
+      // Continue without populated data
     }
+    
+    // If this is an event booking with seats, unblock the seats
+    if (booking.eventId && booking.selectedSeats && booking.selectedSeats.length > 0) {
+      try {
+        const { Event } = require('../models/Event');
+        let eventId: string;
+        if (typeof booking.eventId === 'object' && booking.eventId !== null && '_id' in booking.eventId) {
+          eventId = String((booking.eventId as any)._id);
+        } else {
+          eventId = String(booking.eventId);
+        }
+        
+        const event = await Event.findById(eventId);
+        if (event && event.hasSeating && event.seatingLayout) {
+          // Unblock the seats - set them back to available
+          event.seatingLayout.seats = event.seatingLayout.seats.map((seat: any) => {
+            if (booking.selectedSeats!.includes(seat.id) && seat.bookedBy === booking.userId) {
+              return {
+                ...seat,
+                status: 'available',
+                bookedBy: undefined
+              };
+            }
+            return seat;
+          });
+          
+          // Decrease registered count
+          event.registeredCount = Math.max(0, event.registeredCount - booking.selectedSeats!.length);
+          
+          await event.save();
+          
+          // Emit Socket.IO event for real-time updates
+          const io = require('../utils/socket').getIO();
+          if (io) {
+            io.to(`event-${eventId}`).emit('seatsCancelled', {
+              eventId,
+              seatIds: booking.selectedSeats,
+              userId: booking.userId,
+              registeredCount: event.registeredCount,
+              capacity: event.capacity,
+              availableSeats: event.seatingLayout.seats.filter((s: any) => s.status === 'available').length
+            });
+            console.log(`Emitted seatsCancelled event for event ${eventId}, seats: ${booking.selectedSeats!.join(', ')}`);
+          }
+        }
+      } catch (eventError) {
+        console.error('Error unblocking event seats:', eventError);
+        // Don't fail the cancellation if seat unblocking fails
+      }
+    }
+    
+    // If this is an event booking without seats, decrease the count
+    if (booking.eventId && (!booking.selectedSeats || booking.selectedSeats.length === 0)) {
+      try {
+        const { Event } = require('../models/Event');
+        let eventId: string;
+        if (typeof booking.eventId === 'object' && booking.eventId !== null && '_id' in booking.eventId) {
+          eventId = String((booking.eventId as any)._id);
+        } else {
+          eventId = String(booking.eventId);
+        }
+        
+        const event = await Event.findById(eventId);
+        if (event) {
+          event.registeredCount = Math.max(0, event.registeredCount - (booking.guests || 1));
+          await event.save();
+          
+          // Emit Socket.IO event
+          const io = require('../utils/socket').getIO();
+          if (io) {
+            io.to(`event-${eventId}`).emit('eventCancelled', {
+              eventId,
+              guests: booking.guests || 1,
+              registeredCount: event.registeredCount,
+              capacity: event.capacity,
+              spotsLeft: event.capacity - event.registeredCount
+            });
+            console.log(`Emitted eventCancelled event for event ${eventId}`);
+          }
+        }
+      } catch (eventError) {
+        console.error('Error updating event count:', eventError);
+      }
+    }
+    
+    // Handle restaurant table cancellation
+    if (booking.restaurantId && booking.date && booking.time && booking.table) {
+      try {
+        const { TableBooking } = require('../models/TableBooking');
+        let restaurantId: string;
+        if (typeof booking.restaurantId === 'object' && booking.restaurantId !== null && '_id' in booking.restaurantId) {
+          restaurantId = String((booking.restaurantId as any)._id);
+        } else {
+          restaurantId = String(booking.restaurantId);
+        }
+        
+        const date = booking.date instanceof Date ? booking.date.toISOString().slice(0,10) : booking.date;
+        const time = booking.time;
+        const tableId = booking.table;
+        
+        // Cancel the table booking in TableBooking collection
+        await TableBooking.findOneAndUpdate(
+          {
+            restaurantId,
+            tableId,
+            date: String(date),
+            time: String(time),
+            userId: booking.userId
+          },
+          {
+            status: 'cancelled',
+            cancelledAt: new Date(),
+            blockedUntil: undefined
+          },
+          { new: true }
+        );
+        
+        console.log(`Cancelled table booking for table ${tableId} at restaurant ${restaurantId}`);
+        
+        // Emit Socket.IO event for real-time updates
+        const io = require('../utils/socket').getIO();
+        if (io) {
+          io.to(restaurantId).emit('tableCancelled', {
+            tableId,
+            date: String(date),
+            time: String(time),
+            userId: booking.userId,
+            status: 'cancelled'
+          });
+          console.log(`Emitted tableCancelled event for table ${tableId}`);
+        }
+      } catch (tableError) {
+        console.error('Error cancelling table booking:', tableError);
+        // Don't fail the main cancellation if table cancellation fails
+      }
+    }
+    
+    // Send cancellation email (only if email is available)
+    if (booking.email) {
+      try {
+        const { sendCancellationEmail } = require('../services/eventEmailService');
+        const isEvent = !!(booking.eventId || booking.eventName);
+        
+        await sendCancellationEmail({
+          ...booking.toObject(),
+          restaurantName: booking.restaurantName || (booking.restaurantId && typeof booking.restaurantId === 'object' ? (booking.restaurantId as any).name : undefined),
+          eventName: booking.eventName || (booking.eventId && typeof booking.eventId === 'object' ? (booking.eventId as any).title : undefined)
+        }, isEvent);
+        
+        console.log('Cancellation email sent successfully');
+      } catch (emailError) {
+        console.error('Error sending cancellation email:', emailError);
+        // Don't fail the cancellation if email fails
+      }
+    } else {
+      console.log('No email address available, skipping cancellation email');
+    }
+    
     res.json(booking);
   } catch (error) {
-    console.error('Error cancelling booking:', error);
-    res.status(500).json({ message: 'Error cancelling booking' });
+    console.error('=== ERROR CANCELLING BOOKING ===');
+    console.error('Error type:', error instanceof Error ? error.name : typeof error);
+    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Full error:', error);
+    res.status(500).json({ 
+      message: 'Error cancelling booking',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 
@@ -557,12 +892,23 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
       req.params.id,
       { status: 'confirmed', updatedAt: new Date() },
       { new: true }
-    )
-      .populate('restaurantId')
-      .populate('eventId');
+    );
+    
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
+    }
+    
+    // Try to populate, but handle errors gracefully
+    try {
+      if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
+        await booking.populate('restaurantId');
+      }
+      if (booking.eventId && mongoose.Types.ObjectId.isValid(String(booking.eventId))) {
+        await booking.populate('eventId');
+      }
+    } catch (populateError) {
+      console.warn('Could not populate booking references:', populateError);
     }
     // Emit real-time update for table availability
     if (booking.restaurantId && booking.date && booking.time) {
