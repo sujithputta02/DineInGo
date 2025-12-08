@@ -915,11 +915,11 @@ export default function DashboardPage() {
       }
     };
 
-    socket.on('profile_updated', handleProfileUpdate);
+    socket?.on('profile_updated', handleProfileUpdate);
 
     return () => {
       // Only remove the listener, don't disconnect (other components might be using it)
-      socket.off('profile_updated', handleProfileUpdate);
+      socket?.off('profile_updated', handleProfileUpdate);
     };
   }, [userData?.uid]);
 
@@ -959,7 +959,7 @@ export default function DashboardPage() {
                   id: ev.id,
                   name: ev.name,
                   image: ev.image,
-                  location: ev.location,
+                  location: ev.location as any,
                   type: 'event',
                   date: ev.date,
                   time: ev.time,
@@ -1055,7 +1055,7 @@ export default function DashboardPage() {
               id: ev.id,
               name: ev.name,
               image: ev.image,
-              location: ev.location,
+              location: ev.location as any,
               type: 'event',
               date: ev.date,
               time: ev.time,
@@ -3156,7 +3156,7 @@ export default function DashboardPage() {
         {/* Invoice Modal */}
         {showInvoice && selectedBooking && (
           <InvoiceModal
-            booking={selectedBooking}
+            booking={selectedBooking as any}
             onClose={() => {
               setShowInvoice(false);
               setSelectedBooking(null);
