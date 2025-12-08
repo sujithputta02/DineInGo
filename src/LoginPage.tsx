@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
-import { 
-  auth, 
+import {
+  auth,
   provider,
-  signInWithPopup, 
+  signInWithPopup,
   signInWithEmailAndPassword,
   onAuthStateChanged,
   sendPasswordResetEmail,
@@ -14,7 +14,7 @@ import {
   linkWithCredential,
   EmailAuthProvider,
   sendEmailVerification
-} from "./firebase"; 
+} from "./firebase";
 import { storeUserData, fetchUserData } from "./dbUtils";
 import { userAPI } from './services/api';
 import { sendPasswordReset } from "./authUtils";
@@ -132,11 +132,11 @@ export default function LoginPage() {
   // Handle manual login
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
     try {
       const result = await signInWithEmailAndPassword(auth, formData.email, formData.password);
@@ -184,10 +184,10 @@ export default function LoginPage() {
             photoURL: user.photoURL || existingData.photoURL,
             lastLogin: new Date()
           };
-          
+
           // Store the updated user data in Firestore
           await storeUserData(updatedUserData);
-          
+
           // Store user data in session storage
           sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
           navigate('/dashboard');
@@ -222,7 +222,7 @@ export default function LoginPage() {
       });
 
       let errorMessage = 'An error occurred during login.';
-      
+
       switch (error.code) {
         case 'auth/invalid-credential':
         case 'auth/wrong-password':
@@ -245,7 +245,7 @@ export default function LoginPage() {
           errorMessage = error.message || 'Login failed. Please try again.';
           setErrors({ ...errors, general: errorMessage });
       }
-      
+
       alert(errorMessage);
     } finally {
       setIsLoading(false);
@@ -259,7 +259,7 @@ export default function LoginPage() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
+
       // Emit login event to socket
       socketService.emitLogin({
         uid: user.uid,
@@ -281,28 +281,28 @@ export default function LoginPage() {
         // Continue with login flow even if tracking fails
       }
 
-     // Fetch existing user data from Firestore first
-try {
-  const existingData = await fetchUserData(user.uid);
-  if (existingData) {
-    // Update the existing data with the latest Google profile picture
-    const updatedUserData = {
-      ...existingData,
-      photoURL: user.photoURL || existingData.photoURL,
-      lastLogin: new Date()
-    };
-    
-    // Store the updated user data in Firestore
-    await storeUserData(updatedUserData);
-    
-    // Store user data in session storage
-    sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
-    navigate('/dashboard');
-    return;
-  }
-} catch (error) {
-  console.error('Error fetching user data:', error);
-}
+      // Fetch existing user data from Firestore first
+      try {
+        const existingData = await fetchUserData(user.uid);
+        if (existingData) {
+          // Update the existing data with the latest Google profile picture
+          const updatedUserData = {
+            ...existingData,
+            photoURL: user.photoURL || existingData.photoURL,
+            lastLogin: new Date()
+          };
+
+          // Store the updated user data in Firestore
+          await storeUserData(updatedUserData);
+
+          // Store user data in session storage
+          sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
+          navigate('/dashboard');
+          return;
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      }
 
       // If no existing data, create new user data
       const userData = {
@@ -325,7 +325,7 @@ try {
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       let errorMessage = 'An error occurred during Google sign-in.';
-      
+
       switch (error.code) {
         case 'auth/popup-blocked':
           errorMessage = 'Please allow popups for this website.';
@@ -339,7 +339,7 @@ try {
         default:
           errorMessage = error.message || 'Failed to sign in with Google.';
       }
-      
+
       alert(errorMessage);
     } finally {
       setIsGoogleSigningIn(false);
@@ -348,7 +348,7 @@ try {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!resetEmail.trim()) {
       setErrors(prev => ({ ...prev, general: 'Please enter your email address' }));
       return;
@@ -363,7 +363,7 @@ try {
     try {
       // First, try to send password reset email via Firebase
       const firebaseResult = await sendPasswordReset(resetEmail);
-      
+
       // Then, track the password reset attempt in our backend
       try {
         await userAPI.resetPassword(resetEmail);
@@ -380,8 +380,8 @@ try {
       }
     } catch (error: any) {
       console.error('Password reset error:', error);
-      setErrors(prev => ({ 
-        ...prev, 
+      setErrors(prev => ({
+        ...prev,
         general: error.message || 'Failed to send password reset email. Please try again.'
       }));
     } finally {
@@ -401,7 +401,7 @@ try {
           displayName: user.displayName || user.email?.split('@')[0] || ''
         });
       }
-      
+
       // Perform actual logout
       await auth.signOut();
     } catch (error) {
@@ -497,7 +497,7 @@ try {
           <>
             {/* Forgot Password Form */}
             <div className="text-center mb-6">
-              <button 
+              <button
                 onClick={() => {
                   setShowForgotPassword(false);
                   setResetEmailSent(false);
@@ -509,8 +509,8 @@ try {
               </button>
               <h2 className="text-2xl font-bold text-gray-800">Reset Password</h2>
               <p className="text-sm text-gray-600 mt-2">
-                {resetEmailSent 
-                  ? "Check your email for reset instructions!" 
+                {resetEmailSent
+                  ? "Check your email for reset instructions!"
                   : "Enter your email to receive password reset instructions."}
               </p>
             </div>
@@ -528,9 +528,8 @@ try {
                     value={resetEmail}
                     onChange={(e) => setResetEmail(e.target.value)}
                     placeholder="Email"
-                    className={`w-full p-3 rounded-full border ${
-                      errors.email ? "border-red-500" : "border-gray-300"
-                    } bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-3 rounded-full border ${errors.email ? "border-red-500" : "border-gray-300"
+                      } bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                     required
                   />
                   {errors.email && <p className="text-red-500 text-xs ml-4">{errors.email}</p>}
@@ -655,12 +654,12 @@ try {
 
               {/* Google Sign-In Button */}
               <motion.button
-               type="button"
-               className="w-full bg-white text-gray-700 py-3 px-4 rounded-full border border-gray-300 font-medium text-sm hover:bg-gray-50 transition-colors flex items-center justify-center"
-               onClick={handleGoogleSignIn}
-               whileHover={{ scale: 1.02 }}
-               whileTap={{ scale: 0.98 }}
-               disabled={isGoogleSigningIn}
+                type="button"
+                className="w-full bg-white text-gray-700 py-3 px-4 rounded-full border border-gray-300 font-medium text-sm hover:bg-gray-50 transition-colors flex items-center justify-center"
+                onClick={handleGoogleSignIn}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={isGoogleSigningIn}
               >
                 <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
                   <path

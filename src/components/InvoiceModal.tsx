@@ -15,24 +15,24 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
 
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
-    
+
     const canvas = await html2canvas(invoiceRef.current, {
       scale: 2,
       logging: false,
       useCORS: true,
       backgroundColor: '#ffffff'
     });
-    
+
     const imgData = canvas.toDataURL('image/png');
     const pdf = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: 'a4'
     });
-    
+
     const imgWidth = 210;
     const imgHeight = canvas.height * imgWidth / canvas.width;
-    
+
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
     pdf.save(`DineInGo_Invoice_${booking.id}.pdf`);
   };
@@ -40,7 +40,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
   const printInvoice = () => {
     const printContent = document.getElementById('invoice-content');
     const originalContents = document.body.innerHTML;
-    
+
     if (printContent) {
       document.body.innerHTML = printContent.innerHTML;
       window.print();
@@ -51,11 +51,11 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
   // Calculate amounts from booking data
   const isEvent = !!(booking.eventId || booking.eventName);
   const bookingName = booking.eventName || booking.restaurantName || 'Booking';
-  
+
   // Use totalAmount from booking if available, otherwise calculate
   let subtotal = 0;
   let total = 0;
-  
+
   if (booking.totalAmount) {
     // If totalAmount exists, calculate backwards (totalAmount includes tax)
     total = Number(booking.totalAmount);
@@ -66,10 +66,10 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
     subtotal = itemsTotal;
     total = subtotal * 1.18;
   }
-  
+
   const tax = total - subtotal; // 18% tax
   const pricePerUnit = Number(booking.guests) > 0 ? subtotal / Number(booking.guests) : subtotal;
-  
+
   const invoiceNumber = `INV-${booking._id || booking.id}-${new Date().getFullYear()}`;
   const invoiceDate = new Date().toLocaleDateString();
 
@@ -79,21 +79,21 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
         <div className="sticky top-0 bg-white p-4 border-b flex justify-between items-center">
           <h2 className="text-xl font-bold">Invoice</h2>
           <div className="flex gap-3">
-            <button 
+            <button
               onClick={printInvoice}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
               title="Print Invoice"
             >
               <Printer size={20} />
             </button>
-            <button 
+            <button
               onClick={generatePDF}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
               title="Download PDF"
             >
               <Download size={20} />
             </button>
-            <button 
+            <button
               onClick={onClose}
               className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
               title="Close"
@@ -102,7 +102,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
             </button>
           </div>
         </div>
-        
+
         <div className="p-8" id="invoice-content" ref={invoiceRef}>
           {/* Logo */}
           <div className="mb-6 text-center">
@@ -115,7 +115,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
             </h1>
             <p className="text-sm text-gray-600">Reserve Dining & Events</p>
           </div>
-          
+
           {/* Invoice Header */}
           <div className="flex justify-between mb-8">
             <div>
@@ -130,7 +130,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
               <p className="text-gray-600">India</p>
             </div>
           </div>
-          
+
           {/* Customer Info */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold mb-2">Bill To:</h3>
@@ -138,7 +138,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
             <p className="text-gray-600">{booking.email || 'N/A'}</p>
             <p className="text-gray-600">{booking.phoneNumber || 'N/A'}</p>
           </div>
-          
+
           {/* Booking Details */}
           <div className="mb-8">
             <h3 className="text-lg font-semibold mb-2">Booking Details:</h3>
@@ -182,7 +182,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
               )}
             </div>
           </div>
-          
+
           {/* Invoice Items */}
           <div className="mb-8">
             <table className="w-full border-collapse">
@@ -204,7 +204,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
                   <td className="py-3 text-right">₹{pricePerUnit.toFixed(2)}</td>
                   <td className="py-3 text-right">₹{subtotal.toFixed(2)}</td>
                 </tr>
-                
+
                 {/* Display Selected Food Items if any */}
                 {(booking.selectedItems ?? []).map((item: { id: string; name: string; price: number; quantity: number }, idx: number) => (
                   <tr key={item.id || idx} className="border-b border-gray-200">
@@ -217,7 +217,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
               </tbody>
             </table>
           </div>
-          
+
           {/* Totals */}
           <div className="mb-8 flex justify-end">
             <div className="w-64">
@@ -235,14 +235,14 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
               </div>
             </div>
           </div>
-          
+
           {/* Payment Status */}
           <div className="mb-8 flex items-center justify-center">
             <div className="px-4 py-2 bg-emerald-100 text-emerald-800 rounded-full font-semibold inline-flex items-center">
               <span className="mr-2">●</span> {booking.status}
             </div>
           </div>
-          
+
           {/* Footer */}
           <div className="text-center text-gray-500 text-sm mt-8 pt-8 border-t border-gray-200">
             <p>Thank you for choosing DineInGo!</p>

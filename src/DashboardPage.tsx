@@ -110,329 +110,329 @@ type Section = 'home' | 'bookings' | 'restaurants' | 'events' | 'favorites' | 'm
 type Translations = Record<Language, Translation>;
 
 const translations: Translations = {
-    english: {
-      welcome: 'Welcome',
-      exploreRestaurants: 'Explore Restaurants',
-      exploreEvents: 'Explore Events',
-      home: 'Home',
-      bookings: 'Bookings',
-      restaurants: 'Restaurants',
-      events: 'Events',
-      favourites: 'Favourites',
-      messages: 'Messages',
-      settings: 'Settings',
-      logout: 'Logout',
-      lightMode: 'Light Mode',
-      darkMode: 'Dark Mode',
-      upcomingEvents: 'Upcoming Events',
-      eventsDescription: 'Discover and book exciting events',
-      welcomeMessage: 'Welcome to Dineingo',
-      discoverMessage: 'Discover amazing restaurants and events',
-      searchPlaceholder: 'Search restaurants or events...',
-      language: 'Language',
-      noFavorites: 'No favorites yet',
-      addFavorites: 'Add some favorites to see them here',
-      noBookings: 'No bookings yet',
-      bookingsMessage: 'Your upcoming bookings will appear here',
-      unreadMessages: 'Unread Messages',
-      allRightsReserved: 'All rights reserved',
-      featuredRestaurants: 'Featured Restaurants',
-      price: 'Price',
-      rating: 'Rating',
-      locationLabel: 'Location',
-      updateLocation: 'Update Location',
-      useCurrentLocation: 'Use Current Location',
-      searchCities: 'Search cities...',
-      profileSettings: 'Profile Settings',
-      displayName: 'Display Name',
-      email: 'Email',
-      locationSettings: 'Location Settings',
-      languageSettings: 'Language Settings',
-      themeSettings: 'Theme Settings',
-      lightModeDescription: 'Classic bright interface',
-      darkModeDescription: 'Easier on the eyes in low light',
-      noNotifications: 'No notifications yet',
-      notificationsDescription: 'When you receive new notifications about your bookings, events, or special offers, they will appear here',
-      cuisine: 'Cuisine',
-      openNow: 'Open Now',
-      closed: 'Closed',
-      registered: 'Registered',
-      capacity: 'Capacity',
-      category: 'Category',
-      date: 'Date',
-      time: 'Time'
-    },
-    hindi: {
-      welcome: 'स्वागत है',
-      exploreRestaurants: 'रेस्तरां खोजें',
-      exploreEvents: 'कार्यक्रम खोजें',
-      home: 'होम',
-      bookings: 'बुकिंग',
-      restaurants: 'रेस्तरां',
-      events: 'कार्यक्रम',
-      favourites: 'पसंदीदा',
-      messages: 'संदेश',
-      settings: 'सेटिंग्स',
-      logout: 'लॉग आउट',
-      lightMode: 'लाइट मोड',
-      darkMode: 'डार्क मोड',
-      upcomingEvents: 'आगामी कार्यक्रम',
-      eventsDescription: 'रोमांचक कार्यक्रमों की खोज और बुकिंग करें',
-      welcomeMessage: 'डाइनिंगो में आपका स्वागत है',
-      discoverMessage: 'शानदार रेस्तरां और कार्यक्रमों की खोज करें',
-      searchPlaceholder: 'रेस्तरां या कार्यक्रम खोजें...',
-      language: 'भाषा',
-      noFavorites: 'अभी तक कोई पसंदीदा नहीं',
-      addFavorites: 'यहां देखने के लिए कुछ पसंदीदा जोड़ें',
-      noBookings: 'अभी तक कोई बुकिंग नहीं',
-      bookingsMessage: 'आपकी आगामी बुकिंग यहां दिखाई देंगी',
-      unreadMessages: 'अपठित संदेश',
-      allRightsReserved: 'सर्वाधिकार सुरक्षित',
-      featuredRestaurants: 'विशेष रेस्तरां',
-      price: 'कीमत',
-      rating: 'रेटिंग',
-      locationLabel: 'स्थान',
-      updateLocation: 'स्थान अपडेट करें',
-      useCurrentLocation: 'वर्तमान स्थान का उपयोग करें',
-      searchCities: 'शहर खोजें...',
-      profileSettings: 'प्रोफ़ाइल सेटिंग्स',
-      displayName: 'प्रदर्शित नाम',
-      email: 'ईमेल',
-      locationSettings: 'स्थान सेटिंग्स',
-      languageSettings: 'भाषा सेटिंग्स',
-      themeSettings: 'थीम सेटिंग्स',
-      lightModeDescription: 'क्लासिक उज्जवल इंटरफ़ेस',
-      darkModeDescription: 'कम रोशनी में आंखों के लिए आरामदायक',
-      noNotifications: 'कोई सूचना नहीं',
-      notificationsDescription: 'जब आपको अपनी बुकिंग, कार्यक्रमों या विशेष ऑफ़र के बारे में नई सूचनाएं प्राप्त होंगी, तो वे यहां दिखाई देंगी',
-      cuisine: 'व्यंजन',
-      openNow: 'अभी खुला है',
-      closed: 'बंद है',
-      registered: 'पंजीकृत',
-      capacity: 'क्षमता',
-      category: 'श्रेणी',
-      date: 'दिनांक',
-      time: 'समय'
-    },
-    tamil: {
-      welcome: 'வரவேற்பு',
-      exploreRestaurants: 'உணவகங்களை ஆராயுங்கள்',
-      exploreEvents: 'நிகழ்வுகளை ஆராயுங்கள்',
-      home: 'முகப்பு',
-      bookings: 'முன்பதிவுகள்',
-      restaurants: 'உணவகங்கள்',
-      events: 'நிகழ்வுகள்',
-      favourites: 'பிடித்தவை',
-      messages: 'செய்திகள்',
-      settings: 'அமைப்புகள்',
-      logout: 'வெளியேறு',
-      lightMode: 'ஒளி பயன்முறை',
-      darkMode: 'இருள் பயன்முறை',
-      upcomingEvents: 'வரவிருக்கும் நிகழ்வுகள்',
-      eventsDescription: 'சுவாரஸ்யமான நிகழ்வுகளைக் கண்டறிந்து முன்பதிவு செய்யுங்கள்',
-      welcomeMessage: 'டைனிங்கோவிற்கு வரவேற்கிறோம்',
-      discoverMessage: 'அற்புதமான உணவகங்கள் மற்றும் நிகழ்வுகளைக் கண்டறியுங்கள்',
-      searchPlaceholder: 'உணவகங்கள் அல்லது நிகழ்வுகளைத் தேடுங்கள்...',
-      language: 'மொழி',
-      noFavorites: 'இதுவரை பிடித்தவை எதுவும் இல்லை',
-      addFavorites: 'இங்கே காண சில பிடித்தவற்றைச் சேர்க்கவும்',
-      noBookings: 'இதுவரை முன்பதிவுகள் எதுவும் இல்லை',
-      bookingsMessage: 'உங்கள் வரவிருக்கும் முன்பதிவுகள் இங்கே தோன்றும்',
-      unreadMessages: 'படிக்காத செய்திகள்',
-      allRightsReserved: 'அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை',
-      featuredRestaurants: 'சிறப்பு உணவகங்கள்',
-      price: 'விலை',
-      rating: 'மதிப்பீடு',
-      locationLabel: 'இடம்',
-      updateLocation: 'இடத்தைப் புதுப்பிக்கவும்',
-      useCurrentLocation: 'தற்போதைய இடத்தைப் பயன்படுத்தவும்',
-      searchCities: 'நகரங்களைத் தேடுங்கள்...',
-      profileSettings: 'சுயவிவர அமைப்புகள்',
-      displayName: 'காட்சிப் பெயர்',
-      email: 'மின்னஞ்சல்',
-      locationSettings: 'இட அமைப்புகள்',
-      languageSettings: 'மொழி அமைப்புகள்',
-      themeSettings: 'தீம் அமைப்புகள்',
-      lightModeDescription: 'பாரம்பரிய பிரகாசமான இடைமுகம்',
-      darkModeDescription: 'குறைந்த ஒளியில் கண்களுக்கு எளிதானது',
-      noNotifications: 'இதுவரை அறிவிப்புகள் எதுவும் இல்லை',
-      notificationsDescription: 'உங்கள் முன்பதிவுகள், நிகழ்வுகள் அல்லது சிறப்பு சலுகைகள் பற்றிய புதிய அறிவிப்புகளைப் பெறும்போது, அவை இங்கே தோன்றும்',
-      cuisine: 'உணவு வகை',
-      openNow: 'இப்போது திறந்துள்ளது',
-      closed: 'மூடப்பட்டுள்ளது',
-      registered: 'பதிவு செய்யப்பட்டது',
-      capacity: 'கொள்ளளவு',
-      category: 'வகை',
-      date: 'தேதி',
-      time: 'நேரம்'
-    },
-    kannada: {
-      welcome: 'ಸ್ವಾಗತ',
-      exploreRestaurants: 'ರೆಸ್ಟೋರೆಂಟ್‌ಗಳನ್ನು ಅನ್ವೇಷಿಸಿ',
-      exploreEvents: 'ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಅನ್ವೇಷಿಸಿ',
-      home: 'ಮುಖಪುಟ',
-      bookings: 'ಬುಕ್ಕಿಂಗ್‌ಗಳು',
-      restaurants: 'ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು',
-      events: 'ಕಾರ್ಯಕ್ರಮಗಳು',
-      favourites: 'ಮೆಚ್ಚಿನವುಗಳು',
-      messages: 'ಸಂದೇಶಗಳು',
-      settings: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
-      logout: 'ಲಾಗ್ ಔಟ್',
-      lightMode: 'ಲೈಟ್ ಮೋಡ್',
-      darkMode: 'ಡಾರ್ಕ್ ಮೋಡ್',
-      upcomingEvents: 'ಮುಂಬರುವ ಕಾರ್ಯಕ್ರಮಗಳು',
-      eventsDescription: 'ರೋಮಾಂಚಕ ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ ಮತ್ತು ಬುಕ್ ಮಾಡಿ',
-      welcomeMessage: 'ಡೈನಿಂಗೋಗೆ ಸ್ವಾಗತ',
-      discoverMessage: 'ಅದ್ಭುತ ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು ಮತ್ತು ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ',
-      searchPlaceholder: 'ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು ಅಥವಾ ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಹುಡುಕಿ...',
-      language: 'ಭಾಷೆ',
-      noFavorites: 'ಇನ್ನೂ ಯಾವುದೇ ಮೆಚ್ಚಿನವುಗಳಿಲ್ಲ',
-      addFavorites: 'ಇಲ್ಲಿ ನೋಡಲು ಕೆಲವು ಮೆಚ್ಚಿನವುಗಳನ್ನು ಸೇರಿಸಿ',
-      noBookings: 'ಇನ್ನೂ ಯಾವುದೇ ಬುಕ್ಕಿಂಗ್‌ಗಳಿಲ್ಲ',
-      bookingsMessage: 'ನಿಮ್ಮ ಮುಂಬರುವ ಬುಕ್ಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ',
-      unreadMessages: 'ಓದದ ಸಂದೇಶಗಳು',
-      allRightsReserved: 'ಎಲ್ಲ ಹಕ್ಕುಗಳನ್ನು ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ',
-      featuredRestaurants: 'ವಿಶೇಷ ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು',
-      price: 'ಬೆಲೆ',
-      rating: 'ರೇಟಿಂಗ್',
-      locationLabel: 'ಸ್ಥಳ',
-      updateLocation: 'ಸ್ಥಳ ನವೀಕರಿಸಿ',
-      useCurrentLocation: 'ಪ್ರಸ್ತುತ ಸ್ಥಳವನ್ನು ಬಳಸಿ',
-      searchCities: 'ನಗರಗಳನ್ನು ಹುಡುಕಿ...',
-      profileSettings: 'ಪ್ರೊಫೈಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
-      displayName: 'ಪ್ರದರ್ಶನ ಹೆಸರು',
-      email: 'ಇಮೇಲ್',
-      locationSettings: 'ಸ್ಥಳ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
-      languageSettings: 'ಭಾಷಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
-      themeSettings: 'ಥೀಮ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
-      lightModeDescription: 'ಸಾಂಪ್ರದಾಯಿಕ ಪ್ರಕಾಶಮಾನ ಇಂಟರ್‌ಫೇಸ್',
-      darkModeDescription: 'ಕುಱೈನ್ನ ಬೆಳಕಿನಲ್ಲಿ ಕಣ್ಣುಗಳಿಗೆ ಸುಲಭ',
-      noNotifications: 'ಇತುವರೆ ಅಧಿಸೂಚನೆಗಳು ಎತುವುಮಿಲ್ಲ',
-      notificationsDescription: 'ನಿಮ್ಮ ಬುಕ್ಕಿಂಗ್‌ಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು ಅಥವಾ ವಿಶೇಷ ಕೊಡುಗೆಗಳ ಬಗ್ಗೆ ನೀವು ಹೊಸ ಅಧಿಸೂಚನೆಗಳನ್ನು ಸ್ವೀಕರಿಸಿದಾಗ, ಅವು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ',
-      cuisine: 'ಆಹಾರ ಪದ್ಧತಿ',
-      openNow: 'ಈಗ ತೆರೆದಿದೆ',
-      closed: 'ಮೂಸಿದೆ',
-      registered: 'ನೋಂದಾಯಿತ',
-      capacity: 'ಕೊಳ್ಳಳವು',
-      category: 'ವರ್ಗ',
-      date: 'ದಿನಾಂಕ',
-      time: 'ಸಮಯ'
-    },
-    telugu: {
-      welcome: 'స్వాగతం',
-      exploreRestaurants: 'రెస్టారెంట్లను అన్వేషించండి',
-      exploreEvents: 'ఈవెంట్లను అన్వేషించండి',
-      home: 'హోం',
-      bookings: 'బుక్కింగ్స్',
-      restaurants: 'రెస్టారెంట్లు',
-      events: 'ఈవెంట్లు',
-      favourites: 'ఇష్టమైనవి',
-      messages: 'సందేశాలు',
-      settings: 'సెట్టింగ్స్',
-      logout: 'లాగ్అవుట్',
-      lightMode: 'లైట్ మోడ్',
-      darkMode: 'డార్క్ మోడ్',
-      upcomingEvents: 'రాబోయే ఈవెంట్లు',
-      eventsDescription: 'ఆసక్తికరమైన ఈవెంట్లను కనుగొని బుక్ చేయండి',
-      welcomeMessage: 'డైనింగోకు స్వాగతం',
-      discoverMessage: 'అద్భుత రెస్టారెంట్లు మరియు ఈవెంట్లను కనుగొనండి',
-      searchPlaceholder: 'రెస్టారెంట్లు లేదా ఈవెంట్లను వెతకండి...',
-      language: 'భాష',
-      noFavorites: 'ఇంకా ఇష్టమైనవి ఏవీ లేవు',
-      addFavorites: 'ఇక్కడ చూడటానికి కొన్ని ఇష్టమైనవి జోడించండి',
-      noBookings: 'ఇంకా బుక్కింగ్స్ ఏవీ లేవు',
-      bookingsMessage: 'మీ రాబోయే బుక్కింగ్స్ ఇక్కడ కనిపిస్తాయి',
-      unreadMessages: 'చదవని సందేశాలు',
-      allRightsReserved: 'అన్ని హక್కులు రక్షించబడ్డాయి',
-      featuredRestaurants: 'ఫీచర్డ్ రెస్టారెంట్లు',
-      price: 'ధర',
-      rating: 'రేటింగ్',
-      locationLabel: 'స్థానం',
-      updateLocation: 'స್థానాన్ని నవీకరించండి',
-      useCurrentLocation: 'ప్రస్తುత స్థానాన్ని ఉపయోగించండి',
-      searchCities: 'నగరాలను వెతకండి...',
-      profileSettings: 'ప్రొఫైల్ సెట్టింగ్స్',
-      displayName: 'ప్రదర್శన పేరు',
-      email: 'ఇమೆయిల్',
-      locationSettings: 'స్థాన సೆట್టింగ్‌లు',
-      languageSettings: 'భాష సెట್టింగ్‌లు',
-      themeSettings: 'థీమ్ సెట్టింగ్‌లు',
-      lightModeDescription: 'సాంప్రదాయ ప్రకాశవంతమైన ఇంటర్‌ఫేస్',
-      darkModeDescription: 'తక్కువ కాంతిలో కళ్లకు సౌకర్యవంతం',
-      noNotifications: 'ఇతువరె అధిసూచనెలు లేవు',
-      notificationsDescription: 'మీ బుక్కింగ్స్, ఈవెంట్స్ లేదా ప్రత్యేక ఆఫర్ల గురించి కొత్త అధిసೂచనెలు వచ్చినప్పుడు, అవి ఇక్కడ కనిపిస్తాయి',
-      cuisine: 'వంటకాలు',
-      openNow: 'ఇప్పుడు తెరిచి ఉంది',
-      closed: 'మూసివేయబడింది',
-      registered: 'నమోదు చేయబడింది',
-      capacity: 'సామర్థ్యం',
-      category: 'వర్గం',
-      date: 'తేదీ',
-      time: 'సమయం'
-    },
-    malayalam: {
-      welcome: 'സ്വാഗതം',
-      exploreRestaurants: 'റെസ്റ്റോറന്റുകൾ പര്യവേക്ഷണം ചെയ്യുക',
-      exploreEvents: 'ഇവന്റുകൾ പര്യവേക്ഷണം ചെയ്യുക',
-      home: 'ഹോം',
-      bookings: 'ബുക്കിംഗുകൾ',
-      restaurants: 'റെസ്റ്റോറന്റുകൾ',
-      events: 'ഇവന്റുകൾ',
-      favourites: 'പ്രിയപ്പെട്ടവ',
-      messages: 'സന്ദേശങ്ങൾ',
-      settings: 'സെറ്റിംഗുകൾ',
-      logout: 'ലോഗൗട്ട്',
-      lightMode: 'ലൈറ്റ് മോഡ്',
-      darkMode: 'ഡാർക്ക് മോഡ്',
-      upcomingEvents: 'വരാനിരിക്കുന്ന ഇവന്റുകൾ',
-      eventsDescription: 'രസകരമായ ഇവന്റുകൾ കണ്ടെത്തി ബുക്ക് ചെയ്യുക',
-      welcomeMessage: 'ഡൈനിംഗോയിലേക്ക് സ്വാഗതം',
-      discoverMessage: 'അതിശയിപ്പിക്കുന്ന റെസ്റ്റോറന്റുകളും ഇവന്റുകളും കണ്ടെത്തുക',
-      searchPlaceholder: 'റെസ്റ്റോറന്റുകൾ അല്ലെങ്കിൽ ഇവന്റുകൾ തിരയുക...',
-      language: 'ഭാഷ',
-      noFavorites: 'ഇതുവരെ പ്രിയപ്പെട്ടവ ഒന്നുമില്ല',
-      addFavorites: 'ഇവിടെ കാണാൻ ചില പ്രിയപ്പെട്ടവ ചേർക്കുക',
-      noBookings: 'ഇതുവരെ ബുക്കിംഗുകൾ ഒന്നുമില്ല',
-      bookingsMessage: 'നിങ്ങളുടെ വരാനിരിക്കുന്ന ബുക്കിംഗുകൾ ഇവിടെ കാണാം',
-      unreadMessages: 'വായിക്കാത്ത സന്ദേശങ്ങൾ',
-      allRightsReserved: 'എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം',
-      featuredRestaurants: 'പ്രത്യേക റെസ്റ്റോറന്റുകൾ',
-      price: 'വില',
-      rating: 'റേറ്റിംഗ്',
-      locationLabel: 'സ്ഥലം',
-      updateLocation: 'സ്ഥലം അപ്ഡേറ്റ് ചെയ്യുക',
-      useCurrentLocation: 'നിലവിലെ സ്ഥലം ഉപയోഗിക്കുക',
-      searchCities: 'നഗരങ്ങൾ തിരയുക...',
-      profileSettings: 'പ്രൊഫൈൽ സെറ്റിംഗുകൾ',
-      displayName: 'പ്രദർശന നാമം',
-      email: 'ഇമെയിൽ',
-      locationSettings: 'സ്ഥല സെറ്റിംഗുകൾ',
-      languageSettings: 'ഭാഷാ സെറ്റിംഗുകൾ',
-      themeSettings: 'തീം സെറ്റിംഗുകൾ',
-      lightModeDescription: 'ക്ലാസിക്ക് തെളിഞ്ഞ ഇന്റർഫേസ്',
-      darkModeDescription: 'കുറഞ്ഞ പ്രകാശത്തിൽ കണ്ണുകൾക്ക് സുഖകരം',
-      noNotifications: 'ഇതുവരെ അറിയിപ്പുകൾ ഒന്നുമില്ല',
-      notificationsDescription: 'നിങ്ങളുടെ ബുക്കിംഗുകൾ, ഇവന്റുകൾ അല്ലെങ്കിൽ പ്രത്യేക ഓഫറുകൾ സംബന്ധിച്ച് പുതിയ അറിയിപ്പുകൾ ലഭിക്കുമ്പോൾ, അവ ഇവിടെ കാണാം',
-      cuisine: 'പാചകരീതി',
-      openNow: 'ഇപ്പോൾ തുറന്നിരിക്കുന്നു',
-      closed: 'അടച്ചിരിക്കുന്നു',
-      registered: 'നമോദീകരിച്ചത്',
-      capacity: 'ശേഷി',
-      category: 'വിഭാഗം',
-      date: 'തീയതി',
-      time: 'സമയം'
-    }
-  };
+  english: {
+    welcome: 'Welcome',
+    exploreRestaurants: 'Explore Restaurants',
+    exploreEvents: 'Explore Events',
+    home: 'Home',
+    bookings: 'Bookings',
+    restaurants: 'Restaurants',
+    events: 'Events',
+    favourites: 'Favourites',
+    messages: 'Messages',
+    settings: 'Settings',
+    logout: 'Logout',
+    lightMode: 'Light Mode',
+    darkMode: 'Dark Mode',
+    upcomingEvents: 'Upcoming Events',
+    eventsDescription: 'Discover and book exciting events',
+    welcomeMessage: 'Welcome to Dineingo',
+    discoverMessage: 'Discover amazing restaurants and events',
+    searchPlaceholder: 'Search restaurants or events...',
+    language: 'Language',
+    noFavorites: 'No favorites yet',
+    addFavorites: 'Add some favorites to see them here',
+    noBookings: 'No bookings yet',
+    bookingsMessage: 'Your upcoming bookings will appear here',
+    unreadMessages: 'Unread Messages',
+    allRightsReserved: 'All rights reserved',
+    featuredRestaurants: 'Featured Restaurants',
+    price: 'Price',
+    rating: 'Rating',
+    locationLabel: 'Location',
+    updateLocation: 'Update Location',
+    useCurrentLocation: 'Use Current Location',
+    searchCities: 'Search cities...',
+    profileSettings: 'Profile Settings',
+    displayName: 'Display Name',
+    email: 'Email',
+    locationSettings: 'Location Settings',
+    languageSettings: 'Language Settings',
+    themeSettings: 'Theme Settings',
+    lightModeDescription: 'Classic bright interface',
+    darkModeDescription: 'Easier on the eyes in low light',
+    noNotifications: 'No notifications yet',
+    notificationsDescription: 'When you receive new notifications about your bookings, events, or special offers, they will appear here',
+    cuisine: 'Cuisine',
+    openNow: 'Open Now',
+    closed: 'Closed',
+    registered: 'Registered',
+    capacity: 'Capacity',
+    category: 'Category',
+    date: 'Date',
+    time: 'Time'
+  },
+  hindi: {
+    welcome: 'स्वागत है',
+    exploreRestaurants: 'रेस्तरां खोजें',
+    exploreEvents: 'कार्यक्रम खोजें',
+    home: 'होम',
+    bookings: 'बुकिंग',
+    restaurants: 'रेस्तरां',
+    events: 'कार्यक्रम',
+    favourites: 'पसंदीदा',
+    messages: 'संदेश',
+    settings: 'सेटिंग्स',
+    logout: 'लॉग आउट',
+    lightMode: 'लाइट मोड',
+    darkMode: 'डार्क मोड',
+    upcomingEvents: 'आगामी कार्यक्रम',
+    eventsDescription: 'रोमांचक कार्यक्रमों की खोज और बुकिंग करें',
+    welcomeMessage: 'डाइनिंगो में आपका स्वागत है',
+    discoverMessage: 'शानदार रेस्तरां और कार्यक्रमों की खोज करें',
+    searchPlaceholder: 'रेस्तरां या कार्यक्रम खोजें...',
+    language: 'भाषा',
+    noFavorites: 'अभी तक कोई पसंदीदा नहीं',
+    addFavorites: 'यहां देखने के लिए कुछ पसंदीदा जोड़ें',
+    noBookings: 'अभी तक कोई बुकिंग नहीं',
+    bookingsMessage: 'आपकी आगामी बुकिंग यहां दिखाई देंगी',
+    unreadMessages: 'अपठित संदेश',
+    allRightsReserved: 'सर्वाधिकार सुरक्षित',
+    featuredRestaurants: 'विशेष रेस्तरां',
+    price: 'कीमत',
+    rating: 'रेटिंग',
+    locationLabel: 'स्थान',
+    updateLocation: 'स्थान अपडेट करें',
+    useCurrentLocation: 'वर्तमान स्थान का उपयोग करें',
+    searchCities: 'शहर खोजें...',
+    profileSettings: 'प्रोफ़ाइल सेटिंग्स',
+    displayName: 'प्रदर्शित नाम',
+    email: 'ईमेल',
+    locationSettings: 'स्थान सेटिंग्स',
+    languageSettings: 'भाषा सेटिंग्स',
+    themeSettings: 'थीम सेटिंग्स',
+    lightModeDescription: 'क्लासिक उज्जवल इंटरफ़ेस',
+    darkModeDescription: 'कम रोशनी में आंखों के लिए आरामदायक',
+    noNotifications: 'कोई सूचना नहीं',
+    notificationsDescription: 'जब आपको अपनी बुकिंग, कार्यक्रमों या विशेष ऑफ़र के बारे में नई सूचनाएं प्राप्त होंगी, तो वे यहां दिखाई देंगी',
+    cuisine: 'व्यंजन',
+    openNow: 'अभी खुला है',
+    closed: 'बंद है',
+    registered: 'पंजीकृत',
+    capacity: 'क्षमता',
+    category: 'श्रेणी',
+    date: 'दिनांक',
+    time: 'समय'
+  },
+  tamil: {
+    welcome: 'வரவேற்பு',
+    exploreRestaurants: 'உணவகங்களை ஆராயுங்கள்',
+    exploreEvents: 'நிகழ்வுகளை ஆராயுங்கள்',
+    home: 'முகப்பு',
+    bookings: 'முன்பதிவுகள்',
+    restaurants: 'உணவகங்கள்',
+    events: 'நிகழ்வுகள்',
+    favourites: 'பிடித்தவை',
+    messages: 'செய்திகள்',
+    settings: 'அமைப்புகள்',
+    logout: 'வெளியேறு',
+    lightMode: 'ஒளி பயன்முறை',
+    darkMode: 'இருள் பயன்முறை',
+    upcomingEvents: 'வரவிருக்கும் நிகழ்வுகள்',
+    eventsDescription: 'சுவாரஸ்யமான நிகழ்வுகளைக் கண்டறிந்து முன்பதிவு செய்யுங்கள்',
+    welcomeMessage: 'டைனிங்கோவிற்கு வரவேற்கிறோம்',
+    discoverMessage: 'அற்புதமான உணவகங்கள் மற்றும் நிகழ்வுகளைக் கண்டறியுங்கள்',
+    searchPlaceholder: 'உணவகங்கள் அல்லது நிகழ்வுகளைத் தேடுங்கள்...',
+    language: 'மொழி',
+    noFavorites: 'இதுவரை பிடித்தவை எதுவும் இல்லை',
+    addFavorites: 'இங்கே காண சில பிடித்தவற்றைச் சேர்க்கவும்',
+    noBookings: 'இதுவரை முன்பதிவுகள் எதுவும் இல்லை',
+    bookingsMessage: 'உங்கள் வரவிருக்கும் முன்பதிவுகள் இங்கே தோன்றும்',
+    unreadMessages: 'படிக்காத செய்திகள்',
+    allRightsReserved: 'அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை',
+    featuredRestaurants: 'சிறப்பு உணவகங்கள்',
+    price: 'விலை',
+    rating: 'மதிப்பீடு',
+    locationLabel: 'இடம்',
+    updateLocation: 'இடத்தைப் புதுப்பிக்கவும்',
+    useCurrentLocation: 'தற்போதைய இடத்தைப் பயன்படுத்தவும்',
+    searchCities: 'நகரங்களைத் தேடுங்கள்...',
+    profileSettings: 'சுயவிவர அமைப்புகள்',
+    displayName: 'காட்சிப் பெயர்',
+    email: 'மின்னஞ்சல்',
+    locationSettings: 'இட அமைப்புகள்',
+    languageSettings: 'மொழி அமைப்புகள்',
+    themeSettings: 'தீம் அமைப்புகள்',
+    lightModeDescription: 'பாரம்பரிய பிரகாசமான இடைமுகம்',
+    darkModeDescription: 'குறைந்த ஒளியில் கண்களுக்கு எளிதானது',
+    noNotifications: 'இதுவரை அறிவிப்புகள் எதுவும் இல்லை',
+    notificationsDescription: 'உங்கள் முன்பதிவுகள், நிகழ்வுகள் அல்லது சிறப்பு சலுகைகள் பற்றிய புதிய அறிவிப்புகளைப் பெறும்போது, அவை இங்கே தோன்றும்',
+    cuisine: 'உணவு வகை',
+    openNow: 'இப்போது திறந்துள்ளது',
+    closed: 'மூடப்பட்டுள்ளது',
+    registered: 'பதிவு செய்யப்பட்டது',
+    capacity: 'கொள்ளளவு',
+    category: 'வகை',
+    date: 'தேதி',
+    time: 'நேரம்'
+  },
+  kannada: {
+    welcome: 'ಸ್ವಾಗತ',
+    exploreRestaurants: 'ರೆಸ್ಟೋರೆಂಟ್‌ಗಳನ್ನು ಅನ್ವೇಷಿಸಿ',
+    exploreEvents: 'ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಅನ್ವೇಷಿಸಿ',
+    home: 'ಮುಖಪುಟ',
+    bookings: 'ಬುಕ್ಕಿಂಗ್‌ಗಳು',
+    restaurants: 'ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು',
+    events: 'ಕಾರ್ಯಕ್ರಮಗಳು',
+    favourites: 'ಮೆಚ್ಚಿನವುಗಳು',
+    messages: 'ಸಂದೇಶಗಳು',
+    settings: 'ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    logout: 'ಲಾಗ್ ಔಟ್',
+    lightMode: 'ಲೈಟ್ ಮೋಡ್',
+    darkMode: 'ಡಾರ್ಕ್ ಮೋಡ್',
+    upcomingEvents: 'ಮುಂಬರುವ ಕಾರ್ಯಕ್ರಮಗಳು',
+    eventsDescription: 'ರೋಮಾಂಚಕ ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ ಮತ್ತು ಬುಕ್ ಮಾಡಿ',
+    welcomeMessage: 'ಡೈನಿಂಗೋಗೆ ಸ್ವಾಗತ',
+    discoverMessage: 'ಅದ್ಭುತ ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು ಮತ್ತು ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಕಂಡುಹಿಡಿಯಿರಿ',
+    searchPlaceholder: 'ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು ಅಥವಾ ಕಾರ್ಯಕ್ರಮಗಳನ್ನು ಹುಡುಕಿ...',
+    language: 'ಭಾಷೆ',
+    noFavorites: 'ಇನ್ನೂ ಯಾವುದೇ ಮೆಚ್ಚಿನವುಗಳಿಲ್ಲ',
+    addFavorites: 'ಇಲ್ಲಿ ನೋಡಲು ಕೆಲವು ಮೆಚ್ಚಿನವುಗಳನ್ನು ಸೇರಿಸಿ',
+    noBookings: 'ಇನ್ನೂ ಯಾವುದೇ ಬುಕ್ಕಿಂಗ್‌ಗಳಿಲ್ಲ',
+    bookingsMessage: 'ನಿಮ್ಮ ಮುಂಬರುವ ಬುಕ್ಕಿಂಗ್‌ಗಳು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ',
+    unreadMessages: 'ಓದದ ಸಂದೇಶಗಳು',
+    allRightsReserved: 'ಎಲ್ಲ ಹಕ್ಕುಗಳನ್ನು ಕಾಯ್ದಿರಿಸಲಾಗಿದೆ',
+    featuredRestaurants: 'ವಿಶೇಷ ರೆಸ್ಟೋರೆಂಟ್‌ಗಳು',
+    price: 'ಬೆಲೆ',
+    rating: 'ರೇಟಿಂಗ್',
+    locationLabel: 'ಸ್ಥಳ',
+    updateLocation: 'ಸ್ಥಳ ನವೀಕರಿಸಿ',
+    useCurrentLocation: 'ಪ್ರಸ್ತುತ ಸ್ಥಳವನ್ನು ಬಳಸಿ',
+    searchCities: 'ನಗರಗಳನ್ನು ಹುಡುಕಿ...',
+    profileSettings: 'ಪ್ರೊಫೈಲ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    displayName: 'ಪ್ರದರ್ಶನ ಹೆಸರು',
+    email: 'ಇಮೇಲ್',
+    locationSettings: 'ಸ್ಥಳ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    languageSettings: 'ಭಾಷಾ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    themeSettings: 'ಥೀಮ್ ಸೆಟ್ಟಿಂಗ್‌ಗಳು',
+    lightModeDescription: 'ಸಾಂಪ್ರದಾಯಿಕ ಪ್ರಕಾಶಮಾನ ಇಂಟರ್‌ಫೇಸ್',
+    darkModeDescription: 'ಕುಱೈನ್ನ ಬೆಳಕಿನಲ್ಲಿ ಕಣ್ಣುಗಳಿಗೆ ಸುಲಭ',
+    noNotifications: 'ಇತುವರೆ ಅಧಿಸೂಚನೆಗಳು ಎತುವುಮಿಲ್ಲ',
+    notificationsDescription: 'ನಿಮ್ಮ ಬುಕ್ಕಿಂಗ್‌ಗಳು, ಕಾರ್ಯಕ್ರಮಗಳು ಅಥವಾ ವಿಶೇಷ ಕೊಡುಗೆಗಳ ಬಗ್ಗೆ ನೀವು ಹೊಸ ಅಧಿಸೂಚನೆಗಳನ್ನು ಸ್ವೀಕರಿಸಿದಾಗ, ಅವು ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತವೆ',
+    cuisine: 'ಆಹಾರ ಪದ್ಧತಿ',
+    openNow: 'ಈಗ ತೆರೆದಿದೆ',
+    closed: 'ಮೂಸಿದೆ',
+    registered: 'ನೋಂದಾಯಿತ',
+    capacity: 'ಕೊಳ್ಳಳವು',
+    category: 'ವರ್ಗ',
+    date: 'ದಿನಾಂಕ',
+    time: 'ಸಮಯ'
+  },
+  telugu: {
+    welcome: 'స్వాగతం',
+    exploreRestaurants: 'రెస్టారెంట్లను అన్వేషించండి',
+    exploreEvents: 'ఈవెంట్లను అన్వేషించండి',
+    home: 'హోం',
+    bookings: 'బుక్కింగ్స్',
+    restaurants: 'రెస్టారెంట్లు',
+    events: 'ఈవెంట్లు',
+    favourites: 'ఇష్టమైనవి',
+    messages: 'సందేశాలు',
+    settings: 'సెట్టింగ్స్',
+    logout: 'లాగ్అవుట్',
+    lightMode: 'లైట్ మోడ్',
+    darkMode: 'డార్క్ మోడ్',
+    upcomingEvents: 'రాబోయే ఈవెంట్లు',
+    eventsDescription: 'ఆసక్తికరమైన ఈవెంట్లను కనుగొని బుక్ చేయండి',
+    welcomeMessage: 'డైనింగోకు స్వాగతం',
+    discoverMessage: 'అద్భుత రెస్టారెంట్లు మరియు ఈవెంట్లను కనుగొనండి',
+    searchPlaceholder: 'రెస్టారెంట్లు లేదా ఈవెంట్లను వెతకండి...',
+    language: 'భాష',
+    noFavorites: 'ఇంకా ఇష్టమైనవి ఏవీ లేవు',
+    addFavorites: 'ఇక్కడ చూడటానికి కొన్ని ఇష్టమైనవి జోడించండి',
+    noBookings: 'ఇంకా బుక్కింగ్స్ ఏవీ లేవు',
+    bookingsMessage: 'మీ రాబోయే బుక్కింగ్స్ ఇక్కడ కనిపిస్తాయి',
+    unreadMessages: 'చదవని సందేశాలు',
+    allRightsReserved: 'అన్ని హక್కులు రక్షించబడ్డాయి',
+    featuredRestaurants: 'ఫీచర్డ్ రెస్టారెంట్లు',
+    price: 'ధర',
+    rating: 'రేటింగ్',
+    locationLabel: 'స్థానం',
+    updateLocation: 'స್థానాన్ని నవీకరించండి',
+    useCurrentLocation: 'ప్రస్తುత స్థానాన్ని ఉపయోగించండి',
+    searchCities: 'నగరాలను వెతకండి...',
+    profileSettings: 'ప్రొఫైల్ సెట్టింగ్స్',
+    displayName: 'ప్రదర್శన పేరు',
+    email: 'ఇమೆయిల్',
+    locationSettings: 'స్థాన సೆట್టింగ్‌లు',
+    languageSettings: 'భాష సెట್టింగ్‌లు',
+    themeSettings: 'థీమ్ సెట్టింగ్‌లు',
+    lightModeDescription: 'సాంప్రదాయ ప్రకాశవంతమైన ఇంటర్‌ఫేస్',
+    darkModeDescription: 'తక్కువ కాంతిలో కళ్లకు సౌకర్యవంతం',
+    noNotifications: 'ఇతువరె అధిసూచనెలు లేవు',
+    notificationsDescription: 'మీ బుక్కింగ్స్, ఈవెంట్స్ లేదా ప్రత్యేక ఆఫర్ల గురించి కొత్త అధిసೂచనెలు వచ్చినప్పుడు, అవి ఇక్కడ కనిపిస్తాయి',
+    cuisine: 'వంటకాలు',
+    openNow: 'ఇప్పుడు తెరిచి ఉంది',
+    closed: 'మూసివేయబడింది',
+    registered: 'నమోదు చేయబడింది',
+    capacity: 'సామర్థ్యం',
+    category: 'వర్గం',
+    date: 'తేదీ',
+    time: 'సమయం'
+  },
+  malayalam: {
+    welcome: 'സ്വാഗതം',
+    exploreRestaurants: 'റെസ്റ്റോറന്റുകൾ പര്യവേക്ഷണം ചെയ്യുക',
+    exploreEvents: 'ഇവന്റുകൾ പര്യവേക്ഷണം ചെയ്യുക',
+    home: 'ഹോം',
+    bookings: 'ബുക്കിംഗുകൾ',
+    restaurants: 'റെസ്റ്റോറന്റുകൾ',
+    events: 'ഇവന്റുകൾ',
+    favourites: 'പ്രിയപ്പെട്ടവ',
+    messages: 'സന്ദേശങ്ങൾ',
+    settings: 'സെറ്റിംഗുകൾ',
+    logout: 'ലോഗൗട്ട്',
+    lightMode: 'ലൈറ്റ് മോഡ്',
+    darkMode: 'ഡാർക്ക് മോഡ്',
+    upcomingEvents: 'വരാനിരിക്കുന്ന ഇവന്റുകൾ',
+    eventsDescription: 'രസകരമായ ഇവന്റുകൾ കണ്ടെത്തി ബുക്ക് ചെയ്യുക',
+    welcomeMessage: 'ഡൈനിംഗോയിലേക്ക് സ്വാഗതം',
+    discoverMessage: 'അതിശയിപ്പിക്കുന്ന റെസ്റ്റോറന്റുകളും ഇവന്റുകളും കണ്ടെത്തുക',
+    searchPlaceholder: 'റെസ്റ്റോറന്റുകൾ അല്ലെങ്കിൽ ഇവന്റുകൾ തിരയുക...',
+    language: 'ഭാഷ',
+    noFavorites: 'ഇതുവരെ പ്രിയപ്പെട്ടവ ഒന്നുമില്ല',
+    addFavorites: 'ഇവിടെ കാണാൻ ചില പ്രിയപ്പെട്ടവ ചേർക്കുക',
+    noBookings: 'ഇതുവരെ ബുക്കിംഗുകൾ ഒന്നുമില്ല',
+    bookingsMessage: 'നിങ്ങളുടെ വരാനിരിക്കുന്ന ബുക്കിംഗുകൾ ഇവിടെ കാണാം',
+    unreadMessages: 'വായിക്കാത്ത സന്ദേശങ്ങൾ',
+    allRightsReserved: 'എല്ലാ അവകാശങ്ങളും നിക്ഷിപ്തം',
+    featuredRestaurants: 'പ്രത്യേക റെസ്റ്റോറന്റുകൾ',
+    price: 'വില',
+    rating: 'റേറ്റിംഗ്',
+    locationLabel: 'സ്ഥലം',
+    updateLocation: 'സ്ഥലം അപ്ഡേറ്റ് ചെയ്യുക',
+    useCurrentLocation: 'നിലവിലെ സ്ഥലം ഉപയోഗിക്കുക',
+    searchCities: 'നഗരങ്ങൾ തിരയുക...',
+    profileSettings: 'പ്രൊഫൈൽ സെറ്റിംഗുകൾ',
+    displayName: 'പ്രദർശന നാമം',
+    email: 'ഇമെയിൽ',
+    locationSettings: 'സ്ഥല സെറ്റിംഗുകൾ',
+    languageSettings: 'ഭാഷാ സെറ്റിംഗുകൾ',
+    themeSettings: 'തീം സെറ്റിംഗുകൾ',
+    lightModeDescription: 'ക്ലാസിക്ക് തെളിഞ്ഞ ഇന്റർഫേസ്',
+    darkModeDescription: 'കുറഞ്ഞ പ്രകാശത്തിൽ കണ്ണുകൾക്ക് സുഖകരം',
+    noNotifications: 'ഇതുവരെ അറിയിപ്പുകൾ ഒന്നുമില്ല',
+    notificationsDescription: 'നിങ്ങളുടെ ബുക്കിംഗുകൾ, ഇവന്റുകൾ അല്ലെങ്കിൽ പ്രത്യేക ഓഫറുകൾ സംബന്ധിച്ച് പുതിയ അറിയിപ്പുകൾ ലഭിക്കുമ്പോൾ, അവ ഇവിടെ കാണാം',
+    cuisine: 'പാചകരീതി',
+    openNow: 'ഇപ്പോൾ തുറന്നിരിക്കുന്നു',
+    closed: 'അടച്ചിരിക്കുന്നു',
+    registered: 'നമോദീകരിച്ചത്',
+    capacity: 'ശേഷി',
+    category: 'വിഭാഗം',
+    date: 'തീയതി',
+    time: 'സമയം'
+  }
+};
 
-  // Available Indian languages
+// Available Indian languages
 const availableLanguages: { code: Language; name: string }[] = [
-    { code: 'english', name: 'English' },
-    { code: 'hindi', name: 'Hindi' },
-    { code: 'tamil', name: 'Tamil' },
-    { code: 'kannada', name: 'Kannada' },
-    { code: 'telugu', name: 'Telugu' },
-    { code: 'malayalam', name: 'Malayalam' }
-  ];
+  { code: 'english', name: 'English' },
+  { code: 'hindi', name: 'Hindi' },
+  { code: 'tamil', name: 'Tamil' },
+  { code: 'kannada', name: 'Kannada' },
+  { code: 'telugu', name: 'Telugu' },
+  { code: 'malayalam', name: 'Malayalam' }
+];
 
 // Use the imported Event type directly
 type Event = ImportedEvent;
@@ -534,13 +534,13 @@ const getInitials = (name: string | null | undefined): string => {
 // Color generator function based on name
 const getAvatarColor = (name: string | null | undefined): string => {
   if (!name) return "#6366f1"; // Default indigo color
-  
+
   // Simple hash function to get a consistent color for a name
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  
+
   // List of colors that look good as avatar backgrounds
   const colors = [
     "#f87171", // red
@@ -553,7 +553,7 @@ const getAvatarColor = (name: string | null | undefined): string => {
     "#e879f9", // pink
     "#f9a8d4"  // rose
   ];
-  
+
   // Use the hash to select a color
   const index = Math.abs(hash) % colors.length;
   return colors[index];
@@ -563,9 +563,9 @@ const getAvatarColor = (name: string | null | undefined): string => {
 const InitialsAvatar = ({ name, className = "" }: { name: string | null | undefined, className?: string }) => {
   const initials = getInitials(name);
   const bgColor = getAvatarColor(name);
-  
+
   return (
-    <div 
+    <div
       className={`flex items-center justify-center text-white font-semibold ${className}`}
       style={{ backgroundColor: bgColor }}
     >
@@ -579,7 +579,7 @@ const getAvatarUrl = (name: string | null | undefined): string => {
   if (!name || name.trim() === '') {
     name = "User";
   }
-  
+
   // Use ui-avatars.com API to generate avatar
   // This returns an actual image URL that can be cached and displayed
   // Format: https://ui-avatars.com/api/?name=John+Doe&background=random
@@ -615,9 +615,9 @@ export default function DashboardPage() {
   const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
   const [selectedNotification, setSelectedNotification] = useState<any>(null);
   const [markingAsRead, setMarkingAsRead] = useState(false);
-  
+
   const { unreadCount, markAllAsRead, notifications: notificationContextNotifications, markAsRead: markSingleAsRead, isRead } = useNotifications();
-  
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -638,16 +638,16 @@ export default function DashboardPage() {
   // Add this validation function before the handleAvatarSelect function
   const isValidImageUrl = (url: string | null): boolean => {
     if (!url) return false;
-    
+
     // Check if URL has a valid image extension
     const validExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.bmp'];
     const lowerUrl = url.toLowerCase();
-    
+
     // Handle Firebase Storage URLs which may not have extensions
     if (lowerUrl.includes('firebasestorage.googleapis.com')) {
       return true;
     }
-    
+
     // Check for valid extensions
     return validExtensions.some(ext => lowerUrl.endsWith(ext));
   };
@@ -657,13 +657,13 @@ export default function DashboardPage() {
     const loadUserWithValidation = async () => {
       try {
         setIsLoading(true);
-        
+
         // First detect location
         await detectLocation();
-        
+
         // Then load restaurants and events
         setRestaurants(mockRestaurants);
-        
+
         // Fetch events from API
         try {
           const response = await fetch('http://localhost:5000/api/events');
@@ -692,14 +692,14 @@ export default function DashboardPage() {
           console.error('Error fetching events:', error);
           setEvents([]);
         }
-        
+
         // Check if the user's photoURL is valid
         if (userData && userData.photoURL && !isValidImageUrl(userData.photoURL)) {
           console.log('Invalid image URL detected, switching to initials');
           // Force initials avatar if image URL doesn't seem valid
           await forceInitialsAvatar();
         }
-        
+
         // Fetch bookings if user is authenticated
         if (auth.currentUser) {
           await fetchBookingsFromAPI();
@@ -713,7 +713,7 @@ export default function DashboardPage() {
         setIsLoading(false);
       }
     };
-    
+
     loadUserWithValidation();
   }, []);
 
@@ -755,8 +755,8 @@ export default function DashboardPage() {
             const { userAPI } = await import('./services/api');
             // Only track login after page refresh if we're not already in a session
             // This prevents duplicate login activities
-            if (!sessionStorage.getItem('lastLoginTracked') || 
-                Date.now() - parseInt(sessionStorage.getItem('lastLoginTracked') || '0') > 1800000) { // 30 minutes
+            if (!sessionStorage.getItem('lastLoginTracked') ||
+              Date.now() - parseInt(sessionStorage.getItem('lastLoginTracked') || '0') > 1800000) { // 30 minutes
               await userAPI.loginUser(user.uid, 'refresh');
               sessionStorage.setItem('lastLoginTracked', Date.now().toString());
             }
@@ -764,18 +764,18 @@ export default function DashboardPage() {
             console.error("Error tracking login activity on refresh:", error);
             // Continue with session even if tracking fails
           }
-          
+
           // Load profile data from MongoDB (primary source of truth)
           try {
             const profileRes = await fetch(`/api/profile/${user.uid}`);
             if (profileRes.ok) {
               const profile = await profileRes.json();
               console.log('Loaded profile from MongoDB:', profile);
-              
+
               // Use MongoDB data as the source of truth
               const avatarUrl = profile.currentAvatar || profile.photoURL || profile.avatarUrl;
               const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
-              
+
               const newUserData = {
                 uid: user.uid,
                 email: user.email || profile.email || '',
@@ -791,14 +791,14 @@ export default function DashboardPage() {
                 lastLogin: new Date(),
                 createdAt: profile.createdAt ? new Date(profile.createdAt) : new Date()
               };
-              
+
               setUserData(newUserData);
-              
+
               // Set language from profile
               if (profile.language && ['english', 'hindi', 'tamil', 'kannada', 'telugu', 'malayalam'].includes(profile.language)) {
                 setLanguage(profile.language as Language);
               }
-              
+
               // Sync to Firestore for backup (optional)
               await setDoc(doc(db, 'users', user.uid), {
                 displayName: newUserData.displayName,
@@ -820,7 +820,7 @@ export default function DashboardPage() {
                 lastLogin: new Date(),
                 createdAt: new Date()
               };
-              
+
               // Create profile in MongoDB
               await fetch(`/api/profile/${user.uid}`, {
                 method: 'POST',
@@ -836,12 +836,12 @@ export default function DashboardPage() {
                   address: {}
                 })
               });
-              
+
               setUserData(newUserData);
             }
           } catch (profileError) {
             console.error('Error loading profile from MongoDB:', profileError);
-            
+
             // Fallback to Firestore if MongoDB fails
             const userDoc = await getDoc(doc(db, 'users', user.uid));
             if (userDoc.exists()) {
@@ -889,16 +889,16 @@ export default function DashboardPage() {
   // Real-time profile updates via Socket.IO
   useEffect(() => {
     if (!userData?.uid) return;
-    
+
     // Connect to Socket.IO only once
     const socket = socketService.connect();
-    
+
     // Handler for profile updates
     const handleProfileUpdate = (data: any) => {
       if (data.uid === userData.uid) {
         console.log('Profile updated via Socket.IO:', data.profile);
         const profile = data.profile;
-        
+
         // Update local state with the latest profile data
         setUserData(prev => {
           if (!prev) return null;
@@ -910,13 +910,13 @@ export default function DashboardPage() {
             avatars: profile.avatars || prev.avatars,
           };
         });
-        
+
         toast.info('Profile updated!', { autoClose: 2000 });
       }
     };
-    
+
     socket.on('profile_updated', handleProfileUpdate);
-    
+
     return () => {
       // Only remove the listener, don't disconnect (other components might be using it)
       socket.off('profile_updated', handleProfileUpdate);
@@ -994,7 +994,7 @@ export default function DashboardPage() {
 
   const handleNavigation = (section: Section): void => {
     setActiveSection(section);
-      setIsSidebarOpen(false);
+    setIsSidebarOpen(false);
   };
 
   const toggleFavorite = async (item: Restaurant | Event) => {
@@ -1002,10 +1002,10 @@ export default function DashboardPage() {
       toast.error('Please log in to add favorites');
       return;
     }
-    
+
     const itemName = 'name' in item ? item.name : '';
     const isCurrentlyFavorite = favorites.some(fav => fav.id === item.id);
-    
+
     try {
       if ('rating' in item) {
         // Restaurant
@@ -1079,7 +1079,7 @@ export default function DashboardPage() {
 
   const handleLanguageChange = async (newLanguage: Language) => {
     setLanguage(newLanguage);
-    
+
     // Save language preference to MongoDB
     if (userData?.uid) {
       try {
@@ -1095,7 +1095,7 @@ export default function DashboardPage() {
             }
           })
         });
-        
+
         if (response.ok) {
           console.log('Language preference saved:', newLanguage);
           toast.success(`Language changed to ${newLanguage.charAt(0).toUpperCase() + newLanguage.slice(1)}`, {
@@ -1123,7 +1123,7 @@ export default function DashboardPage() {
           // Continue with logout even if tracking fails
         }
       }
-      
+
       await signOut(auth);
       localStorage.removeItem('dineInGoFavorites');
       localStorage.removeItem('dineInGoLanguage');
@@ -1138,21 +1138,21 @@ export default function DashboardPage() {
   const forceInitialsAvatar = async () => {
     try {
       console.log('Forcing initials avatar display');
-      
+
       if (!userData || !userData.displayName) {
         console.error('No user data or display name available');
         return;
       }
-      
+
       // Generate an avatar URL
       const avatarUrl = getAvatarUrl(userData.displayName);
-      
+
       // Update local state first for immediate UI feedback
       setUserData({
         ...userData,
         photoURL: avatarUrl
       });
-      
+
       // Update Firebase auth profile
       if (auth.currentUser) {
         await updateProfile(auth.currentUser, {
@@ -1161,13 +1161,13 @@ export default function DashboardPage() {
         // Force token refresh to ensure changes take effect
         await auth.currentUser.getIdToken(true);
       }
-      
+
       // Update Firestore - use only the necessary fields to avoid type errors
       await setDoc(doc(db, 'users', userData.uid), {
         photoURL: avatarUrl,
         lastUpdated: new Date()
       }, { merge: true });
-      
+
       // Add visual feedback
       toast.success('Generated avatar based on your name');
     } catch (error) {
@@ -1179,7 +1179,7 @@ export default function DashboardPage() {
   const handleAvatarSelect = async (src: string | null): Promise<void> => {
     try {
       console.log("Avatar selection started with src:", src);
-      
+
       // Prepare updated user data
       const updatedUserData: UserData = {
         ...userData!,
@@ -1200,7 +1200,7 @@ export default function DashboardPage() {
           photoURL: src
         });
         console.log("Auth profile updated with photoURL:", src);
-        
+
         // For null (initials) avatar, we need to reassert this value
         if (src === null) {
           // Forces a refresh of the Firebase auth token
@@ -1211,18 +1211,18 @@ export default function DashboardPage() {
 
       // Update local state immediately 
       setUserData(updatedUserData);
-      
+
       // Close the avatar modal
       setIsAvatarModalOpen(false);
-      
+
       // Add visual feedback
       toast.success(src === null ? 'Using initials for profile picture' : 'Profile picture updated successfully!');
-      
+
       // Force UI refresh
       setTimeout(() => {
-        setUserData({...updatedUserData});
+        setUserData({ ...updatedUserData });
       }, 100);
-      
+
     } catch (error) {
       console.error('Error updating avatar:', error);
       setError('Failed to update avatar. Please try again.');
@@ -1243,8 +1243,8 @@ export default function DashboardPage() {
 
         // Save location to localStorage
         localStorage.setItem('dineInGoLocation', JSON.stringify(newLocation));
-        
-        
+
+
         // Close the location modal
         setIsLocationModalOpen(false);
       } else {
@@ -1265,7 +1265,7 @@ export default function DashboardPage() {
           currentLocation.lat,
           currentLocation.lng
         );
-        
+
         setUserData(prev => prev ? { ...prev, location: { city: nearestCity.city, state: nearestCity.state, country: nearestCity.country }, uid: prev.uid, createdAt: prev.createdAt, lastLogin: new Date() } : null);
 
         // Save to localStorage
@@ -1295,7 +1295,7 @@ export default function DashboardPage() {
     }
 
     const lowerTerm = term.toLowerCase();
-    const filteredRests = restaurants.filter(restaurant => 
+    const filteredRests = restaurants.filter(restaurant =>
       restaurant.name.toLowerCase().includes(lowerTerm) ||
       restaurant.cuisine?.some(c => c.toLowerCase().includes(lowerTerm)) ||
       restaurant.location.city.toLowerCase().includes(lowerTerm) ||
@@ -1307,8 +1307,8 @@ export default function DashboardPage() {
       const locationMatches = typeof event.location === 'string'
         ? event.location.toLowerCase().includes(lowerTerm)
         : (event.location as Location).city.toLowerCase().includes(lowerTerm) ||
-          (event.location as Location).state.toLowerCase().includes(lowerTerm);
-      
+        (event.location as Location).state.toLowerCase().includes(lowerTerm);
+
       return event.name.toLowerCase().includes(lowerTerm) ||
         event.category.toLowerCase().includes(lowerTerm) ||
         event.description.toLowerCase().includes(lowerTerm) ||
@@ -1321,7 +1321,7 @@ export default function DashboardPage() {
 
   const renderSection = () => {
     const section = activeSection;
-    
+
     // Show search results if there's a search term
     if (searchTerm.trim() !== '') {
       return (
@@ -1329,7 +1329,7 @@ export default function DashboardPage() {
           <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-8`}>
             Search Results
           </h1>
-          
+
           {/* Restaurants Results */}
           {filteredRestaurants.length > 0 && (
             <div className="mb-12">
@@ -1340,8 +1340,8 @@ export default function DashboardPage() {
                 {filteredRestaurants.map(restaurant => (
                   <div key={restaurant.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/restaurant/${restaurant.id}`)}>
                     <div className="relative h-48">
-                      <img 
-                        src={restaurant.image} 
+                      <img
+                        src={restaurant.image}
                         alt={restaurant.name}
                         className="w-full h-full object-cover"
                       />
@@ -1349,7 +1349,7 @@ export default function DashboardPage() {
                         <span className="text-emerald-400 mr-1">★</span>
                         <span>{restaurant.rating}</span>
                       </div>
-                      <button 
+                      <button
                         className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1368,10 +1368,10 @@ export default function DashboardPage() {
                         <MapPin size={16} className="mr-1" />
                         <span>{restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`}</span>
                       </div>
-                      
+
                       {/* Add the map component */}
                       <div className="mb-3">
-                        <RestaurantMap 
+                        <RestaurantMap
                           address={restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`}
                           name={restaurant.name}
                           isListMode={true}
@@ -1380,9 +1380,8 @@ export default function DashboardPage() {
 
                       <div className="flex flex-wrap gap-2">
                         {restaurant.cuisine?.map((cuisine: string, index: number) => (
-                          <span key={index} className={`px-2 py-1 ${
-                            isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                          } rounded-full text-sm`}>
+                          <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                            } rounded-full text-sm`}>
                             {cuisine}
                           </span>
                         ))}
@@ -1393,7 +1392,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-          
+
           {/* Events Results */}
           {filteredEvents.length > 0 && (
             <div className="mb-12">
@@ -1404,8 +1403,8 @@ export default function DashboardPage() {
                 {filteredEvents.map(event => (
                   <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
                     <div className="relative h-48">
-                      <img 
-                        src={event.image} 
+                      <img
+                        src={event.image}
                         alt={event.name}
                         className="w-full h-full object-cover"
                       />
@@ -1419,8 +1418,8 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           const eventToToggle = {
                             ...event,
-                            location: typeof event.location === 'string' 
-                              ? event.location 
+                            location: typeof event.location === 'string'
+                              ? event.location
                               : event.location
                           };
                           toggleFavorite(eventToToggle);
@@ -1448,14 +1447,12 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <span className={`px-2 py-1 ${
-                          isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        } rounded-full text-sm`}>
+                        <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                          } rounded-full text-sm`}>
                           {event.category}
                         </span>
-                        <span className={`px-2 py-1 ${
-                          isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        } rounded-full text-sm`}>
+                        <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                          } rounded-full text-sm`}>
                           {event.registeredCount}/{event.capacity} Registered
                         </span>
                       </div>
@@ -1470,7 +1467,7 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
-          
+
           {/* No Results Message */}
           {filteredRestaurants.length === 0 && filteredEvents.length === 0 && (
             <div className="text-center py-12">
@@ -1482,7 +1479,7 @@ export default function DashboardPage() {
         </div>
       );
     }
-    
+
     switch (section) {
       case 'home':
         return (
@@ -1493,11 +1490,10 @@ export default function DashboardPage() {
                 <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                   {`${translations[language].welcome}, ${userData?.displayName || 'Guest'}!`}
                 </h1>
-                <button 
+                <button
                   onClick={() => setIsLocationModalOpen(true)}
-                  className={`flex items-center ${
-                    isDarkMode ? 'bg-gray-700/50 hover:bg-gray-600/50' : 'bg-white hover:bg-gray-50'
-                  } rounded-full px-4 py-2 transition-colors group`}
+                  className={`flex items-center ${isDarkMode ? 'bg-gray-700/50 hover:bg-gray-600/50' : 'bg-white hover:bg-gray-50'
+                    } rounded-full px-4 py-2 transition-colors group`}
                 >
                   <div className="flex items-center">
                     <MapPin className="text-emerald-400 mr-2" size={18} />
@@ -1510,27 +1506,25 @@ export default function DashboardPage() {
 
               {/* Section Selector */}
               <div className="flex gap-4 mb-8">
-                <button 
+                <button
                   onClick={() => setHomeSection('restaurants')}
-                  className={`flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors ${
-                    homeSection === 'restaurants'
-                      ? 'bg-emerald-500 text-white'
-                      : isDarkMode 
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors ${homeSection === 'restaurants'
+                    ? 'bg-emerald-500 text-white'
+                    : isDarkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                 >
                   {translations[language].exploreRestaurants}
                 </button>
-                <button 
+                <button
                   onClick={() => setHomeSection('events')}
-                  className={`flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors ${
-                    homeSection === 'events'
-                      ? 'bg-emerald-500 text-white'
-                      : isDarkMode 
-                        ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
-                  }`}
+                  className={`flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors ${homeSection === 'events'
+                    ? 'bg-emerald-500 text-white'
+                    : isDarkMode
+                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                    }`}
                 >
                   {translations[language].exploreEvents}
                 </button>
@@ -1544,14 +1538,14 @@ export default function DashboardPage() {
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {restaurants.map(restaurant => (
-                      <div 
-                        key={restaurant.id} 
+                      <div
+                        key={restaurant.id}
                         className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
                         onClick={() => navigate(`/restaurant/${restaurant.id}`)}
                       >
                         <div className="relative h-48">
-                          <img 
-                            src={restaurant.image} 
+                          <img
+                            src={restaurant.image}
                             alt={restaurant.name}
                             className="w-full h-full object-cover"
                           />
@@ -1559,7 +1553,7 @@ export default function DashboardPage() {
                             <span className="text-emerald-400 mr-1">★</span>
                             <span>{restaurant.rating}</span>
                           </div>
-                          <button 
+                          <button
                             className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -1579,9 +1573,8 @@ export default function DashboardPage() {
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
                             {restaurant.cuisine?.map((cuisine: string, index: number) => (
-                              <span key={index} className={`px-2 py-1 ${
-                                isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                              } rounded-full text-sm`}>
+                              <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                                } rounded-full text-sm`}>
                                 {cuisine}
                               </span>
                             ))}
@@ -1600,8 +1593,8 @@ export default function DashboardPage() {
                     {events.map(event => (
                       <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
                         <div className="relative h-48">
-                          <img 
-                            src={event.image} 
+                          <img
+                            src={event.image}
                             alt={event.name}
                             className="w-full h-full object-cover"
                           />
@@ -1615,8 +1608,8 @@ export default function DashboardPage() {
                               e.stopPropagation();
                               const eventToToggle = {
                                 ...event,
-                                location: typeof event.location === 'string' 
-                                  ? event.location 
+                                location: typeof event.location === 'string'
+                                  ? event.location
                                   : event.location
                               };
                               toggleFavorite(eventToToggle);
@@ -1644,14 +1637,12 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <div className="mt-2 flex flex-wrap gap-2">
-                            <span className={`px-2 py-1 ${
-                              isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                            } rounded-full text-sm`}>
+                            <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                              } rounded-full text-sm`}>
                               {event.category}
                             </span>
-                            <span className={`px-2 py-1 ${
-                              isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                            } rounded-full text-sm`}>
+                            <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                              } rounded-full text-sm`}>
                               {event.registeredCount}/{event.capacity} Registered
                             </span>
                           </div>
@@ -1677,14 +1668,14 @@ export default function DashboardPage() {
             </h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {restaurants.map(restaurant => (
-                <div 
-                  key={restaurant.id} 
+                <div
+                  key={restaurant.id}
                   className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
                   onClick={() => navigate(`/restaurant/${restaurant.id}`)}
                 >
                   <div className="relative h-48">
-                    <img 
-                      src={restaurant.image} 
+                    <img
+                      src={restaurant.image}
                       alt={restaurant.name}
                       className="w-full h-full object-cover"
                     />
@@ -1692,7 +1683,7 @@ export default function DashboardPage() {
                       <span className="text-emerald-400 mr-1">★</span>
                       <span>{restaurant.rating}</span>
                     </div>
-                    <button 
+                    <button
                       className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1712,9 +1703,8 @@ export default function DashboardPage() {
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
                       {restaurant.cuisine?.map((cuisine: string, index: number) => (
-                        <span key={index} className={`px-2 py-1 ${
-                          isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        } rounded-full text-sm`}>
+                        <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                          } rounded-full text-sm`}>
                           {cuisine}
                         </span>
                       ))}
@@ -1735,8 +1725,8 @@ export default function DashboardPage() {
               {events.map(event => (
                 <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
                   <div className="relative h-48">
-                    <img 
-                      src={event.image} 
+                    <img
+                      src={event.image}
                       alt={event.name}
                       className="w-full h-full object-cover"
                     />
@@ -1750,8 +1740,8 @@ export default function DashboardPage() {
                         e.stopPropagation();
                         const eventToToggle = {
                           ...event,
-                          location: typeof event.location === 'string' 
-                            ? event.location 
+                          location: typeof event.location === 'string'
+                            ? event.location
                             : event.location
                         };
                         toggleFavorite(eventToToggle);
@@ -1779,14 +1769,12 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <span className={`px-2 py-1 ${
-                        isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                      } rounded-full text-sm`}>
+                      <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                        } rounded-full text-sm`}>
                         {event.category}
                       </span>
-                      <span className={`px-2 py-1 ${
-                        isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                      } rounded-full text-sm`}>
+                      <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                        } rounded-full text-sm`}>
                         {event.registeredCount}/{event.capacity} Registered
                       </span>
                     </div>
@@ -1801,299 +1789,299 @@ export default function DashboardPage() {
             </div>
           </div>
         );
-        case 'bookings':
-          // Bookings section
-          
-          return (
-            <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
-              <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-8`}>
-                My Bookings {bookings.length > 0 && `(${bookings.length})`}
-              </h1>
-              
-              {(!bookings || bookings.length === 0) ? (
-                <div>
-                  <div className={`mb-8 text-center py-12 ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-600'} rounded-3xl shadow-md p-6`}>
-                    <Calendar className="w-16 h-16 mx-auto mb-4 text-emerald-500" />
-                    <h3 className="text-xl font-medium mb-2">{translations[language].noBookings}</h3>
-                    <p className="mb-6">{translations[language].bookingsMessage}</p>
-                    
-                    {/* Section Selector Similar to Home - Explore options */}
-                    <div className="flex gap-4 max-w-md mx-auto">
-                      <button 
-                        onClick={() => {
-                          navigate('/');
-                          setActiveSection('restaurants');
-                        }}
-                        className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
-                      >
-                        {translations[language].exploreRestaurants}
-                      </button>
-                      <button 
-                        onClick={() => {
-                          navigate('/');
-                          setHomeSection('events');
-                          setActiveSection('home');
-                        }}
-                        className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
-                      >
-                        {translations[language].exploreEvents}
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Additional featured restaurants section */}
-                  <div className="mb-8">
-                    <h2 className={`text-2xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {translations[language].featuredRestaurants}
-                    </h2>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {restaurants.slice(0, 3).map(restaurant => (
-                        <div 
-                          key={restaurant.id} 
-                          className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                          onClick={() => navigate(`/restaurant/${restaurant.id}`)}
-                        >
-                          <div className="relative h-48">
-                            <img 
-                              src={restaurant.image} 
-                              alt={restaurant.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                              <span className="text-emerald-400 mr-1">★</span>
-                              <span>{restaurant.rating}</span>
-                            </div>
-                          </div>
-                          <div className="p-4">
-                            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {restaurant.name}
-                            </h3>
-                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                              <MapPin size={16} className="mr-1" />
-                              <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+      case 'bookings':
+        // Bookings section
+
+        return (
+          <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
+            <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-8`}>
+              My Bookings {bookings.length > 0 && `(${bookings.length})`}
+            </h1>
+
+            {(!bookings || bookings.length === 0) ? (
+              <div>
+                <div className={`mb-8 text-center py-12 ${isDarkMode ? 'bg-gray-800 text-gray-300' : 'bg-white text-gray-600'} rounded-3xl shadow-md p-6`}>
+                  <Calendar className="w-16 h-16 mx-auto mb-4 text-emerald-500" />
+                  <h3 className="text-xl font-medium mb-2">{translations[language].noBookings}</h3>
+                  <p className="mb-6">{translations[language].bookingsMessage}</p>
+
+                  {/* Section Selector Similar to Home - Explore options */}
+                  <div className="flex gap-4 max-w-md mx-auto">
+                    <button
+                      onClick={() => {
+                        navigate('/');
+                        setActiveSection('restaurants');
+                      }}
+                      className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
+                    >
+                      {translations[language].exploreRestaurants}
+                    </button>
+                    <button
+                      onClick={() => {
+                        navigate('/');
+                        setHomeSection('events');
+                        setActiveSection('home');
+                      }}
+                      className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
+                    >
+                      {translations[language].exploreEvents}
+                    </button>
                   </div>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {bookings.map((booking) => {
-                    const bookingId = booking._id || booking.id;
-                    const isValidMongoId = typeof bookingId === 'string' && /^[a-f\d]{24}$/i.test(bookingId);
 
-                    // Determine the name to display
-                    const bookingName =
-                      booking.restaurantId?.name ||
-                      booking.eventId?.name ||
-                      booking.restaurantName ||
-                      booking.eventName ||
-                      'Booking';
-
-                    return (
+                {/* Additional featured restaurants section */}
+                <div className="mb-8">
+                  <h2 className={`text-2xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {translations[language].featuredRestaurants}
+                  </h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {restaurants.slice(0, 3).map(restaurant => (
                       <div
-                        key={bookingId}
+                        key={restaurant.id}
                         className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                        onClick={() => {
-                          setSelectedBooking(booking);
-                          setShowInvoice(true);
-                        }}
+                        onClick={() => navigate(`/restaurant/${restaurant.id}`)}
                       >
-                        <div className="relative h-48 bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                          <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-bold bg-white text-emerald-600">
-                            {booking.status}
+                        <div className="relative h-48">
+                          <img
+                            src={restaurant.image}
+                            alt={restaurant.name}
+                            className="w-full h-full object-cover"
+                          />
+                          <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
+                            <span className="text-emerald-400 mr-1">★</span>
+                            <span>{restaurant.rating}</span>
                           </div>
-                          <h3 className="text-3xl font-bold text-white text-center p-6">
-                            {booking.restaurantId?.name || booking.eventId?.name || booking.restaurantName || booking.eventName || 'Booking'}
-                          </h3>
                         </div>
-                        <div className="p-6">
-                          <div className="space-y-3">
-                            <p className="flex items-center text-base">
-                              <Calendar className="w-5 h-5 mr-3 text-emerald-500" />
-                              <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                                {new Date(booking.date).toLocaleDateString('en-US', {
-                                  weekday: 'long',
-                                  year: 'numeric',
-                                  month: 'long',
-                                  day: 'numeric',
-                                })}
-                              </span>
-                            </p>
-                            <p className="flex items-center text-base">
-                              <Clock className="w-5 h-5 mr-3 text-emerald-500" />
-                              <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{booking.time}</span>
-                            </p>
-                            <p className="flex items-center text-base">
-                              <Users className="w-5 h-5 mr-3 text-emerald-500" />
-                              <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                                {booking.guests} {Number(booking.guests) === 1 ? 'Guest' : 'Guests'}
-                              </span>
-                            </p>
-                            {booking.table && (
-                              <p className="flex items-center text-base">
-                                <span className="w-5 h-5 flex items-center justify-center mr-3 text-emerald-500 font-bold">#</span>
-                                <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Table {booking.table}</span>
-                              </p>
-                            )}
-                            {booking.specialRequest && (
-                              <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                                <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                  <span className="font-medium">Special Request:</span> {booking.specialRequest}
-                                </p>
-                              </div>
-                            )}
-                            {isValidMongoId && (() => {
-                              // Calculate time difference - properly parse date and time
-                              let bookingDateTime: Date;
-                              try {
-                                // Handle different date formats
-                                const dateStr = typeof booking.date === 'string' ? booking.date : new Date(booking.date).toISOString();
-                                let timeStr = booking.time || '00:00';
-                                
-                                // Parse date (handle ISO format or regular date string)
-                                let datePart: string;
-                                if (dateStr.includes('T')) {
-                                  datePart = dateStr.split('T')[0];
-                                } else {
-                                  // Handle date formats like "1/25/2026" or "2026-01-25"
-                                  const dateObj = new Date(dateStr);
-                                  datePart = dateObj.toISOString().split('T')[0];
-                                }
-                                
-                                // Convert 12-hour time to 24-hour format if needed
-                                if (timeStr.includes('AM') || timeStr.includes('PM')) {
-                                  const isPM = timeStr.includes('PM');
-                                  timeStr = timeStr.replace(/AM|PM/gi, '').trim();
-                                  const [hours, minutes] = timeStr.split(':').map(s => parseInt(s.trim()));
-                                  let hour24 = hours;
-                                  
-                                  if (isPM && hours !== 12) {
-                                    hour24 = hours + 12;
-                                  } else if (!isPM && hours === 12) {
-                                    hour24 = 0;
-                                  }
-                                  
-                                  timeStr = `${hour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                                }
-                                
-                                // Create the datetime
-                                bookingDateTime = new Date(`${datePart}T${timeStr}:00`);
-                                
-                                // Validate the date
-                                if (isNaN(bookingDateTime.getTime())) {
-                                  throw new Error('Invalid date');
-                                }
-                              } catch (error) {
-                                console.error('Error parsing booking date/time:', error, { date: booking.date, time: booking.time });
-                                // Fallback: just use the date
-                                bookingDateTime = new Date(booking.date);
-                              }
-                              
-                              const now = new Date();
-                              const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                              const canCancel = hoursUntilBooking > 2;
-                              
-                              // Debug log
-                              console.log('Booking debug:', {
-                                name: bookingName,
-                                status: booking.status,
-                                date: booking.date,
-                                time: booking.time,
-                                bookingDateTime: bookingDateTime.toISOString(),
-                                now: now.toISOString(),
-                                hoursUntilBooking,
-                                canCancel
-                              });
-
-                              if (booking.status === 'pending') {
-                                return (
-                                  <div className="flex gap-2 mt-4">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleBookingAction(bookingId, 'confirm');
-                                      }}
-                                      className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
-                                    >
-                                      Confirm
-                                    </button>
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleBookingAction(bookingId, 'cancel');
-                                      }}
-                                      className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-                                    >
-                                      Cancel
-                                    </button>
-                                  </div>
-                                );
-                              } else if (booking.status === 'confirmed') {
-                                const hoursLeft = Math.floor(hoursUntilBooking);
-                                const minutesLeft = Math.floor((hoursUntilBooking - hoursLeft) * 60);
-                                
-                                if (canCancel) {
-                                  return (
-                                    <div className="mt-4">
-                                      <button
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (window.confirm('Are you sure you want to cancel this confirmed booking?')) {
-                                            handleBookingAction(bookingId, 'cancel');
-                                          }
-                                        }}
-                                        className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-                                      >
-                                        Cancel Booking
-                                      </button>
-                                      <p className="text-xs text-center mt-2 text-gray-500">
-                                        {hoursLeft > 24 
-                                          ? `${Math.floor(hoursLeft / 24)} day(s) until booking`
-                                          : `${hoursLeft}h ${minutesLeft}m until booking`
-                                        }
-                                      </p>
-                                    </div>
-                                  );
-                                } else if (hoursUntilBooking > 0) {
-                                  return (
-                                    <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                      <p className="text-xs text-yellow-800 text-center font-medium">
-                                        ⚠️ Cancellation not available
-                                      </p>
-                                      <p className="text-xs text-yellow-700 text-center mt-1">
-                                        Less than 2 hours until booking ({hoursLeft}h {minutesLeft}m left)
-                                      </p>
-                                    </div>
-                                  );
-                                } else {
-                                  return (
-                                    <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
-                                      <p className="text-xs text-gray-600 text-center font-medium">
-                                        🎉 Booking time has passed
-                                      </p>
-                                    </div>
-                                  );
-                                }
-                              }
-                              return null;
-                            })()}
-                            {!isValidMongoId && (
-                              <div className="text-xs text-red-500 mt-2">
-                                This booking cannot be confirmed/cancelled (invalid ID)
-                              </div>
-                            )}
+                        <div className="p-4">
+                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {restaurant.name}
+                          </h3>
+                          <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                            <MapPin size={16} className="mr-1" />
+                            <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
                           </div>
                         </div>
                       </div>
-                    );
-                  })}
+                    ))}
+                  </div>
                 </div>
-              )}
-            </div>
-          );
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {bookings.map((booking) => {
+                  const bookingId = booking._id || booking.id;
+                  const isValidMongoId = typeof bookingId === 'string' && /^[a-f\d]{24}$/i.test(bookingId);
+
+                  // Determine the name to display
+                  const bookingName =
+                    booking.restaurantId?.name ||
+                    booking.eventId?.name ||
+                    booking.restaurantName ||
+                    booking.eventName ||
+                    'Booking';
+
+                  return (
+                    <div
+                      key={bookingId}
+                      className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
+                      onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowInvoice(true);
+                      }}
+                    >
+                      <div className="relative h-48 bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+                        <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-bold bg-white text-emerald-600">
+                          {booking.status}
+                        </div>
+                        <h3 className="text-3xl font-bold text-white text-center p-6">
+                          {booking.restaurantId?.name || booking.eventId?.name || booking.restaurantName || booking.eventName || 'Booking'}
+                        </h3>
+                      </div>
+                      <div className="p-6">
+                        <div className="space-y-3">
+                          <p className="flex items-center text-base">
+                            <Calendar className="w-5 h-5 mr-3 text-emerald-500" />
+                            <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                              {new Date(booking.date).toLocaleDateString('en-US', {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                              })}
+                            </span>
+                          </p>
+                          <p className="flex items-center text-base">
+                            <Clock className="w-5 h-5 mr-3 text-emerald-500" />
+                            <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{booking.time}</span>
+                          </p>
+                          <p className="flex items-center text-base">
+                            <Users className="w-5 h-5 mr-3 text-emerald-500" />
+                            <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                              {booking.guests} {Number(booking.guests) === 1 ? 'Guest' : 'Guests'}
+                            </span>
+                          </p>
+                          {booking.table && (
+                            <p className="flex items-center text-base">
+                              <span className="w-5 h-5 flex items-center justify-center mr-3 text-emerald-500 font-bold">#</span>
+                              <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Table {booking.table}</span>
+                            </p>
+                          )}
+                          {booking.specialRequest && (
+                            <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
+                              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                                <span className="font-medium">Special Request:</span> {booking.specialRequest}
+                              </p>
+                            </div>
+                          )}
+                          {isValidMongoId && (() => {
+                            // Calculate time difference - properly parse date and time
+                            let bookingDateTime: Date;
+                            try {
+                              // Handle different date formats
+                              const dateStr = typeof booking.date === 'string' ? booking.date : new Date(booking.date).toISOString();
+                              let timeStr = booking.time || '00:00';
+
+                              // Parse date (handle ISO format or regular date string)
+                              let datePart: string;
+                              if (dateStr.includes('T')) {
+                                datePart = dateStr.split('T')[0];
+                              } else {
+                                // Handle date formats like "1/25/2026" or "2026-01-25"
+                                const dateObj = new Date(dateStr);
+                                datePart = dateObj.toISOString().split('T')[0];
+                              }
+
+                              // Convert 12-hour time to 24-hour format if needed
+                              if (timeStr.includes('AM') || timeStr.includes('PM')) {
+                                const isPM = timeStr.includes('PM');
+                                timeStr = timeStr.replace(/AM|PM/gi, '').trim();
+                                const [hours, minutes] = timeStr.split(':').map(s => parseInt(s.trim()));
+                                let hour24 = hours;
+
+                                if (isPM && hours !== 12) {
+                                  hour24 = hours + 12;
+                                } else if (!isPM && hours === 12) {
+                                  hour24 = 0;
+                                }
+
+                                timeStr = `${hour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                              }
+
+                              // Create the datetime
+                              bookingDateTime = new Date(`${datePart}T${timeStr}:00`);
+
+                              // Validate the date
+                              if (isNaN(bookingDateTime.getTime())) {
+                                throw new Error('Invalid date');
+                              }
+                            } catch (error) {
+                              console.error('Error parsing booking date/time:', error, { date: booking.date, time: booking.time });
+                              // Fallback: just use the date
+                              bookingDateTime = new Date(booking.date);
+                            }
+
+                            const now = new Date();
+                            const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
+                            const canCancel = hoursUntilBooking > 2;
+
+                            // Debug log
+                            console.log('Booking debug:', {
+                              name: bookingName,
+                              status: booking.status,
+                              date: booking.date,
+                              time: booking.time,
+                              bookingDateTime: bookingDateTime.toISOString(),
+                              now: now.toISOString(),
+                              hoursUntilBooking,
+                              canCancel
+                            });
+
+                            if (booking.status === 'pending') {
+                              return (
+                                <div className="flex gap-2 mt-4">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBookingAction(bookingId, 'confirm');
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
+                                  >
+                                    Confirm
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBookingAction(bookingId, 'cancel');
+                                    }}
+                                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              );
+                            } else if (booking.status === 'confirmed') {
+                              const hoursLeft = Math.floor(hoursUntilBooking);
+                              const minutesLeft = Math.floor((hoursUntilBooking - hoursLeft) * 60);
+
+                              if (canCancel) {
+                                return (
+                                  <div className="mt-4">
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('Are you sure you want to cancel this confirmed booking?')) {
+                                          handleBookingAction(bookingId, 'cancel');
+                                        }
+                                      }}
+                                      className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
+                                    >
+                                      Cancel Booking
+                                    </button>
+                                    <p className="text-xs text-center mt-2 text-gray-500">
+                                      {hoursLeft > 24
+                                        ? `${Math.floor(hoursLeft / 24)} day(s) until booking`
+                                        : `${hoursLeft}h ${minutesLeft}m until booking`
+                                      }
+                                    </p>
+                                  </div>
+                                );
+                              } else if (hoursUntilBooking > 0) {
+                                return (
+                                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                    <p className="text-xs text-yellow-800 text-center font-medium">
+                                      ⚠️ Cancellation not available
+                                    </p>
+                                    <p className="text-xs text-yellow-700 text-center mt-1">
+                                      Less than 2 hours until booking ({hoursLeft}h {minutesLeft}m left)
+                                    </p>
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
+                                    <p className="text-xs text-gray-600 text-center font-medium">
+                                      🎉 Booking time has passed
+                                    </p>
+                                  </div>
+                                );
+                              }
+                            }
+                            return null;
+                          })()}
+                          {!isValidMongoId && (
+                            <div className="text-xs text-red-500 mt-2">
+                              This booking cannot be confirmed/cancelled (invalid ID)
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
       case 'settings':
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4 md:p-8`}>
@@ -2101,8 +2089,8 @@ export default function DashboardPage() {
               <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
                 {translations[language].settings}
               </h1>
-              
-              <ProfileSettings 
+
+              <ProfileSettings
                 user={userData ? {
                   _id: userData.uid,
                   uid: userData.uid,
@@ -2118,38 +2106,38 @@ export default function DashboardPage() {
                   },
                   createdAt: userData.createdAt,
                   lastLogin: userData.lastLogin
-                } : null} 
+                } : null}
                 isDarkMode={isDarkMode}
                 onUpdate={async (updates) => {
                   if (!auth.currentUser) return;
                   try {
                     // Update in Firebase Auth if displayName or photoURL is being updated
                     const authUpdates: { displayName?: string; photoURL?: string | null } = {};
-                    
+
                     if ('displayName' in updates) {
                       authUpdates.displayName = updates.displayName;
                     }
                     if ('photoURL' in updates) {
                       authUpdates.photoURL = updates.photoURL;
                     }
-                    
+
                     if (Object.keys(authUpdates).length > 0) {
                       await updateProfile(auth.currentUser, authUpdates);
                     }
-                    
+
                     // Update in Firestore - filter out undefined values to avoid Firestore errors
                     const firestoreUpdates: any = {
                       updatedAt: new Date()
                     };
-                    
+
                     // Only add defined values to Firestore update
                     if (updates.displayName !== undefined) firestoreUpdates.displayName = updates.displayName;
                     if (updates.name !== undefined) firestoreUpdates.name = updates.name;
                     if (updates.photoURL !== undefined) firestoreUpdates.photoURL = updates.photoURL;
                     if (updates.email !== undefined) firestoreUpdates.email = updates.email;
-                    
+
                     await setDoc(doc(db, 'users', auth.currentUser.uid), firestoreUpdates, { merge: true });
-                    
+
                     // Fetch the latest profile data from backend to ensure sync
                     try {
                       const res = await fetch(`/api/profile/${auth.currentUser.uid}`);
@@ -2194,7 +2182,7 @@ export default function DashboardPage() {
                   }
                 }}
               />
-              
+
               {/* Location Settings */}
               <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-3xl p-6`}>
                 <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
@@ -2222,13 +2210,12 @@ export default function DashboardPage() {
                     <button
                       key={lang.code}
                       onClick={() => handleLanguageChange(lang.code)}
-                      className={`p-4 rounded-xl text-center transition-colors ${
-                        language === lang.code
-                          ? 'bg-emerald-500 text-white'
+                      className={`p-4 rounded-xl text-center transition-colors ${language === lang.code
+                        ? 'bg-emerald-500 text-white'
                         : isDarkMode
                           ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      }`}
+                        }`}
                     >
                       {lang.name}
                     </button>
@@ -2242,9 +2229,8 @@ export default function DashboardPage() {
                   {translations[language].themeSettings}
                 </h2>
                 <div className="flex flex-col space-y-6">
-                  <div className={`flex items-center justify-between p-4 rounded-xl ${
-                    isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
-                  }`}>
+                  <div className={`flex items-center justify-between p-4 rounded-xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
+                    }`}>
                     <div className="flex items-center">
                       {isDarkMode ? (
                         <Moon className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mr-3`} />
@@ -2265,12 +2251,10 @@ export default function DashboardPage() {
                       className="relative"
                       aria-label="Toggle theme"
                     >
-                      <div className={`w-14 h-8 rounded-full transition-colors ${
-                        isDarkMode ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}>
-                        <div className={`absolute w-6 h-6 rounded-full bg-white top-1 transition-transform ${
-                          isDarkMode ? 'translate-x-7' : 'translate-x-1'
-                        } shadow-sm flex items-center justify-center`}>
+                      <div className={`w-14 h-8 rounded-full transition-colors ${isDarkMode ? 'bg-emerald-500' : 'bg-gray-300'
+                        }`}>
+                        <div className={`absolute w-6 h-6 rounded-full bg-white top-1 transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'
+                          } shadow-sm flex items-center justify-center`}>
                           {isDarkMode ? (
                             <Moon className="w-4 h-4 text-gray-600" />
                           ) : (
@@ -2283,7 +2267,7 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div >
         );
       case 'favorites':
         // Separate favorites by type
@@ -2331,8 +2315,8 @@ export default function DashboardPage() {
                       {favoriteRestaurants.map(item => (
                         <div key={item.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30`}>
                           <div className="relative h-48">
-                            <img 
-                              src={item.image} 
+                            <img
+                              src={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover"
                             />
@@ -2342,7 +2326,7 @@ export default function DashboardPage() {
                                 <span>{item.rating}</span>
                               </div>
                             )}
-                            <button 
+                            <button
                               className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
                               onClick={() => toggleFavorite(item as any)}
                             >
@@ -2380,8 +2364,8 @@ export default function DashboardPage() {
                       {favoriteEvents.map(item => (
                         <div key={item.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30`}>
                           <div className="relative h-48">
-                            <img 
-                              src={item.image} 
+                            <img
+                              src={item.image}
                               alt={item.name}
                               className="w-full h-full object-cover"
                             />
@@ -2391,7 +2375,7 @@ export default function DashboardPage() {
                                 <span>{item.price}</span>
                               </div>
                             )}
-                            <button 
+                            <button
                               className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
                               onClick={() => toggleFavorite(item as any)}
                             >
@@ -2454,22 +2438,18 @@ export default function DashboardPage() {
         return (
           <div className="p-6">
             {mappedNotifications.length === 0 ? (
-              <div className={`flex flex-col items-center justify-center text-center p-8 ${
-                isDarkMode ? 'text-gray-400' : 'text-gray-500'
-              }`}>
-                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-                  isDarkMode ? 'bg-gray-800' : 'bg-gray-100'
+              <div className={`flex flex-col items-center justify-center text-center p-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
                 }`}>
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'
+                  }`}>
                   <Bell size={32} className="text-emerald-500" />
                 </div>
-                <h3 className={`text-xl font-semibold mb-2 ${
-                  isDarkMode ? 'text-gray-200' : 'text-gray-700'
-                }`}>
+                <h3 className={`text-xl font-semibold mb-2 ${isDarkMode ? 'text-gray-200' : 'text-gray-700'
+                  }`}>
                   No notifications yet
                 </h3>
-                <p className={`text-sm ${
-                  isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                }`}>
+                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
                   You'll see notifications here when there are updates about your bookings, events, or other activities.
                 </p>
               </div>
@@ -2482,9 +2462,8 @@ export default function DashboardPage() {
                   {unreadCount > 0 && (
                     <button
                       onClick={markAllNotificationsAsRead}
-                      className={`px-4 py-2 rounded-lg ${
-                        isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
-                      } text-sm font-medium transition-colors`}
+                      className={`px-4 py-2 rounded-lg ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
+                        } text-sm font-medium transition-colors`}
                     >
                       Mark all as read
                     </button>
@@ -2494,40 +2473,35 @@ export default function DashboardPage() {
                   <div
                     key={index}
                     onClick={() => setSelectedNotification(notification)}
-                    className={`flex items-start p-4 rounded-xl transition-colors cursor-pointer ${
-                      isDarkMode
-                        ? notification.read
-                          ? 'bg-gray-800 hover:bg-gray-750'
-                          : 'bg-gray-800/80 ring-1 ring-emerald-500 hover:bg-gray-800'
-                        : notification.read
-                          ? 'bg-white hover:bg-gray-50'
-                          : 'bg-white/90 ring-1 ring-emerald-500 hover:bg-emerald-50'
-                    }`}
+                    className={`flex items-start p-4 rounded-xl transition-colors cursor-pointer ${isDarkMode
+                      ? notification.read
+                        ? 'bg-gray-800 hover:bg-gray-750'
+                        : 'bg-gray-800/80 ring-1 ring-emerald-500 hover:bg-gray-800'
+                      : notification.read
+                        ? 'bg-white hover:bg-gray-50'
+                        : 'bg-white/90 ring-1 ring-emerald-500 hover:bg-emerald-50'
+                      }`}
                   >
                     <Bell
-                      className={`flex-shrink-0 ${
-                        notification.read
-                          ? isDarkMode
-                            ? 'text-gray-400'
-                            : 'text-gray-500'
-                          : 'text-emerald-500'
-                      }`}
+                      className={`flex-shrink-0 ${notification.read
+                        ? isDarkMode
+                          ? 'text-gray-400'
+                          : 'text-gray-500'
+                        : 'text-emerald-500'
+                        }`}
                       size={20}
                     />
                     <div className="ml-4 flex-1">
-                      <h3 className={`text-sm font-semibold mb-1 ${
-                        isDarkMode ? 'text-gray-100' : 'text-gray-900'
-                      }`}>
+                      <h3 className={`text-sm font-semibold mb-1 ${isDarkMode ? 'text-gray-100' : 'text-gray-900'
+                        }`}>
                         {notification.title}
                       </h3>
-                      <p className={`text-sm line-clamp-2 ${
-                        isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                      }`}>
+                      <p className={`text-sm line-clamp-2 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                        }`}>
                         {notification.message}
                       </p>
-                      <p className={`text-xs mt-1 ${
-                        isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                      }`}>
+                      <p className={`text-xs mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                        }`}>
                         {formatTimestamp(notification.timestamp)}
                       </p>
                     </div>
@@ -2559,16 +2533,15 @@ export default function DashboardPage() {
             <X className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`} />
           </button>
         </div>
-        
+
         {/* Current Location Button */}
         <button
           onClick={detectLocation}
           disabled={isDetectingLocation}
-          className={`w-full mb-6 px-4 py-3 rounded-xl text-white transition-colors flex items-center justify-center gap-2 ${
-            isDetectingLocation 
-              ? 'bg-gray-400 cursor-not-allowed' 
-              : 'bg-emerald-500 hover:bg-emerald-600'
-          }`}
+          className={`w-full mb-6 px-4 py-3 rounded-xl text-white transition-colors flex items-center justify-center gap-2 ${isDetectingLocation
+            ? 'bg-gray-400 cursor-not-allowed'
+            : 'bg-emerald-500 hover:bg-emerald-600'
+            }`}
         >
           {isDetectingLocation ? (
             <>
@@ -2592,16 +2565,15 @@ export default function DashboardPage() {
             type="text"
             value={searchTerm}
             placeholder="Search cities..."
-            className={`w-full ${
-              isDarkMode 
-                ? 'bg-gray-700 text-white placeholder-gray-400 focus:ring-emerald-500' 
-                : 'bg-gray-100 text-gray-900 placeholder-gray-500 focus:ring-emerald-500'
-            } rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2`}
+            className={`w-full ${isDarkMode
+              ? 'bg-gray-700 text-white placeholder-gray-400 focus:ring-emerald-500'
+              : 'bg-gray-100 text-gray-900 placeholder-gray-500 focus:ring-emerald-500'
+              } rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2`}
             onChange={(e) => {
               const term = e.target.value;
               setSearchTerm(term);
-              const filtered = indianCities.filter(city => 
-                city.city.toLowerCase().includes(term.toLowerCase()) || 
+              const filtered = indianCities.filter(city =>
+                city.city.toLowerCase().includes(term.toLowerCase()) ||
                 city.state.toLowerCase().includes(term.toLowerCase())
               );
               setFilteredCities(filtered);
@@ -2619,11 +2591,10 @@ export default function DashboardPage() {
                 state: city.state,
                 country: city.country
               })}
-              className={`w-full text-left px-4 py-3 ${
-                isDarkMode 
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white' 
-                  : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-              } rounded-xl transition-colors flex items-center`}
+              className={`w-full text-left px-4 py-3 ${isDarkMode
+                ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
+                } rounded-xl transition-colors flex items-center`}
             >
               <MapPin className="text-emerald-500 mr-3" size={16} />
               <span>{city.city}, {city.state}</span>
@@ -2641,7 +2612,7 @@ export default function DashboardPage() {
 
   const renderAvatarModal = () => {
     if (!isAvatarModalOpen) return null;
-    
+
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="absolute inset-0 bg-black/50" onClick={() => setIsAvatarModalOpen(false)} />
@@ -2661,19 +2632,18 @@ export default function DashboardPage() {
                     handleAvatarSelect(avatar.src);
                   }
                 }}
-                className={`relative aspect-square rounded-xl overflow-hidden border-4 transition-colors ${
-                  avatar.src === 'initials' && userData?.photoURL === null
+                className={`relative aspect-square rounded-xl overflow-hidden border-4 transition-colors ${avatar.src === 'initials' && userData?.photoURL === null
+                  ? 'border-emerald-500'
+                  : userData?.photoURL === avatar.src
                     ? 'border-emerald-500'
-                    : userData?.photoURL === avatar.src
-                      ? 'border-emerald-500'
-                      : isDarkMode
-                        ? 'border-gray-700 hover:border-gray-600'
-                        : 'border-gray-200 hover:border-gray-300'
-                }`}
+                    : isDarkMode
+                      ? 'border-gray-700 hover:border-gray-600'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
               >
                 {avatar.src === 'initials' ? (
-                  <InitialsAvatar 
-                    name={userData?.displayName ?? ''} 
+                  <InitialsAvatar
+                    name={userData?.displayName ?? ''}
                     className="w-full h-full"
                   />
                 ) : (
@@ -2724,10 +2694,10 @@ export default function DashboardPage() {
             }
           );
         }
-        
+
         // Clear the state to prevent showing the toast again on refresh
         navigate(location.pathname, { replace: true, state: {} });
-        
+
         // Fetch latest bookings from API to ensure we have the most up-to-date data
         fetchBookingsFromAPI();
       }
@@ -2735,7 +2705,7 @@ export default function DashboardPage() {
 
     // Initial check for booking success when component mounts or location changes
     handleBookingSuccess();
-    
+
     // Set up an interval to refresh bookings periodically
     const intervalId = setInterval(() => {
       if (auth.currentUser && activeSection === 'bookings') {
@@ -2756,14 +2726,14 @@ export default function DashboardPage() {
         setBookings([]);
         return;
       }
-      
+
       setIsLoading(true);
-      
+
       try {
         // Fetch bookings from the API
         const fetchedBookings = await bookingsApi.getAll();
         console.log('Fetched bookings from API:', fetchedBookings);
-        
+
         // Debug: Log each booking structure
         fetchedBookings.forEach((booking: Booking, index: number) => {
           console.log(`Booking ${index + 1}:`, {
@@ -2777,7 +2747,7 @@ export default function DashboardPage() {
             time: booking.time
           });
         });
-        
+
         setBookings(fetchedBookings);
       } catch (error) {
         console.error('Error fetching bookings:', error);
@@ -2788,7 +2758,7 @@ export default function DashboardPage() {
       setIsLoading(false);
     }
   };
-  
+
   // Load bookings when component mounts
   useEffect(() => {
     // Only fetch bookings if user is authenticated
@@ -2811,7 +2781,7 @@ export default function DashboardPage() {
         setBookings([]);
       }
     });
-    
+
     // Clean up subscription on unmount
     return () => unsubscribe();
   }, []);
@@ -2855,12 +2825,10 @@ export default function DashboardPage() {
     <>
       <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
         {/* Sidebar */}
-        <aside 
-          className={`fixed top-0 left-0 h-full w-[280px] transform ${
-            isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-          } transition-transform duration-300 ease-in-out z-50 ${
-            isDarkMode ? 'bg-gray-800' : 'bg-white'
-          } border-r border-gray-200 shadow-lg overflow-y-auto`}
+        <aside
+          className={`fixed top-0 left-0 h-full w-[280px] transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+            } transition-transform duration-300 ease-in-out z-50 ${isDarkMode ? 'bg-gray-800' : 'bg-white'
+            } border-r border-gray-200 shadow-lg overflow-y-auto`}
         >
           <div className="p-6 flex flex-col h-full">
             {/* Dineingo Logo */}
@@ -2868,7 +2836,7 @@ export default function DashboardPage() {
               <div className="text-2xl font-bold relative">
                 D<span className="relative">i<span className="absolute -top-2.5 -right-0.5 text-red-500 text-2.5xl">•</span></span>neIn<span className="text-yellow-400">Go</span>
               </div>
-              <button 
+              <button
                 onClick={toggleSidebar}
                 className="lg:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
               >
@@ -2904,8 +2872,8 @@ export default function DashboardPage() {
                       }}
                     />
                   ) : (
-                    <InitialsAvatar 
-                      name={userData?.displayName ?? ''} 
+                    <InitialsAvatar
+                      name={userData?.displayName ?? ''}
                       className="w-12 h-12 rounded-full border-2 border-emerald-500"
                     />
                   )}
@@ -2942,13 +2910,12 @@ export default function DashboardPage() {
                     }
                     handleNavigation(id as Section);
                   }}
-                  className={`w-full flex items-center px-4 py-3 text-left rounded-xl transition-colors ${
-                    activeSection === id
-                      ? 'bg-emerald-500 text-white font-medium'
-                      : isDarkMode 
-                        ? 'text-gray-200 hover:bg-gray-700/70' 
-                        : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  className={`w-full flex items-center px-4 py-3 text-left rounded-xl transition-colors ${activeSection === id
+                    ? 'bg-emerald-500 text-white font-medium'
+                    : isDarkMode
+                      ? 'text-gray-200 hover:bg-gray-700/70'
+                      : 'text-gray-700 hover:bg-gray-100'
+                    }`}
                 >
                   <span className="inline-flex items-center justify-center w-8">
                     {icon}
@@ -2973,19 +2940,18 @@ export default function DashboardPage() {
               {/* Dark Mode Toggle */}
               <button
                 onClick={toggleDarkMode}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
-                  isDarkMode 
-                    ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50' 
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${isDarkMode
+                  ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
               >
                 <div className="flex items-center">
-                <span className="inline-flex items-center justify-center w-8">
+                  <span className="inline-flex items-center justify-center w-8">
                     {isDarkMode ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
-                </span>
-                <span className="ml-3 text-sm font-medium">
+                  </span>
+                  <span className="ml-3 text-sm font-medium">
                     {isDarkMode ? translations[language].darkMode : translations[language].lightMode}
-                </span>
+                  </span>
                 </div>
                 <div className={`w-11 h-6 rounded-full relative transition-colors ${isDarkMode ? 'bg-emerald-500' : 'bg-gray-300'}`}>
                   <div className={`absolute w-5 h-5 rounded-full bg-white top-0.5 transition-transform ${isDarkMode ? 'translate-x-5' : 'translate-x-1.5'}`}></div>
@@ -3009,16 +2975,15 @@ export default function DashboardPage() {
         {/* Mobile Menu Button */}
         <button
           onClick={toggleSidebar}
-          className={`fixed top-4 left-4 z-50 p-2 rounded-full ${
-            isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
-          } shadow-lg md:hidden`}
+          className={`fixed top-4 left-4 z-50 p-2 rounded-full ${isDarkMode ? 'bg-gray-800 text-white' : 'bg-white text-gray-900'
+            } shadow-lg md:hidden`}
         >
           <Menu className={`w-7 h-7 ${isDarkMode ? 'text-white' : 'text-black'}`} />
         </button>
 
         {/* Overlay for mobile */}
         {isSidebarOpen && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
             onClick={toggleSidebar}
           />
@@ -3030,15 +2995,15 @@ export default function DashboardPage() {
           <header className="px-4 py-3">
             <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-emerald-400'} rounded-2xl px-4 py-3 flex items-center justify-between shadow-lg`}>
               <div className="flex items-center gap-3">
-                <button 
-                  onClick={toggleSidebar} 
+                <button
+                  onClick={toggleSidebar}
                   className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors"
                   aria-label="Toggle menu"
                 >
                   <Menu className={`w-7 h-7 ${isDarkMode ? 'text-white' : 'text-black'}`} />
                 </button>
-                <div 
-                  className="flex items-center cursor-pointer" 
+                <div
+                  className="flex items-center cursor-pointer"
                   onClick={() => window.location.reload()}
                 >
                   <div className="text-2xl font-bold relative">
@@ -3048,62 +3013,62 @@ export default function DashboardPage() {
               </div>
 
               <div className="flex items-center gap-4">
-                  <div className="relative hidden md:block">
-                    <input
-                      type="text"
-                      placeholder={translations[language].searchPlaceholder}
-                      className="w-[300px] px-4 py-2 rounded-xl bg-white/90 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-500"
-                      value={searchTerm}
-                      onChange={(e) => handleSearch(e.target.value)}
+                <div className="relative hidden md:block">
+                  <input
+                    type="text"
+                    placeholder={translations[language].searchPlaceholder}
+                    className="w-[300px] px-4 py-2 rounded-xl bg-white/90 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-500"
+                    value={searchTerm}
+                    onChange={(e) => handleSearch(e.target.value)}
+                  />
+                  <button className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Search className="w-5 h-5 text-gray-500" />
+                  </button>
+                </div>
+
+                {/* Notification Bell Component */}
+                <div className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors relative">
+                  <button
+                    style={{ width: '100%', height: '100%', background: 'none', border: 'none', padding: 0, margin: 0 }}
+                    onClick={() => setActiveSection('messages')}
+                    aria-label="Show notifications/messages"
+                  >
+                    <NotificationBell />
+                  </button>
+                </div>
+
+                {/* Change Avatar Button */}
+                <button
+                  className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors"
+                  onClick={() => setIsAvatarModalOpen(true)}
+                  title="Change avatar"
+                >
+                  <Settings className={`w-5 h-5 ${isDarkMode ? 'text-white' : 'text-black'}`} />
+                </button>
+
+                {/* Profile Button */}
+                <button
+                  className="relative w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
+                  onClick={() => handleNavigation('settings')}
+                >
+                  {userData?.photoURL && typeof userData.photoURL === 'string' && userData.photoURL.trim() !== '' ? (
+                    <img
+                      src={userData.photoURL}
+                      alt="profile"
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        forceInitialsAvatar();
+                      }}
                     />
-                    <button className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Search className="w-5 h-5 text-gray-500" />
-                    </button>
-                  </div>
-
-                  {/* Notification Bell Component */}
-                  <div className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors relative">
-                    <button
-                      style={{ width: '100%', height: '100%', background: 'none', border: 'none', padding: 0, margin: 0 }}
-                      onClick={() => setActiveSection('messages')}
-                      aria-label="Show notifications/messages"
-                    >
-                      <NotificationBell />
-                    </button>
-                  </div>
-
-                  {/* Change Avatar Button */}
-                  <button 
-                    className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors"
-                    onClick={() => setIsAvatarModalOpen(true)}
-                    title="Change avatar"
-                  >
-                    <Settings className={`w-5 h-5 ${isDarkMode ? 'text-white' : 'text-black'}`} />
-                  </button>
-
-                  {/* Profile Button */}
-                  <button 
-                    className="relative w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
-                    onClick={() => handleNavigation('settings')}
-                  >
-                    {userData?.photoURL && typeof userData.photoURL === 'string' && userData.photoURL.trim() !== '' ? (
-                      <img 
-                        src={userData.photoURL} 
-                        alt="profile" 
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          forceInitialsAvatar();
-                        }}
-                      />
-                    ) : (
-                      <InitialsAvatar
-                        name={userData?.displayName ?? ''}
-                        className="w-full h-full"
-                      />
-                    )}
-                  </button>
+                  ) : (
+                    <InitialsAvatar
+                      name={userData?.displayName ?? ''}
+                      className="w-full h-full"
+                    />
+                  )}
+                </button>
               </div>
             </div>
           </header>
@@ -3112,66 +3077,66 @@ export default function DashboardPage() {
           <main className="px-4 py-6 relative">
             {/* Doodle Art Background */}
             <div className="absolute inset-0 overflow-hidden z-0 opacity-25">
-              <img 
-                src="/images/dodle.png" 
-                alt="" 
-                className="absolute w-40 h-40 top-10 left-10 transform rotate-12" 
+              <img
+                src="/images/dodle.png"
+                alt=""
+                className="absolute w-40 h-40 top-10 left-10 transform rotate-12"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(12deg)'}
               />
-              <img 
-                src="/images/meatdodle.png" 
-                alt="" 
-                className="absolute w-28 h-28 top-1/3 right-1/3 transform -rotate-12" 
+              <img
+                src="/images/meatdodle.png"
+                alt=""
+                className="absolute w-28 h-28 top-1/3 right-1/3 transform -rotate-12"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(-12deg)'}
               />
-              <img 
-                src="/images/nooddodle.png" 
-                alt="" 
-                className="absolute w-40 h-40 bottom-20 right-10 transform rotate-6" 
+              <img
+                src="/images/nooddodle.png"
+                alt=""
+                className="absolute w-40 h-40 bottom-20 right-10 transform rotate-6"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(6deg)'}
               />
-              <img 
-                src="/images/hotdogdodle.png" 
-                alt="" 
-                className="absolute w-32 h-32 top-1/2 left-20 transform -rotate-3" 
+              <img
+                src="/images/hotdogdodle.png"
+                alt=""
+                className="absolute w-32 h-32 top-1/2 left-20 transform -rotate-3"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(-3deg)'}
               />
-              <img 
-                src="/images/guiterdodle.png" 
-                alt="" 
-                className="absolute w-36 h-36 bottom-1/3 right-1/4 transform rotate-9" 
+              <img
+                src="/images/guiterdodle.png"
+                alt=""
+                className="absolute w-36 h-36 bottom-1/3 right-1/4 transform rotate-9"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(9deg)'}
               />
-              <img 
-                src="/images/pioanododle.png" 
-                alt="" 
-                className="absolute w-44 h-44 top-2/3 left-1/3 transform -rotate-6" 
+              <img
+                src="/images/pioanododle.png"
+                alt=""
+                className="absolute w-44 h-44 top-2/3 left-1/3 transform -rotate-6"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(-6deg)'}
               />
-              <img 
-                src="/images/eventdodle.png" 
-                alt="" 
-                className="absolute w-28 h-28 top-40 left-1/2 transform rotate-12" 
+              <img
+                src="/images/eventdodle.png"
+                alt=""
+                className="absolute w-28 h-28 top-40 left-1/2 transform rotate-12"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(12deg)'}
               />
-              <img 
-                src="/images/teacrosdod.png" 
-                alt="" 
-                className="absolute w-32 h-32 bottom-40 right-1/2 transform -rotate-9" 
+              <img
+                src="/images/teacrosdod.png"
+                alt=""
+                className="absolute w-32 h-32 bottom-40 right-1/2 transform -rotate-9"
                 style={{ objectFit: 'contain', transition: 'all 0.5s ease-in-out', filter: 'brightness(1.3) contrast(1.1)' }}
                 onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.1) rotate(0deg)'}
                 onMouseLeave={(e) => e.currentTarget.style.transform = 'rotate(-9deg)'}
@@ -3190,13 +3155,13 @@ export default function DashboardPage() {
 
         {/* Invoice Modal */}
         {showInvoice && selectedBooking && (
-          <InvoiceModal 
-            booking={selectedBooking} 
+          <InvoiceModal
+            booking={selectedBooking}
             onClose={() => {
               setShowInvoice(false);
               setSelectedBooking(null);
-            }} 
-            isDarkMode={isDarkMode} 
+            }}
+            isDarkMode={isDarkMode}
           />
         )}
 
@@ -3207,37 +3172,32 @@ export default function DashboardPage() {
 
         {/* Notification Detail Modal */}
         {selectedNotification && (
-          <div 
+          <div
             className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
             onClick={() => setSelectedNotification(null)}
           >
-            <div 
-              className={`rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden ${
-                isDarkMode ? 'bg-gray-800' : 'bg-white'
-              }`}
+            <div
+              className={`rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'
+                }`}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className={`flex items-start justify-between p-6 border-b ${
-                isDarkMode ? 'border-gray-700' : 'border-gray-200'
-              }`}>
+              <div className={`flex items-start justify-between p-6 border-b ${isDarkMode ? 'border-gray-700' : 'border-gray-200'
+                }`}>
                 <div className="flex-1 pr-4">
-                  <h2 className={`text-2xl font-bold ${
-                    isDarkMode ? 'text-white' : 'text-gray-800'
-                  }`}>
+                  <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'
+                    }`}>
                     {selectedNotification.title}
                   </h2>
-                  <p className={`text-sm mt-1 ${
-                    isDarkMode ? 'text-gray-400' : 'text-gray-500'
-                  }`}>
+                  <p className={`text-sm mt-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'
+                    }`}>
                     {formatTimestamp(selectedNotification.timestamp)}
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedNotification(null)}
-                  className={`transition-colors ${
-                    isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
-                  }`}
+                  className={`transition-colors ${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-400 hover:text-gray-600'
+                    }`}
                   title="Close"
                 >
                   <X size={24} />
@@ -3246,24 +3206,21 @@ export default function DashboardPage() {
 
               {/* Modal Body */}
               <div className="p-6 overflow-y-auto max-h-[50vh]">
-                <div className={`whitespace-pre-line leading-relaxed ${
-                  isDarkMode ? 'text-gray-300' : 'text-gray-700'
-                }`}>
+                <div className={`whitespace-pre-line leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-700'
+                  }`}>
                   {selectedNotification.message}
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className={`flex items-center justify-end gap-3 p-6 border-t ${
-                isDarkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
-              }`}>
+              <div className={`flex items-center justify-end gap-3 p-6 border-t ${isDarkMode ? 'border-gray-700 bg-gray-750' : 'border-gray-200 bg-gray-50'
+                }`}>
                 <button
                   onClick={() => setSelectedNotification(null)}
-                  className={`px-6 py-2 border rounded-lg transition-colors ${
-                    isDarkMode 
-                      ? 'text-gray-300 bg-gray-700 border-gray-600 hover:bg-gray-600' 
-                      : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-100'
-                  }`}
+                  className={`px-6 py-2 border rounded-lg transition-colors ${isDarkMode
+                    ? 'text-gray-300 bg-gray-700 border-gray-600 hover:bg-gray-600'
+                    : 'text-gray-700 bg-white border-gray-300 hover:bg-gray-100'
+                    }`}
                 >
                   Close
                 </button>

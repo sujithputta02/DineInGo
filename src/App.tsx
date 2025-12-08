@@ -11,6 +11,7 @@ import ReservationPreview from './pages/ReservationPreview';
 import TableSelection from './pages/TableSelection';
 import ReservationDetailsPage from './pages/ReservationDetailsPage';
 import TermsPage from './TermsPage';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import UserFeedbackForm from './components/UserFeedbackForm';
 import DebugPage from './pages/DebugPage';
 import FoodMenu from './pages/FoodMenu';
@@ -100,6 +101,7 @@ const App: React.FC = () => {
               <Route path="/event/:id/preview" element={<EventPreview />} />
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               <Route path="/admin-login" element={<AdminLoginPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
             </Routes>
           </NotificationProvider>
         </UserActivityProvider>

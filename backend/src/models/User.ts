@@ -14,6 +14,10 @@ export interface IUser extends Document {
   displayName: string;
   name: string;
   photoURL: string | null;
+  profilePicture?: {
+    data: Buffer;
+    contentType: string;
+  };
   phoneNumber?: string;
   address?: {
     street?: string;
@@ -66,6 +70,10 @@ const userSchema = new Schema<IUser>({
   displayName: { type: String, required: true },
   name: { type: String, required: true },
   photoURL: { type: String, default: null },
+  profilePicture: {
+    data: Buffer,
+    contentType: String
+  },
   phoneNumber: { type: String, default: '' },
   address: {
     street: { type: String, default: '' },
@@ -100,19 +108,19 @@ const userSchema = new Schema<IUser>({
 });
 
 // Static method to log activities for a user
-userSchema.statics.checkActivities = async function(uid: string): Promise<IActivity[] | null> {
+userSchema.statics.checkActivities = async function (uid: string): Promise<IActivity[] | null> {
   try {
     const user = await this.findOne({ uid });
     if (!user) {
       console.log(`No user found with uid: ${uid}`);
       return null;
     }
-    
+
     console.log(`User ${user.email} (${uid}) has ${user.activities.length} activities:`);
     user.activities.forEach((activity: IActivity, i: number) => {
-      console.log(`  ${i+1}. ${activity.type} (${activity.source || 'unknown'}) - ${activity.timestamp}`);
+      console.log(`  ${i + 1}. ${activity.type} (${activity.source || 'unknown'}) - ${activity.timestamp}`);
     });
-    
+
     return user.activities;
   } catch (error) {
     console.error('Error checking activities:', error);

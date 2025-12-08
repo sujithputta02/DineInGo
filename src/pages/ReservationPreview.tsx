@@ -63,35 +63,35 @@ const ReservationPreview: React.FC = () => {
   const type = searchParams.get('type') || 'restaurant';
 
   const getTotalPrice = useMemo(() => {
-    console.log('getTotalPrice called with:', { 
-      hasRestaurant: !!restaurant, 
-      hasMenu: !!restaurant?.menu, 
+    console.log('getTotalPrice called with:', {
+      hasRestaurant: !!restaurant,
+      hasMenu: !!restaurant?.menu,
       menuLength: restaurant?.menu?.length,
       selectedItems: selectedMenuItems,
       dataReady: dataReady
     });
-    
+
     if (!restaurant?.menu || Object.keys(selectedMenuItems).length === 0) {
       console.log('No restaurant menu or no selected items');
       return 0;
     }
-    
+
     const total = Object.entries(selectedMenuItems).reduce((sum, [itemId, count]) => {
       // Try to find the item in the menu
       const item = restaurant.menu?.find(m => String(m.id) === String(itemId));
-      
+
       if (!item) {
         console.warn(`Item not found in menu: ${itemId}`);
         console.log('Available menu items:', restaurant.menu?.map(m => ({ id: m.id, name: m.name })));
         return sum;
       }
-      
+
       const itemPrice = Number(item.price) || 0;
       const itemTotal = itemPrice * count;
       console.log(`Item ${itemId}: ${item.name} - Price: ${itemPrice}, Count: ${count}, Total: ${itemTotal}`);
       return sum + itemTotal;
     }, 0);
-    
+
     console.log('Total price calculated:', total);
     return total;
   }, [restaurant?.menu, selectedMenuItems]);
@@ -123,7 +123,7 @@ const ReservationPreview: React.FC = () => {
             console.log('Restaurant ID requested:', id, 'Restaurant ID loaded:', restaurantData?.id); // Debug log
 
             // Check if the selected menu items exist in this restaurant
-            const missingItems = Object.keys(menuItems).filter(itemId => 
+            const missingItems = Object.keys(menuItems).filter(itemId =>
               !restaurantData?.menu?.some(item => item.id === itemId)
             );
 
@@ -133,7 +133,7 @@ const ReservationPreview: React.FC = () => {
               // This is a fallback for when the wrong restaurant ID is passed
               for (let restaurantId = 1; restaurantId <= 6; restaurantId++) {
                 const testRestaurant = await getMockRestaurantById(restaurantId.toString());
-                const allItemsFound = Object.keys(menuItems).every(itemId => 
+                const allItemsFound = Object.keys(menuItems).every(itemId =>
                   testRestaurant?.menu?.some(item => item.id === itemId)
                 );
                 if (allItemsFound) {
@@ -224,11 +224,11 @@ const ReservationPreview: React.FC = () => {
         },
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to send email');
       }
-      
+
       console.log('Email sent successfully');
     } catch (error) {
       console.error('Error sending email:', error);
@@ -271,7 +271,7 @@ const ReservationPreview: React.FC = () => {
         <div className="absolute inset-0 grid grid-cols-3 gap-2">
           {type === 'restaurant' && restaurant && restaurantPreviewImages[restaurant.name]?.map((image, index) => (
             <div key={index} className={`relative ${index === 0 ? 'col-span-2 row-span-2' : ''}`}>
-              <img 
+              <img
                 src={image}
                 alt={`${restaurant.name} ambiance ${index + 1}`}
                 className="w-full h-full object-cover"
@@ -280,7 +280,7 @@ const ReservationPreview: React.FC = () => {
           ))}
           {type === 'event' && event && (
             <div className="col-span-3 row-span-3">
-              <img 
+              <img
                 src={event.image}
                 alt={event.name}
                 className="w-full h-full object-cover"
@@ -294,16 +294,16 @@ const ReservationPreview: React.FC = () => {
               <h1 className="text-5xl font-bold mb-2">{restaurant.name}</h1>
               <p className="text-lg mb-2">{restaurant.cuisine?.join(', ')}</p>
               <div className="flex items-center gap-2 group cursor-pointer"
-                   onClick={() => {
-                     if (restaurant?.address) {
-                       window.open(
-                         `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                           restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`
-                         )}`,
-                         '_blank'
-                       );
-                     }
-                   }}>
+                onClick={() => {
+                  if (restaurant?.address) {
+                    window.open(
+                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                        restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`
+                      )}`,
+                      '_blank'
+                    );
+                  }
+                }}>
                 <MapPin size={16} className="text-white group-hover:text-emerald-400 transition-colors" />
                 <p className="text-sm opacity-90 group-hover:text-emerald-400 transition-colors">
                   {restaurant?.address || `${restaurant?.location.city}, ${restaurant?.location.state}`}
@@ -332,7 +332,7 @@ const ReservationPreview: React.FC = () => {
 
       {/* Back Navigation */}
       <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
-        <button 
+        <button
           onClick={() => {
             const params = new URLSearchParams();
             if (date) params.set('date', date);
@@ -459,13 +459,13 @@ const ReservationPreview: React.FC = () => {
                 </div>
 
                 <div className="mt-4">
-                  <label className="flex items-center">
+                  <label className="flex items-center cursor-pointer">
                     <input type="checkbox" className="rounded border-gray-300 text-emerald-500 focus:ring-emerald-500" required />
                     <span className="ml-2 text-sm text-gray-600">
                       By clicking "Next" you agree to the{' '}
-                      <a href="#" className="text-purple-600 hover:text-purple-800">Terms of Use</a>
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline">Terms of Use</a>
                       {' '}and{' '}
-                      <a href="#" className="text-purple-600 hover:text-purple-800">Privacy Policy</a>.
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline">Privacy Policy</a>.
                     </span>
                   </label>
                 </div>
@@ -493,10 +493,10 @@ const ReservationPreview: React.FC = () => {
                       className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
                     >
                       <span className="font-medium">{showMenuItems ? 'Hide' : 'Show'} Menu</span>
-                      <svg 
+                      <svg
                         className={`w-5 h-5 transform transition-transform duration-200 ${showMenuItems ? 'rotate-180' : ''}`}
-                        fill="none" 
-                        viewBox="0 0 24 24" 
+                        fill="none"
+                        viewBox="0 0 24 24"
                         stroke="currentColor"
                       >
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -529,8 +529,8 @@ const ReservationPreview: React.FC = () => {
                     }
                     return (
                       <div key={itemId} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                        <img 
-                          src={item.image} 
+                        <img
+                          src={item.image}
                           alt={item.name}
                           className="w-16 h-16 object-cover rounded-lg"
                           onError={(e) => {

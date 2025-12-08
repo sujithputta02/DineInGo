@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { motion } from "framer-motion";
-import { 
-  auth, 
-  provider, 
-  signInWithPopup, 
+import {
+  auth,
+  provider,
+  signInWithPopup,
   createUserWithEmailAndPassword
 } from "./firebase";
 import { ToastContainer, toast } from 'react-toastify';
@@ -101,7 +101,7 @@ const SignupPage: React.FC = () => {
   const [otpVerified, setOtpVerified] = useState(false);
 
   // Store OTPs temporarily
-  const [otpStore, setOtpStore] = useState<{[email: string]: {otp: string, expiry: number}}>({});
+  const [otpStore, setOtpStore] = useState<{ [email: string]: { otp: string, expiry: number } }>({});
 
   useEffect(() => {
     if (showVerification) {
@@ -111,7 +111,7 @@ const SignupPage: React.FC = () => {
           if (auth.currentUser.emailVerified) {
             clearInterval(interval);
             toast.success("Email verified successfully! Redirecting...");
-            
+
             const isNewUser = sessionStorage.getItem('isNewUser') === 'true';
             if (isNewUser) {
               sessionStorage.removeItem('isNewUser'); // clear flag
@@ -132,7 +132,7 @@ const SignupPage: React.FC = () => {
     if (formData.password) {
       const strength = checkPasswordStrength(formData.password);
       setPasswordStrength(strength);
-      
+
       // If confirm password already has a value, check matching again
       if (formData.confirmPassword) {
         setPasswordsMatch(formData.password === formData.confirmPassword);
@@ -144,7 +144,7 @@ const SignupPage: React.FC = () => {
       setPasswordsMatch(null);
     }
   }, [formData.password]);
-  
+
   // Check if passwords match whenever confirm password changes
   useEffect(() => {
     if (formData.confirmPassword && formData.password) {
@@ -157,17 +157,17 @@ const SignupPage: React.FC = () => {
   // Function to check password strength
   const checkPasswordStrength = (password: string): PasswordStrength => {
     let score = 0;
-    
+
     // Length check
     if (password.length >= 8) score += 1;
     if (password.length >= 12) score += 1;
-    
+
     // Complexity checks
     if (/[A-Z]/.test(password)) score += 1; // Has uppercase
     if (/[a-z]/.test(password)) score += 1; // Has lowercase
     if (/[0-9]/.test(password)) score += 1; // Has number
     if (/[^A-Za-z0-9]/.test(password)) score += 1; // Has special char
-    
+
     // Define strength levels
     if (score <= 2) {
       return { score, label: "Weak", color: "bg-red-500" };
@@ -299,10 +299,10 @@ const SignupPage: React.FC = () => {
   const handleGoogleSignUp = async () => {
     try {
       setIsLoading(true);
-      
+
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
-      
+
       // Create user data object
       const userData = {
         uid: user.uid,
@@ -315,7 +315,7 @@ const SignupPage: React.FC = () => {
 
       // Create user in backend
       const savedUser = await userAPI.createUser(userData);
-      
+
       // Store in session storage
       sessionStorage.setItem('userData', JSON.stringify(savedUser));
 
@@ -324,7 +324,7 @@ const SignupPage: React.FC = () => {
     } catch (error: any) {
       console.error("Google Sign-Up failed:", error);
       let errorMessage = 'Failed to sign up with Google.';
-      
+
       switch (error.code) {
         case 'auth/popup-blocked':
           errorMessage = 'Please allow popups for this website to sign up with Google.';
@@ -338,7 +338,7 @@ const SignupPage: React.FC = () => {
         default:
           errorMessage = error.message || 'Failed to sign up with Google.';
       }
-      
+
       setErrors(prev => ({
         ...prev,
         general: errorMessage
@@ -478,11 +478,11 @@ const SignupPage: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
     try {
       // Create user in Firebase
@@ -491,7 +491,7 @@ const SignupPage: React.FC = () => {
         formData.email,
         formData.password
       );
-      
+
       const user = userCredential.user;
 
       // Store user reference for verification resend
@@ -514,7 +514,7 @@ const SignupPage: React.FC = () => {
         // Don't abort the whole process, but let the user know.
         // The user can still log in and request a new verification email.
       }
-      
+
       // Create user in our backend
       try {
         await userAPI.createUser({
@@ -530,10 +530,10 @@ const SignupPage: React.FC = () => {
         // Continue even if API storage fails, but maybe log it.
         toast.warn('Could not save all user details, but your account is created.');
       }
-      
+
       // Set flag for new user to redirect to feedback form after verification
       sessionStorage.setItem('isNewUser', 'true');
-      
+
       // Show verification message
       setVerificationSent(true);
       setShowVerification(true);
@@ -542,32 +542,32 @@ const SignupPage: React.FC = () => {
     } catch (error: any) {
       console.error("Error during signup:", error);
       let errorMessage = 'Failed to sign up. Please try again.';
-        
-        switch (error.code) {
-          case 'auth/email-already-in-use':
-            errorMessage = 'This email is already registered. Please try logging in.';
-            break;
-          case 'auth/invalid-email':
-            errorMessage = 'Please enter a valid email address.';
-            break;
-          case 'auth/operation-not-allowed':
-            errorMessage = 'Email/password registration is not enabled. Please contact support.';
-            break;
-          case 'auth/weak-password':
-            errorMessage = 'Please choose a stronger password.';
-            break;
-          default:
-            errorMessage = error.message || 'An unexpected error occurred. Please try again.';
-        }
-        
-        setErrors(prev => ({
-          ...prev,
-          general: errorMessage
-        }));
-        
-        toast.error(errorMessage);
-      } finally {
-        setIsLoading(false);
+
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = 'This email is already registered. Please try logging in.';
+          break;
+        case 'auth/invalid-email':
+          errorMessage = 'Please enter a valid email address.';
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = 'Email/password registration is not enabled. Please contact support.';
+          break;
+        case 'auth/weak-password':
+          errorMessage = 'Please choose a stronger password.';
+          break;
+        default:
+          errorMessage = error.message || 'An unexpected error occurred. Please try again.';
+      }
+
+      setErrors(prev => ({
+        ...prev,
+        general: errorMessage
+      }));
+
+      toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -599,7 +599,7 @@ const SignupPage: React.FC = () => {
         }
 
         const tempUser = JSON.parse(tempUserStr);
-        
+
         // Get the current user or try to get user from Firebase
         const user = auth.currentUser;
         if (!user) {
@@ -608,7 +608,7 @@ const SignupPage: React.FC = () => {
           setVerificationSent(false);
           return;
         }
-        
+
         console.log('Attempting to resend verification email to:', user.email);
         const result = await sendVerificationEmail(user);
         console.log('Resend verification email result:', result);
@@ -693,7 +693,7 @@ const SignupPage: React.FC = () => {
       </div>
 
       {/* Signup/Verification Container */}
-      <motion.div 
+      <motion.div
         className="bg-white p-8 rounded-3xl w-full max-w-md z-10 shadow-xl border border-emerald-100 relative"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -725,8 +725,8 @@ const SignupPage: React.FC = () => {
                 </button>
               </p>
               <div className="mt-4">
-                <Link 
-                  to="/login" 
+                <Link
+                  to="/login"
                   className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
                 >
                   Return to Login
@@ -783,7 +783,7 @@ const SignupPage: React.FC = () => {
                 )}
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="relative space-y-1"
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -807,25 +807,24 @@ const SignupPage: React.FC = () => {
                     {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                
+
                 {/* Password Strength Indicator */}
                 {formData.password && (
                   <div className="mt-2 ml-4">
                     <div className="flex items-center space-x-2">
                       <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div 
+                        <div
                           className={`h-full ${passwordStrength.color}`}
-                          style={{ 
+                          style={{
                             width: `${(passwordStrength.score / 6) * 100}%`,
                             transition: 'width 0.3s ease'
                           }}
                         ></div>
                       </div>
-                      <span className={`text-xs font-medium ${
-                        passwordStrength.label === 'Weak' ? 'text-red-500' : 
-                        passwordStrength.label === 'Moderate' ? 'text-yellow-500' : 
-                        'text-green-500'
-                      }`}>
+                      <span className={`text-xs font-medium ${passwordStrength.label === 'Weak' ? 'text-red-500' :
+                          passwordStrength.label === 'Moderate' ? 'text-yellow-500' :
+                            'text-green-500'
+                        }`}>
                         {passwordStrength.label}
                       </span>
                     </div>
@@ -834,13 +833,13 @@ const SignupPage: React.FC = () => {
                     </div>
                   </div>
                 )}
-                
+
                 {errors.password && (
                   <p className="text-red-500 text-xs ml-4">{errors.password}</p>
                 )}
               </motion.div>
 
-              <motion.div 
+              <motion.div
                 className="relative space-y-1"
                 initial={{ x: -20, opacity: 0 }}
                 animate={{ x: 0, opacity: 1 }}
@@ -874,7 +873,7 @@ const SignupPage: React.FC = () => {
                     {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                   </button>
                 </div>
-                
+
                 {/* Password Match Status */}
                 {formData.confirmPassword && (
                   <div className="mt-1 ml-4">
@@ -883,7 +882,7 @@ const SignupPage: React.FC = () => {
                     </p>
                   </div>
                 )}
-                
+
                 {errors.confirmPassword && (
                   <p className="text-red-500 text-xs ml-4">{errors.confirmPassword}</p>
                 )}
@@ -905,7 +904,7 @@ const SignupPage: React.FC = () => {
                 />
                 <div>
                   <label htmlFor="agreeToTerms" className="text-sm text-gray-700">
-                    I Agree 
+                    I Agree
                     <Link to="/terms" className="text-blue-600 hover:underline ml-1">Terms and Conditions</Link>
                   </label>
                   {errors.agreeToTerms && (
@@ -946,8 +945,8 @@ const SignupPage: React.FC = () => {
 
               <div className="text-center mt-4">
                 <span className="text-sm text-gray-600">Already have an account? </span>
-                <Link 
-                  to="/login" 
+                <Link
+                  to="/login"
                   className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
                   onClick={() => {
                     // Clear any existing errors when navigating to login

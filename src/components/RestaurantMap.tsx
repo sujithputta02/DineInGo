@@ -8,11 +8,11 @@ interface RestaurantMapProps {
   className?: string;
 }
 
-const RestaurantMap: React.FC<RestaurantMapProps> = ({ 
-  address, 
-  name, 
+const RestaurantMap: React.FC<RestaurantMapProps> = ({
+  address,
+  name,
   isListMode = false,
-  className = '' 
+  className = ''
 }) => {
   const [coordinates, setCoordinates] = React.useState<[number, number]>([12.9716, 77.5946]); // Default to Bangalore center
   const [error, setError] = React.useState<string | null>(null);
@@ -41,7 +41,7 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
       try {
         // Split address into parts
         const addressParts = address.split(',').map(part => part.trim());
-        
+
         // Try different combinations to find the most precise location
         const searchQueries = [
           // Try with full restaurant name and complete address
@@ -103,7 +103,7 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
   return (
     <>
-      <div 
+      <div
         className={`w-full rounded-xl overflow-hidden cursor-pointer relative group ${className}`}
         style={{ height: mapHeight }}
         onClick={() => setIsExpanded(true)}
@@ -131,7 +131,7 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
       {/* Expanded Map Modal */}
       {isExpanded && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div 
+          <div
             ref={modalRef}
             className="bg-white rounded-xl w-full max-w-4xl h-[80vh] relative"
           >
@@ -155,9 +155,9 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
               />
             </div>
             <div className="absolute bottom-4 left-4 z-50">
-              <a 
-                href={`https://www.openstreetmap.org/?mlat=${coordinates[0]}&mlon=${coordinates[1]}#map=20/${coordinates[0]}/${coordinates[1]}`} 
-                target="_blank" 
+              <a
+                href={`https://www.openstreetmap.org/?mlat=${coordinates[0]}&mlon=${coordinates[1]}#map=20/${coordinates[0]}/${coordinates[1]}`}
+                target="_blank"
                 rel="noopener noreferrer"
                 className="bg-white px-4 py-2 rounded-lg shadow-lg text-emerald-600 hover:text-emerald-700 font-medium"
               >

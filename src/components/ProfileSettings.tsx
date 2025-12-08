@@ -47,10 +47,10 @@ const getAvatarUrl = (name: string | null | undefined): string => {
   if (!name || name.trim() === '') {
     name = "User";
   }
-  
+
   // Use ui-avatars.com API to generate avatar
   const formattedName = encodeURIComponent(name.trim());
-  
+
   // Generate a consistent color based on name
   let hash = 0;
   if (name) {
@@ -58,14 +58,14 @@ const getAvatarUrl = (name: string | null | undefined): string => {
       hash = name.charCodeAt(i) + ((hash << 5) - hash);
     }
   }
-  
+
   // Convert hash to a hex color
   let color = Math.abs(hash).toString(16).substring(0, 6);
   // Ensure color is 6 digits
   while (color.length < 6) {
     color += '0';
   }
-  
+
   return `https://ui-avatars.com/api/?name=${formattedName}&background=${color}&color=ffffff&size=200`;
 };
 
@@ -151,7 +151,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // Type guard to ensure user has required methods
   const authUser = useMemo<AuthenticatedUser | null>(() => {
     if (!propUser) return null;
@@ -222,14 +222,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       if (!res.ok) throw new Error('Failed to fetch profile');
       const profile = await res.json();
       console.log('Loaded profile data:', profile);
-      
+
       // Get avatar URL with full backend URL
       const avatarUrl = profile.currentAvatar || profile.avatarUrl || profile.photoURL;
       const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
-      
+
       console.log('Avatar URL:', fullAvatarUrl);
       setPreviewUrl(fullAvatarUrl);
-      
+
       setFormData((prev: FormDataState) => ({
         ...prev,
         displayName: profile.displayName || prev.displayName,
@@ -249,9 +249,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // Real-time profile updates via Socket.IO
   useEffect(() => {
     if (!authUser?.uid) return;
-    
+
     const socket = socketService.connect();
-    
+
     const handleProfileUpdate = (data: any) => {
       if (data.uid === authUser.uid) {
         const profile = data.profile;
@@ -266,9 +266,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         }));
       }
     };
-    
+
     socket.on('profile_updated', handleProfileUpdate);
-    
+
     return () => {
       // Only remove the listener, don't disconnect
       socket.off('profile_updated', handleProfileUpdate);
@@ -297,12 +297,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     // Check if it's a valid Indian mobile number (10 digits starting with 6-9)
     return /^[6-9]\d{9}$/.test(cleaned);
   }, []);
-  
+
   // Format phone number for display
   const formatPhoneNumber = (value: string): string => {
     // Remove all non-digit characters
     const cleaned = value.replace(/\D/g, '');
-    
+
     // Format as +91 XXXXXXXXXX
     if (cleaned.length <= 2) return `+${cleaned}`;
     if (cleaned.length <= 12) return `+${cleaned.slice(0, 2)} ${cleaned.slice(2)}`;
@@ -312,22 +312,22 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // Validate form
   const validateForm = useCallback((): string | null => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.name.trim()) {
       errors.name = 'Name is required';
     }
-    
+
     if (!formData.phoneNumber.trim()) {
       errors.phoneNumber = 'Phone number is required';
     } else if (!validateIndianPhoneNumber(formData.phoneNumber)) {
       errors.phoneNumber = 'Please enter a valid Indian phone number';
     }
-    
+
     setFormData(prev => ({
       ...prev,
       errors
     }));
-    
+
     return Object.keys(errors).length > 0 ? 'Please fix the errors in the form' : null;
   }, [formData, validateIndianPhoneNumber]);
 
@@ -368,23 +368,23 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       console.error(error);
       throw new Error(error);
     }
-    
+
     try {
       console.log('Preparing user data for MongoDB...');
-      
+
       // Get Firebase ID token from Firebase Auth (not from the prop user)
       const firebaseAuth = getAuth();
       const currentUser = firebaseAuth.currentUser;
-      
+
       if (!currentUser) {
         throw new Error('No authenticated user found. Please sign in again.');
       }
-      
+
       const idToken = await currentUser.getIdToken().catch(tokenError => {
         console.error('Error getting ID token:', tokenError);
         throw new Error('Failed to authenticate. Please try signing in again.');
       });
-      
+
       // Prepare user data for MongoDB
       const userData = {
         userId: authUser.uid, // Changed from _id to userId to match API expectation
@@ -403,7 +403,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           locationSettings: updates.locationSettings || {}
         }
       };
-      
+
       // Validate required fields
       if (!userData.updates.name) {
         throw new Error('Name is required');
@@ -414,16 +414,16 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       if (!validateIndianPhoneNumber(userData.updates.phoneNumber)) {
         throw new Error('Please enter a valid Indian phone number');
       }
-      
+
       console.log('Sending user data to API...');
-      
+
       // Log the data that would be sent to the API
       console.log('User data to be saved:', JSON.stringify(userData, null, 2));
-      
+
       // Make API call to save to MongoDB
       const apiUrl = '/api/users/update';
       console.log('API URL:', apiUrl);
-      
+
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
@@ -433,11 +433,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         body: JSON.stringify(userData),
         credentials: 'include'
       });
-      
+
       const responseText = await response.text();
       console.log('API Response Status:', response.status);
       console.log('API Response:', responseText);
-      
+
       let responseData;
       try {
         responseData = responseText ? JSON.parse(responseText) : {};
@@ -445,18 +445,18 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         console.error('Error parsing API response:', parseError);
         throw new Error('Invalid response from server');
       }
-      
+
       if (!response.ok) {
         throw new Error(
-          responseData.error || 
-          responseData.message || 
+          responseData.error ||
+          responseData.message ||
           `Failed to save user data (${response.status} ${response.statusText})`
         );
       }
-      
+
       console.log('User data successfully saved to MongoDB');
       return true;
-      
+
       // Uncomment the following code when the API endpoint is ready
       /*
       // Make API call to save to MongoDB
@@ -495,7 +495,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       console.log('User data successfully saved to MongoDB');
       return true;
       */
-      
+
     } catch (error) {
       console.error('Error in saveUserData:', {
         error,
@@ -509,13 +509,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     const validationError = validateForm();
     if (validationError) {
       toast.error(validationError);
       return;
     }
-    
+
     try {
       let avatarUrl = formData.photoURL;
       let avatarsArr: string[] = [];
@@ -525,30 +525,30 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         try {
           const formDataUpload = new FormData();
           formDataUpload.append('avatar', (formData as any)._pendingAvatarBlob, 'avatar.jpg');
-          
+
           const res = await fetch(`${API_CONFIG.BASE_URL}/api/profile/${authUser.uid}/avatar`, {
             method: 'POST',
             body: formDataUpload,
           });
-          
+
           if (!res.ok) {
             const errorText = await res.text();
             console.error('Avatar upload failed:', errorText);
             throw new Error('Failed to upload avatar');
           }
-          
+
           const data = await res.json();
           console.log('Avatar upload response:', data);
-          
+
           // Get the avatar URL with full backend URL
           const relativeUrl = data.profile?.currentAvatar || data.avatarUrl;
           avatarUrl = API_CONFIG.getAssetUrl(relativeUrl);
-          
+
           // Get avatars array with full URLs
-          avatarsArr = (data.profile?.avatars || []).map((url: string) => 
+          avatarsArr = (data.profile?.avatars || []).map((url: string) =>
             API_CONFIG.getAssetUrl(url)
           ).filter(Boolean) as string[];
-          
+
           console.log('Avatar URL:', avatarUrl);
           console.log('Avatars array:', avatarsArr);
         } catch (uploadError) {
@@ -563,7 +563,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       const updates = prepareUserUpdates();
       updates.photoURL = avatarUrl;
       updates.currentAvatar = avatarUrl; // Set currentAvatar
-      
+
       // Add avatarUrl to avatars array if not present
       if (avatarUrl) {
         if (!avatarsArr.length) {
@@ -573,12 +573,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         }
         updates.avatars = avatarsArr;
       }
-      
+
       console.log('Prepared updates:', updates);
       // Update profile in Firebase Auth if display name or photo URL changed
       const firebaseAuth = getAuth();
       const currentUser = firebaseAuth.currentUser;
-      
+
       if (currentUser) {
         try {
           await updateProfile(currentUser, {
@@ -601,7 +601,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             email: authUser.email || '',
             emailVerified: false,
           };
-          
+
           // Only add defined values from updates
           const updatesAny = updates as any;
           if (updates.displayName !== undefined) userUpdate.displayName = updates.displayName;
@@ -612,7 +612,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           if (updates.locationSettings !== undefined) userUpdate.locationSettings = updates.locationSettings;
           if (updates.avatars !== undefined) userUpdate.avatars = updates.avatars;
           if (updatesAny.currentAvatar !== undefined) userUpdate.currentAvatar = updatesAny.currentAvatar;
-          
+
           try {
             await onUpdate(userUpdate as User);
           } catch (updateError) {
@@ -625,10 +625,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           const { _pendingAvatarBlob, ...rest } = prev as any;
           return rest;
         });
-        
+
         // Switch back to view mode after successful save
         setIsEditMode(false);
-        
+
         return true;
       }
       return false;
@@ -831,7 +831,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   // Render the form
   return (
-    <div 
+    <div
       style={pageStyles.container}
       className={`${isDarkMode ? 'text-white' : 'text-gray-900'}`}
     >
@@ -839,7 +839,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         <h1 style={pageStyles.title} className="mb-0">
           {pageType === 'dashboard' ? 'Profile' : 'Profile Settings'}
         </h1>
-        
+
         {!isEditMode && (
           <button
             type="button"
@@ -847,13 +847,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             className="px-6 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors flex items-center gap-2"
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M11.333 2.00004C11.5081 1.82494 11.716 1.68605 11.9447 1.59129C12.1735 1.49653 12.4187 1.44775 12.6663 1.44775C12.914 1.44775 13.1592 1.49653 13.3879 1.59129C13.6167 1.68605 13.8246 1.82494 13.9997 2.00004C14.1748 2.17513 14.3137 2.383 14.4084 2.61178C14.5032 2.84055 14.552 3.08575 14.552 3.33337C14.552 3.58099 14.5032 3.82619 14.4084 4.05497C14.3137 4.28374 14.1748 4.49161 13.9997 4.66671L5.33301 13.3334L1.33301 14.6667L2.66634 10.6667L11.333 2.00004Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M11.333 2.00004C11.5081 1.82494 11.716 1.68605 11.9447 1.59129C12.1735 1.49653 12.4187 1.44775 12.6663 1.44775C12.914 1.44775 13.1592 1.49653 13.3879 1.59129C13.6167 1.68605 13.8246 1.82494 13.9997 2.00004C14.1748 2.17513 14.3137 2.383 14.4084 2.61178C14.5032 2.84055 14.552 3.08575 14.552 3.33337C14.552 3.58099 14.5032 3.82619 14.4084 4.05497C14.3137 4.28374 14.1748 4.49161 13.9997 4.66671L5.33301 13.3334L1.33301 14.6667L2.66634 10.6667L11.333 2.00004Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
             Edit Profile
           </button>
         )}
       </div>
-      
+
       <form onSubmit={handleSubmit} style={pageStyles.form}>
         {/* Profile Picture Upload */}
         <div className="flex items-center space-x-6">
@@ -877,14 +877,14 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 style={{ transform: 'translate(30%, 30%)' }}
                 disabled={isUploading}
               >
-              {isUploading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M10 4V16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M4 10H16" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              )}
+                {isUploading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M10 4V16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M4 10H16" stroke="white" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
+                )}
               </button>
             )}
             <input
@@ -903,37 +903,36 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               <button
                 type="button"
                 onClick={() => {
-                // Generate avatar URL based on name
-                const avatarUrl = getAvatarUrl(formData.displayName || formData.name);
-                
-                // Update form data with the generated avatar URL
-                setFormData(prev => ({
-                  ...prev,
-                  photoURL: avatarUrl
-                }));
-                setSafePreviewUrl(avatarUrl);
-                
-                // Update Firebase Auth if available
-                const firebaseAuth = getAuth();
-                const currentUser = firebaseAuth.currentUser;
-                
-                if (currentUser) {
-                  updateProfile(currentUser, {
+                  // Generate avatar URL based on name
+                  const avatarUrl = getAvatarUrl(formData.displayName || formData.name);
+
+                  // Update form data with the generated avatar URL
+                  setFormData(prev => ({
+                    ...prev,
                     photoURL: avatarUrl
-                  }).then(() => {
-                    toast.success("Using generated avatar");
-                  }).catch(err => {
-                    console.error("Error setting generated avatar:", err);
-                  });
-                }
-              }}
-              className={`mt-2 px-3 py-1 text-sm rounded-md transition-colors ${
-                !previewUrl || previewUrl.includes('ui-avatars.com')
-                ? "bg-emerald-500 text-white hover:bg-emerald-600" 
-                : "bg-gray-200 hover:bg-gray-300"
-              }`}
-            >
-              {!previewUrl || previewUrl.includes('ui-avatars.com') ? "Using Initials" : "Use Initials Avatar"}
+                  }));
+                  setSafePreviewUrl(avatarUrl);
+
+                  // Update Firebase Auth if available
+                  const firebaseAuth = getAuth();
+                  const currentUser = firebaseAuth.currentUser;
+
+                  if (currentUser) {
+                    updateProfile(currentUser, {
+                      photoURL: avatarUrl
+                    }).then(() => {
+                      toast.success("Using generated avatar");
+                    }).catch(err => {
+                      console.error("Error setting generated avatar:", err);
+                    });
+                  }
+                }}
+                className={`mt-2 px-3 py-1 text-sm rounded-md transition-colors ${!previewUrl || previewUrl.includes('ui-avatars.com')
+                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                    : "bg-gray-200 hover:bg-gray-300"
+                  }`}
+              >
+                {!previewUrl || previewUrl.includes('ui-avatars.com') ? "Using Initials" : "Use Initials Avatar"}
               </button>
             )}
           </div>
@@ -1019,7 +1018,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         {/* Address Section */}
         <div className="border-t pt-6">
           <h2 className="text-lg font-medium mb-4">Address</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label htmlFor="address.street" className="block text-sm font-medium mb-1">
@@ -1041,7 +1040,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 </div>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="address.city" className="block text-sm font-medium mb-1">
                 City
@@ -1062,7 +1061,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 </div>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="address.state" className="block text-sm font-medium mb-1">
                 State
@@ -1083,7 +1082,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 </div>
               )}
             </div>
-            
+
             <div>
               <label htmlFor="address.zipCode" className="block text-sm font-medium mb-1">
                 ZIP Code
@@ -1110,145 +1109,144 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         {/* Location Settings */}
         {isEditMode && (
           <div className="border-t pt-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-medium">Location Settings</h2>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm">
-                {formData.locationSettings.type === 'auto' ? 'Automatic' : 'Manual'}
-              </span>
-              <button
-                type="button"
-                onClick={toggleLocationType}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full ${formData.locationSettings.type === 'auto' ? 'bg-blue-500' : 'bg-gray-200'}`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${
-                    formData.locationSettings.type === 'auto' ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
-              </button>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-lg font-medium">Location Settings</h2>
+              <div className="flex items-center space-x-2">
+                <span className="text-sm">
+                  {formData.locationSettings.type === 'auto' ? 'Automatic' : 'Manual'}
+                </span>
+                <button
+                  type="button"
+                  onClick={toggleLocationType}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full ${formData.locationSettings.type === 'auto' ? 'bg-blue-500' : 'bg-gray-200'}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition ${formData.locationSettings.type === 'auto' ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                  />
+                </button>
+              </div>
             </div>
-          </div>
 
-          {formData.locationSettings.type === 'auto' ? (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">
-                We'll use your device's location to find restaurants near you.
-              </p>
-              <button
-                type="button"
-                onClick={handleLocationDetect}
-                disabled={isLoading}
-                className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50"
-              >
-                {isLoading ? 'Detecting...' : 'Detect My Location'}
-              </button>
-              {formData.locationSettings.coordinates && (
-                <div className="mt-2 text-sm">
-                  <p>Latitude: {formData.locationSettings.coordinates.lat.toFixed(6)}</p>
-                  <p>Longitude: {formData.locationSettings.coordinates.lng.toFixed(6)}</p>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="locationSettings.address" className="block text-sm font-medium mb-1">
-                  Address
-                </label>
-                <input
-                  type="text"
-                  id="locationSettings.address"
-                  name="locationSettings.address"
-                  value={formData.locationSettings.address || ""}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter your address"
-                />
+            {formData.locationSettings.type === 'auto' ? (
+              <div className="space-y-4">
+                <p className="text-sm text-gray-500">
+                  We'll use your device's location to find restaurants near you.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleLocationDetect}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50"
+                >
+                  {isLoading ? 'Detecting...' : 'Detect My Location'}
+                </button>
+                {formData.locationSettings.coordinates && (
+                  <div className="mt-2 text-sm">
+                    <p>Latitude: {formData.locationSettings.coordinates.lat.toFixed(6)}</p>
+                    <p>Longitude: {formData.locationSettings.coordinates.lng.toFixed(6)}</p>
+                  </div>
+                )}
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            ) : (
+              <div className="space-y-4">
                 <div>
-                  <label htmlFor="locationSettings.city" className="block text-sm font-medium mb-1">
-                    City
+                  <label htmlFor="locationSettings.address" className="block text-sm font-medium mb-1">
+                    Address
                   </label>
                   <input
                     type="text"
-                    id="locationSettings.city"
-                    name="locationSettings.city"
-                    value={formData.locationSettings.city || ""}
+                    id="locationSettings.address"
+                    name="locationSettings.address"
+                    value={formData.locationSettings.address || ""}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter city"
+                    placeholder="Enter your address"
                   />
                 </div>
-                
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="locationSettings.city" className="block text-sm font-medium mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      id="locationSettings.city"
+                      name="locationSettings.city"
+                      value={formData.locationSettings.city || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Enter city"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="locationSettings.state" className="block text-sm font-medium mb-1">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      id="locationSettings.state"
+                      name="locationSettings.state"
+                      value={formData.locationSettings.state || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Enter state"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="locationSettings.country" className="block text-sm font-medium mb-1">
+                      Country
+                    </label>
+                    <input
+                      type="text"
+                      id="locationSettings.country"
+                      name="locationSettings.country"
+                      value={formData.locationSettings.country || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Enter country"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="locationSettings.zipCode" className="block text-sm font-medium mb-1">
+                      ZIP Code
+                    </label>
+                    <input
+                      type="text"
+                      id="locationSettings.zipCode"
+                      name="locationSettings.zipCode"
+                      value={formData.locationSettings.zipCode || ""}
+                      onChange={handleChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      placeholder="Enter ZIP code"
+                    />
+                  </div>
+                </div>
+
                 <div>
-                  <label htmlFor="locationSettings.state" className="block text-sm font-medium mb-1">
-                    State
+                  <label htmlFor="locationSettings.searchRadius" className="block text-sm font-medium mb-1">
+                    Search Radius (km)
                   </label>
                   <input
-                    type="text"
-                    id="locationSettings.state"
-                    name="locationSettings.state"
-                    value={formData.locationSettings.state || ""}
+                    type="number"
+                    id="locationSettings.searchRadius"
+                    name="locationSettings.searchRadius"
+                    value={formData.locationSettings.searchRadius !== undefined && formData.locationSettings.searchRadius !== null ? String(formData.locationSettings.searchRadius) : ""}
                     onChange={handleChange}
+                    min="1"
+                    max="50"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter state"
+                    placeholder="Enter search radius in kilometers"
                   />
                 </div>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="locationSettings.country" className="block text-sm font-medium mb-1">
-                    Country
-                  </label>
-                  <input
-                    type="text"
-                    id="locationSettings.country"
-                    name="locationSettings.country"
-                    value={formData.locationSettings.country || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter country"
-                  />
-                </div>
-                
-                <div>
-                  <label htmlFor="locationSettings.zipCode" className="block text-sm font-medium mb-1">
-                    ZIP Code
-                  </label>
-                  <input
-                    type="text"
-                    id="locationSettings.zipCode"
-                    name="locationSettings.zipCode"
-                    value={formData.locationSettings.zipCode || ""}
-                    onChange={handleChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    placeholder="Enter ZIP code"
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <label htmlFor="locationSettings.searchRadius" className="block text-sm font-medium mb-1">
-                  Search Radius (km)
-                </label>
-                <input
-                  type="number"
-                  id="locationSettings.searchRadius"
-                  name="locationSettings.searchRadius"
-                  value={formData.locationSettings.searchRadius !== undefined && formData.locationSettings.searchRadius !== null ? String(formData.locationSettings.searchRadius) : ""}
-                  onChange={handleChange}
-                  min="1"
-                  max="50"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                  placeholder="Enter search radius in kilometers"
-                />
-              </div>
-            </div>
-          )}
+            )}
           </div>
         )}
 
@@ -1288,11 +1286,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       <Dialog open={cropModalOpen} onClose={() => setCropModalOpen(false)} maxWidth="xs" fullWidth>
         <DialogContent style={{ position: 'relative', height: 400, background: isDarkMode ? '#222' : '#fff' }}>
           <div className="flex gap-2 mb-2 justify-center">
-            <button type="button" className={`px-2 py-1 rounded ${filter==='none'?'bg-emerald-500 text-white':'bg-gray-200'}`} onClick={()=>setFilter('none')}>None</button>
-            <button type="button" className={`px-2 py-1 rounded ${filter==='grayscale(1)'?'bg-emerald-500 text-white':'bg-gray-200'}`} onClick={()=>setFilter('grayscale(1)')}>Grayscale</button>
-            <button type="button" className={`px-2 py-1 rounded ${filter==='sepia(1)'?'bg-emerald-500 text-white':'bg-gray-200'}`} onClick={()=>setFilter('sepia(1)')}>Sepia</button>
-            <button type="button" className={`px-2 py-1 rounded ${filter==='brightness(1.2)'?'bg-emerald-500 text-white':'bg-gray-200'}`} onClick={()=>setFilter('brightness(1.2)')}>Bright</button>
-            <button type="button" className={`px-2 py-1 rounded ${filter==='contrast(1.5)'?'bg-emerald-500 text-white':'bg-gray-200'}`} onClick={()=>setFilter('contrast(1.5)')}>Contrast</button>
+            <button type="button" className={`px-2 py-1 rounded ${filter === 'none' ? 'bg-emerald-500 text-white' : 'bg-gray-200'}`} onClick={() => setFilter('none')}>None</button>
+            <button type="button" className={`px-2 py-1 rounded ${filter === 'grayscale(1)' ? 'bg-emerald-500 text-white' : 'bg-gray-200'}`} onClick={() => setFilter('grayscale(1)')}>Grayscale</button>
+            <button type="button" className={`px-2 py-1 rounded ${filter === 'sepia(1)' ? 'bg-emerald-500 text-white' : 'bg-gray-200'}`} onClick={() => setFilter('sepia(1)')}>Sepia</button>
+            <button type="button" className={`px-2 py-1 rounded ${filter === 'brightness(1.2)' ? 'bg-emerald-500 text-white' : 'bg-gray-200'}`} onClick={() => setFilter('brightness(1.2)')}>Bright</button>
+            <button type="button" className={`px-2 py-1 rounded ${filter === 'contrast(1.5)' ? 'bg-emerald-500 text-white' : 'bg-gray-200'}`} onClick={() => setFilter('contrast(1.5)')}>Contrast</button>
           </div>
           {selectedImage ? (
             <Cropper

@@ -30,20 +30,20 @@ export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
   const [selectedTable, setSelectedTable] = useState(3);
   const navigate = useNavigate();
-  
+
   // Track scroll position for animations
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-  
+
   // Logo component (keeping original)
   const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15" }) => {
     const fontSize = size === "large" ? "4rem" : "2rem";
     const dotSize = size === "large" ? "15px" : "8px";
     const dotTop = size === "large" ? "22px" : "11px";
-    
+
     return (
       <div style={{ display: "flex", alignItems: "center" }}>
         <h1
@@ -89,9 +89,9 @@ export default function LandingPage() {
   const Doodle: React.FC<DoodleProps> = ({ type, style }) => {
     const doodles = {
       plate: (
-        <motion.img 
-          src="/images/cakedodle.png" 
-          alt="Plate doodle" 
+        <motion.img
+          src="/images/cakedodle.png"
+          alt="Plate doodle"
           style={{ width: "80px", height: "80px", ...style }}
           animate={{
             y: [0, -10, 0],
@@ -105,9 +105,9 @@ export default function LandingPage() {
         />
       ),
       fork: (
-        <motion.img 
-          src="/images/nooddodle.png" 
-          alt="Fork doodle" 
+        <motion.img
+          src="/images/nooddodle.png"
+          alt="Fork doodle"
           style={{ width: "60px", height: "120px", ...style }}
           animate={{
             y: [0, -15, 0],
@@ -121,9 +121,9 @@ export default function LandingPage() {
         />
       ),
       star: (
-        <motion.img 
-          src="/images/eventdodle.png" 
-          alt="Star doodle" 
+        <motion.img
+          src="/images/eventdodle.png"
+          alt="Star doodle"
           style={{ width: "70px", height: "70px", ...style }}
           animate={{
             scale: [1, 1.1, 1],
@@ -137,9 +137,9 @@ export default function LandingPage() {
         />
       ),
       chair: (
-        <motion.img 
-          src="/images/tabledodle.png" 
-          alt="Chair doodle" 
+        <motion.img
+          src="/images/tabledodle.png"
+          alt="Chair doodle"
           style={{ width: "60px", height: "60px", ...style }}
           animate={{
             y: [0, -8, 0],
@@ -153,9 +153,9 @@ export default function LandingPage() {
         />
       ),
       wave: (
-        <motion.img 
-          src="/images/dodle.png" 
-          alt="Wave doodle" 
+        <motion.img
+          src="/images/dodle.png"
+          alt="Wave doodle"
           style={{ width: "150px", height: "40px", ...style }}
           animate={{
             x: [-10, 10, -10],
@@ -169,9 +169,9 @@ export default function LandingPage() {
         />
       ),
       ticket: (
-        <motion.img 
-          src="/images/guiterdodle.png" 
-          alt="Ticket doodle" 
+        <motion.img
+          src="/images/guiterdodle.png"
+          alt="Ticket doodle"
           style={{ width: "80px", height: "40px", ...style }}
           animate={{
             y: [0, -12, 0],
@@ -185,7 +185,7 @@ export default function LandingPage() {
         />
       )
     };
-    
+
     return doodles[type] || null;
   };
 
@@ -235,16 +235,16 @@ export default function LandingPage() {
       whileHover={{ scale: 1.08, y: -5 }}
       onClick={onClick}
       initial={{ scale: 0.9, opacity: 0 }}
-      animate={{ 
-        scale: 1, 
+      animate={{
+        scale: 1,
         opacity: 1,
         y: isSelected ? -10 : 0,
       }}
-      transition={{ 
-        type: "spring", 
-        stiffness: 400, 
+      transition={{
+        type: "spring",
+        stiffness: 400,
         damping: 17,
-        delay: number * 0.1 
+        delay: number * 0.1
       }}
       style={{
         position: "absolute",
@@ -260,12 +260,12 @@ export default function LandingPage() {
       {/* Top surface */}
       <motion.div
         animate={{
-          boxShadow: isSelected 
+          boxShadow: isSelected
             ? [
-                "0 15px 25px rgba(0,0,0,0.2), 0 0 15px rgba(0, 242, 157, 0.6)",
-                "0 15px 25px rgba(0,0,0,0.2), 0 0 25px rgba(0, 242, 157, 0.4)",
-                "0 15px 25px rgba(0,0,0,0.2), 0 0 15px rgba(0, 242, 157, 0.6)"
-              ]
+              "0 15px 25px rgba(0,0,0,0.2), 0 0 15px rgba(0, 242, 157, 0.6)",
+              "0 15px 25px rgba(0,0,0,0.2), 0 0 25px rgba(0, 242, 157, 0.4)",
+              "0 15px 25px rgba(0,0,0,0.2), 0 0 15px rgba(0, 242, 157, 0.6)"
+            ]
             : "0 10px 20px rgba(0,0,0,0.15)"
         }}
         transition={{
@@ -309,7 +309,7 @@ export default function LandingPage() {
           zIndex: 1,
         }}
       />
-      
+
       {/* Pulse animation for selected table */}
       {isSelected && (
         <motion.div
@@ -350,7 +350,7 @@ export default function LandingPage() {
   return (
     <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", overflow: "hidden" }}>
       {/* Hero Section with Parallax and Doodle Art */}
-      <div 
+      <div
         style={{
           display: "flex",
           flexDirection: "column",
@@ -364,13 +364,13 @@ export default function LandingPage() {
         <Doodle type="plate" style={{ position: "absolute", top: "15%", right: "10%", opacity: 0.5 }} />
         <Doodle type="fork" style={{ position: "absolute", bottom: "10%", left: "5%", opacity: 0.3, transform: "rotate(-15deg)" }} />
         <Doodle type="star" style={{ position: "absolute", top: "25%", left: "12%", opacity: 0.4 }} />
-        
+
         {/* Moving doodle based on scroll */}
         <motion.div
-          style={{ 
-            position: "absolute", 
-            top: "40%", 
-            right: "15%", 
+          style={{
+            position: "absolute",
+            top: "40%",
+            right: "15%",
             opacity: 0.4,
             y: scrollY * -0.2,
           }}
@@ -379,15 +379,15 @@ export default function LandingPage() {
         </motion.div>
 
         {/* Header */}
-        <header style={{ 
-          padding: "20px 5%", 
-          display: "flex", 
-          justifyContent: "space-between", 
-          alignItems: "center", 
-          position: "absolute", 
-          top: 0, 
-          width: "90%", 
-          zIndex: 10 
+        <header style={{
+          padding: "20px 5%",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          position: "absolute",
+          top: 0,
+          width: "90%",
+          zIndex: 10
         }}>
           <DineInGoLogo size="small" />
           <motion.button
@@ -409,14 +409,14 @@ export default function LandingPage() {
         </header>
 
         {/* Main Hero Content with Scroll Animation */}
-        <div style={{ 
-          display: "flex", 
-          flexDirection: "row", 
+        <div style={{
+          display: "flex",
+          flexDirection: "row",
           height: "100vh",
           position: "relative",
         }}>
           {/* Left Side: Text Content */}
-          <div style={{ 
+          <div style={{
             flex: "1",
             display: "flex",
             flexDirection: "column",
@@ -429,7 +429,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, x: -30 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6 }}
-              style={{ 
+              style={{
                 transform: `translateY(${scrollY * 0.1}px)`,
               }}
             >
@@ -518,13 +518,13 @@ export default function LandingPage() {
           </div>
 
           {/* Right Side: NEW 3D Interactive Table Selection Interface */}
-          <div style={{ 
+          <div style={{
             flex: "1",
             position: "relative",
             overflow: "hidden",
           }}>
             {/* New 3D Interactive Floating Interface */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1 }}
@@ -587,15 +587,15 @@ export default function LandingPage() {
                       </span>
                       <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z"/>
-                          <path d="M12 6v6l4 2"/>
+                          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z" />
+                          <path d="M12 6v6l4 2" />
                         </svg>
                         Open now
                       </span>
                     </div>
                   </div>
-                  <div style={{ 
-                    background: "#facc15", 
+                  <div style={{
+                    background: "#facc15",
                     borderRadius: "14px",
                     padding: "6px 12px",
                     fontSize: "14px",
@@ -606,12 +606,12 @@ export default function LandingPage() {
                     gap: "5px",
                   }}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 2l2.2 6.6h7.1l-5.7 4.2 2.2 6.6-5.8-4.2-5.8 4.2 2.2-6.6-5.7-4.2h7.1z"/>
+                      <path d="M12 2l2.2 6.6h7.1l-5.7 4.2 2.2 6.6-5.8-4.2-5.8 4.2 2.2-6.6-5.7-4.2h7.1z" />
                     </svg>
                     4.8 (238)
                   </div>
                 </motion.div>
-                
+
                 {/* 3D Floor Plan Title */}
                 <motion.div
                   initial={{ opacity: 0 }}
@@ -624,22 +624,22 @@ export default function LandingPage() {
                     alignItems: "center",
                   }}
                 >
-                  <div style={{ 
-                    fontSize: "18px", 
-                    fontWeight: "600", 
+                  <div style={{
+                    fontSize: "18px",
+                    fontWeight: "600",
                     color: "#333",
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
                   }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z"/>
-                      <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4"/>
-                      <line x1="12" y1="9" x2="12" y2="21"/>
+                      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+                      <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4" />
+                      <line x1="12" y1="9" x2="12" y2="21" />
                     </svg>
                     Select Your Table
                   </div>
-                  <motion.div 
+                  <motion.div
                     whileHover={{ scale: 1.05 }}
                     style={{
                       background: "rgba(0, 242, 157, 0.1)",
@@ -655,16 +655,16 @@ export default function LandingPage() {
                     }}
                   >
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10"/>
-                      <path d="M12 8l4 4-4 4M8 12h8"/>
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M12 8l4 4-4 4M8 12h8" />
                     </svg>
                     3D View
                   </motion.div>
                 </motion.div>
-                
+
                 {/* Floor Plan Area with 3D Tables */}
-                <div style={{ 
-                  flex: 1, 
+                <div style={{
+                  flex: 1,
                   position: "relative",
                   background: "linear-gradient(180deg, rgba(245, 247, 255, 0.6) 0%, rgba(240, 247, 255, 0.9) 100%)",
                   borderRadius: "16px",
@@ -684,7 +684,7 @@ export default function LandingPage() {
                     </defs>
                     <rect width="100%" height="100%" fill="url(#grid)" />
                   </svg>
-                  
+
                   {/* Decorative Elements */}
                   <motion.div
                     initial={{ opacity: 0 }}
@@ -718,7 +718,7 @@ export default function LandingPage() {
                       border: "1px solid rgba(250, 204, 21, 0.3)",
                     }}
                   />
-                  
+
                   {/* Interactive 3D table buttons */}
                   {tablePositions.map((pos, i) => (
                     <Table3DButton
@@ -730,9 +730,9 @@ export default function LandingPage() {
                     />
                   ))}
                 </div>
-                
+
                 {/* Bottom Action Bar */}
-                <motion.div 
+                <motion.div
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.7, duration: 0.6 }}
@@ -749,7 +749,7 @@ export default function LandingPage() {
                       (Window View)
                     </span>
                   </div>
-                  
+
                   <motion.button
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.98 }}
@@ -773,7 +773,7 @@ export default function LandingPage() {
                     Book This Table
                   </motion.button>
                 </motion.div>
-                
+
                 {/* Glossy reflection overlay */}
                 <div style={{
                   position: "absolute",
@@ -791,7 +791,7 @@ export default function LandingPage() {
         </div>
       </div>
       {/* Interactive Feature Tabs Section with Scroll Animations */}
-      <div 
+      <div
         data-section="features"
         style={{
           padding: "80px 5%",
@@ -803,12 +803,12 @@ export default function LandingPage() {
         {/* Decorative doodles */}
         <Doodle type="chair" style={{ position: "absolute", bottom: "20%", right: "5%", opacity: 0.3 }} />
         <Doodle type="ticket" style={{ position: "absolute", top: "15%", left: "7%", opacity: 0.3 }} />
-        
+
         {/* Parallax doodle */}
         <motion.div
-          style={{ 
-            position: "absolute", 
-            right: "20%", 
+          style={{
+            position: "absolute",
+            right: "20%",
             top: "50%",
             y: (scrollY - 500) * -0.1,
           }}
@@ -846,7 +846,7 @@ export default function LandingPage() {
           </motion.h2>
 
           {/* Tab Navigation with Scroll Animation */}
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
@@ -898,20 +898,20 @@ export default function LandingPage() {
                   color="#facc15"
                 />
                 <FeatureCard
-                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8"/><path d="M17 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8"/></svg>}
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8" /><path d="M17 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8" /></svg>}
                   title="Read Real Reviews"
                   description="See what others thought about specific tables and views."
                   color="#00F29D"
                 />
                 <FeatureCard
-                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>}
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
                   title="Real-Time Availability"
                   description="See instantly which tables are available at your preferred time."
                   color="#f59e0b"
                 />
               </>
             )}
-            
+
             {activeTab === "events" && (
               <>
                 <FeatureCard
@@ -934,7 +934,7 @@ export default function LandingPage() {
                 />
               </>
             )}
-            
+
             {activeTab === "premium" && (
               <>
                 <FeatureCard
@@ -972,20 +972,20 @@ export default function LandingPage() {
         {/* Decorative doodles */}
         <Doodle type="fork" style={{ position: "absolute", bottom: "15%", right: "10%", opacity: 0.25, transform: "rotate(20deg)" }} />
         <Doodle type="plate" style={{ position: "absolute", top: "20%", left: "8%", opacity: 0.25 }} />
-        
+
         {/* Moving doodle based on scroll */}
-        <motion.div 
-          style={{ 
-            position: "absolute", 
-            bottom: "30%", 
-            left: "50%", 
+        <motion.div
+          style={{
+            position: "absolute",
+            bottom: "30%",
+            left: "50%",
             y: (scrollY - 1000) * -0.1,
             opacity: 0.3,
           }}
         >
           <Doodle type="wave" style={{}} />
         </motion.div>
-        
+
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -1031,9 +1031,9 @@ export default function LandingPage() {
           alignItems: "center",
         }}>
           <DineInGoLogo size="small" color="white" yellowColor="#facc15" />
-          
+
           <div style={{ fontSize: "0.9rem", marginTop: "20px" }}>
-          <p>© 2025 DineInGo | Made with ❤️ by Putta Sujith, K Vikas Aneesh Reddy, E Yashas Kumar, Karnati Mokshith, A Rohail</p>
+            <p>© 2025 DineInGo | Made with ❤️ by Putta Sujith, K Vikas Aneesh Reddy, E Yashas Kumar, Karnati Mokshith, A Rohail</p>
           </div>
         </div>
       </footer>

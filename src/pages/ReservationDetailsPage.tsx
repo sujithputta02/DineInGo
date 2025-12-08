@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, MapPin, Calendar, Clock, Users, Check, Info, CreditCard, Apple, Chrome, FileText } from 'lucide-react';
 import { getRestaurantById, getMockRestaurantById } from '../services/restaurantService';
@@ -46,7 +47,7 @@ const ReservationDetailsPage: React.FC = () => {
           const mockData = getMockRestaurantById(id || '');
           if (mockData) {
             console.log('Using mock restaurant data as fallback after API error');
-            setRestaurant(mockData); 
+            setRestaurant(mockData);
           } else {
             setError('Failed to fetch restaurant');
           }
@@ -89,9 +90,9 @@ const ReservationDetailsPage: React.FC = () => {
         numberOfGuests: parseInt(searchParams.get('guests') || '1', 10),
         status: 'confirmed'
       };
-      
+
       const { passUrl } = await walletService.generateAppleWalletPass(bookingData);
-      
+
       // Create a temporary link to download the pass
       const link = document.createElement('a');
       link.href = passUrl;
@@ -99,7 +100,7 @@ const ReservationDetailsPage: React.FC = () => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success('Apple Wallet pass generated!');
     } catch (error) {
       console.error('Error generating Apple Wallet pass:', error);
@@ -117,12 +118,12 @@ const ReservationDetailsPage: React.FC = () => {
         numberOfGuests: parseInt(searchParams.get('guests') || '1', 10),
         status: 'confirmed'
       };
-      
+
       const { passUrl } = await walletService.generateGoogleWalletPass(bookingData);
-      
+
       // Open Google Wallet in a new tab
       window.open(passUrl, '_blank');
-      
+
       toast.success('Google Wallet pass generated!');
     } catch (error) {
       console.error('Error generating Google Wallet pass:', error);
@@ -145,12 +146,12 @@ const ReservationDetailsPage: React.FC = () => {
         phoneNumber: searchParams.get('phoneNumber') || '',
         specialRequest: searchParams.get('specialRequest') || ''
       };
-      
+
       const invoice = await walletService.generateInvoice(bookingData);
-      
+
       // Send invoice via email
       await walletService.sendInvoiceEmail(invoice, bookingData);
-      
+
       toast.success('Invoice generated and sent via email!');
     } catch (error) {
       console.error('Error generating invoice:', error);
@@ -161,32 +162,32 @@ const ReservationDetailsPage: React.FC = () => {
   const handleConfirmReservation = () => {
     setIsConfirming(true); // Immediate UI feedback
     setTimeout(async () => {
-    try {
-      // Get current user
-      const user = auth.currentUser;
-      if (!user) {
-        throw new Error('You must be logged in to make a reservation');
-      }
-      // Build booking object from reservation details
-      const bookingData = {
-        restaurantId: restaurant?.id,
-        restaurantName: restaurant?.name || searchParams.get('restaurantName') || 'Restaurant',
-        date: searchParams.get('date') || '',
-        time: searchParams.get('time') || '',
-        guests: parseInt(searchParams.get('guests') || '1', 10),
-        table: searchParams.get('table') || '',
-        specialRequests: searchParams.get('specialRequest') || '',
-        fullName: user.displayName || searchParams.get('fullName') || '',
-        email: searchParams.get('email') || user.email || '',
-        phoneNumber: searchParams.get('phoneNumber') || '',
-        selectedItems: Object.entries(selectedMenuItems).map(([itemId, quantity]) => {
-          const item = restaurant?.menu?.find(m => m.id === itemId);
-          return item ? { id: itemId, name: item.name, price: item.price, quantity } : null;
-        }).filter(Boolean),
-        totalAmount: getTotalPrice()
-      };
-      // Save booking through API
-      const savedBooking = await bookingsApi.create(bookingData);
+      try {
+        // Get current user
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('You must be logged in to make a reservation');
+        }
+        // Build booking object from reservation details
+        const bookingData = {
+          restaurantId: restaurant?.id,
+          restaurantName: restaurant?.name || searchParams.get('restaurantName') || 'Restaurant',
+          date: searchParams.get('date') || '',
+          time: searchParams.get('time') || '',
+          guests: parseInt(searchParams.get('guests') || '1', 10),
+          table: searchParams.get('table') || '',
+          specialRequests: searchParams.get('specialRequest') || '',
+          fullName: user.displayName || searchParams.get('fullName') || '',
+          email: searchParams.get('email') || user.email || '',
+          phoneNumber: searchParams.get('phoneNumber') || '',
+          selectedItems: Object.entries(selectedMenuItems).map(([itemId, quantity]) => {
+            const item = restaurant?.menu?.find(m => m.id === itemId);
+            return item ? { id: itemId, name: item.name, price: item.price, quantity } : null;
+          }).filter(Boolean),
+          totalAmount: getTotalPrice()
+        };
+        // Save booking through API
+        const savedBooking = await bookingsApi.create(bookingData);
         // Confirm the table booking in backend
         if (restaurant?.id && bookingData.table && bookingData.date && bookingData.time) {
           await bookingsApi.confirmTable({
@@ -197,22 +198,22 @@ const ReservationDetailsPage: React.FC = () => {
             userId: user.uid
           });
         }
-      // Show success overlay
-      setShowSuccess(true);
-      // Redirect to dashboard after a delay
-      setTimeout(() => {
-        navigate('/dashboard', { 
-          state: { 
-            bookingSuccess: true,
-            newBooking: savedBooking 
-          } 
-        });
-      }, 2000);
-    } catch (error: any) {
-      console.error('Error in booking process:', error);
-      toast.error(error.message || 'Failed to save booking. Please try again.');
-      setIsConfirming(false);
-    }
+        // Show success overlay
+        setShowSuccess(true);
+        // Redirect to dashboard after a delay
+        setTimeout(() => {
+          navigate('/dashboard', {
+            state: {
+              bookingSuccess: true,
+              newBooking: savedBooking
+            }
+          });
+        }, 2000);
+      } catch (error: any) {
+        console.error('Error in booking process:', error);
+        toast.error(error.message || 'Failed to save booking. Please try again.');
+        setIsConfirming(false);
+      }
     }, 0);
   };
 
@@ -227,29 +228,86 @@ const ReservationDetailsPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-gray-100">
       {/* Success Overlay */}
+      {/* Success Overlay */}
       {showSuccess && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl p-8 max-w-md w-full mx-4 transform transition-all animate-bounce-in">
-            <div className="flex flex-col items-center text-center">
-              <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-4">
-                <Check className="w-8 h-8 text-emerald-500" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          />
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0, y: 50 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", duration: 0.8, bounce: 0.4 }}
+            className="bg-white rounded-3xl p-10 max-w-md w-full mx-4 shadow-2xl relative z-10 text-center"
+          >
+            <div className="mx-auto flex items-center justify-center w-24 h-24 mb-6 relative">
+              <motion.div
+                className="absolute inset-0 bg-emerald-100 rounded-full"
+                animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+              />
+              <div className="w-20 h-20 bg-emerald-500 rounded-full flex items-center justify-center relative z-10 shadow-lg shadow-emerald-200">
+                <motion.svg
+                  viewBox="0 0 24 24"
+                  className="w-10 h-10 text-white"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={3}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <motion.path
+                    d="M20 6L9 17l-5-5"
+                    initial={{ pathLength: 0 }}
+                    animate={{ pathLength: 1 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                  />
+                </motion.svg>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">
-                {type === 'restaurant' ? 'Reservation Confirmed!' : 'Registration Confirmed!'}
-              </h3>
-              <p className="text-gray-600">
-                {type === 'restaurant' 
-                  ? 'Your table has been reserved successfully.'
-                  : 'Your event registration has been confirmed.'}
-              </p>
             </div>
-          </div>
+
+            <motion.h3
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="text-3xl font-bold text-gray-900 mb-3"
+            >
+              {type === 'restaurant' ? 'Reservation Confirmed!' : 'Registration Confirmed!'}
+            </motion.h3>
+
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="text-gray-600 text-lg mb-4 leading-relaxed"
+            >
+              {type === 'restaurant'
+                ? 'Your table has been strictly reserved. Get ready for a premium dining experience.'
+                : 'Your spot is secured. We look forward to seeing you there.'}
+            </motion.p>
+
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: "100%" }}
+              transition={{ delay: 0.8, duration: 1.5 }}
+              className="h-1.5 bg-gray-100 rounded-full overflow-hidden mx-auto w-48"
+            >
+              <motion.div
+                className="h-full bg-emerald-500 rounded-full"
+                animate={{ x: ["-100%", "100%"] }}
+                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+              />
+            </motion.div>
+            <p className="text-sm text-gray-400 mt-2">Redirecting to dashboard...</p>
+          </motion.div>
         </div>
       )}
 
       {/* Back Navigation */}
       <div className="absolute top-4 left-4 z-30">
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm hover:bg-white transition-all duration-300 hover:shadow-md"
         >
@@ -269,7 +327,7 @@ const ReservationDetailsPage: React.FC = () => {
               <p className="text-xl font-semibold text-emerald-100 mb-2">{restaurant.name}</p>
             )}
             <p className="text-emerald-100">
-              {type === 'restaurant' 
+              {type === 'restaurant'
                 ? 'Please review your reservation details before confirming.'
                 : 'Please review your registration details before confirming.'}
             </p>
@@ -278,8 +336,8 @@ const ReservationDetailsPage: React.FC = () => {
           {/* Restaurant/Event Info */}
           <div className="p-8">
             <div className="flex items-start gap-6 mb-8 p-4 bg-gray-50 rounded-xl">
-              <img 
-                src={type === 'restaurant' ? restaurant?.image : searchParams.get('eventImage') || ''} 
+              <img
+                src={type === 'restaurant' ? restaurant?.image : searchParams.get('eventImage') || ''}
                 alt={type === 'restaurant' ? restaurant?.name : searchParams.get('eventName') || 'Event'}
                 className="w-24 h-24 rounded-xl object-cover shadow-md"
               />
@@ -404,8 +462,8 @@ const ReservationDetailsPage: React.FC = () => {
                     if (!item) return null;
                     return (
                       <div key={itemId} className="flex items-center gap-4 p-4 bg-white rounded-lg shadow-sm">
-                        <img 
-                          src={item.image} 
+                        <img
+                          src={item.image}
                           alt={item.name}
                           className="w-20 h-20 object-cover rounded-lg"
                         />
@@ -465,11 +523,10 @@ const ReservationDetailsPage: React.FC = () => {
                 <button
                   onClick={handleConfirmReservation}
                   disabled={isConfirming}
-                  className={`px-8 py-3 rounded-xl transition-all duration-300 transform ${
-                    isConfirming 
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-                      : 'bg-emerald-500 text-white hover:bg-emerald-600 hover:scale-105 hover:shadow-lg'
-                  }`}
+                  className={`px-8 py-3 rounded-xl transition-all duration-300 transform ${isConfirming
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-emerald-500 text-white hover:bg-emerald-600 hover:scale-105 hover:shadow-lg'
+                    }`}
                 >
                   {isConfirming ? (
                     <div className="flex items-center gap-2">

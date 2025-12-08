@@ -4,8 +4,8 @@ import { User, IActivity } from '../models/User';
 // Helper function to extract device and IP info
 const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: string } => {
   const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-  const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || 
-                    req.socket.remoteAddress || 'Unknown IP';
+  const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+    req.socket.remoteAddress || 'Unknown IP';
   return { deviceInfo, ipAddress };
 };
 
@@ -21,10 +21,17 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     }
     const { deviceInfo, ipAddress } = extractRequestInfo(req);
 
-    // Merge users by email
-    let existingUser = await User.findOne({ email });
+    // Check for existing user by UID first
+    let existingUser = await User.findOne({ uid });
+
+    // If not found by UID, check by email
+    if (!existingUser) {
+      existingUser = await User.findOne({ email });
+    }
+
     if (existingUser) {
       // Update the user with the new UID and info
+      // If we found by email but UID is different, this updates the UID to the new one (account linking/merging)
       existingUser.uid = uid;
       existingUser.displayName = displayName;
       existingUser.name = name;
@@ -60,7 +67,21 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
     });
     await user.save();
     res.status(201).json(user);
-  } catch (error) {
+  } catch (error: any) {
+    // Handle race condition for duplicate key error explicitly
+    if (error.code === 11000) {
+      console.warn('Duplicate key error caught, attempting retrieval:', error.message);
+      try {
+        const { uid, email } = req.body;
+        const raceUser = await User.findOne({ $or: [{ uid }, { email }] });
+        if (raceUser) {
+          res.json(raceUser);
+          return;
+        }
+      } catch (innerError) {
+        console.error('Error handling race condition:', innerError);
+      }
+    }
     console.error('Error creating user:', error);
     res.status(500).json({ message: 'Error creating user' });
   }
@@ -82,7 +103,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
 
     const user = await User.findOneAndUpdate(
       { uid },
-      { 
+      {
         lastLogin: new Date(),
         $push: { activities: loginActivity }
       },
@@ -201,15 +222,15 @@ export const getUserActivities = async (req: Request, res: Response): Promise<vo
 export const debugUserActivities = async (req: Request, res: Response): Promise<void> => {
   try {
     const { uid } = req.params;
-    
+
     // Use the static method to check activities
     const activities = await User.checkActivities(uid);
-    
+
     if (!activities) {
       res.status(404).json({ message: 'User not found or no activities' });
       return;
     }
-    
+
     // Return activities with additional debug info
     res.json({
       message: 'Debug activities retrieved successfully',
