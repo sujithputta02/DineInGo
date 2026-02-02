@@ -27,7 +27,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const auth = useAuth();
 
-  const API_URL = 'http://localhost:5000/api';
+  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -46,7 +46,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
     setIsLoadingHistory(true);
     try {
-      const response = await fetch(`${API_URL}/chatbot/history/${auth.currentUser.uid}`);
+      const response = await fetch(`${API_URL}/api/chatbot/history/${auth.currentUser.uid}`);
       const data = await response.json();
 
       if (data.success && data.history.length > 0) {
@@ -89,7 +89,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/chatbot/message`, {
+      const response = await fetch(`${API_URL}/api/chatbot/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -139,7 +139,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
     if (!confirmClear) return;
 
     try {
-      await fetch(`${API_URL}/chatbot/session/${auth.currentUser.uid}`, {
+      await fetch(`${API_URL}/api/chatbot/session/${auth.currentUser.uid}`, {
         method: 'DELETE'
       });
 

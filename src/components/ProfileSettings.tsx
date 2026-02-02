@@ -15,6 +15,7 @@ import Button from '@mui/material/Button';
 import Slider from '@mui/material/Slider';
 import socketService from '../utils/socketService';
 import API_CONFIG from '../config/api';
+import { DietaryAssistant } from './DietaryAssistant';
 
 // Type guard to check if user has Firebase Auth methods
 const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
@@ -267,11 +268,11 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       }
     };
 
-    socket.on('profile_updated', handleProfileUpdate);
+    socket?.on('profile_updated', handleProfileUpdate);
 
     return () => {
       // Only remove the listener, don't disconnect
-      socket.off('profile_updated', handleProfileUpdate);
+      socket?.off('profile_updated', handleProfileUpdate);
     };
   }, [authUser?.uid]);
 
@@ -928,8 +929,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                   }
                 }}
                 className={`mt-2 px-3 py-1 text-sm rounded-md transition-colors ${!previewUrl || previewUrl.includes('ui-avatars.com')
-                    ? "bg-emerald-500 text-white hover:bg-emerald-600"
-                    : "bg-gray-200 hover:bg-gray-300"
+                  ? "bg-emerald-500 text-white hover:bg-emerald-600"
+                  : "bg-gray-200 hover:bg-gray-300"
                   }`}
               >
                 {!previewUrl || previewUrl.includes('ui-avatars.com') ? "Using Initials" : "Use Initials Avatar"}
@@ -1104,6 +1105,22 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Dietary Assistant Section */}
+        <div className="border-t pt-6">
+          <h2 className="text-lg font-medium mb-4">Personal Diet & Health</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            Help us personalize your dining experience by setting your dietary preferences.
+            We'll highlight allergens and suggest restaurants that match your lifestyle.
+          </p>
+          <DietaryAssistant
+            userPreferences={[]} // In a real app, this would come from the user's profile
+            onPreferenceChange={(prefs) => {
+              console.log('User dietary preferences updated:', prefs);
+              // In a real app, you would save this to the user's profile in MongoDB
+            }}
+          />
         </div>
 
         {/* Location Settings */}

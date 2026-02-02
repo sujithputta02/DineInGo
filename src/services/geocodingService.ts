@@ -30,16 +30,16 @@ export class GeocodingService {
     const R = 6371; // Earth's radius in kilometers
     const dLat = this.toRad(lat2 - lat1);
     const dLon = this.toRad(lon2 - lon1);
-    const a = 
-      Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
-      Math.sin(dLon/2) * Math.sin(dLon/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+      Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
   }
 
   private static toRad(degrees: number): number {
-    return degrees * (Math.PI/180);
+    return degrees * (Math.PI / 180);
   }
 
   // Find the nearest city from a given location
@@ -148,5 +148,73 @@ export class GeocodingService {
 
   static getStaticMapUrl(lat: number, lng: number, zoom: number = 14): string {
     return `https://api.opencagedata.com/staticmap?key=${OPENCAGE_API_KEY}&q=${lat},${lng}&zoom=${zoom}&size=600x400&marker=${lat},${lng}`;
+  }
+
+  // --- Nominatim Queue & Rate Limiting ---
+
+  private static requestQueue: Array<{
+    query: string;
+    resolve: (value: any) => void;
+    reject: (reason?: any) => void;
+  }> = [];
+  private static isProcessingQueue = false;
+  private static cache = new Map<string, any>();
+  private static lastRequestTime = 0;
+  private static MIN_DELAY = 1200; // 1.2 seconds between requests to be safe
+
+  /**
+   * Safe wrapper for Nominatim search that respects rate limits
+   */
+  static async searchNominatim(query: string): Promise<any> {
+    // 1. Check Cache
+    if (this.cache.has(query)) {
+      return this.cache.get(query);
+    }
+
+    // 2. Add to Queue and return Promise
+    return new Promise((resolve, reject) => {
+      this.requestQueue.push({ query, resolve, reject });
+      this.processQueue();
+    });
+  }
+
+  private static async processQueue() {
+    if (this.isProcessingQueue || this.requestQueue.length === 0) return;
+
+    this.isProcessingQueue = true;
+
+    while (this.requestQueue.length > 0) {
+      const task = this.requestQueue[0]; // Peek
+      const now = Date.now();
+      const timeSinceLast = now - this.lastRequestTime;
+
+      if (timeSinceLast < this.MIN_DELAY) {
+        await new Promise(r => setTimeout(r, this.MIN_DELAY - timeSinceLast));
+      }
+
+      // Shift after wait ensuring we are ready to process
+      this.requestQueue.shift();
+
+      try {
+        this.lastRequestTime = Date.now();
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(task.query)}&limit=1&addressdetails=1&namedetails=1&countrycodes=in`
+        );
+
+        if (!response.ok) {
+          throw new Error(`Nominatim API Error: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        this.cache.set(task.query, data); // Cache result
+        task.resolve(data);
+
+      } catch (error) {
+        console.error('Nominatim request failed:', error);
+        task.reject(error);
+      }
+    }
+
+    this.isProcessingQueue = false;
   }
 } 

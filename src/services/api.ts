@@ -1,6 +1,6 @@
 import { auth } from '../firebase';
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 
@@ -165,12 +165,12 @@ export const bookingsApi = {
   getAll: async () => {
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
-    return apiRequest(`${API_URL}/bookings/user/${user.uid}`);
+    return apiRequest(`${API_URL}/api/bookings/user/${user.uid}`);
   },
 
   // Get a specific booking by ID
   getById: async (id: string) => {
-    return apiRequest(`${API_URL}/bookings/${id}`);
+    return apiRequest(`${API_URL}/api/bookings/${id}`);
   },
 
   // Create a new booking
@@ -185,65 +185,65 @@ export const bookingsApi = {
       createdAt: new Date().toISOString()
     };
     
-    return apiRequest(`${API_URL}/bookings`, 'POST', booking);
+    return apiRequest(`${API_URL}/api/bookings`, 'POST', booking);
   },
 
   // Update a booking
   update: async (id: string, bookingData: any) => {
-    return apiRequest(`${API_URL}/bookings/${id}`, 'PUT', bookingData);
+    return apiRequest(`${API_URL}/api/bookings/${id}`, 'PUT', bookingData);
   },
 
   // Cancel a booking
   cancel: async (id: string) => {
-    return apiRequest(`${API_URL}/bookings/${id}/cancel`, 'PATCH');
+    return apiRequest(`${API_URL}/api/bookings/${id}/cancel`, 'PATCH');
   },
 
   // Delete a booking
   delete: async (id: string) => {
-    return apiRequest(`${API_URL}/bookings/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/bookings/${id}`, 'DELETE');
   },
 
   // Confirm a booking
   confirm: async (id: string) => {
-    return apiRequest(`${API_URL}/bookings/${id}/confirm`, 'PATCH');
+    return apiRequest(`${API_URL}/api/bookings/${id}/confirm`, 'PATCH');
   },
 
   // Confirm a table booking
   confirmTable: async ({ restaurantId, tableId, date, time, userId }: { restaurantId: string, tableId: string, date: string, time: string, userId: string }) => {
-    return apiRequest(`${API_URL}/bookings/confirm-table`, 'POST', { restaurantId, tableId, date, time, userId });
+    return apiRequest(`${API_URL}/api/bookings/confirm-table`, 'POST', { restaurantId, tableId, date, time, userId });
   },
 
   // Track a slot reservation or cancellation
   trackSlot: async ({ userId, restaurantId, date, time, action }: { userId: string, restaurantId: string, date: string, time: string, action: 'reserve' | 'cancel' }) => {
-    return apiRequest(`${API_URL}/bookings/track-slot`, 'POST', { userId, restaurantId, date, time, action });
+    return apiRequest(`${API_URL}/api/bookings/track-slot`, 'POST', { userId, restaurantId, date, time, action });
   },
 
   // Get all tracked slots for a restaurant and date
   getTrackedSlots: async (restaurantId: string, date: string) => {
-    const url = `${API_URL}/bookings/track-slots?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}`;
+    const url = `${API_URL}/api/bookings/track-slots?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}`;
     return apiRequest(url, 'GET');
   },
 
   // Reserve or cancel a table booking
   reserveTable: async ({ restaurantId, tableId, date, time, userId, guests, status }: { restaurantId: string, tableId: string, date: string, time: string, userId: string, guests: number, status: 'reserved' | 'cancelled' }) => {
-    return apiRequest(`${API_URL}/bookings/table-booking`, 'POST', { restaurantId, tableId, date, time, userId, guests, status });
+    return apiRequest(`${API_URL}/api/bookings/table-booking`, 'POST', { restaurantId, tableId, date, time, userId, guests, status });
   },
 
   // Get all table bookings for a restaurant, date, and time
   getTableBookings: async (restaurantId: string, date: string, time: string) => {
-    const url = `${API_URL}/bookings/table-bookings?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+    const url = `${API_URL}/api/bookings/table-bookings?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
     return apiRequest(url, 'GET');
   },
 
   // Get all booked (confirmed) tables for a restaurant, date, and time
   getBookedTables: async (restaurantId: string, date: string, time: string) => {
-    const url = `${API_URL}/bookings/booked-tables?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+    const url = `${API_URL}/api/bookings/booked-tables?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
     return apiRequest(url, 'GET');
   },
 
   // Cancel a table booking
   cancelTable: async (data: { restaurantId: string; tableId: string; date: string; time: string; userId: string }) => {
-    const url = `${API_URL}/bookings/cancel-table`;
+    const url = `${API_URL}/api/bookings/cancel-table`;
     return apiRequest(url, 'POST', data);
   },
 };
@@ -258,7 +258,7 @@ export interface UserData {
 }
 
 const addUserActivity = async (uid: string, activity: any) => {
-  const response = await fetch(`${API_URL}/users/${uid}/activities`, {
+  const response = await fetch(`${API_URL}/api/users/${uid}/activities`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -287,7 +287,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users`, {
+        const response = await fetch(`${API_URL}/api/users`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -300,7 +300,7 @@ export const userAPI = {
           // If user already exists, try updating instead
           if (response.status === 400 && (errorData.message || '').includes('already exists')) {
             // Try updating the user
-            const updateResponse = await fetch(`${API_URL}/users/${userData.uid}`, {
+            const updateResponse = await fetch(`${API_URL}/api/users/${userData.uid}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -342,7 +342,7 @@ export const userAPI = {
       try {
         // Use the full URL to ensure the correct endpoint is being hit
         console.log(`Attempting login for user ${uid} with source ${loginSource}`);
-        const response = await fetch(`${API_URL}/users/login`, {
+        const response = await fetch(`${API_URL}/api/users/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -382,7 +382,7 @@ export const userAPI = {
             };
             
             // Use the createUser endpoint which handles both creation and updates
-            const createResponse = await fetch(`${API_URL}/users`, {
+            const createResponse = await fetch(`${API_URL}/api/users`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -420,7 +420,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users/logout`, {
+        const response = await fetch(`${API_URL}/api/users/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -449,7 +449,7 @@ export const userAPI = {
               logoutSource
             };
             // Create or update user
-            const createResponse = await fetch(`${API_URL}/users`, {
+            const createResponse = await fetch(`${API_URL}/api/users`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -462,7 +462,7 @@ export const userAPI = {
               throw new Error(createErrorData.message || `Server error during fallback: ${createResponse.status}`);
             }
             // Retry logout after creating/updating user
-            const retryResponse = await fetch(`${API_URL}/users/logout`, {
+            const retryResponse = await fetch(`${API_URL}/api/users/logout`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -496,7 +496,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users/${uid}/activities`);
+        const response = await fetch(`${API_URL}/api/users/${uid}/activities`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -521,7 +521,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users/${uid}`);
+        const response = await fetch(`${API_URL}/api/users/${uid}`);
         
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -546,7 +546,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users/${uid}`, {
+        const response = await fetch(`${API_URL}/api/users/${uid}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -577,7 +577,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users/${uid}`, {
+        const response = await fetch(`${API_URL}/api/users/${uid}`, {
           method: 'DELETE',
         });
 
@@ -604,7 +604,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/users/reset-password`, {
+        const response = await fetch(`${API_URL}/api/users/reset-password`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -636,7 +636,7 @@ export const userAPI = {
 export const checkApiConnection = async () => {
   try {
     console.log('Testing API connection...');
-    const response = await fetch(`${API_URL}/users/health`);
+    const response = await fetch(`${API_URL}/api/users/health`);
     if (!response.ok) {
       console.error('API server not responding properly:', await response.text());
       return { success: false, message: `Error: ${response.status} ${response.statusText}` };
@@ -659,7 +659,7 @@ export const notificationsApi = {
   getAll: async () => {
     try {
       console.log('Fetching all notifications from API');
-      const response = await fetch(`${API_URL}/notifications`);
+      const response = await fetch(`${API_URL}/api/notifications`);
       
       if (!response.ok) {
         throw new Error(`Error fetching notifications: ${response.status}`);
@@ -678,7 +678,7 @@ export const notificationsApi = {
   markAsRead: async (notificationId: string, userId: string) => {
     try {
       console.log(`Marking notification ${notificationId} as read for user ${userId}`);
-      const response = await fetch(`${API_URL}/notifications/${notificationId}/read`, {
+      const response = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -708,7 +708,7 @@ export const notificationsApi = {
   markAllAsRead: async (userId: string) => {
     try {
       console.log(`Marking all notifications as read for user ${userId}`);
-      const response = await fetch(`${API_URL}/notifications/mark-all-read`, {
+      const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'

@@ -47,6 +47,7 @@ export interface IUser extends Document {
   updatedAt?: Date;
   emailVerified: boolean;
   activities: IActivity[];
+  role: 'customer' | 'owner' | 'admin';
   password?: string;
   isAdmin?: boolean;
 }
@@ -103,6 +104,7 @@ const userSchema = new Schema<IUser>({
   updatedAt: { type: Date, default: Date.now },
   emailVerified: { type: Boolean, default: false },
   activities: [activitySchema],
+  role: { type: String, enum: ['customer', 'owner', 'admin'], default: 'customer' },
   password: { type: String },
   isAdmin: { type: Boolean, default: false }
 });

@@ -47,7 +47,7 @@ export const getRestaurantById = async (id: string) => {
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         // Add mode=cors explicitly and cache=no-cache to prevent caching issues
-        const response = await fetch(`http://localhost:5000/api/restaurants/${id}?_t=${timestamp}`, {
+        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/restaurants/${id}?_t=${timestamp}`, {
           method: 'GET',
           mode: 'cors',
           cache: 'no-cache',

@@ -7,7 +7,8 @@ import {
   loginUser, 
   logoutUser,
   getUserActivities,
-  debugUserActivities
+  debugUserActivities,
+  trackFriendReferral
 } from '../controllers/userController';
 import { User } from '../models/User';
 
@@ -193,5 +194,8 @@ router.post('/update', async (req, res) => {
 // router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 router.get('/:id/activities', getUserActivities);
+
+// Friend referral tracking
+router.post('/refer-friend', trackFriendReferral);
 
 export default router; 

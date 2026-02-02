@@ -5,7 +5,7 @@ import mongoose from 'mongoose';
 // Get all restaurants
 export const getAllRestaurants = async (req: Request, res: Response) => {
   try {
-    const restaurants = await Restaurant.find().sort({ createdAt: -1 });
+    const restaurants = await Restaurant.find({ isPublished: true }).sort({ createdAt: -1 });
     res.status(200).json({
       success: true,
       count: restaurants.length,
@@ -25,7 +25,7 @@ export const getAllRestaurants = async (req: Request, res: Response) => {
 export const getRestaurantById = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
+
     // Validate ID
     if (!id) {
       return res.status(400).json({
@@ -35,22 +35,22 @@ export const getRestaurantById = async (req: Request, res: Response) => {
     }
 
     let restaurant;
-    
+
     // Check if ID is a valid ObjectId
     if (mongoose.Types.ObjectId.isValid(id)) {
       restaurant = await Restaurant.findById(id);
     } else {
       // If not a valid ObjectId, try to find by restaurantId field
       restaurant = await Restaurant.findOne({ restaurantId: id });
-      
+
       // If still not found, try to find by name (fallback)
       if (!restaurant) {
-        restaurant = await Restaurant.findOne({ 
-          name: { $regex: new RegExp(id, 'i') } 
+        restaurant = await Restaurant.findOne({
+          name: { $regex: new RegExp(id, 'i') }
         });
       }
     }
-    
+
     if (!restaurant) {
       return res.status(404).json({
         success: false,
@@ -77,7 +77,7 @@ export const createRestaurant = async (req: Request, res: Response) => {
   try {
     const restaurant = new Restaurant(req.body);
     await restaurant.save();
-    
+
     res.status(201).json({
       success: true,
       data: restaurant
@@ -154,9 +154,9 @@ export const deleteRestaurant = async (req: Request, res: Response) => {
 export const searchRestaurants = async (req: Request, res: Response) => {
   try {
     const { query, cuisine } = req.query;
-    
-    let searchCriteria: any = {};
-    
+
+    let searchCriteria: any = { isPublished: true };
+
     if (query) {
       searchCriteria.$or = [
         { name: { $regex: query as string, $options: 'i' } },
@@ -164,13 +164,13 @@ export const searchRestaurants = async (req: Request, res: Response) => {
         { address: { $regex: query as string, $options: 'i' } }
       ];
     }
-    
+
     if (cuisine) {
       searchCriteria.cuisine = { $regex: cuisine as string, $options: 'i' };
     }
 
     const restaurants = await Restaurant.find(searchCriteria).sort({ createdAt: -1 });
-    
+
     res.status(200).json({
       success: true,
       count: restaurants.length,

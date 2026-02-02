@@ -80,7 +80,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
   const fetchEvents = async () => {
     try {
       setEventsLoading(true);
-      const response = await fetch('http://localhost:5000/api/events');
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch events');
@@ -212,7 +212,7 @@ const DashboardPage: React.FC<DashboardPageProps> = ({
         if (booking.eventId) {
           try {
             const eventId = typeof booking.eventId === 'object' ? booking.eventId._id : booking.eventId;
-            await fetch(`http://localhost:5000/api/events/${eventId}/unregister`, {
+            await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${eventId}/unregister`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ guests: booking.guests || 1 })

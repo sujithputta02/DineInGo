@@ -1,5 +1,7 @@
 import { Request, Response } from 'express';
 import { Booking } from '../models/Booking';
+import { UserStats } from '../models/UserStats';
+import { Restaurant } from '../models/Restaurant';
 import nodemailer from 'nodemailer';
 import { generateBothWalletPasses } from '../utils/walletPassGenerator';
 import mongoose from 'mongoose';
@@ -11,6 +13,72 @@ try {
 } catch (e) {
   console.warn('pdfkit not installed, PDF generation will be disabled');
 }
+
+// Update achievements after booking
+const updateAchievementsAfterBooking = async (booking: any) => {
+  try {
+    const userId = booking.userId;
+    if (!userId) return;
+
+    // Get or create user stats
+    let userStats = await UserStats.findOne({ userId });
+    if (!userStats) {
+      userStats = new UserStats({
+        userId,
+        cuisinesTried: [],
+        localRestaurantsVisited: [],
+        sustainableChoices: 0,
+        friendsReferred: [],
+        totalBookings: 0,
+        totalEvents: 0,
+        totalPoints: 0
+      });
+    }
+
+    // Update booking count
+    userStats.totalBookings += 1;
+
+    // If it's a restaurant booking, track cuisine and local restaurant
+    if (booking.restaurantId) {
+      try {
+        const restaurant = await Restaurant.findById(booking.restaurantId);
+        if (restaurant) {
+          // Track cuisines
+          if (restaurant.cuisine && Array.isArray(restaurant.cuisine)) {
+            restaurant.cuisine.forEach((cuisine: string) => {
+              if (!userStats!.cuisinesTried.includes(cuisine)) {
+                userStats!.cuisinesTried.push(cuisine);
+              }
+            });
+          }
+
+          // Track local restaurant visit
+          const restaurantId = restaurant._id.toString();
+          if (!userStats.localRestaurantsVisited.includes(restaurantId)) {
+            userStats.localRestaurantsVisited.push(restaurantId);
+          }
+
+          // Track sustainable choice if restaurant has good sustainability score
+          if (restaurant.sustainability && restaurant.sustainability.score > 7) {
+            userStats.sustainableChoices += 1;
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching restaurant for achievements:', error);
+      }
+    }
+
+    // If it's an event booking, track event count
+    if (booking.eventId) {
+      userStats.totalEvents += 1;
+    }
+
+    await userStats.save();
+    console.log('User stats updated for achievements:', userId);
+  } catch (error) {
+    console.error('Error updating achievements after booking:', error);
+  }
+};
 
 // Generate invoice PDF as a Buffer
 const generateInvoicePdfBuffer = (bookingData: any): Promise<Buffer> => {
@@ -243,6 +311,14 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
     
     await booking.save();
     console.log('Booking saved successfully:', booking._id);
+    
+    // Update achievements after successful booking
+    try {
+      await updateAchievementsAfterBooking(booking);
+    } catch (achievementError) {
+      console.error('Error updating achievements:', achievementError);
+      // Don't fail the booking if achievement update fails
+    }
     
     // Only populate if the IDs are ObjectIds
     try {

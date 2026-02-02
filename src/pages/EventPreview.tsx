@@ -50,7 +50,7 @@ const EventPreview: React.FC = () => {
 
   const fetchEvent = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/events/${id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
       if (!response.ok) throw new Error('Failed to fetch event');
       const data = await response.json();
       setEvent(data);
@@ -93,7 +93,7 @@ const EventPreview: React.FC = () => {
 
       console.log('Sending booking data:', bookingData);
 
-      const response = await fetch('http://localhost:5000/api/bookings', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -110,7 +110,7 @@ const EventPreview: React.FC = () => {
             ? { seatIds: selectedSeatIds, userId: auth.currentUser.uid }
             : { guests: numberOfGuests };
 
-          const eventResponse = await fetch(`http://localhost:5000/api/events/${event._id}/register`, {
+          const eventResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${event._id}/register`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

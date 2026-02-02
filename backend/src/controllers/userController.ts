@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { User, IActivity } from '../models/User';
+import { UserStats } from '../models/UserStats';
 
 // Helper function to extract device and IP info
 const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: string } => {
@@ -243,3 +244,51 @@ export const debugUserActivities = async (req: Request, res: Response): Promise<
     res.status(500).json({ message: 'Error fetching debug activities' });
   }
 }; 
+
+// Track friend referral
+export const trackFriendReferral = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { referrerId, referredUserId } = req.body;
+    
+    if (!referrerId || !referredUserId) {
+      res.status(400).json({ message: 'Both referrer ID and referred user ID are required' });
+      return;
+    }
+
+    // Get or create user stats for the referrer
+    let userStats = await UserStats.findOne({ userId: referrerId });
+    if (!userStats) {
+      userStats = new UserStats({
+        userId: referrerId,
+        cuisinesTried: [],
+        localRestaurantsVisited: [],
+        sustainableChoices: 0,
+        friendsReferred: [],
+        totalBookings: 0,
+        totalEvents: 0,
+        totalPoints: 0
+      });
+    }
+
+    // Add the referred friend if not already tracked
+    if (!userStats.friendsReferred.includes(referredUserId)) {
+      userStats.friendsReferred.push(referredUserId);
+      await userStats.save();
+      
+      res.json({ 
+        success: true, 
+        message: 'Friend referral tracked successfully',
+        totalReferrals: userStats.friendsReferred.length
+      });
+    } else {
+      res.json({ 
+        success: true, 
+        message: 'Friend already tracked',
+        totalReferrals: userStats.friendsReferred.length
+      });
+    }
+  } catch (error) {
+    console.error('Error tracking friend referral:', error);
+    res.status(500).json({ message: 'Failed to track friend referral' });
+  }
+};

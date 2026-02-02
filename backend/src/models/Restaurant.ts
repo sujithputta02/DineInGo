@@ -19,6 +19,7 @@ export interface ILocation {
 
 export interface IRestaurant extends Document {
   restaurantId: string;
+  ownerId: string;
   name: string;
   cuisine: string[];
   address: string;
@@ -29,6 +30,12 @@ export interface IRestaurant extends Document {
   openNow: boolean;
   phoneNumber: string;
   menu: IMenuItem[];
+  isPublished: boolean;
+  sustainability?: {
+    score: number;
+    localIngredients: number;
+    carbonFootprint: string;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -52,6 +59,7 @@ const locationSchema = new Schema<ILocation>({
 
 const restaurantSchema = new Schema<IRestaurant>({
   restaurantId: { type: String, required: true, unique: true },
+  ownerId: { type: String, required: true },
   name: { type: String, required: true },
   cuisine: { type: [String], required: true },
   address: { type: String, required: true },
@@ -62,11 +70,17 @@ const restaurantSchema = new Schema<IRestaurant>({
   openNow: { type: Boolean, default: true },
   phoneNumber: { type: String, required: true },
   menu: [{ type: menuItemSchema, required: true }],
+  isPublished: { type: Boolean, default: false },
+  sustainability: {
+    score: { type: Number, min: 0, max: 10, default: 5 },
+    localIngredients: { type: Number, min: 0, max: 100, default: 50 },
+    carbonFootprint: { type: String, enum: ['Low', 'Medium', 'High'], default: 'Medium' }
+  },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
-restaurantSchema.pre('save', function(next) {
+restaurantSchema.pre('save', function (next) {
   this.updatedAt = new Date();
   next();
 });

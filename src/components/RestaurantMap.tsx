@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 
+import { GeocodingService } from '../services/geocodingService';
+
 interface RestaurantMapProps {
   address: string;
   name: string;
@@ -63,10 +65,7 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
         for (const query of searchQueries) {
           if (foundLocation) break;
 
-          const response = await fetch(
-            `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&addressdetails=1&namedetails=1&countrycodes=in`
-          );
-          const data = await response.json();
+          const data = await GeocodingService.searchNominatim(query);
 
           if (data && data[0]) {
             // Check if the result contains the restaurant name or address parts

@@ -339,7 +339,7 @@ const TableSelection: React.FC = () => {
 
   const sendEmail = async (data: any) => {
     try {
-      const response = await fetch('http://localhost:5000/api/send-email', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

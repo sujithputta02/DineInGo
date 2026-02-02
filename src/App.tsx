@@ -21,12 +21,20 @@ import AuthActionHandler from './pages/AuthActionHandler';
 import EventRegistration from './pages/EventRegistration';
 import EventPreview from './pages/EventPreview';
 import EventsPage from './pages/EventsPage';
+import BusinessLayout from './layouts/BusinessLayout';
+import BusinessAuth from './pages/business/BusinessAuth';
+import OwnerDashboard from './pages/business/OwnerDashboard';
+import ManageRestaurant from './pages/business/ManageRestaurant';
+import RestaurantOnboarding from './pages/business/RestaurantOnboarding';
+import ProtectedBusinessRoute from './components/ProtectedBusinessRoute';
+import CustomerRoute from './components/CustomerRoute';
 import { UserData, CityLocation } from './types';
 import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
 import { auth, onAuthStateChanged } from './firebase';
 import AIChatbot from './components/AIChatbot';
+import FeaturesDemo from './pages/FeaturesDemo';
 
 // Custom hook to set the document title based on the current route
 function usePageTitle() {
@@ -89,19 +97,38 @@ const App: React.FC = () => {
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/feedback" element={<UserFeedbackForm />} />
               <Route path="/debug" element={<DebugPage />} />
+              <Route path="/features-demo" element={<FeaturesDemo />} />
               <Route path="/auth/action" element={<AuthActionHandler />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/restaurant/:id" element={<RestaurantDetails />} />
-              <Route path="/restaurant/:id/preview" element={<ReservationPreview />} />
-              <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
-              <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
-              <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
-              <Route path="/events" element={<EventsPage />} />
-              <Route path="/event/:id/register" element={<EventRegistration />} />
-              <Route path="/event/:id/preview" element={<EventPreview />} />
+
+              {/* Customer Protected Routes (Redirect Owners to Business) */}
+              <Route element={<CustomerRoute />}>
+                <Route path="/dashboard" element={<DashboardPage />} />
+                <Route path="/restaurant/:id" element={<RestaurantDetails />} />
+                <Route path="/restaurant/:id/preview" element={<ReservationPreview />} />
+                <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
+                <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
+                <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
+                <Route path="/events" element={<EventsPage />} />
+                <Route path="/event/:id/register" element={<EventRegistration />} />
+                <Route path="/event/:id/preview" element={<EventPreview />} />
+              </Route>
+
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
-              <Route path="/admin-login" element={<AdminLoginPage />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
+
+              {/* Business Routes */}
+              <Route path="/business/login" element={<BusinessAuth />} />
+              <Route path="/business/signup" element={<BusinessAuth />} />
+
+              <Route path="/business" element={<ProtectedBusinessRoute />}>
+                <Route element={<BusinessLayout />}>
+                  <Route index element={<OwnerDashboard />} />
+                  <Route path="dashboard" element={<OwnerDashboard />} />
+                  <Route path="manage/:id" element={<ManageRestaurant />} />
+                  <Route path="onboarding" element={<RestaurantOnboarding />} />
+                  <Route path="restaurants" element={<OwnerDashboard />} />
+                </Route>
+              </Route>
             </Routes>
           </NotificationProvider>
         </UserActivityProvider>

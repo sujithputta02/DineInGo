@@ -1,9 +1,9 @@
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
 export const favoritesApi = {
   async get(userId: string) {
     console.log('Fetching favorites for user:', userId);
-    const res = await fetch(`${API_URL}/favorites/${userId}`);
+    const res = await fetch(`${API_URL}/api/favorites/${userId}`);
     if (!res.ok) {
       console.error('Failed to fetch favorites:', res.status, res.statusText);
       throw new Error('Failed to fetch favorites');
@@ -14,7 +14,7 @@ export const favoritesApi = {
   },
   async addRestaurant(userId: string, restaurantId: string) {
     console.log('Adding restaurant to favorites:', { userId, restaurantId });
-    const res = await fetch(`${API_URL}/favorites`, {
+    const res = await fetch(`${API_URL}/api/favorites`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -36,7 +36,7 @@ export const favoritesApi = {
   },
   async removeRestaurant(userId: string, restaurantId: string) {
     console.log('Removing restaurant from favorites:', { userId, restaurantId });
-    const res = await fetch(`${API_URL}/favorites`, {
+    const res = await fetch(`${API_URL}/api/favorites`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -58,7 +58,7 @@ export const favoritesApi = {
   },
   async addEvent(userId: string, eventId: string) {
     console.log('Adding event to favorites:', { userId, eventId });
-    const res = await fetch(`${API_URL}/favorites`, {
+    const res = await fetch(`${API_URL}/api/favorites`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -80,7 +80,7 @@ export const favoritesApi = {
   },
   async removeEvent(userId: string, eventId: string) {
     console.log('Removing event from favorites:', { userId, eventId });
-    const res = await fetch(`${API_URL}/favorites`, {
+    const res = await fetch(`${API_URL}/api/favorites`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

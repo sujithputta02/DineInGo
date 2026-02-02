@@ -51,7 +51,7 @@ const EventRegistration: React.FC = () => {
     checkIfFavorite();
 
     // Initialize Socket.IO connection
-    const newSocket = io('http://localhost:5000');
+    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001');
     setSocket(newSocket);
 
     // Join event room for real-time updates
@@ -190,7 +190,7 @@ const EventRegistration: React.FC = () => {
 
   const fetchEvent = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/events/${id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
       
       if (!response.ok) {
         if (response.status === 400 || response.status === 404) {
@@ -219,7 +219,7 @@ const EventRegistration: React.FC = () => {
     if (!auth.currentUser) return;
 
     try {
-      const response = await fetch(`http://localhost:5000/api/favorites/${auth.currentUser.uid}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/favorites/${auth.currentUser.uid}`);
       const data = await response.json();
       
       if (data.favorites) {
@@ -243,7 +243,7 @@ const EventRegistration: React.FC = () => {
     setFavoriteLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/favorites', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/favorites`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

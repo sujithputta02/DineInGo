@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Menu, MapPin, Heart, X, Bell, Settings, Globe, ArrowLeft, Moon, Sun, Calendar, Clock, Check, Users, FileText } from 'lucide-react';
+import { Search, Menu, MapPin, Heart, X, Bell, Settings, Globe, ArrowLeft, Moon, Sun, Calendar, Clock, Check, Users, FileText, Trophy, Camera, Target, Award } from 'lucide-react';
 import InvoiceModal from './components/InvoiceModal';
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -21,6 +21,10 @@ import { User, LocationSettings } from './types/user';
 import { favoritesApi } from './services/favoritesApi';
 import socketService from './utils/socketService';
 import API_CONFIG from './config/api';
+import { VoiceSearchButton } from './components/VoiceSearchButton';
+import { SustainabilityBadge } from './components/SustainabilityBadge';
+import AchievementsSection from './components/AchievementsSection';
+import ARMenuSection from './components/ARMenuSection';
 
 interface UserData {
   uid: string;
@@ -103,10 +107,26 @@ interface Translation {
   category: string;
   date: string;
   time: string;
+  achievements: string;
+  arMenu: string;
+  gamification: string;
+  rewardsSystem: string;
+  cuisineExplorer: string;
+  localHero: string;
+  sustainableDiner: string;
+  socialFoodie: string;
+  progress: string;
+  unlocked: string;
+  locked: string;
+  arExperience: string;
+  scanMenu: string;
+  nutritionInfo: string;
+  ingredients: string;
+  cookingMethod: string;
 }
 
 type Language = 'english' | 'hindi' | 'tamil' | 'kannada' | 'telugu' | 'malayalam';
-type Section = 'home' | 'bookings' | 'restaurants' | 'events' | 'favorites' | 'messages' | 'settings';
+type Section = 'home' | 'bookings' | 'restaurants' | 'events' | 'favorites' | 'messages' | 'settings' | 'achievements' | 'ar-menu';
 type Translations = Record<Language, Translation>;
 
 const translations: Translations = {
@@ -160,7 +180,23 @@ const translations: Translations = {
     capacity: 'Capacity',
     category: 'Category',
     date: 'Date',
-    time: 'Time'
+    time: 'Time',
+    achievements: 'Achievements',
+    arMenu: 'AR Menu',
+    gamification: 'Gamification & Rewards',
+    rewardsSystem: 'Rewards System',
+    cuisineExplorer: 'Cuisine Explorer',
+    localHero: 'Local Hero',
+    sustainableDiner: 'Sustainable Diner',
+    socialFoodie: 'Social Foodie',
+    progress: 'Progress',
+    unlocked: 'Unlocked',
+    locked: 'Locked',
+    arExperience: 'AR Experience',
+    scanMenu: 'Scan Menu',
+    nutritionInfo: 'Nutrition Info',
+    ingredients: 'Ingredients',
+    cookingMethod: 'Cooking Method'
   },
   hindi: {
     welcome: 'स्वागत है',
@@ -212,7 +248,23 @@ const translations: Translations = {
     capacity: 'क्षमता',
     category: 'श्रेणी',
     date: 'दिनांक',
-    time: 'समय'
+    time: 'समय',
+    achievements: 'उपलब्धियां',
+    arMenu: 'एआर मेनू',
+    gamification: 'गेमिफिकेशन और पुरस्कार',
+    rewardsSystem: 'पुरस्कार प्रणाली',
+    cuisineExplorer: 'व्यंजन खोजकर्ता',
+    localHero: 'स्थानीय हीरो',
+    sustainableDiner: 'टिकाऊ भोजन',
+    socialFoodie: 'सामाजिक खाद्य प्रेमी',
+    progress: 'प्रगति',
+    unlocked: 'अनलॉक',
+    locked: 'लॉक',
+    arExperience: 'एआर अनुभव',
+    scanMenu: 'मेनू स्कैन करें',
+    nutritionInfo: 'पोषण जानकारी',
+    ingredients: 'सामग्री',
+    cookingMethod: 'खाना पकाने की विधि'
   },
   tamil: {
     welcome: 'வரவேற்பு',
@@ -264,7 +316,23 @@ const translations: Translations = {
     capacity: 'கொள்ளளவு',
     category: 'வகை',
     date: 'தேதி',
-    time: 'நேரம்'
+    time: 'நேரம்',
+    achievements: 'சாதனைகள்',
+    arMenu: 'ஏஆர் மெனு',
+    gamification: 'கேமிஃபிகேஷன் மற்றும் வெகுமதிகள்',
+    rewardsSystem: 'வெகுமதி அமைப்பு',
+    cuisineExplorer: 'உணவு ஆராய்ச்சியாளர்',
+    localHero: 'உள்ளூர் ஹீரோ',
+    sustainableDiner: 'நிலையான உணவு',
+    socialFoodie: 'சமூக உணவு பிரியர்',
+    progress: 'முன்னேற்றம்',
+    unlocked: 'திறக்கப்பட்டது',
+    locked: 'பூட்டப்பட்டது',
+    arExperience: 'ஏஆர் அனுபவம்',
+    scanMenu: 'மெனுவை ஸ்கேன் செய்யுங்கள்',
+    nutritionInfo: 'ஊட்டச்சத்து தகவல்',
+    ingredients: 'பொருட்கள்',
+    cookingMethod: 'சமையல் முறை'
   },
   kannada: {
     welcome: 'ಸ್ವಾಗತ',
@@ -316,7 +384,23 @@ const translations: Translations = {
     capacity: 'ಕೊಳ್ಳಳವು',
     category: 'ವರ್ಗ',
     date: 'ದಿನಾಂಕ',
-    time: 'ಸಮಯ'
+    time: 'ಸಮಯ',
+    achievements: 'ಸಾಧನೆಗಳು',
+    arMenu: 'ಎಆರ್ ಮೆನು',
+    gamification: 'ಗೇಮಿಫಿಕೇಶನ್ ಮತ್ತು ಪ್ರತಿಫಲಗಳು',
+    rewardsSystem: 'ಪ್ರತಿಫಲ ವ್ಯವಸ್ಥೆ',
+    cuisineExplorer: 'ಪಾಕಪದ್ಧತಿ ಅನ್ವೇಷಕ',
+    localHero: 'ಸ್ಥಳೀಯ ಹೀರೋ',
+    sustainableDiner: 'ಸಮರ್ಥನೀಯ ಭೋಜನ',
+    socialFoodie: 'ಸಾಮಾಜಿಕ ಆಹಾರ ಪ್ರಿಯ',
+    progress: 'ಪ್ರಗತಿ',
+    unlocked: 'ಅನ್‌ಲಾಕ್ ಮಾಡಲಾಗಿದೆ',
+    locked: 'ಲಾಕ್ ಮಾಡಲಾಗಿದೆ',
+    arExperience: 'ಎಆರ್ ಅನುಭವ',
+    scanMenu: 'ಮೆನು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ',
+    nutritionInfo: 'ಪೋಷಣೆ ಮಾಹಿತಿ',
+    ingredients: 'ಪದಾರ್ಥಗಳು',
+    cookingMethod: 'ಅಡುಗೆ ವಿಧಾನ'
   },
   telugu: {
     welcome: 'స్వాగతం',
@@ -368,7 +452,23 @@ const translations: Translations = {
     capacity: 'సామర్థ్యం',
     category: 'వర్గం',
     date: 'తేదీ',
-    time: 'సమయం'
+    time: 'సమయం',
+    achievements: 'విజయాలు',
+    arMenu: 'ఏఆర్ మెనూ',
+    gamification: 'గేమిఫికేషన్ మరియు రివార్డ్స్',
+    rewardsSystem: 'రివార్డ్ సిస్టమ్',
+    cuisineExplorer: 'వంటకాల అన్వేషకుడు',
+    localHero: 'స్థానిక హీరో',
+    sustainableDiner: 'స్థిరమైన భోజనం',
+    socialFoodie: 'సామాజిక ఆహార ప్రియుడు',
+    progress: 'పురోగతి',
+    unlocked: 'అన్‌లాక్ చేయబడింది',
+    locked: 'లాక్ చేయబడింది',
+    arExperience: 'ఏఆర్ అనుభవం',
+    scanMenu: 'మెనూని స్కాన్ చేయండి',
+    nutritionInfo: 'పోషణ సమాచారం',
+    ingredients: 'పదార్థాలు',
+    cookingMethod: 'వంట పద్ధతి'
   },
   malayalam: {
     welcome: 'സ്വാഗതം',
@@ -420,7 +520,23 @@ const translations: Translations = {
     capacity: 'ശേഷി',
     category: 'വിഭാഗം',
     date: 'തീയതി',
-    time: 'സമയം'
+    time: 'സമയം',
+    achievements: 'നേട്ടങ്ങൾ',
+    arMenu: 'എആർ മെനു',
+    gamification: 'ഗെയിമിഫിക്കേഷനും പുരസ്കാരങ്ങളും',
+    rewardsSystem: 'പുരസ്കാര സംവിധാനം',
+    cuisineExplorer: 'പാചക പര്യവേക്ഷകൻ',
+    localHero: 'പ്രാദേശിക നായകൻ',
+    sustainableDiner: 'സുസ്ഥിര ഭക്ഷണം',
+    socialFoodie: 'സാമൂഹിക ഭക്ഷണ പ്രേമി',
+    progress: 'പുരോഗതി',
+    unlocked: 'അൺലോക്ക് ചെയ്തു',
+    locked: 'ലോക്ക് ചെയ്തു',
+    arExperience: 'എആർ അനുഭവം',
+    scanMenu: 'മെനു സ്കാൻ ചെയ്യുക',
+    nutritionInfo: 'പോഷകാഹാര വിവരങ്ങൾ',
+    ingredients: 'ചേരുവകൾ',
+    cookingMethod: 'പാചക രീതി'
   }
 };
 
@@ -589,7 +705,10 @@ const getAvatarUrl = (name: string | null | undefined): string => {
 };
 
 export default function DashboardPage() {
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('dineInGoDarkMode');
+    return saved === 'true' ? true : false; // Default to light mode
+  });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<Section>('home');
   const [language, setLanguage] = useState<Language>('english');
@@ -658,15 +777,31 @@ export default function DashboardPage() {
       try {
         setIsLoading(true);
 
-        // First detect location
-        await detectLocation();
+        // Fetch restaurants from API
+        try {
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/restaurants`);
+          if (response.ok) {
+            const resData = await response.json();
+            // Map _id to id to match frontend interface and Combine with mock data
+            const apiRestaurants = (resData.data || []).map((r: any) => ({
+              ...r,
+              id: r._id || r.id // Ensure id is set
+            }));
 
-        // Then load restaurants and events
-        setRestaurants(mockRestaurants);
+            // Combine mock restaurants with API restaurants
+            setRestaurants([...apiRestaurants, ...mockRestaurants]);
+          } else {
+            console.error('Failed to fetch restaurants');
+            setRestaurants(mockRestaurants);
+          }
+        } catch (error) {
+          console.error('Error fetching restaurants:', error);
+          setRestaurants(mockRestaurants);
+        }
 
         // Fetch events from API
         try {
-          const response = await fetch('http://localhost:5000/api/events');
+          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events`);
           if (response.ok) {
             const data = await response.json();
             const apiEvents = (data.data || data).map((event: any) => ({
@@ -873,12 +1008,12 @@ export default function DashboardPage() {
             }
           }
         } catch (error) {
-          console.error('Error fetching user data:', error);
-          setError('Failed to load user data. Please try again.');
+          console.error('Error in auth listener:', error);
         } finally {
           setAuthLoading(false);
         }
       } else {
+        setAuthLoading(false);
         navigate('/login');
       }
     });
@@ -983,6 +1118,11 @@ export default function DashboardPage() {
   useEffect(() => {
     localStorage.setItem('dineInGoLanguage', language);
   }, [language]);
+
+  // Save dark mode preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('dineInGoDarkMode', isDarkMode.toString());
+  }, [isDarkMode]);
 
   const toggleDarkMode = () => {
     setIsDarkMode(!isDarkMode);
@@ -1537,123 +1677,123 @@ export default function DashboardPage() {
                     Featured Restaurants
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {restaurants.map(restaurant => (
-                      <div
-                        key={restaurant.id}
-                        className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                        onClick={() => navigate(`/restaurant/${restaurant.id}`)}
-                      >
-                        <div className="relative h-48">
-                          <img
-                            src={restaurant.image}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                            <span className="text-emerald-400 mr-1">★</span>
-                            <span>{restaurant.rating}</span>
+                    {restaurants.length > 0 ? (
+                      restaurants.map((restaurant, idx) => (
+                        <div
+                          key={restaurant.id}
+                          className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
+                          onClick={() => navigate(`/restaurant/${restaurant.id}`)}
+                        >
+                          <div className="relative h-48">
+                            <img
+                              src={restaurant.image}
+                              alt={restaurant.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
+                              <span className="text-emerald-400 mr-1">★</span>
+                              <span>{restaurant.rating}</span>
+                            </div>
+                            <button
+                              className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(restaurant);
+                              }}
+                            >
+                              <Heart size={20} className="text-white" fill={isItemFavorite(restaurant.id, 'restaurant') ? "white" : "none"} />
+                            </button>
                           </div>
-                          <button
-                            className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(restaurant);
-                            }}
-                          >
-                            <Heart size={20} className="text-white" fill={isItemFavorite(restaurant.id, 'restaurant') ? "white" : "none"} />
-                          </button>
+                          <div className="p-4">
+                            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {restaurant.name}
+                            </h3>
+                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                              <MapPin size={16} className="mr-1" />
+                              <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
+                            </div>
+                            <div className="mt-2 flex items-center justify-between">
+                              <div className="flex flex-wrap gap-2">
+                                {restaurant.cuisine?.map((cuisine, index) => (
+                                  <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
+                                    {cuisine}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="p-4">
-                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {restaurant.name}
-                          </h3>
-                          <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                            <MapPin size={16} className="mr-1" />
-                            <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            {restaurant.cuisine?.map((cuisine: string, index: number) => (
-                              <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                                } rounded-full text-sm`}>
-                                {cuisine}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
+                      ))
+                    ) : (
+                      <div className={`col-span-full text-center py-12 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        No restaurants available
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               ) : (
                 <div className="mb-12">
                   <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                    Upcoming Events
+                    Featured Events
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {events.map(event => (
-                      <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
-                        <div className="relative h-48">
-                          <img
-                            src={event.image}
-                            alt={event.name}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                            <span className="text-emerald-400 mr-1">₹</span>
-                            <span>{event.price}</span>
-                          </div>
-                          <button
-                            className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              const eventToToggle = {
-                                ...event,
-                                location: typeof event.location === 'string'
-                                  ? event.location
-                                  : event.location
-                              };
-                              toggleFavorite(eventToToggle);
-                            }}
-                          >
-                            <Heart size={20} className="text-white" fill={isItemFavorite(event.id, 'event') ? "white" : "none"} />
-                          </button>
-                        </div>
-                        <div className="p-4">
-                          <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                            {event.name}
-                          </h3>
-                          <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                            <MapPin size={16} className="mr-1" />
-                            <span>{typeof event.location === 'string' ? event.location : `${(event.location as Location).city}, ${(event.location as Location).state}`}</span>
-                          </div>
-                          <div className={`mt-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                            <div className="flex items-center">
-                              <Calendar size={16} className="mr-1" />
-                              <span>{event.date}</span>
+                    {events.length > 0 ? (
+                      events.map(event => (
+                        <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
+                          <div className="relative h-48">
+                            <img
+                              src={event.image}
+                              alt={event.name}
+                              className="w-full h-full object-cover"
+                            />
+                            <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
+                              <span className="text-emerald-400 mr-1">₹</span>
+                              <span>{event.price}</span>
                             </div>
-                            <div className="flex items-center mt-1">
-                              <Clock size={16} className="mr-1" />
-                              <span>{event.time}</span>
+                            <button
+                              className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(event);
+                              }}
+                            >
+                              <Heart size={20} className="text-white" fill={isItemFavorite(event.id, 'event') ? "white" : "none"} />
+                            </button>
+                          </div>
+                          <div className="p-4">
+                            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {event.name}
+                            </h3>
+                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                              <MapPin size={16} className="mr-1" />
+                              <span>{typeof event.location === 'string' ? event.location : `${(event.location as Location).city}, ${(event.location as Location).state}`}</span>
                             </div>
-                          </div>
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                              } rounded-full text-sm`}>
-                              {event.category}
-                            </span>
-                            <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                              } rounded-full text-sm`}>
-                              {event.registeredCount}/{event.capacity} Registered
-                            </span>
-                          </div>
-                          <div className="mt-4">
-                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                              {event.description}
-                            </p>
+                            <div className={`mt-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                              <div className="flex items-center">
+                                <Calendar size={16} className="mr-1" />
+                                <span>{event.date}</span>
+                              </div>
+                              <div className="flex items-center mt-1">
+                                <Clock size={16} className="mr-1" />
+                                <span>{event.time}</span>
+                              </div>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
+                                {event.category}
+                              </span>
+                              <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
+                                {event.registeredCount}/{event.capacity} Registered
+                              </span>
+                            </div>
                           </div>
                         </div>
+                      ))
+                    ) : (
+                      <div className={`col-span-full text-center py-12 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        No events available
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
@@ -1667,7 +1807,7 @@ export default function DashboardPage() {
               All Restaurants
             </h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {restaurants.map(restaurant => (
+              {restaurants.map((restaurant, idx) => (
                 <div
                   key={restaurant.id}
                   className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
@@ -1701,13 +1841,20 @@ export default function DashboardPage() {
                       <MapPin size={16} className="mr-1" />
                       <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {restaurant.cuisine?.map((cuisine: string, index: number) => (
-                        <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                          } rounded-full text-sm`}>
-                          {cuisine}
-                        </span>
-                      ))}
+                    <div className="mt-2 flex items-center justify-between">
+                      <div className="flex flex-wrap gap-2">
+                        {restaurant.cuisine?.map((cuisine: string, index: number) => (
+                          <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
+                            } rounded-full text-sm`}>
+                            {cuisine}
+                          </span>
+                        ))}
+                      </div>
+                      <SustainabilityBadge
+                        score={Math.floor(Math.random() * 50) + 50} // Demonstration score
+                        ecoFriendly={true}
+                        localSourcing={idx % 2 === 0}
+                      />
                     </div>
                   </div>
                 </div>
@@ -1791,7 +1938,6 @@ export default function DashboardPage() {
         );
       case 'bookings':
         // Bookings section
-
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
             <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-8`}>
@@ -1872,7 +2018,6 @@ export default function DashboardPage() {
                   const bookingId = booking._id || booking.id;
                   const isValidMongoId = typeof bookingId === 'string' && /^[a-f\d]{24}$/i.test(bookingId);
 
-                  // Determine the name to display
                   const bookingName =
                     booking.restaurantId?.name ||
                     booking.eventId?.name ||
@@ -1894,7 +2039,7 @@ export default function DashboardPage() {
                           {booking.status}
                         </div>
                         <h3 className="text-3xl font-bold text-white text-center p-6">
-                          {booking.restaurantId?.name || booking.eventId?.name || booking.restaurantName || booking.eventName || 'Booking'}
+                          {bookingName}
                         </h3>
                       </div>
                       <div className="p-6">
@@ -1934,67 +2079,30 @@ export default function DashboardPage() {
                             </div>
                           )}
                           {isValidMongoId && (() => {
-                            // Calculate time difference - properly parse date and time
                             let bookingDateTime: Date;
                             try {
-                              // Handle different date formats
                               const dateStr = typeof booking.date === 'string' ? booking.date : new Date(booking.date).toISOString();
                               let timeStr = booking.time || '00:00';
+                              let datePart = dateStr.includes('T') ? dateStr.split('T')[0] : new Date(dateStr).toISOString().split('T')[0];
 
-                              // Parse date (handle ISO format or regular date string)
-                              let datePart: string;
-                              if (dateStr.includes('T')) {
-                                datePart = dateStr.split('T')[0];
-                              } else {
-                                // Handle date formats like "1/25/2026" or "2026-01-25"
-                                const dateObj = new Date(dateStr);
-                                datePart = dateObj.toISOString().split('T')[0];
-                              }
-
-                              // Convert 12-hour time to 24-hour format if needed
                               if (timeStr.includes('AM') || timeStr.includes('PM')) {
                                 const isPM = timeStr.includes('PM');
                                 timeStr = timeStr.replace(/AM|PM/gi, '').trim();
                                 const [hours, minutes] = timeStr.split(':').map(s => parseInt(s.trim()));
                                 let hour24 = hours;
-
-                                if (isPM && hours !== 12) {
-                                  hour24 = hours + 12;
-                                } else if (!isPM && hours === 12) {
-                                  hour24 = 0;
-                                }
-
+                                if (isPM && hours !== 12) hour24 = hours + 12;
+                                else if (!isPM && hours === 12) hour24 = 0;
                                 timeStr = `${hour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
                               }
-
-                              // Create the datetime
                               bookingDateTime = new Date(`${datePart}T${timeStr}:00`);
-
-                              // Validate the date
-                              if (isNaN(bookingDateTime.getTime())) {
-                                throw new Error('Invalid date');
-                              }
+                              if (isNaN(bookingDateTime.getTime())) throw new Error('Invalid date');
                             } catch (error) {
-                              console.error('Error parsing booking date/time:', error, { date: booking.date, time: booking.time });
-                              // Fallback: just use the date
                               bookingDateTime = new Date(booking.date);
                             }
 
                             const now = new Date();
                             const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
                             const canCancel = hoursUntilBooking > 2;
-
-                            // Debug log
-                            console.log('Booking debug:', {
-                              name: bookingName,
-                              status: booking.status,
-                              date: booking.date,
-                              time: booking.time,
-                              bookingDateTime: bookingDateTime.toISOString(),
-                              now: now.toISOString(),
-                              hoursUntilBooking,
-                              canCancel
-                            });
 
                             if (booking.status === 'pending') {
                               return (
@@ -2048,31 +2156,20 @@ export default function DashboardPage() {
                               } else if (hoursUntilBooking > 0) {
                                 return (
                                   <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                    <p className="text-xs text-yellow-800 text-center font-medium">
-                                      ⚠️ Cancellation not available
-                                    </p>
-                                    <p className="text-xs text-yellow-700 text-center mt-1">
-                                      Less than 2 hours until booking ({hoursLeft}h {minutesLeft}m left)
-                                    </p>
+                                    <p className="text-xs text-yellow-800 text-center font-medium">⚠️ Cancellation not available</p>
+                                    <p className="text-xs text-yellow-700 text-center mt-1">Less than 2 hours until booking ({hoursLeft}h {minutesLeft}m left)</p>
                                   </div>
                                 );
                               } else {
                                 return (
                                   <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
-                                    <p className="text-xs text-gray-600 text-center font-medium">
-                                      🎉 Booking time has passed
-                                    </p>
+                                    <p className="text-xs text-gray-600 text-center font-medium">🎉 Booking time has passed</p>
                                   </div>
                                 );
                               }
                             }
                             return null;
                           })()}
-                          {!isValidMongoId && (
-                            <div className="text-xs text-red-500 mt-2">
-                              This booking cannot be confirmed/cancelled (invalid ID)
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -2082,7 +2179,7 @@ export default function DashboardPage() {
             )}
           </div>
         );
-      case 'settings':
+      case 'settings': {
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4 md:p-8`}>
             <div className="max-w-4xl mx-auto space-y-6">
@@ -2267,12 +2364,14 @@ export default function DashboardPage() {
                 </div>
               </div>
             </div>
-          </div >
+          </div>
         );
-      case 'favorites':
+      }
+      case 'favorites': {
         // Separate favorites by type
         const favoriteRestaurants = favorites.filter(item => item.type === 'restaurant');
         const favoriteEvents = favorites.filter(item => item.type === 'event');
+
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
             <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-8`}>
@@ -2425,16 +2524,17 @@ export default function DashboardPage() {
             )}
           </div>
         );
-      case 'messages':
+      }
+      case 'messages': {
         // Map context notifications to the expected structure for rendering
-        // @ts-ignore: Notification id may be _id or id depending on backend
-        const mappedNotifications = notificationContextNotifications.map((n) => ({
-          id: (n as any).id || (n as any)._id,
+        const mappedNotifications = notificationContextNotifications.map((n: any) => ({
+          id: n.id || n._id,
           title: n.title || 'Notification',
           message: n.message || n.title || '',
           read: Array.isArray(n.readBy) && typeof userData?.uid === 'string' ? n.readBy.includes(userData.uid) : false,
           timestamp: n.createdAt ? new Date(n.createdAt) : new Date(),
         }));
+
         return (
           <div className="p-6">
             {mappedNotifications.length === 0 ? (
@@ -2469,7 +2569,7 @@ export default function DashboardPage() {
                     </button>
                   )}
                 </div>
-                {mappedNotifications.map((notification, index) => (
+                {mappedNotifications.map((notification: any, index: number) => (
                   <div
                     key={index}
                     onClick={() => setSelectedNotification(notification)}
@@ -2516,7 +2616,25 @@ export default function DashboardPage() {
             )}
           </div>
         );
-      // ... rest of the cases ...
+      }
+      case 'achievements':
+        return (
+          <AchievementsSection 
+            isDarkMode={isDarkMode}
+            language={language}
+            translations={translations[language]}
+          />
+        );
+      case 'ar-menu':
+        return (
+          <ARMenuSection 
+            isDarkMode={isDarkMode}
+            language={language}
+            translations={translations[language]}
+          />
+        );
+      default:
+        return null;
     }
   };
 
@@ -2719,7 +2837,7 @@ export default function DashboardPage() {
   }, [location, navigate, activeSection]);
 
   // Fetch bookings from MongoDB API instead of localStorage
-  const fetchBookingsFromAPI = async () => {
+  async function fetchBookingsFromAPI() {
     try {
       if (!auth.currentUser) {
         console.error('No authenticated user found');
@@ -2734,8 +2852,11 @@ export default function DashboardPage() {
         const fetchedBookings = await bookingsApi.getAll();
         console.log('Fetched bookings from API:', fetchedBookings);
 
+        // Ensure fetchedBookings is an array
+        const bookingsArray = Array.isArray(fetchedBookings) ? fetchedBookings : [];
+
         // Debug: Log each booking structure
-        fetchedBookings.forEach((booking: Booking, index: number) => {
+        bookingsArray.forEach((booking: Booking, index: number) => {
           console.log(`Booking ${index + 1}:`, {
             id: booking._id || booking.id,
             restaurantId: booking.restaurantId,
@@ -2748,7 +2869,7 @@ export default function DashboardPage() {
           });
         });
 
-        setBookings(fetchedBookings);
+        setBookings(bookingsArray);
       } catch (error) {
         console.error('Error fetching bookings:', error);
         setBookings([]);
@@ -2757,7 +2878,7 @@ export default function DashboardPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   // Load bookings when component mounts
   useEffect(() => {
@@ -2787,7 +2908,7 @@ export default function DashboardPage() {
   }, []);
 
   // Add this function near the other handler functions in the component
-  const handleBookingAction = async (bookingId: string, action: 'confirm' | 'cancel') => {
+  async function handleBookingAction(bookingId: string, action: 'confirm' | 'cancel') {
     try {
       if (!bookingId) {
         toast.error('Invalid booking ID');
@@ -2807,7 +2928,7 @@ export default function DashboardPage() {
       console.error(`Error ${action}ing booking:`, error);
       toast.error(`Failed to ${action} booking. Please try again.`);
     }
-  };
+  }
 
   if (error) {
     return (
@@ -2898,6 +3019,8 @@ export default function DashboardPage() {
                 { id: 'restaurants', label: translations[language].restaurants, icon: <MapPin className="w-5 h-5" /> },
                 { id: 'events', label: translations[language].events, icon: <Globe className="w-5 h-5" /> },
                 { id: 'favorites', label: translations[language].favourites, icon: <Heart className="w-5 h-5" /> },
+                { id: 'achievements', label: translations[language].achievements, icon: <Trophy className="w-5 h-5" /> },
+                { id: 'ar-menu', label: translations[language].arMenu, icon: <Camera className="w-5 h-5" /> },
                 { id: 'messages', label: translations[language].messages, icon: <Bell className="w-5 h-5" /> },
                 { id: 'settings', label: translations[language].settings, icon: <Settings className="w-5 h-5" /> }
               ].map(({ id, label, icon }) => (
@@ -3017,13 +3140,24 @@ export default function DashboardPage() {
                   <input
                     type="text"
                     placeholder={translations[language].searchPlaceholder}
-                    className="w-[300px] px-4 py-2 rounded-xl bg-white/90 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-500"
+                    className="w-[300px] px-4 py-2 pr-20 rounded-xl bg-white/90 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-500"
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
-                  <button className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                    <VoiceSearchButton
+                      onSearchResult={(query) => handleSearch(query)}
+                      language={
+                        language === 'hindi' ? 'hi-IN' :
+                          language === 'tamil' ? 'ta-IN' :
+                            language === 'kannada' ? 'kn-IN' :
+                              language === 'telugu' ? 'te-IN' :
+                                language === 'malayalam' ? 'ml-IN' :
+                                  'en-IN'
+                      }
+                    />
                     <Search className="w-5 h-5 text-gray-500" />
-                  </button>
+                  </div>
                 </div>
 
                 {/* Notification Bell Component */}

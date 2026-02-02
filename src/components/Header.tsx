@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
+import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 
 interface HeaderProps {
@@ -9,32 +10,33 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
   const auth = useAuth();
-  
+
   const onLogout = () => {
     if (handleLogout) {
       handleLogout();
     }
     auth.signOut();
   };
-  
+
   return (
-    <header className="bg-white shadow-sm">
+    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-200 dark:border-gray-800 transition-colors">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
             <Link to="/dashboard" className="flex-shrink-0">
-              <span className="text-xl font-bold text-emerald-600">DineInGo</span>
+              <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400">DineInGo</span>
             </Link>
           </div>
           <div className="flex items-center space-x-4">
+            <ThemeToggle />
             <NotificationBell />
-            <Link to="/dashboard" className="text-gray-700 hover:text-gray-900">
+            <Link to="/dashboard" className="text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition">
               Dashboard
             </Link>
             {auth.currentUser && (
-              <button 
+              <button
                 onClick={onLogout}
-                className="text-gray-700 hover:text-red-600 transition"
+                className="text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition"
               >
                 Logout
               </button>
