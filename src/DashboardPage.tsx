@@ -45,6 +45,8 @@ interface Restaurant {
     city: string;
     state: string;
     country: string;
+    latitude?: number;
+    longitude?: number;
   };
   rating: number;
   image: string;
@@ -777,33 +779,78 @@ export default function DashboardPage() {
       try {
         setIsLoading(true);
 
-        // Fetch restaurants from API
+        // Fetch restaurants from both APIs (legacy restaurants + new businesses)
+        console.log('Starting to fetch restaurants...');
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/restaurants`);
-          if (response.ok) {
-            const resData = await response.json();
-            // Map _id to id to match frontend interface and Combine with mock data
+          const timestamp = Date.now(); // Cache busting
+          const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+          console.log('API URL:', apiUrl);
+
+          const [restaurantsResponse, businessesResponse] = await Promise.all([
+            fetch(`${apiUrl}/api/restaurants?_t=${timestamp}`).catch((err) => {
+              console.log('Restaurants API error:', err);
+              return null;
+            }),
+            fetch(`${apiUrl}/api/business?type=restaurant&_t=${timestamp}`).catch((err) => {
+              console.log('Business API error:', err);
+              return null;
+            })
+          ]);
+
+          let allRestaurants: Restaurant[] = []; // Start with empty array
+
+          // Add new businesses (restaurants) FIRST to prioritize them
+          console.log('Business response status:', businessesResponse?.status);
+          if (businessesResponse && businessesResponse.ok) {
+            const businessData = await businessesResponse.json();
+            console.log('Raw business API response:', businessData);
+            const businessRestaurants = (businessData.data || []).map((b: any) => ({
+              ...b,
+              id: b.id || b._id // Ensure id is set
+            }));
+            allRestaurants = [...businessRestaurants];
+            console.log('Fetched businesses:', businessRestaurants.length, 'restaurants');
+            console.log('Business restaurants:', businessRestaurants.map((r: any) => r.name));
+          } else {
+            console.log('Business API failed or not available. Response:', businessesResponse);
+          }
+
+          // Add legacy restaurants if API is available
+          console.log('Restaurants response status:', restaurantsResponse?.status);
+          if (restaurantsResponse && restaurantsResponse.ok) {
+            const resData = await restaurantsResponse.json();
             const apiRestaurants = (resData.data || []).map((r: any) => ({
               ...r,
               id: r._id || r.id // Ensure id is set
             }));
-
-            // Combine mock restaurants with API restaurants
-            setRestaurants([...apiRestaurants, ...mockRestaurants]);
-          } else {
-            console.error('Failed to fetch restaurants');
-            setRestaurants(mockRestaurants);
+            allRestaurants = [...allRestaurants, ...apiRestaurants];
+            console.log('Added legacy restaurants:', apiRestaurants.length);
           }
+
+          // Add mock data LAST as fallback/examples
+          allRestaurants = [...allRestaurants, ...mockRestaurants];
+
+          setRestaurants(allRestaurants);
+          console.log('Total restaurants loaded:', allRestaurants.length);
+          console.log('First restaurant:', allRestaurants[0]?.name);
+          console.log('All restaurant names:', allRestaurants.map((r: any) => r.name));
         } catch (error) {
           console.error('Error fetching restaurants:', error);
           setRestaurants(mockRestaurants);
         }
 
-        // Fetch events from API
+        // Fetch events from both APIs (legacy events + new businesses)
         try {
-          const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events`);
-          if (response.ok) {
-            const data = await response.json();
+          const [eventsResponse, businessEventsResponse] = await Promise.all([
+            fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events`).catch(() => null),
+            fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/business?type=event`).catch(() => null)
+          ]);
+
+          let allEvents: Event[] = []; // Start with empty array for events
+
+          // Add legacy events if API is available
+          if (eventsResponse && eventsResponse.ok) {
+            const data = await eventsResponse.json();
             const apiEvents = (data.data || data).map((event: any) => ({
               id: event._id,
               name: event.title,
@@ -818,11 +865,32 @@ export default function DashboardPage() {
               capacity: event.capacity,
               registeredCount: event.registeredCount
             }));
-            setEvents(apiEvents);
-          } else {
-            console.error('Failed to fetch events from API');
-            setEvents([]);
+            allEvents = [...allEvents, ...apiEvents];
           }
+
+          // Add new businesses (events) if API is available
+          if (businessEventsResponse && businessEventsResponse.ok) {
+            const businessData = await businessEventsResponse.json();
+            const businessEvents = (businessData.data || []).map((b: any) => ({
+              id: b.id || b._id,
+              name: b.name,
+              description: b.description || 'Event details coming soon',
+              date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), // Default to today
+              time: '7:00 PM', // Default time
+              location: b.location,
+              image: b.image || '/images/placeholder-food.svg',
+              price: b.basePrice || 100,
+              category: b.eventType || 'General',
+              organizer: 'DineInGo',
+              capacity: b.capacity || 100,
+              registeredCount: 0
+            }));
+            allEvents = [...allEvents, ...businessEvents];
+            console.log('Fetched business events:', businessEvents.length, 'events');
+          }
+
+          setEvents(allEvents);
+          console.log('Total events loaded:', allEvents.length);
         } catch (error) {
           console.error('Error fetching events:', error);
           setEvents([]);
@@ -2619,7 +2687,7 @@ export default function DashboardPage() {
       }
       case 'achievements':
         return (
-          <AchievementsSection 
+          <AchievementsSection
             isDarkMode={isDarkMode}
             language={language}
             translations={translations[language]}
@@ -2627,7 +2695,7 @@ export default function DashboardPage() {
         );
       case 'ar-menu':
         return (
-          <ARMenuSection 
+          <ARMenuSection
             isDarkMode={isDarkMode}
             language={language}
             translations={translations[language]}

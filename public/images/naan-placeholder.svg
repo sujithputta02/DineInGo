@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="300" height="200" xmlns="http://www.w3.org/2000/svg">
+  <rect width="300" height="200" fill="#fef3c7"/>
+  <ellipse cx="150" cy="100" rx="80" ry="50" fill="#f59e0b"/>
+  <ellipse cx="150" cy="100" rx="60" ry="35" fill="#fbbf24"/>
+  <text x="50%" y="170" font-family="Arial, sans-serif" font-size="12" fill="#92400e" text-anchor="middle">Naan Bread</text>
+</svg>

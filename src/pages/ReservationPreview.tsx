@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { ArrowLeft, MapPin, Calendar, Users } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { getMockRestaurantById } from "../services/restaurantService";
+import { getRestaurantById, getMockRestaurantById } from "../services/restaurantService";
 import { getMockEventById } from "../services/event-service";
 import { Restaurant, Event } from "../types";
 
@@ -117,27 +117,28 @@ const ReservationPreview: React.FC = () => {
             setSelectedMenuItems(menuItems);
 
             // Try to load the restaurant by ID first
-            let restaurantData = await getMockRestaurantById(id);
+            let restaurantData = await getRestaurantById(id);
             console.log('Restaurant data loaded by ID:', restaurantData); // Debug log
             console.log('Restaurant menu:', restaurantData?.menu); // Debug log
             console.log('Restaurant ID requested:', id, 'Restaurant ID loaded:', restaurantData?.id); // Debug log
 
             // Check if the selected menu items exist in this restaurant
             const missingItems = Object.keys(menuItems).filter(itemId =>
-              !restaurantData?.menu?.some(item => item.id === itemId)
+              !restaurantData?.menu?.some((item: any) => item.id === itemId)
             );
 
             if (missingItems.length > 0) {
               console.log('Missing items in current restaurant:', missingItems);
-              // Try to find the correct restaurant by searching through all restaurants
-              // This is a fallback for when the wrong restaurant ID is passed
+              // Try to find the correct restaurant by searching through mock restaurants
+              // This is a fallback for when menu items from mock restaurants are selected
+              // but we're viewing a business restaurant
               for (let restaurantId = 1; restaurantId <= 6; restaurantId++) {
                 const testRestaurant = await getMockRestaurantById(restaurantId.toString());
                 const allItemsFound = Object.keys(menuItems).every(itemId =>
-                  testRestaurant?.menu?.some(item => item.id === itemId)
+                  testRestaurant?.menu?.some((item: any) => item.id === itemId)
                 );
                 if (allItemsFound) {
-                  console.log(`Found correct restaurant: ${testRestaurant?.name} (ID: ${restaurantId})`);
+                  console.log(`Found correct mock restaurant: ${testRestaurant?.name} (ID: ${restaurantId})`);
                   restaurantData = testRestaurant;
                   break;
                 }

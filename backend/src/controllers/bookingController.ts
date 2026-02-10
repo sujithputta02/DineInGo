@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { Booking } from '../models/Booking';
 import { UserStats } from '../models/UserStats';
 import { Restaurant } from '../models/Restaurant';
+import { TableBooking } from '../models/TableBooking';
 import nodemailer from 'nodemailer';
 import { generateBothWalletPasses } from '../utils/walletPassGenerator';
 import mongoose from 'mongoose';
@@ -790,6 +791,70 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
       // Continue without populated data
     }
     
+    // If this is a restaurant booking with a table, unblock the table
+    if (booking.restaurantId && booking.table && booking.date && booking.time) {
+      try {
+        let restaurantId: string;
+        if (typeof booking.restaurantId === 'object' && booking.restaurantId !== null && '_id' in booking.restaurantId) {
+          restaurantId = String((booking.restaurantId as any)._id);
+        } else {
+          restaurantId = String(booking.restaurantId);
+        }
+        
+        const dateStr = booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date;
+        
+        console.log('Cancelling table booking:', {
+          restaurantId,
+          tableId: booking.table,
+          date: dateStr,
+          time: booking.time,
+          userId: booking.userId
+        });
+        
+        // Update TableBooking collection to cancel the table reservation
+        const tableBooking = await TableBooking.findOneAndUpdate(
+          {
+            restaurantId,
+            tableId: booking.table,
+            date: dateStr,
+            time: booking.time,
+            userId: booking.userId,
+            status: { $in: ['reserved', 'confirmed', 'blocked'] }
+          },
+          {
+            status: 'cancelled',
+            cancelledAt: new Date(),
+            blockedUntil: undefined
+          },
+          { new: true }
+        );
+        
+        if (tableBooking) {
+          console.log('Successfully cancelled table booking:', tableBooking._id);
+          
+          // Emit Socket.IO event for real-time updates
+          const io = require('../utils/socket').getIO();
+          if (io) {
+            io.to(restaurantId).emit('tableCancelled', {
+              restaurantId,
+              tableId: booking.table,
+              date: dateStr,
+              time: booking.time,
+              userId: booking.userId,
+              status: 'cancelled',
+              booking: tableBooking
+            });
+            console.log(`Emitted tableCancelled event for table ${booking.table} at restaurant ${restaurantId}`);
+          }
+        } else {
+          console.log('No table booking found to cancel - may have been already cancelled or not exist');
+        }
+      } catch (tableError) {
+        console.error('Error cancelling table booking:', tableError);
+        // Don't fail the main booking cancellation if table cancellation fails
+      }
+    }
+    
     // If this is an event booking with seats, unblock the seats
     if (booking.eventId && booking.selectedSeats && booking.selectedSeats.length > 0) {
       try {
@@ -871,80 +936,46 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         }
       } catch (eventError) {
         console.error('Error updating event count:', eventError);
+        // Don't fail the cancellation if event count update fails
       }
     }
     
-    // Handle restaurant table cancellation
-    if (booking.restaurantId && booking.date && booking.time && booking.table) {
-      try {
-        const { TableBooking } = require('../models/TableBooking');
-        let restaurantId: string;
-        if (typeof booking.restaurantId === 'object' && booking.restaurantId !== null && '_id' in booking.restaurantId) {
-          restaurantId = String((booking.restaurantId as any)._id);
-        } else {
-          restaurantId = String(booking.restaurantId);
-        }
-        
-        const date = booking.date instanceof Date ? booking.date.toISOString().slice(0,10) : booking.date;
-        const time = booking.time;
-        const tableId = booking.table;
-        
-        // Cancel the table booking in TableBooking collection
-        await TableBooking.findOneAndUpdate(
-          {
-            restaurantId,
-            tableId,
-            date: String(date),
-            time: String(time),
-            userId: booking.userId
-          },
-          {
-            status: 'cancelled',
-            cancelledAt: new Date(),
-            blockedUntil: undefined
-          },
-          { new: true }
-        );
-        
-        console.log(`Cancelled table booking for table ${tableId} at restaurant ${restaurantId}`);
-        
-        // Emit Socket.IO event for real-time updates
-        const io = require('../utils/socket').getIO();
-        if (io) {
-          io.to(restaurantId).emit('tableCancelled', {
-            tableId,
-            date: String(date),
-            time: String(time),
-            userId: booking.userId,
-            status: 'cancelled'
-          });
-          console.log(`Emitted tableCancelled event for table ${tableId}`);
-        }
-      } catch (tableError) {
-        console.error('Error cancelling table booking:', tableError);
-        // Don't fail the main cancellation if table cancellation fails
+    // Send cancellation email
+    try {
+      const { sendCancellationEmail } = require('../services/eventEmailService');
+      const isEvent = !!(booking.eventId || booking.eventName);
+      
+      // Prepare email data
+      const emailData = {
+        _id: booking._id,
+        id: booking._id,
+        userId: booking.userId,
+        eventId: booking.eventId,
+        restaurantId: booking.restaurantId,
+        eventName: booking.eventName || (booking.eventId && typeof booking.eventId === 'object' && 'name' in booking.eventId ? booking.eventId.name : undefined),
+        restaurantName: booking.restaurantName || (booking.restaurantId && typeof booking.restaurantId === 'object' && 'name' in booking.restaurantId ? booking.restaurantId.name : undefined),
+        date: booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date,
+        time: booking.time,
+        guests: booking.guests || booking.seats || 1,
+        selectedSeats: booking.selectedSeats || booking.seatNumbers || [],
+        totalAmount: booking.totalAmount || booking.amount,
+        fullName: booking.customerName || booking.fullName,
+        email: booking.customerEmail || booking.email,
+        phoneNumber: booking.customerPhone || booking.phoneNumber,
+        specialRequest: booking.specialRequests || booking.specialRequest,
+        status: 'cancelled'
+      };
+      
+      // Only send email if we have an email address
+      if (emailData.email) {
+        await sendCancellationEmail(emailData, isEvent);
+        console.log('Cancellation email sent successfully to:', emailData.email);
+      } else {
+        console.warn('No email address found for booking cancellation:', booking._id);
       }
-    }
-    
-    // Send cancellation email (only if email is available)
-    if (booking.email) {
-      try {
-        const { sendCancellationEmail } = require('../services/eventEmailService');
-        const isEvent = !!(booking.eventId || booking.eventName);
-        
-        await sendCancellationEmail({
-          ...booking.toObject(),
-          restaurantName: booking.restaurantName || (booking.restaurantId && typeof booking.restaurantId === 'object' ? (booking.restaurantId as any).name : undefined),
-          eventName: booking.eventName || (booking.eventId && typeof booking.eventId === 'object' ? (booking.eventId as any).title : undefined)
-        }, isEvent);
-        
-        console.log('Cancellation email sent successfully');
-      } catch (emailError) {
-        console.error('Error sending cancellation email:', emailError);
-        // Don't fail the cancellation if email fails
-      }
-    } else {
-      console.log('No email address available, skipping cancellation email');
+    } catch (emailError) {
+      console.error('Error sending cancellation email:', emailError);
+      // Don't fail the cancellation if email fails
     }
     
     res.json(booking);
@@ -958,6 +989,102 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
       message: 'Error cancelling booking',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
+  }
+};
+
+// Get bookings for a specific business
+export const getBusinessBookings = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.params;
+    const { status, date, limit = 50 } = req.query;
+    
+    const query: any = { businessId };
+    
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+    
+    if (date) {
+      query.date = {
+        $gte: new Date(date as string),
+        $lt: new Date(new Date(date as string).getTime() + 24 * 60 * 60 * 1000)
+      };
+    }
+    
+    const bookings = await Booking.find(query)
+      .sort({ date: -1, time: -1 })
+      .limit(parseInt(limit as string))
+      .lean();
+    
+    res.json(bookings);
+  } catch (error) {
+    console.error('Error fetching business bookings:', error);
+    res.status(500).json({ message: 'Error fetching business bookings' });
+  }
+};
+
+// Get booking analytics for a business
+export const getBookingAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { businessId } = req.params;
+    const { period = '30d' } = req.query;
+    
+    let dateFilter: Date;
+    switch (period) {
+      case '7d':
+        dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      case '90d':
+        dateFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    }
+    
+    const analytics = await Booking.aggregate([
+      {
+        $match: {
+          businessId,
+          createdAt: { $gte: dateFilter }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalBookings: { $sum: 1 },
+          totalRevenue: { $sum: '$amount' },
+          confirmedBookings: {
+            $sum: { $cond: [{ $eq: ['$status', 'confirmed'] }, 1, 0] }
+          },
+          cancelledBookings: {
+            $sum: { $cond: [{ $eq: ['$status', 'cancelled'] }, 1, 0] }
+          },
+          averageBookingValue: { $avg: '$amount' },
+          totalSeats: { $sum: '$seats' }
+        }
+      }
+    ]);
+    
+    const result = analytics[0] || {
+      totalBookings: 0,
+      totalRevenue: 0,
+      confirmedBookings: 0,
+      cancelledBookings: 0,
+      averageBookingValue: 0,
+      totalSeats: 0
+    };
+    
+    // Calculate utilization rate (this would need capacity from business model)
+    result.utilizationRate = result.totalBookings > 0 ? 
+      Math.round((result.confirmedBookings / result.totalBookings) * 100) : 0;
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching booking analytics:', error);
+    res.status(500).json({ message: 'Error fetching booking analytics' });
   }
 };
 
@@ -996,12 +1123,62 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
       }
       const date = booking.date instanceof Date ? booking.date.toISOString().slice(0,10) : booking.date;
       const time = booking.time;
-      require('../utils/socket').getIO().to(restaurantId).emit('bookingUpdated', { restaurantId, date, time });
+      const tableId = booking.table;
+
+      // Emit socket event for real-time updates
+      try {
+        require('../utils/socket').getIO().to(restaurantId).emit('bookingUpdated', { 
+          restaurantId, 
+          date, 
+          time,
+          tableId,
+          userId: booking.userId
+        });
+      } catch (socketError) {
+        console.warn('Could not emit socket event:', socketError);
+      }
+
+      // Send email notification if email is available
+      try {
+        if (booking.email) {
+          // Prepare booking data for email
+          const isEvent = !!(booking.eventId || booking.eventName);
+          const emailData = {
+            _id: booking._id,
+            id: booking._id,
+            userId: booking.userId,
+            eventId: booking.eventId,
+            restaurantId: booking.restaurantId,
+            eventName: booking.eventName || (booking.eventId && typeof booking.eventId === 'object' ? (booking.eventId as any).title : undefined),
+            restaurantName: booking.restaurantName || (booking.restaurantId && typeof booking.restaurantId === 'object' ? (booking.restaurantId as any).name : undefined),
+            date: booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date,
+            time: booking.time,
+            guests: booking.seats || 1, // Map seats to guests for email template
+            selectedSeats: booking.seatNumbers || [],
+            totalAmount: booking.amount,
+            fullName: booking.customerName,
+            email: booking.customerEmail,
+            phoneNumber: booking.customerPhone,
+            specialRequest: booking.specialRequests,
+            status: booking.status
+          };
+
+          // Import and send email
+          const { sendEventConfirmationEmail } = await import('../services/eventEmailService');
+          await sendEventConfirmationEmail(emailData);
+        }
+      } catch (emailError) {
+        console.warn('Could not send confirmation email:', emailError);
+      }
     }
+
     res.json(booking);
   } catch (error) {
     console.error('Error confirming booking:', error);
-    res.status(500).json({ message: 'Error confirming booking' });
+    res.status(500).json({
+      message: 'Error confirming booking',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 };
 

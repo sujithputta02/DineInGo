@@ -43,6 +43,9 @@ export interface Restaurant {
   openNow?: boolean;
   phoneNumber?: string;
   menu?: MenuItem[];
+  timeSlots?: any[]; // Business time slots
+  floorPlan?: any; // Business floor plan data
+  seatingLayout?: any; // Business seating layout data
 }
 
 export interface Event {

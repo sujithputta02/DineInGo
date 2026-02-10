@@ -240,7 +240,7 @@ const TableRenderer = ({ table, isSelected, onClick }: { table: Table, isSelecte
         const angle = (i * (360 / table.seats)) * (Math.PI / 180);
         const radius = 60;
         return (
-          <div key={i}
+          <div key={`chair-${table.id}-${i}`}
             className={`absolute w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-green-500' : 'bg-slate-600'} opacity-40`}
             style={{
               top: `${50 + (radius * Math.sin(angle))}%`,

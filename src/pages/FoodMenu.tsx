@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Plus, Minus, ShoppingCart, Calendar, Clock, Users } from 'lucide-react';
-import { getMockRestaurantById } from '../services/restaurantService';
+import { getRestaurantById } from '../services/restaurantService';
 import type { MenuItem } from '../types';
 
 export default function FoodMenu() {
@@ -21,7 +21,7 @@ export default function FoodMenu() {
   useEffect(() => {
     const fetchRestaurant = async () => {
       if (id) {
-        const data = await getMockRestaurantById(id);
+        const data = await getRestaurantById(id);
         setRestaurant(data);
         setLoading(false);
       }
@@ -144,59 +144,74 @@ export default function FoodMenu() {
         </div>
 
         {/* Menu Items */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-          {filteredMenu?.map((item: MenuItem) => (
-            <div key={item.id} className="bg-white rounded-lg shadow-sm p-4">
-              <div className="aspect-w-16 aspect-h-9 mb-4">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="object-cover rounded-lg w-full h-48"
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://placehold.co/64x64?text=Food';
-                  }}
-                />
-              </div>
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-semibold">{item.name}</h3>
-                <span className="text-gray-600">₹{item.price}</span>
-              </div>
-              <p className="text-gray-600 text-sm mb-4">{item.description}</p>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {selectedItems[item.id] ? (
-                    <>
-                      <button
-                        onClick={() => handleRemoveItem(item.id)}
-                        className="p-1 rounded-full hover:bg-gray-100"
-                      >
-                        <Minus className="w-5 h-5" />
-                      </button>
-                      <span className="font-medium">{selectedItems[item.id]}</span>
+        {restaurant?.menu && restaurant.menu.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            {filteredMenu?.map((item: MenuItem) => (
+              <div key={item.id} className="bg-white rounded-lg shadow-sm p-4">
+                <div className="aspect-w-16 aspect-h-9 mb-4">
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="object-cover rounded-lg w-full h-48"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://placehold.co/64x64?text=Food';
+                    }}
+                  />
+                </div>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-semibold">{item.name}</h3>
+                  <span className="text-gray-600">₹{item.price}</span>
+                </div>
+                <p className="text-gray-600 text-sm mb-4">{item.description}</p>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {selectedItems[item.id] ? (
+                      <>
+                        <button
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="p-1 rounded-full hover:bg-gray-100"
+                        >
+                          <Minus className="w-5 h-5" />
+                        </button>
+                        <span className="font-medium">{selectedItems[item.id]}</span>
+                        <button
+                          onClick={() => handleAddItem(item.id)}
+                          className="p-1 rounded-full hover:bg-gray-100"
+                        >
+                          <Plus className="w-5 h-5" />
+                        </button>
+                      </>
+                    ) : (
                       <button
                         onClick={() => handleAddItem(item.id)}
-                        className="p-1 rounded-full hover:bg-gray-100"
+                        className="flex items-center gap-1 text-emerald-500 hover:text-emerald-600"
                       >
                         <Plus className="w-5 h-5" />
+                        <span>Add</span>
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => handleAddItem(item.id)}
-                      className="flex items-center gap-1 text-emerald-500 hover:text-emerald-600"
-                    >
-                      <Plus className="w-5 h-5" />
-                      <span>Add</span>
-                    </button>
+                    )}
+                  </div>
+                  {item.isVegetarian && (
+                    <span className="text-green-600 text-sm">Vegetarian</span>
                   )}
                 </div>
-                {item.isVegetarian && (
-                  <span className="text-green-600 text-sm">Vegetarian</span>
-                )}
               </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="bg-white rounded-lg shadow-sm p-8">
+              <h3 className="text-xl font-semibold text-gray-800 mb-2">Menu Not Added Yet</h3>
+              <p className="text-gray-600">The restaurant owner hasn't added their menu items yet. Please check back later or contact the restaurant directly.</p>
+              <button
+                onClick={() => navigate(`/restaurant/${id}`)}
+                className="mt-4 px-6 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600"
+              >
+                Back to Restaurant Details
+              </button>
             </div>
-          ))}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Order Summary */}
@@ -221,4 +236,4 @@ export default function FoodMenu() {
       )}
     </div>
   );
-} 
+}

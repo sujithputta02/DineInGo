@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ShoppingCart } from 'lucide-react';
-import { getMockRestaurantById, getMockTotalGuests } from '../services/restaurantService';
+import { getRestaurantById, getMockTotalGuests } from '../services/restaurantService';
 import { getMockEventById, getMockEventCapacity } from '../services/event-service';
 import { bookingsApi } from '../services/api';
 import { Restaurant, Event, MenuItem } from '../types';
@@ -11,26 +11,6 @@ interface TimeSlot {
   time: string;
   available: boolean;
 }
-
-const lunchSlots: TimeSlot[] = [
-  { time: '11:30 AM', available: true },
-  { time: '12:00 PM', available: true },
-  { time: '12:30 PM', available: true },
-  { time: '1:00 PM', available: true },
-  { time: '1:30 PM', available: true },
-  { time: '2:00 PM', available: true },
-];
-
-const dinnerSlots: TimeSlot[] = [
-  { time: '6:00 PM', available: true },
-  { time: '6:30 PM', available: true },
-  { time: '7:00 PM', available: true },
-  { time: '7:30 PM', available: true },
-  { time: '8:00 PM', available: true },
-  { time: '8:30 PM', available: true },
-  { time: '9:00 PM', available: true },
-  { time: '9:30 PM', available: true },
-];
 
 const RestaurantDetails = () => {
   const { id } = useParams();
@@ -46,6 +26,33 @@ const RestaurantDetails = () => {
   const [error, setError] = useState<string | null>(null);
   const [blockedSlots, setBlockedSlots] = useState<string[]>([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
+
+  // Dynamic time slots based on restaurant data
+  const lunchSlots = restaurant?.timeSlots?.filter((slot: any) => slot.type === 'lunch').map((slot: any) => ({
+    time: slot.name,
+    available: slot.available
+  })) || [
+    { time: '11:30 AM', available: true },
+    { time: '12:00 PM', available: true },
+    { time: '12:30 PM', available: true },
+    { time: '1:00 PM', available: true },
+    { time: '1:30 PM', available: true },
+    { time: '2:00 PM', available: true },
+  ];
+
+  const dinnerSlots = restaurant?.timeSlots?.filter((slot: any) => slot.type === 'dinner').map((slot: any) => ({
+    time: slot.name,
+    available: slot.available
+  })) || [
+    { time: '6:00 PM', available: true },
+    { time: '6:30 PM', available: true },
+    { time: '7:00 PM', available: true },
+    { time: '7:30 PM', available: true },
+    { time: '8:00 PM', available: true },
+    { time: '8:30 PM', available: true },
+    { time: '9:00 PM', available: true },
+    { time: '9:30 PM', available: true },
+  ];
 
   // Helper: get all slot times
   const allSlotTimes = [
@@ -124,7 +131,7 @@ const RestaurantDetails = () => {
         setLoading(true);
         if (id) {
           if (type === 'restaurant') {
-            const restaurantData = await getMockRestaurantById(id);
+            const restaurantData = await getRestaurantById(id);
             await getMockTotalGuests(); // We still call this to simulate the API call
             setRestaurant(restaurantData);
             setEvent(null);
@@ -300,45 +307,58 @@ const RestaurantDetails = () => {
               </div>
 
               {/* Time Slots */}
-              <div className="space-y-6">
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Lunch</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    {lunchSlots.map((slot, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleTimeSlotClick(slot.time)}
-                        className="p-3 text-center border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
-                        disabled={isPastSlot(slot.time) || blockedSlots.includes(slot.time)}
-                        style={isPastSlot(slot.time) || blockedSlots.includes(slot.time) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                      >
-                        {slot.time}
-                        {blockedSlots.includes(slot.time) && <span className="ml-2 text-xs text-red-500">Blocked</span>}
-                        {isPastSlot(slot.time) && <span className="ml-2 text-xs text-gray-400">Past</span>}
-                      </button>
-                    ))}
+              {restaurant?.timeSlots && restaurant.timeSlots.length > 0 ? (
+                <div className="space-y-6">
+                  {lunchSlots.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Lunch</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {lunchSlots.map((slot, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleTimeSlotClick(slot.time)}
+                            className="p-3 text-center border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
+                            disabled={isPastSlot(slot.time) || blockedSlots.includes(slot.time)}
+                            style={isPastSlot(slot.time) || blockedSlots.includes(slot.time) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                          >
+                            {slot.time}
+                            {blockedSlots.includes(slot.time) && <span className="ml-2 text-xs text-red-500">Blocked</span>}
+                            {isPastSlot(slot.time) && <span className="ml-2 text-xs text-gray-400">Past</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {dinnerSlots.length > 0 && (
+                    <div>
+                      <h3 className="text-lg font-semibold mb-4">Dinner</h3>
+                      <div className="grid grid-cols-3 gap-3">
+                        {dinnerSlots.map((slot, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleTimeSlotClick(slot.time)}
+                            className="p-3 text-center border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
+                            disabled={isPastSlot(slot.time) || blockedSlots.includes(slot.time)}
+                            style={isPastSlot(slot.time) || blockedSlots.includes(slot.time) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                          >
+                            {slot.time}
+                            {blockedSlots.includes(slot.time) && <span className="ml-2 text-xs text-red-500">Blocked</span>}
+                            {isPastSlot(slot.time) && <span className="ml-2 text-xs text-gray-400">Past</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <div className="bg-gray-50 rounded-lg p-6">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Time Slots Not Available</h3>
+                    <p className="text-gray-600">The restaurant owner hasn't set up time slots yet. Please contact the restaurant directly to make a reservation.</p>
                   </div>
                 </div>
-                
-                <div>
-                  <h3 className="text-lg font-semibold mb-4">Dinner</h3>
-                  <div className="grid grid-cols-3 gap-3">
-                    {dinnerSlots.map((slot, index) => (
-                      <button
-                        key={index}
-                        onClick={() => handleTimeSlotClick(slot.time)}
-                        className="p-3 text-center border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
-                        disabled={isPastSlot(slot.time) || blockedSlots.includes(slot.time)}
-                        style={isPastSlot(slot.time) || blockedSlots.includes(slot.time) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-                      >
-                        {slot.time}
-                        {blockedSlots.includes(slot.time) && <span className="ml-2 text-xs text-red-500">Blocked</span>}
-                        {isPastSlot(slot.time) && <span className="ml-2 text-xs text-gray-400">Past</span>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 

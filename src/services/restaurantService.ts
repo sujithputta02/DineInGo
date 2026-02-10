@@ -31,10 +31,10 @@ export const getRestaurantById = async (id: string) => {
     }
 
     // Check if this is a mock restaurant ID (simple numeric IDs 1-6)
-    // If it's a simple number and not a MongoDB ObjectId, use mock data directly
     const isMockId = /^[1-9]$/.test(id) || /^[1-9][0-9]$/.test(id);
     const isObjectId = /^[0-9a-fA-F]{24}$/.test(id);
     
+    // If it's a simple mock ID and not an ObjectId, use mock data directly
     if (isMockId && !isObjectId) {
       console.log(`Using mock data for restaurant ID: ${id}`);
       return getMockRestaurantById(id);
@@ -42,12 +42,105 @@ export const getRestaurantById = async (id: string) => {
 
     const timestamp = Date.now();
     const maxRetries = 3;
-    let lastError;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        // Add mode=cors explicitly and cache=no-cache to prevent caching issues
-        const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/restaurants/${id}?_t=${timestamp}`, {
+        let response;
+        
+        // If it's a MongoDB ObjectId, try business API first
+        if (isObjectId) {
+          console.log(`Fetching business restaurant with ObjectId: ${id}`);
+          response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/business/${id}?_t=${timestamp}`, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const business = data.data || data;
+            console.log('Business API response:', business);
+            console.log('Business timeSlots from API:', business.timeSlots);
+            console.log('Business dailySlots from API:', business.dailySlots);
+            console.log('Business menu from API:', business.menu?.length || 0);
+            
+            // Transform business data to restaurant format
+            const restaurant = {
+              id: business.id || business._id,
+              name: business.name,
+              cuisine: business.cuisine || [],
+              address: typeof business.locationData?.address === 'string' 
+                ? business.locationData.address 
+                : typeof business.location === 'string' 
+                  ? business.location 
+                  : business.locationData?.city && business.locationData?.state
+                    ? `${business.locationData.city}, ${business.locationData.state}`
+                    : 'Address not available',
+              rating: business.rating || 4.0,
+              image: business.thumbnail || business.coverImage || '/images/placeholder-food.svg',
+              location: typeof business.locationData === 'object' && business.locationData !== null
+                ? business.locationData
+                : typeof business.location === 'string' 
+                  ? {
+                      city: business.location.split(',')[0]?.trim() || 'Unknown',
+                      state: business.location.split(',')[1]?.trim() || 'Unknown',
+                      country: 'India'
+                    }
+                  : {
+                      city: 'Unknown',
+                      state: 'Unknown', 
+                      country: 'India'
+                    },
+              priceLevel: Math.ceil((business.basePrice || 100) / 100),
+              openNow: true,
+              phoneNumber: business.locationData?.pincode ? `+91-${business.locationData.pincode}` : 'Contact via app',
+              menu: (business.menu && business.menu.length > 0) ? business.menu.map((item: any) => ({
+                id: item.id,
+                name: item.name,
+                description: item.description || `Delicious ${item.name}`,
+                price: item.price,
+                category: item.category,
+                image: item.image || '/images/placeholder-food.svg',
+                isVegetarian: item.isVegetarian || false,
+                isSpicy: item.isSpicy || false,
+                isPopular: item.isPopular || false
+              })) : [],
+              timeSlots: business.dailySlots && business.dailySlots.length > 0
+                ? business.dailySlots.map((slot: any) => ({
+                    id: slot.id,
+                    name: slot.name,
+                    startTime: slot.startTime,
+                    endTime: slot.endTime,
+                    type: slot.type === 'morning' || slot.type === 'afternoon' ? 'lunch' : 'dinner',
+                    available: slot.available,
+                    maxCapacity: slot.maxCapacity
+                  }))
+                : business.timeSlots || [],
+              type: business.type,
+              description: business.description,
+              
+              // Floor plan data for table selection
+              floorPlan: business.floorPlan,
+              seatingLayout: business.seatingLayout
+            };
+            
+            console.log('Successfully fetched and transformed business restaurant:', restaurant.name);
+            console.log('Restaurant menu items:', restaurant.menu?.length);
+            console.log('Restaurant timeSlots:', restaurant.timeSlots);
+            console.log('Restaurant timeSlots length:', restaurant.timeSlots?.length || 0);
+            return restaurant;
+          } else {
+            console.log(`Business API returned ${response.status}, trying legacy API`);
+          }
+        }
+        
+        // Fallback to legacy restaurant API
+        console.log(`Trying legacy restaurant API for ID: ${id}`);
+        response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/restaurants/${id}?_t=${timestamp}`, {
           method: 'GET',
           mode: 'cors',
           cache: 'no-cache',
@@ -59,7 +152,7 @@ export const getRestaurantById = async (id: string) => {
         
         if (!response.ok) {
           if (response.status === 404) {
-            console.log(`Restaurant with ID ${id} not found in database, using mock data`);
+            console.log(`Restaurant with ID ${id} not found in database, trying mock data`);
             return getMockRestaurantById(id);
           }
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -68,9 +161,9 @@ export const getRestaurantById = async (id: string) => {
         const data = await response.json();
         // If backend wraps in { success, data }, unwrap
         return data.data || data;
+        
       } catch (error: any) {
         console.log(`Attempt ${attempt} failed:`, error);
-        lastError = error;
         
         // If this is a CORS error or network error, fall back to mock data
         if (error.message && (error.message.includes('Failed to fetch') || 
@@ -180,7 +273,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Grilled cottage cheese marinated in spices',
         price: 350,
         category: 'Starters',
-        image: 'https://i0.wp.com/cookingfromheart.com/wp-content/uploads/2017/03/Paneer-Tikka-Masala-4.jpg?fit=1024%2C683&ssl=1',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true,
         isPopular: true
       },
@@ -190,7 +283,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Soft, fluffy bread baked in tandoor',
         price: 50,
         category: 'Breads',
-        image: 'https://www.archanaskitchen.com/images/archanaskitchen/1-Author/Madhuli_Ajay/Butter_Garlic_Naan_Garlic_flavoured_leavened_Flat_bread_.jpg',
+        image: '/images/naan-placeholder.svg',
         isVegetarian: true
       },
       {
@@ -208,7 +301,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Grilled chicken in a spiced tomato and cream sauce',
         price: 400,
         category: 'Main Course',
-        image: 'https://indisch-kochen.com/wp-content/uploads/2022/03/chicken-tikka-masala-haehnchen-tikka-masala.png',
+        image: '/images/placeholder-food.svg',
         isPopular: true
       },
       {
@@ -217,7 +310,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Sweet milk solids dumplings in sugar syrup',
         price: 150,
         category: 'Desserts',
-        image: 'https://wallpapercave.com/wp/wp2157160.jpg',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -226,7 +319,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Crispy pastry filled with spiced potatoes and peas',
         price: 60,
         category: 'Starters',
-        image: 'https://static.vecteezy.com/system/resources/previews/026/553/215/non_2x/samosa-in-the-kitchen-table-foodgraphy-ai-generated-photo.jpg',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -235,7 +328,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Cooling yogurt with cucumber and mint',
         price: 80,
         category: 'Sides',
-        image: 'https://www.vegrecipesofindia.com/wp-content/uploads/2016/10/masala-raita-recipe-1.jpg',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -244,7 +337,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Spiced Indian tea with milk',
         price: 40,
         category: 'Beverages',
-        image: 'https://chaibag.com/cdn/shop/articles/masala-chai-tiramisu-recipe-a-fusion-of-indian-and-italian-242415.jpg?v=1689228510',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -253,7 +346,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Sweet yogurt drink with mango',
         price: 100,
         category: 'Beverages',
-        image: 'https://www.flavorquotient.com/wp-content/uploads/2023/05/Mango-Lassi-FQ-6-1036.jpg',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -262,7 +355,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Whole wheat bread baked in tandoor',
         price: 40,
         category: 'Breads',
-        image: 'https://skydecklounge.in/wp-content/uploads/2022/01/Tandoori-Roti-Butter.jpg',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -271,8 +364,27 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Chicken in a spiced onion-tomato gravy',
         price: 380,
         category: 'Main Course',
-        image: 'https://vaya.in/recipes/wp-content/uploads/2019/02/Spicy-Malvani-Chicken-Curry.jpg'
+        image: '/images/placeholder-food.svg',
       }
+    ],
+    timeSlots: [
+      // Lunch slots
+      { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 50 },
+      { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 50 },
+      { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 50 },
+      { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 50 },
+      { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 50 },
+      { id: 'lunch-6', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 50 },
+      
+      // Dinner slots
+      { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-4', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-5', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-6', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-7', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 50 },
+      { id: 'dinner-8', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 50 }
     ]
   },
   {
@@ -297,7 +409,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fresh fish marinated in coastal spices and grilled',
         price: 550,
         category: 'Main Course',
-        image: 'https://www.licious.in/blog/wp-content/uploads/2020/12/Grilled-Fish.jpg',
+        image: '/images/placeholder-food.svg',
         isPopular: true
       },
       {
@@ -306,7 +418,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Prawns in a coconut-based curry',
         price: 480,
         category: 'Main Course',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.-Aeuiz8Hfp76BAPUmxA2kwHaHa&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
       },
       {
         id: '3',
@@ -314,7 +426,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Crispy fried fish with spices',
         price: 350,
         category: 'Starters',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.MeSmHhqyTFpK0qChnwK2AgHaHa&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '4',
@@ -322,7 +434,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Spicy crab curry with coastal spices',
         price: 650,
         category: 'Main Course',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.K5-FLWI7hgw2QMhb9RDDLgHaFj&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isPopular: true
       },
       {
@@ -331,7 +443,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fragrant rice with fish and spices',
         price: 450,
         category: 'Main Course',
-        image: 'https://tse1.mm.bing.net/th?id=OIP.JH0E_Tdm3jDDF-DPUZ9v-gHaGS&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '6',
@@ -339,7 +451,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Aromatic rice cooked with coconut',
         price: 200,
         category: 'Sides',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.hp9K63Wah1SNkcq4gRBKaQHaEo&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -348,7 +460,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fish in a spicy coconut-based curry',
         price: 400,
         category: 'Main Course',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.nmeG-wvFhTbjpAZuAVSKcAHaE7&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '8',
@@ -356,7 +468,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Crispy fried prawns with spices',
         price: 450,
         category: 'Starters',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.P-kWM2BYLdeVbXpDEoPLxQHaE8&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '9',
@@ -364,7 +476,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Spiced fish patties',
         price: 250,
         category: 'Starters',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.WoGpUhRFGiFnSDuNh1RnGgHaFf&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '10',
@@ -372,9 +484,26 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fresh coconut water',
         price: 80,
         category: 'Beverages',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.p40toVZb03XV2yXAsv-AcgHaEK&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       }
+    ],
+    timeSlots: [
+      // Lunch slots
+      { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 40 },
+      { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 40 },
+      { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 40 },
+      { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 40 },
+      { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 40 },
+      
+      // Dinner slots
+      { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 40 },
+      { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 40 },
+      { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 40 },
+      { id: 'dinner-4', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 40 },
+      { id: 'dinner-5', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 40 },
+      { id: 'dinner-6', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 40 },
+      { id: 'dinner-7', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 40 }
     ]
   },
   {
@@ -399,7 +528,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fragrant basmati rice cooked with chicken and aromatic spices',
         price: 350,
         category: 'Main Course',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.2iWS4NJfB5y_mu30Nsq_bwHaHa&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isPopular: true
       },
       {
@@ -408,7 +537,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fragrant basmati rice cooked with mixed vegetables and spices',
         price: 250,
         category: 'Main Course',
-        image: 'https://tse1.mm.bing.net/th?id=OIP.yh-lYonX_sPwlJA4vNQ6BAHaGL&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -417,7 +546,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fragrant basmati rice cooked with tender mutton and spices',
         price: 400,
         category: 'Main Course',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.pK3hTwN_FIWMmNhocPG9tgHaHa&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isPopular: true
       },
       {
@@ -426,7 +555,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Fragrant basmati rice cooked with paneer and spices',
         price: 300,
         category: 'Main Course',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.pN0Gd1VrDd41FoaVd8IHRgHaLO&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -435,7 +564,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Cooling yogurt with cucumber and mint',
         price: 80,
         category: 'Sides',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.tGKfUnzqb_qvATfxXvj2cgHaLH&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -444,7 +573,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Spicy green chili curry',
         price: 120,
         category: 'Sides',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.uOg90jj6UjXTMY7skkENhwHaE8&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -453,7 +582,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Sweet rice pudding with nuts',
         price: 150,
         category: 'Desserts',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.Bt-RQa7CbwMV777FJjSEhAHaEK&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -462,9 +591,29 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Spiced Indian tea with milk',
         price: 40,
         category: 'Beverages',
-        image: 'https://tse1.mm.bing.net/th?id=OIP.DsezVejWM0aVYNpLuN7JBQHaLG&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       }
+    ],
+    timeSlots: [
+      // Lunch slots
+      { id: 'lunch-1', name: '11:00 AM', startTime: '11:00', endTime: '12:00', type: 'lunch', available: true, maxCapacity: 60 },
+      { id: 'lunch-2', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 60 },
+      { id: 'lunch-3', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 60 },
+      { id: 'lunch-4', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 60 },
+      { id: 'lunch-5', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 60 },
+      { id: 'lunch-6', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 60 },
+      { id: 'lunch-7', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 60 },
+      
+      // Dinner slots
+      { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-4', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-5', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-6', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-7', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 60 },
+      { id: 'dinner-8', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 60 }
     ]
   },
   {
@@ -508,7 +657,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Creamy pasta with parmesan sauce',
         price: 300,
         category: 'Pasta',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.9jqS4lZo9mC6mjPnXHQ4cwHaFj&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -517,7 +666,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Toasted bread with garlic butter',
         price: 150,
         category: 'Sides',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.OcsnTuuKcYaB_5LkGhHmdQHaFj&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -573,6 +722,26 @@ const mockRestaurants: RestaurantType[] = [
         image: 'https://images.unsplash.com/photo-1563805042-7684c019e1cb',
         isVegetarian: true
       }
+    ],
+    timeSlots: [
+      // Lunch slots
+      { id: 'lunch-1', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 35 },
+      { id: 'lunch-2', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 35 },
+      { id: 'lunch-3', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 35 },
+      { id: 'lunch-4', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 35 },
+      { id: 'lunch-5', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 35 },
+      { id: 'lunch-6', name: '2:30 PM', startTime: '14:30', endTime: '15:30', type: 'lunch', available: true, maxCapacity: 35 },
+      
+      // Dinner slots
+      { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-4', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-5', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-6', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-7', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-8', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 35 },
+      { id: 'dinner-9', name: '10:00 PM', startTime: '22:00', endTime: '23:00', type: 'dinner', available: true, maxCapacity: 35 }
     ]
   },
   {
@@ -615,7 +784,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Traditional Japanese soup with tofu',
         price: 150,
         category: 'Soups',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.DMGbYISswMMAKQr-pKriZAHaDt&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -624,7 +793,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Shrimp tempura roll with spicy sauce',
         price: 500,
         category: 'Sushi',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.GFPGF-3T-FluBuMgdwCpkgHaE8&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '5',
@@ -632,7 +801,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Steamed soybeans with sea salt',
         price: 200,
         category: 'Starters',
-        image: 'https://tse1.mm.bing.net/th?id=OIP.D68BPmu0uKyCNgQG7RvOoQHaLH&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -641,7 +810,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Matcha-flavored ice cream',
         price: 250,
         category: 'Desserts',
-        image: 'https://tse2.mm.bing.net/th?id=OIP.oTgRYULZOkr0kJqykSp5iwHaEK&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -650,7 +819,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Tempura shrimp roll with avocado',
         price: 550,
         category: 'Sushi',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.epeYSZ-AR93r0RDkxUZkwgHaFj&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isPopular: true
       },
       {
@@ -659,7 +828,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Japanese rice wine',
         price: 400,
         category: 'Beverages',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.k9XPXxEVBTWqcf61g5g5TAHaDt&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '9',
@@ -667,7 +836,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Assorted vegetables in tempura batter',
         price: 300,
         category: 'Starters',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.u2hssqUKe0ACtqW1V_5cHAHaES&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -676,9 +845,26 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Traditional Japanese green tea',
         price: 100,
         category: 'Beverages',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.RYmprfFf2Lrj3_WZHQR7OAHaEO&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       }
+    ],
+    timeSlots: [
+      // Lunch slots
+      { id: 'lunch-1', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 25 },
+      { id: 'lunch-2', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 25 },
+      { id: 'lunch-3', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 25 },
+      { id: 'lunch-4', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 25 },
+      { id: 'lunch-5', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 25 },
+      
+      // Dinner slots
+      { id: 'dinner-1', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 25 },
+      { id: 'dinner-2', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 25 },
+      { id: 'dinner-3', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 25 },
+      { id: 'dinner-4', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 25 },
+      { id: 'dinner-5', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 25 },
+      { id: 'dinner-6', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 25 },
+      { id: 'dinner-7', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 25 }
     ]
   },
   {
@@ -712,7 +898,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Grilled chicken patty with lettuce and mayo',
         price: 220,
         category: 'Burgers',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.lhiIFT1BibZGXxqGrGUycQHaHa&pid=Api&P=0&h=180'
+        image: '/images/placeholder-food.svg'
       },
       {
         id: '3',
@@ -720,7 +906,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Vegetable patty with lettuce and special sauce',
         price: 200,
         category: 'Burgers',
-        image: 'https://tse3.mm.bing.net/th?id=OIP.mCUG88hVQotiSxdyXb847wHaEo&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -738,7 +924,7 @@ const mockRestaurants: RestaurantType[] = [
         description: 'Crispy battered onion rings',
         price: 120,
         category: 'Sides',
-        image: 'https://tse4.mm.bing.net/th?id=OIP.3EqDCnYUSZZJXQrJjp0pJgHaE8&pid=Api&P=0&h=180',
+        image: '/images/placeholder-food.svg',
         isVegetarian: true
       },
       {
@@ -784,6 +970,27 @@ const mockRestaurants: RestaurantType[] = [
         category: 'Starters',
         image: 'https://images.unsplash.com/photo-1562967914-608f82629710'
       }
+    ],
+    timeSlots: [
+      // Lunch slots
+      { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 45 },
+      { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 45 },
+      { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 45 },
+      { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 45 },
+      { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 45 },
+      { id: 'lunch-6', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 45 },
+      { id: 'lunch-7', name: '2:30 PM', startTime: '14:30', endTime: '15:30', type: 'lunch', available: true, maxCapacity: 45 },
+      
+      // Dinner slots
+      { id: 'dinner-1', name: '5:30 PM', startTime: '17:30', endTime: '18:30', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-2', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-3', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-4', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-5', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-6', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-7', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-8', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 45 },
+      { id: 'dinner-9', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 45 }
     ]
   }
 ];
@@ -802,4 +1009,123 @@ export const getMockRestaurantById = (id: string): RestaurantType | null => {
 
 export const getMockTotalGuests = async (): Promise<number> => {
   return Math.floor(Math.random() * 100);
+};
+
+// Default menu items for businesses without menus
+const getDefaultMenuForBusiness = (cuisines: string[]) => {
+  const defaultItems = [
+    {
+      id: 'default-1',
+      name: 'House Special',
+      description: 'Our signature dish prepared with fresh ingredients',
+      price: 350,
+      category: 'Main Course',
+      image: '/images/placeholder-food.svg',
+      isVegetarian: false,
+      isSpicy: false,
+      isPopular: true
+    },
+    {
+      id: 'default-2',
+      name: 'Vegetarian Delight',
+      description: 'A delicious vegetarian option made with seasonal vegetables',
+      price: 280,
+      category: 'Main Course',
+      image: '/images/placeholder-food.svg',
+      isVegetarian: true,
+      isSpicy: false,
+      isPopular: true
+    },
+    {
+      id: 'default-3',
+      name: 'Appetizer Platter',
+      description: 'A selection of our finest appetizers',
+      price: 200,
+      category: 'Starters',
+      image: '/images/placeholder-food.svg',
+      isVegetarian: false,
+      isSpicy: false,
+      isPopular: false
+    },
+    {
+      id: 'default-4',
+      name: 'Fresh Salad',
+      description: 'Crisp greens with our house dressing',
+      price: 150,
+      category: 'Salads',
+      image: '/images/placeholder-food.svg',
+      isVegetarian: true,
+      isSpicy: false,
+      isPopular: false
+    },
+    {
+      id: 'default-5',
+      name: 'Dessert Special',
+      description: 'Sweet ending to your meal',
+      price: 120,
+      category: 'Desserts',
+      image: '/images/placeholder-food.svg',
+      isVegetarian: true,
+      isSpicy: false,
+      isPopular: false
+    },
+    {
+      id: 'default-6',
+      name: 'Refreshing Beverage',
+      description: 'Cool and refreshing drink',
+      price: 80,
+      category: 'Beverages',
+      image: '/images/placeholder-food.svg',
+      isVegetarian: true,
+      isSpicy: false,
+      isPopular: false
+    }
+  ];
+
+  // Customize based on cuisine
+  if (cuisines.includes('Indian') || cuisines.includes('North Indian')) {
+    defaultItems[0].name = 'Butter Chicken';
+    defaultItems[0].description = 'Tender chicken in a rich, creamy tomato-based curry';
+    defaultItems[1].name = 'Paneer Tikka';
+    defaultItems[1].description = 'Grilled cottage cheese marinated in spices';
+    defaultItems[3].name = 'Tandoori Roti';
+    defaultItems[3].description = 'Whole wheat bread baked in tandoor';
+    defaultItems[3].category = 'Breads';
+    defaultItems[3].price = 40;
+  } else if (cuisines.includes('Italian')) {
+    defaultItems[0].name = 'Margherita Pizza';
+    defaultItems[0].description = 'Classic pizza with tomato sauce and mozzarella';
+    defaultItems[1].name = 'Pasta Alfredo';
+    defaultItems[1].description = 'Creamy pasta with parmesan sauce';
+  } else if (cuisines.includes('Chinese')) {
+    defaultItems[0].name = 'Kung Pao Chicken';
+    defaultItems[0].description = 'Spicy stir-fried chicken with peanuts';
+    defaultItems[1].name = 'Vegetable Fried Rice';
+    defaultItems[1].description = 'Wok-fried rice with mixed vegetables';
+  }
+
+  return defaultItems;
+};
+
+// Default time slots for businesses without time slots
+const getDefaultTimeSlotsForBusiness = () => {
+  return [
+    // Lunch slots
+    { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 50 },
+    { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 50 },
+    { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 50 },
+    { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 50 },
+    { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 50 },
+    { id: 'lunch-6', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 50 },
+    
+    // Dinner slots
+    { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-4', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-5', name: '8:00 PM', startTime: '20:00', endTime: '21:00', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-6', name: '8:30 PM', startTime: '20:30', endTime: '21:30', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-7', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 50 },
+    { id: 'dinner-8', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 50 }
+  ];
 }; 

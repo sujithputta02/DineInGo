@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './LandingPage';
@@ -16,7 +16,6 @@ import UserFeedbackForm from './components/UserFeedbackForm';
 import DebugPage from './pages/DebugPage';
 import FoodMenu from './pages/FoodMenu';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
-import AdminLoginPage from './pages/AdminLoginPage';
 import AuthActionHandler from './pages/AuthActionHandler';
 import EventRegistration from './pages/EventRegistration';
 import EventPreview from './pages/EventPreview';
@@ -26,15 +25,19 @@ import BusinessAuth from './pages/business/BusinessAuth';
 import OwnerDashboard from './pages/business/OwnerDashboard';
 import ManageRestaurant from './pages/business/ManageRestaurant';
 import RestaurantOnboarding from './pages/business/RestaurantOnboarding';
+import BusinessOnboarding from './pages/business/BusinessOnboarding';
+import BusinessDashboard from './pages/business/BusinessDashboard';
+import BookingManagement from './pages/business/BookingManagement';
 import ProtectedBusinessRoute from './components/ProtectedBusinessRoute';
 import CustomerRoute from './components/CustomerRoute';
-import { UserData, CityLocation } from './types';
 import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
-import { auth, onAuthStateChanged } from './firebase';
 import AIChatbot from './components/AIChatbot';
 import FeaturesDemo from './pages/FeaturesDemo';
+import FloorPlanDesigner from './components/FloorPlanDesigner';
+import EventSeatingDesigner from './components/EventSeatingDesigner';
+import TestLocationSelector from './pages/TestLocationSelector';
 
 // Custom hook to set the document title based on the current route
 function usePageTitle() {
@@ -98,6 +101,9 @@ const App: React.FC = () => {
               <Route path="/feedback" element={<UserFeedbackForm />} />
               <Route path="/debug" element={<DebugPage />} />
               <Route path="/features-demo" element={<FeaturesDemo />} />
+              <Route path="/test-floor-designer" element={<FloorPlanDesigner />} />
+              <Route path="/test-event-designer" element={<EventSeatingDesigner />} />
+              <Route path="/test-location-selector" element={<TestLocationSelector />} />
               <Route path="/auth/action" element={<AuthActionHandler />} />
 
               {/* Customer Protected Routes (Redirect Owners to Business) */}
@@ -122,11 +128,22 @@ const App: React.FC = () => {
 
               <Route path="/business" element={<ProtectedBusinessRoute />}>
                 <Route element={<BusinessLayout />}>
-                  <Route index element={<OwnerDashboard />} />
-                  <Route path="dashboard" element={<OwnerDashboard />} />
+                  <Route index element={<BusinessDashboard />} />
+                  <Route path="dashboard" element={<BusinessDashboard />} />
+                  <Route path="onboarding" element={<BusinessOnboarding />} />
+                  <Route path="edit/:id" element={<BusinessOnboarding />} />
+                  <Route path="view/:id" element={<BusinessOnboarding />} />
+                  <Route path="bookings" element={<BookingManagement />} />
+                  <Route path="reservations" element={<BookingManagement />} />
+                  <Route path="floor-plans" element={<FloorPlanDesigner />} />
+                  <Route path="event-seating" element={<EventSeatingDesigner />} />
+                  <Route path="settings" element={<BusinessDashboard />} />
                   <Route path="manage/:id" element={<ManageRestaurant />} />
-                  <Route path="onboarding" element={<RestaurantOnboarding />} />
                   <Route path="restaurants" element={<OwnerDashboard />} />
+                  
+                  {/* Legacy routes for backward compatibility */}
+                  <Route path="legacy-onboarding" element={<RestaurantOnboarding />} />
+                  <Route path="legacy-dashboard" element={<OwnerDashboard />} />
                 </Route>
               </Route>
             </Routes>

@@ -6,6 +6,8 @@ import { GeocodingService } from '../services/geocodingService';
 interface RestaurantMapProps {
   address: string;
   name: string;
+  lat?: number;
+  lon?: number;
   isListMode?: boolean;
   className?: string;
 }
@@ -13,6 +15,8 @@ interface RestaurantMapProps {
 const RestaurantMap: React.FC<RestaurantMapProps> = ({
   address,
   name,
+  lat,
+  lon,
   isListMode = false,
   className = ''
 }) => {
@@ -39,6 +43,12 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
   }, [isExpanded]);
 
   React.useEffect(() => {
+    if (lat && lon && lat !== 0 && lon !== 0) {
+      setCoordinates([lat, lon]);
+      setError(null);
+      return;
+    }
+
     const geocodeAddress = async () => {
       try {
         // Split address into parts

@@ -46,7 +46,7 @@ const mockRestaurants = [
         description: 'Soft, fluffy bread baked in tandoor',
         price: 50,
         category: 'Breads',
-        image: 'https://www.archanaskitchen.com/images/archanaskitchen/1-Author/Madhuli_Ajay/Butter_Garlic_Naan_Garlic_flavoured_leavened_Flat_bread_.jpg',
+        image: '/images/naan-placeholder.svg',
         isVegetarian: true
       }
     ]

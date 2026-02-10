@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Store, Wine, X, ChevronRight } from 'lucide-react';
-import { getMockRestaurantById } from '../services/restaurantService';
+import { getRestaurantById } from '../services/restaurantService';
 import { bookingsApi } from '../services/api';
 import { auth } from '../firebase';
 import socketService from '../utils/socketService';
@@ -16,24 +16,32 @@ const TableSelection: React.FC = () => {
   const [reservedTables, setReservedTables] = useState<string[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
   const [unavailableTables, setUnavailableTables] = useState<string[]>([]);
+  const [businessFloorPlan, setBusinessFloorPlan] = useState<any>(null);
 
   // Use the correct restaurantId (ObjectId) for all API calls
   const [restaurantId, setRestaurantId] = useState<string>(id || '');
 
   // Fetch restaurant data
   useEffect(() => {
-    if (id) {
-      const restaurant = getMockRestaurantById(id);
-      if (restaurant) {
-        setRestaurantName(restaurant.name || 'Restaurant');
-        // If the mock restaurant has a real _id, use it for API calls
-        if ('_id' in restaurant && restaurant._id) {
-          setRestaurantId(restaurant._id as string);
+    const fetchRestaurant = async () => {
+      if (id) {
+        const restaurant = await getRestaurantById(id);
+        if (restaurant) {
+          setRestaurantName(restaurant.name || 'Restaurant');
+          // Use the restaurant ID for API calls (could be ObjectId or mock ID)
+          setRestaurantId(id);
+          
+          // Check if this is a business restaurant with floor plan
+          if (restaurant.floorPlan) {
+            setBusinessFloorPlan(restaurant.floorPlan);
+            console.log('Business floor plan loaded:', restaurant.floorPlan);
+          }
+        } else {
+          setRestaurantName('Restaurant');
         }
-      } else {
-        setRestaurantName('Restaurant');
       }
-    }
+    };
+    fetchRestaurant();
   }, [id]);
 
   // Real-time fetch reserved tables for selected date/time
@@ -484,7 +492,7 @@ const TableSelection: React.FC = () => {
           const radius = 60;
           return (
             <div 
-              key={i}
+              key={`chair-indicator-${tableData.id}-${i}`}
               className={`absolute w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-slate-600'} opacity-40`}
               style={{
                 top: `${50 + (radius * Math.sin(angle))}%`,
@@ -553,7 +561,7 @@ const TableSelection: React.FC = () => {
           <div className="relative w-full max-w-[700px] aspect-[4/3] bg-slate-800/30 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-sm transition-all duration-500 p-4">
             {/* Features Layer */}
             {activeFloor?.features.map((feat, idx) => (
-              <FeatureRenderer key={idx} feature={feat} />
+              <FeatureRenderer key={`feature-${feat.type}-${idx}`} feature={feat} />
             ))}
 
             {/* Tables Layer */}
