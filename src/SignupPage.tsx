@@ -10,7 +10,7 @@ import {
 } from "./firebase";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { userAPI } from './services/api';
+import { userAPI, authOtpApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
 
 interface FormData {
@@ -115,7 +115,7 @@ const SignupPage: React.FC = () => {
             const isNewUser = sessionStorage.getItem('isNewUser') === 'true';
             if (isNewUser) {
               sessionStorage.removeItem('isNewUser'); // clear flag
-              navigate('/feedback');
+              navigate('/onboarding');
             } else {
               navigate('/dashboard'); // fallback for existing user
             }
@@ -319,8 +319,8 @@ const SignupPage: React.FC = () => {
       // Store in session storage
       sessionStorage.setItem('userData', JSON.stringify(savedUser));
 
-      // Navigate to dashboard
-      navigate("/feedback");
+      // Navigate to onboarding
+      navigate("/onboarding");
     } catch (error: any) {
       console.error("Google Sign-Up failed:", error);
       let errorMessage = 'Failed to sign up with Google.';
@@ -356,23 +356,12 @@ const SignupPage: React.FC = () => {
   // Function to send OTP email
   const sendOTPEmail = async (email: string) => {
     try {
-      const response = await fetch('http://localhost:3001/send-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to send OTP email');
-      }
-
+      await authOtpApi.requestSignupOTP(email);
       console.log('OTP email sent successfully');
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error sending OTP:', error);
+      toast.error(error.message || 'Failed to send OTP email');
       throw error;
     }
   };
@@ -426,18 +415,10 @@ const SignupPage: React.FC = () => {
         throw new Error('Email not found');
       }
 
-      const response = await fetch('http://localhost:3001/verify-otp', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, otp: enteredOTP }),
-      });
+      await authOtpApi.verifySignupOTP(email, enteredOTP);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Verification failed');
-      }
+      setOtpVerified(true);
+      toast.success('Email verified successfully!');
 
       // Create user account after OTP verification
       const userCredential = await createUserWithEmailAndPassword(
@@ -465,8 +446,8 @@ const SignupPage: React.FC = () => {
       // Store in session storage
       sessionStorage.setItem('userData', JSON.stringify(userData));
 
-      // Navigate to dashboard
-      navigate("/feedback");
+      // Navigate to onboarding
+      navigate("/onboarding");
     } catch (error: any) {
       console.error("Error during verification:", error);
       setOtpError(error.message || 'Verification failed. Please try again.');
@@ -485,59 +466,13 @@ const SignupPage: React.FC = () => {
 
     setIsLoading(true);
     try {
-      // Create user in Firebase
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        formData.email,
-        formData.password
-      );
-
-      const user = userCredential.user;
-
-      // Store user reference for verification resend
-      sessionStorage.setItem('tempUser', JSON.stringify({
-        email: user.email,
-        uid: user.uid
-      }));
-
-      // Send email verification
-      try {
-        console.log('Attempting to send verification email to user:', user.email);
-        const result = await sendVerificationEmail(user);
-        console.log('Verification email send result:', result);
-        if (!result.success) {
-          throw new Error(result.message || 'Failed to send verification email');
-        }
-      } catch (error) {
-        console.error('Detailed error sending verification email:', error);
-        toast.error('Failed to send verification email. Please try again or contact support.');
-        // Don't abort the whole process, but let the user know.
-        // The user can still log in and request a new verification email.
-      }
-
-      // Create user in our backend
-      try {
-        await userAPI.createUser({
-          uid: user.uid,
-          email: user.email || '',
-          displayName: formData.name,
-          name: formData.name,
-          photoURL: null,
-          emailVerified: false
-        });
-      } catch (error) {
-        console.error('Error storing user data in our API:', error);
-        // Continue even if API storage fails, but maybe log it.
-        toast.warn('Could not save all user details, but your account is created.');
-      }
-
-      // Set flag for new user to redirect to feedback form after verification
-      sessionStorage.setItem('isNewUser', 'true');
-
-      // Show verification message
-      setVerificationSent(true);
-      setShowVerification(true);
+      // Instead of direct signup, request OTP first
+      await sendOTPEmail(formData.email);
+      setTempFormData(formData);
+      setShowOTPVerification(true);
       setVerificationEmail(formData.email);
+      startResendTimer();
+      toast.info('OTP has been sent to your email.');
 
     } catch (error: any) {
       console.error("Error during signup:", error);
@@ -699,7 +634,71 @@ const SignupPage: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {showVerification ? (
+        {showOTPVerification ? (
+          <>
+            {/* OTP Verification View */}
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Verify OTP</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                We've sent a 6-digit code to<br />
+                <span className="font-medium">{verificationEmail}</span>
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="flex justify-between gap-2 max-w-xs mx-auto">
+                {(['digit1', 'digit2', 'digit3', 'digit4', 'digit5', 'digit6'] as const).map((field, index) => (
+                  <input
+                    key={index}
+                    type="text"
+                    maxLength={1}
+                    value={otpFormData[field]}
+                    onChange={(e) => handleOTPChange(e, field)}
+                    className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <p className="text-red-500 text-xs text-center font-medium">{otpError}</p>
+              )}
+
+              <motion.button
+                onClick={handleVerifyOTP}
+                className="w-full bg-emerald-500 text-white py-3 rounded-full font-medium text-sm hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={isLoading}
+              >
+                {isLoading ? "Verifying..." : "Verify & Create Account"}
+              </motion.button>
+
+              <div className="text-center">
+                <p className="text-sm text-gray-600">
+                  Didn't receive the code?{' '}
+                  <button
+                    onClick={() => {
+                      if (resendTimer === 0) {
+                        sendOTPEmail(verificationEmail);
+                        startResendTimer();
+                      }
+                    }}
+                    className={`font-medium ${resendTimer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-emerald-600 hover:text-emerald-700'}`}
+                    disabled={resendTimer > 0 || isLoading}
+                  >
+                    {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
+                  </button>
+                </p>
+                <button
+                  onClick={() => setShowOTPVerification(false)}
+                  className="mt-4 text-xs text-gray-400 hover:text-gray-600 font-medium"
+                >
+                  Change Email Address
+                </button>
+              </div>
+            </div>
+          </>
+        ) : showVerification ? (
           <>
             {/* Verification Message */}
             <div className="text-center mb-6">
@@ -822,8 +821,8 @@ const SignupPage: React.FC = () => {
                         ></div>
                       </div>
                       <span className={`text-xs font-medium ${passwordStrength.label === 'Weak' ? 'text-red-500' :
-                          passwordStrength.label === 'Moderate' ? 'text-yellow-500' :
-                            'text-green-500'
+                        passwordStrength.label === 'Moderate' ? 'text-yellow-500' :
+                          'text-green-500'
                         }`}>
                         {passwordStrength.label}
                       </span>

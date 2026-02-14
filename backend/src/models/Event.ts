@@ -28,6 +28,23 @@ export interface IEvent extends Document {
   category?: string;
   organizer?: string;
   imageUrl?: string;
+  tickets?: Array<{
+    _id?: string;
+    name: string;
+    price: number;
+    quantity: number;
+    sold: number;
+    description?: string;
+    status: 'active' | 'sold_out' | 'hidden';
+  }>;
+  addOns?: Array<{
+    _id?: string;
+    name: string;
+    price: number;
+    description?: string;
+    isRequired: boolean;
+    type: 'product' | 'service';
+  }>;
   seatingLayout?: ISeatingLayout;
   hasSeating: boolean;
   createdAt: Date;
@@ -62,13 +79,32 @@ const eventSchema = new Schema<IEvent>({
   category: { type: String },
   organizer: { type: String },
   imageUrl: { type: String },
+  tickets: [
+    {
+      name: { type: String, required: true },
+      price: { type: Number, required: true },
+      quantity: { type: Number, required: true },
+      sold: { type: Number, default: 0 },
+      description: { type: String },
+      status: { type: String, enum: ['active', 'sold_out', 'hidden'], default: 'active' }
+    }
+  ],
+  addOns: [
+    {
+      name: { type: String, required: true },
+      price: { type: Number, required: true },
+      description: { type: String },
+      isRequired: { type: Boolean, default: false },
+      type: { type: String, enum: ['product', 'service'], default: 'product' }
+    }
+  ],
   seatingLayout: { type: seatingLayoutSchema },
   hasSeating: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
 
-eventSchema.pre('save', function(next) {
+eventSchema.pre('save', function (this: IEvent, next) {
   this.updatedAt = new Date();
   next();
 });

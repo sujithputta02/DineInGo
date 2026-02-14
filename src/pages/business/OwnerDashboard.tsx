@@ -28,7 +28,7 @@ const OwnerDashboard: React.FC = () => {
             try {
                 const storedUser = sessionStorage.getItem('userData');
                 if (!storedUser) {
-                    navigate('/business/login');
+                    navigate('/business/businessLogin');
                     return;
                 }
 

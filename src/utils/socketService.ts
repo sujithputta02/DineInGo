@@ -120,6 +120,30 @@ class SocketService {
       this.socket.off('user_activity');
     }
   }
+
+  joinRestaurant(restaurantId: string) {
+    if (this.socket) {
+      this.socket.emit('joinRestaurant', restaurantId);
+    }
+  }
+
+  leaveRestaurant(restaurantId: string) {
+    if (this.socket) {
+      this.socket.emit('leaveRestaurant', restaurantId);
+    }
+  }
+
+  on(event: string, callback: (...args: any[]) => void) {
+    if (this.socket) {
+      this.socket.on(event, callback);
+    }
+  }
+
+  off(event: string, callback?: (...args: any[]) => void) {
+    if (this.socket) {
+      this.socket.off(event, callback);
+    }
+  }
 }
 
 export default new SocketService(); 

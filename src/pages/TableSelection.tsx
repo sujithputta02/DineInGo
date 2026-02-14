@@ -6,13 +6,38 @@ import { bookingsApi } from '../services/api';
 import { auth } from '../firebase';
 import socketService from '../utils/socketService';
 import { toast } from 'react-toastify';
+import { DinoStepper } from '../components/DinoStepper';
+
+interface TableData {
+  id: string;
+  x: number;
+  y: number;
+  seats: number;
+}
+
+interface FeatureData {
+  type: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label?: string;
+}
+
+interface Floor {
+  id: string;
+  name: string;
+  tables: string[];
+  layout: TableData[];
+  features: FeatureData[];
+}
 
 const TableSelection: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
-  const [restaurantName, setRestaurantName] = useState<string>('');  
+  const [restaurantName, setRestaurantName] = useState<string>('');
   const [reservedTables, setReservedTables] = useState<string[]>([]);
   const [loadingTables, setLoadingTables] = useState(false);
   const [unavailableTables, setUnavailableTables] = useState<string[]>([]);
@@ -30,7 +55,7 @@ const TableSelection: React.FC = () => {
           setRestaurantName(restaurant.name || 'Restaurant');
           // Use the restaurant ID for API calls (could be ObjectId or mock ID)
           setRestaurantId(id);
-          
+
           // Check if this is a business restaurant with floor plan
           if (restaurant.floorPlan) {
             setBusinessFloorPlan(restaurant.floorPlan);
@@ -72,7 +97,7 @@ const TableSelection: React.FC = () => {
     const date = searchParams.get('date');
     const time = searchParams.get('time');
     if (!date || !time) return;
-    
+
     console.log('Fetching unavailable tables for:', { restaurantId, date, time });
     try {
       // Use Booking collection for confirmed tables (excludes cancelled)
@@ -111,32 +136,32 @@ const TableSelection: React.FC = () => {
   // Real-time Socket.IO event listeners
   useEffect(() => {
     if (!restaurantId) return;
-    
+
     // Connect to Socket.IO
     const socket = socketService.connect();
-    
+
     if (!socket) {
       console.error('Failed to connect to socket service');
       return;
     }
-    
+
     // Join restaurant room for real-time updates
     socket.emit('joinRestaurant', restaurantId);
     console.log('Joined restaurant room:', restaurantId);
-    
+
     // Real-time event handlers
     const handleTableEvent = (data: any) => {
       console.log('Table event received:', data);
       const date = searchParams.get('date');
       const time = searchParams.get('time');
-      
+
       // Only update if the event is for the current date/time
       if (data.date === date && data.time === time) {
         console.log('Event matches current date/time, refetching tables...');
-        
+
         // Refetch unavailable tables immediately
         fetchUnavailableTablesNow();
-        
+
         // For cancelled tables, also refetch after a short delay to ensure DB is updated
         if (data.status === 'cancelled') {
           setTimeout(() => {
@@ -144,7 +169,7 @@ const TableSelection: React.FC = () => {
             fetchUnavailableTablesNow();
           }, 500);
         }
-        
+
         // Show toast notification
         if (data.tableId) {
           let message = 'Table updated';
@@ -165,13 +190,13 @@ const TableSelection: React.FC = () => {
         console.log('Event date/time does not match current selection, ignoring');
       }
     };
-    
+
     socket.on('tableBlocked', handleTableEvent);
     socket.on('tableConfirmed', handleTableEvent);
     socket.on('tableCancelled', handleTableEvent);
     socket.on('tableAutoConfirmed', handleTableEvent);
     socket.on('bookingUpdated', handleTableEvent);
-    
+
     return () => {
       if (socket) {
         socket.off('tableBlocked', handleTableEvent);
@@ -187,88 +212,26 @@ const TableSelection: React.FC = () => {
 
   // Floor data with visual layout
   const [activeFloorId, setActiveFloorId] = useState<string>('ground');
-  
-  const floors = useMemo(() => [
-    {
-      id: 'ground',
-      name: 'Ground Floor',
-      tables: ['G1', 'G2', 'G3', 'G4', 'G5', 'G6', 'G7', 'G8'],
-      layout: [
-        { id: 'G1', x: 20, y: 30, seats: 4 },
-        { id: 'G2', x: 50, y: 30, seats: 4 },
-        { id: 'G3', x: 80, y: 30, seats: 4 },
-        { id: 'G4', x: 20, y: 55, seats: 2 },
-        { id: 'G5', x: 50, y: 55, seats: 2 },
-        { id: 'G6', x: 80, y: 55, seats: 2 },
-        { id: 'G7', x: 30, y: 15, seats: 6 },
-        { id: 'G8', x: 70, y: 15, seats: 6 },
-      ],
-      features: [
-        { type: 'entrance', x: 50, y: 98, width: 20, height: 2 },
-        { type: 'reception', label: 'Reception', x: 50, y: 85, width: 20, height: 8 },
-        { type: 'window', x: 2, y: 40, width: 2, height: 60 },
-        { type: 'window', x: 98, y: 40, width: 2, height: 60 },
-        { type: 'plant', x: 10, y: 10, width: 5, height: 5 },
-        { type: 'plant', x: 90, y: 10, width: 5, height: 5 },
-      ]
-    },
-    {
-      id: 'first',
-      name: 'First Floor',
-      tables: ['F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8'],
-      layout: [
-        { id: 'F1', x: 20, y: 35, seats: 2 },
-        { id: 'F2', x: 80, y: 35, seats: 2 },
-        { id: 'F3', x: 35, y: 45, seats: 4 },
-        { id: 'F4', x: 65, y: 45, seats: 4 },
-        { id: 'F5', x: 20, y: 65, seats: 4 },
-        { id: 'F6', x: 50, y: 65, seats: 4 },
-        { id: 'F7', x: 80, y: 65, seats: 4 },
-        { id: 'F8', x: 50, y: 85, seats: 8 },
-      ],
-      features: [
-        { type: 'bar', label: 'Lounge Bar', x: 50, y: 10, width: 40, height: 12 },
-        { type: 'window', x: 2, y: 50, width: 2, height: 80 },
-        { type: 'window', x: 98, y: 50, width: 2, height: 80 },
-      ]
-    },
-    {
-      id: 'second',
-      name: 'Second Floor',
-      tables: ['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'S7', 'S8'],
-      layout: [
-        { id: 'S1', x: 25, y: 20, seats: 4 },
-        { id: 'S2', x: 75, y: 20, seats: 4 },
-        { id: 'S3', x: 20, y: 50, seats: 2 },
-        { id: 'S4', x: 40, y: 50, seats: 2 },
-        { id: 'S5', x: 60, y: 50, seats: 2 },
-        { id: 'S6', x: 80, y: 50, seats: 2 },
-        { id: 'S7', x: 30, y: 80, seats: 6 },
-        { id: 'S8', x: 70, y: 80, seats: 6 },
-      ],
-      features: [
-        { type: 'window', x: 50, y: 2, width: 80, height: 2 },
-      ]
-    },
-    {
-      id: 'third',
-      name: 'Third Floor',
-      tables: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'],
-      layout: [
-        { id: 'T1', x: 20, y: 25, seats: 4 },
-        { id: 'T2', x: 20, y: 50, seats: 4 },
-        { id: 'T3', x: 20, y: 75, seats: 4 },
-        { id: 'T4', x: 80, y: 25, seats: 4 },
-        { id: 'T5', x: 80, y: 50, seats: 4 },
-        { id: 'T6', x: 80, y: 75, seats: 4 },
-        { id: 'T7', x: 50, y: 20, seats: 2 },
-        { id: 'T8', x: 50, y: 80, seats: 2 },
-      ],
-      features: [
-        { type: 'wall', x: 50, y: 50, width: 2, height: 60 },
-      ]
+
+  const floors = useMemo<Floor[]>(() => {
+    if (businessFloorPlan && businessFloorPlan.floors && Array.isArray(businessFloorPlan.floors)) {
+      return businessFloorPlan.floors.map((floor: any) => ({
+        id: floor.id,
+        name: floor.name,
+        tables: floor.tables.map((t: any) => t.id),
+        layout: floor.tables,
+        features: floor.features || []
+      }));
     }
-  ], []);
+    return [];
+  }, [businessFloorPlan]);
+
+  // Update active floor if current one is invalid
+  useEffect(() => {
+    if (floors.length > 0 && !floors.find(f => f.id === activeFloorId)) {
+      setActiveFloorId(floors[0].id);
+    }
+  }, [floors, activeFloorId]);
 
   const activeFloor = useMemo(() => floors.find(f => f.id === activeFloorId), [floors, activeFloorId]);
 
@@ -279,67 +242,67 @@ const TableSelection: React.FC = () => {
     }
     setLoadingTables(true); // Immediate UI feedback
     setTimeout(async () => {
-    const user = auth.currentUser;
-    if (!user) {
-      alert('You must be logged in to reserve a table.');
+      const user = auth.currentUser;
+      if (!user) {
+        alert('You must be logged in to reserve a table.');
         setLoadingTables(false);
-      return;
-    }
-    const date = searchParams.get('date');
-    const time = searchParams.get('time');
-    const guests = Number(searchParams.get('guests')) || 1;
-    
-    console.log('Reserving table:', { restaurantId, tableId: selectedTable, date, time, userId: user.uid });
-    
-    // Reserve the table in real time
-    try {
-      const result = await bookingsApi.reserveTable({
+        return;
+      }
+      const date = searchParams.get('date');
+      const time = searchParams.get('time');
+      const guests = Number(searchParams.get('guests')) || 1;
+
+      console.log('Reserving table:', { restaurantId, tableId: selectedTable, date, time, userId: user.uid });
+
+      // Reserve the table in real time
+      try {
+        const result = await bookingsApi.reserveTable({
           restaurantId: restaurantId!,
-        tableId: selectedTable,
-        date: date!,
-        time: time!,
-        userId: user.uid,
-        guests,
-        status: 'reserved'
-      });
-      console.log('Table reserved successfully:', result);
-    } catch (err) {
-      alert('Failed to reserve table. Please try again.');
+          tableId: selectedTable,
+          date: date!,
+          time: time!,
+          userId: user.uid,
+          guests,
+          status: 'reserved'
+        });
+        console.log('Table reserved successfully:', result);
+      } catch (err) {
+        alert('Failed to reserve table. Please try again.');
         setLoadingTables(false);
-      return;
-    }
-    // Build query params from form data
-    const params = new URLSearchParams();
-    if (searchParams.get('fullName')) params.set('fullName', searchParams.get('fullName') || '');
-    if (searchParams.get('email')) params.set('email', searchParams.get('email') || '');
-    if (searchParams.get('phoneNumber')) params.set('phoneNumber', searchParams.get('phoneNumber') || '');
-    if (searchParams.get('occasion')) params.set('occasion', searchParams.get('occasion') || '');
-    if (searchParams.get('specialRequest')) params.set('specialRequest', searchParams.get('specialRequest') || '');
-    if (date) params.set('date', date);
-    if (time) params.set('time', time);
-    if (searchParams.get('guests')) params.set('guests', searchParams.get('guests') || '');
-    searchParams.getAll('items').forEach(item => {
-      params.append('items', item);
-    });
-    params.set('table', selectedTable);
-    params.set('restaurantName', restaurantName);
-    try {
-      const formData = {
-        fullName: searchParams.get('fullName') || '',
-        email: searchParams.get('email') || '',
-        phoneNumber: searchParams.get('phoneNumber') || '',
-        occasion: searchParams.get('occasion') || '',
-        specialRequest: searchParams.get('specialRequest') || '',
-        date: date || '',
-        time: time || '',
-        guests: searchParams.get('guests') || '',
-        table: selectedTable,
-        restaurantName: restaurantName
-      };
-      sendEmail(formData);
-    } catch (error) {
-      console.error('Error sending email:', error);
-    }
+        return;
+      }
+      // Build query params from form data
+      const params = new URLSearchParams();
+      if (searchParams.get('fullName')) params.set('fullName', searchParams.get('fullName') || '');
+      if (searchParams.get('email')) params.set('email', searchParams.get('email') || '');
+      if (searchParams.get('phoneNumber')) params.set('phoneNumber', searchParams.get('phoneNumber') || '');
+      if (searchParams.get('occasion')) params.set('occasion', searchParams.get('occasion') || '');
+      if (searchParams.get('specialRequest')) params.set('specialRequest', searchParams.get('specialRequest') || '');
+      if (date) params.set('date', date);
+      if (time) params.set('time', time);
+      if (searchParams.get('guests')) params.set('guests', searchParams.get('guests') || '');
+      searchParams.getAll('items').forEach(item => {
+        params.append('items', item);
+      });
+      params.set('table', selectedTable);
+      params.set('restaurantName', restaurantName);
+      try {
+        const formData = {
+          fullName: searchParams.get('fullName') || '',
+          email: searchParams.get('email') || '',
+          phoneNumber: searchParams.get('phoneNumber') || '',
+          occasion: searchParams.get('occasion') || '',
+          specialRequest: searchParams.get('specialRequest') || '',
+          date: date || '',
+          time: time || '',
+          guests: searchParams.get('guests') || '',
+          table: selectedTable,
+          restaurantName: restaurantName
+        };
+        sendEmail(formData);
+      } catch (error) {
+        console.error('Error sending email:', error);
+      }
       setLoadingTables(false);
       navigate(`/restaurant/${restaurantId}/reservation?${params.toString()}`);
     }, 0);
@@ -386,13 +349,13 @@ const TableSelection: React.FC = () => {
       toast.error('This table is already booked. Please choose another table.');
       return;
     }
-    
+
     const user = auth.currentUser;
     if (!user) {
       toast.error('You must be logged in to select a table.');
       return;
     }
-    
+
     // Just update the selected table visually
     // Don't block it until user clicks "Proceed"
     setSelectedTable(table);
@@ -413,7 +376,7 @@ const TableSelection: React.FC = () => {
       case 'reception':
         return (
           <div style={style} className="flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl">
-            <Store size={14} className="text-amber-500 mb-1"/>
+            <Store size={14} className="text-amber-500 mb-1" />
             <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{feature.label}</span>
           </div>
         );
@@ -457,11 +420,11 @@ const TableSelection: React.FC = () => {
   const TableRenderer = ({ tableData }: { tableData: any }) => {
     const isSelected = selectedTable === tableData.id;
     const isUnavailable = isTableUnavailable(tableData.id);
-    
+
     let bgGradient = "";
     let borderColor = "";
     let textColor = "";
-    
+
     if (isUnavailable) {
       bgGradient = "bg-slate-900";
       borderColor = "border-slate-800";
@@ -477,11 +440,11 @@ const TableSelection: React.FC = () => {
     }
 
     return (
-      <div 
+      <div
         className="absolute flex items-center justify-center transition-all duration-300"
-        style={{ 
-          left: `${tableData.x}%`, 
-          top: `${tableData.y}%`, 
+        style={{
+          left: `${tableData.x}%`,
+          top: `${tableData.y}%`,
           transform: 'translate(-50%, -50%)',
           zIndex: 10
         }}
@@ -491,7 +454,7 @@ const TableSelection: React.FC = () => {
           const angle = (i * (360 / tableData.seats)) * (Math.PI / 180);
           const radius = 60;
           return (
-            <div 
+            <div
               key={`chair-indicator-${tableData.id}-${i}`}
               className={`absolute w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-slate-600'} opacity-40`}
               style={{
@@ -523,14 +486,14 @@ const TableSelection: React.FC = () => {
     <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
       {/* Header */}
       <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 px-6 py-4 flex justify-between items-center z-30 shadow-lg">
-        <button 
+        <button
           onClick={() => navigate(`/restaurant/${id}/preview?${searchParams.toString()}`)}
           className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors text-slate-200"
         >
           <ArrowLeft size={20} />
           <span className="font-medium">Back</span>
         </button>
-        
+
         <div className="text-center">
           <h2 className="text-xl font-bold text-white">{restaurantName}</h2>
           <p className="text-sm text-slate-400">Table Selection</p>
@@ -542,17 +505,21 @@ const TableSelection: React.FC = () => {
             <button
               key={f.id}
               onClick={() => setActiveFloorId(f.id)}
-              className={`px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${
-                activeFloorId === f.id 
-                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30' 
-                  : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-              }`}
+              className={`px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${activeFloorId === f.id
+                ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
+                }`}
             >
               {f.name}
             </button>
           ))}
         </div>
       </header>
+
+      {/* Dino Progress Tracker */}
+      <div className="bg-slate-800/30 border-b border-slate-700/30 py-2">
+        <DinoStepper currentStep={3} />
+      </div>
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* MAP CANVAS */}
@@ -603,7 +570,7 @@ const TableSelection: React.FC = () => {
                     {activeFloor?.name} • {activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0} Guests
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => setSelectedTable(null)}
                   className="w-8 h-8 flex items-center justify-center bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
                 >
@@ -613,14 +580,13 @@ const TableSelection: React.FC = () => {
             </div>
 
             <div className="p-6 bg-slate-900/50 border-t border-slate-700/50">
-              <button 
+              <button
                 onClick={handleProceed}
                 disabled={!selectedTable || loadingTables}
-                className={`w-full py-4 rounded-xl font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 transform ${
-                  selectedTable && !loadingTables
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 active:scale-95'
-                    : 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                }`}
+                className={`w-full py-4 rounded-xl font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 transform ${selectedTable && !loadingTables
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 active:scale-95'
+                  : 'bg-slate-700 text-slate-500 cursor-not-allowed'
+                  }`}
               >
                 {loadingTables ? 'Processing...' : 'Confirm Booking'}
                 <ChevronRight size={18} />

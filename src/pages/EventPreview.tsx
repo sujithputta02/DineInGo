@@ -41,6 +41,8 @@ const EventPreview: React.FC = () => {
   const selectedSeatIds = location.state?.selectedSeatIds || [];
   const numberOfGuests = location.state?.numberOfGuests || parseInt(searchParams.get('guests') || '1');
   const totalAmount = location.state?.totalAmount || 0;
+  const selectedTickets = location.state?.selectedTickets || [];
+  const selectedAddOns = location.state?.selectedAddOns || [];
 
   useEffect(() => {
     if (!event && id) {
@@ -85,6 +87,8 @@ const EventPreview: React.FC = () => {
         status: 'confirmed',
         totalAmount,
         selectedSeats: event.hasSeating ? selectedSeatIds : undefined,
+        selectedTickets: selectedTickets.length > 0 ? selectedTickets : undefined,
+        selectedAddOns: selectedAddOns.length > 0 ? selectedAddOns : undefined,
         fullName: formData.fullName,
         email: formData.email,
         phoneNumber: formData.phoneNumber,
@@ -106,7 +110,7 @@ const EventPreview: React.FC = () => {
       if (response.ok) {
         // Update event (register count and seat status)
         try {
-          const updatePayload = event.hasSeating 
+          const updatePayload = event.hasSeating
             ? { seatIds: selectedSeatIds, userId: auth.currentUser.uid }
             : { guests: numberOfGuests };
 
@@ -142,7 +146,7 @@ const EventPreview: React.FC = () => {
           toast.error(err.message || 'Failed to complete registration');
           return;
         }
-        
+
         toast.success('Successfully registered for the event!');
         navigate('/dashboard', {
           state: {
@@ -254,6 +258,40 @@ const EventPreview: React.FC = () => {
                     <p className="font-semibold text-gray-800">{numberOfGuests} {numberOfGuests === 1 ? 'Person' : 'People'}</p>
                   </div>
                 </div>
+
+                {selectedTickets.length > 0 && (
+                  <div className="flex items-start gap-3 border-t border-gray-100 pt-2 mt-2">
+                    <Ticket className="text-purple-600 mt-1" size={20} />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-1">Tickets</p>
+                      <div className="space-y-1">
+                        {selectedTickets.map((t: any) => (
+                          <div key={t.ticketId} className="flex justify-between text-sm">
+                            <span className="text-gray-800">{t.name} x {t.quantity}</span>
+                            <span className="font-medium">₹{t.price * t.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {selectedAddOns.length > 0 && (
+                  <div className="flex items-start gap-3 border-t border-gray-100 pt-2 mt-2">
+                    <CreditCard className="text-purple-600 mt-1" size={20} />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-500 mb-1">Add-ons</p>
+                      <div className="space-y-1">
+                        {selectedAddOns.map((a: any) => (
+                          <div key={a.addOnId} className="flex justify-between text-sm">
+                            <span className="text-gray-800">{a.name} x {a.quantity}</span>
+                            <span className="font-medium">₹{a.price * a.quantity}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {event.hasSeating && selectedSeatIds.length > 0 && (
                   <div className="flex items-start gap-3">

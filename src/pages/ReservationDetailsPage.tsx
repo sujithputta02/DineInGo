@@ -8,6 +8,7 @@ import { auth } from '../firebase';
 import { bookingsApi } from '../services/api';
 import { walletService } from '../services/walletService';
 import { toast } from 'react-toastify';
+import { DinoStepper } from '../components/DinoStepper';
 
 const ReservationDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -316,7 +317,8 @@ const ReservationDetailsPage: React.FC = () => {
         </button>
       </div>
 
-      <div className="max-w-3xl mx-auto pt-20 px-4 pb-12">
+      <div className="max-w-3xl mx-auto pt-20 px-4 pb-12 space-y-8">
+        <DinoStepper currentStep={4} />
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden transform transition-all duration-300 hover:shadow-xl">
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-500 text-white p-8">

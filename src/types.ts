@@ -33,6 +33,7 @@ export interface MenuItem {
 
 export interface Restaurant {
   id: string;
+  _id?: string;
   name: string;
   location: Location;
   rating: number;
@@ -50,15 +51,16 @@ export interface Restaurant {
 
 export interface Event {
   id: string;
-  name: string;
+  _id?: string;
+  title: string;
   description: string;
   date: string;
   time: string;
   location: string;
-  image: string;
+  imageUrl: string;
   price: number;
   category: string;
-  organizer: string;
+  organizer?: string;
   capacity: number;
   registeredCount: number;
 }

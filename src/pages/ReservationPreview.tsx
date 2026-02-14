@@ -4,6 +4,7 @@ import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getRestaurantById, getMockRestaurantById } from "../services/restaurantService";
 import { getMockEventById } from "../services/event-service";
 import { Restaurant, Event } from "../types";
+import { DinoStepper } from "../components/DinoStepper";
 
 // Different high-quality restaurant preview images focusing on food and atmosphere
 const restaurantPreviewImages: { [key: string]: string[] } = {
@@ -205,11 +206,11 @@ const ReservationPreview: React.FC = () => {
       // For events, use the same reservation page but with type=event
       queryParams.set('type', 'event');
       if (event) {
-        queryParams.set('eventName', event.name);
+        queryParams.set('eventName', event.title);
         queryParams.set('eventCategory', event.category);
         queryParams.set('eventPrice', event.price?.toString() || '');
-        queryParams.set('eventOrganizer', event.organizer);
-        queryParams.set('eventImage', event.image);
+        queryParams.set('eventOrganizer', event.organizer || '');
+        queryParams.set('eventImage', event.imageUrl);
       }
       // Use the same reservation page for both restaurants and events
       navigate(`/restaurant/${id}/reservation?${queryParams.toString()}`);
@@ -282,8 +283,8 @@ const ReservationPreview: React.FC = () => {
           {type === 'event' && event && (
             <div className="col-span-3 row-span-3">
               <img
-                src={event.image}
-                alt={event.name}
+                src={event.imageUrl}
+                alt={event.title}
                 className="w-full h-full object-cover"
               />
             </div>
@@ -314,7 +315,7 @@ const ReservationPreview: React.FC = () => {
           )}
           {type === 'event' && event && (
             <>
-              <h1 className="text-5xl font-bold mb-2">{event.name}</h1>
+              <h1 className="text-5xl font-bold mb-2">{event.title}</h1>
               <p className="text-lg mb-2">{event.category}</p>
               <div className="flex items-center gap-4">
                 <div className="flex items-center gap-2">
@@ -369,6 +370,10 @@ const ReservationPreview: React.FC = () => {
       <div className="max-w-4xl mx-auto px-4 py-8">
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <h2 className="text-2xl font-semibold mb-6">{type === 'restaurant' ? 'Reservation Preview' : 'Event Registration'}</h2>
+
+          {/* Dino Progress Tracker */}
+          <DinoStepper currentStep={2} />
+
           <p className="text-gray-600 mb-8">Confirm if there are errors in the entered details.</p>
 
           <form onSubmit={handleSubmit} className="space-y-6">

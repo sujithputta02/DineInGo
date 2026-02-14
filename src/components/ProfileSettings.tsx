@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { User, UserAddress, LocationSettings } from '@/types/user';
-import { Camera, Loader2, User as LucideUser } from 'lucide-react';
+import { Camera, Loader2, User as LucideUser, X } from 'lucide-react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { getAuth, updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
@@ -16,6 +16,7 @@ import Slider from '@mui/material/Slider';
 import socketService from '../utils/socketService';
 import API_CONFIG from '../config/api';
 import { DietaryAssistant } from './DietaryAssistant';
+import { userPreferenceApi } from '../services/api';
 
 // Type guard to check if user has Firebase Auth methods
 const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
@@ -152,6 +153,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   const [isEditMode, setIsEditMode] = useState<boolean>(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [userPreferences, setUserPreferences] = useState<any>(null);
 
   // Type guard to ensure user has required methods
   const authUser = useMemo<AuthenticatedUser | null>(() => {
@@ -237,8 +239,17 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         name: profile.fullName || profile.name || prev.name,
         phoneNumber: profile.phoneNumber || prev.phoneNumber,
         photoURL: fullAvatarUrl || prev.photoURL,
-        address: profile.address || prev.address,
       }));
+
+      // Load user preferences
+      try {
+        const prefs = await userPreferenceApi.get(authUser.uid);
+        if (prefs && prefs.data) {
+          setUserPreferences(prefs.data);
+        }
+      } catch (prefError) {
+        console.error('Error fetching user preferences:', prefError);
+      }
     } catch (error) {
       console.error('Error loading user data:', error);
       toast.error('Failed to load user data');
@@ -1115,12 +1126,58 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             We'll highlight allergens and suggest restaurants that match your lifestyle.
           </p>
           <DietaryAssistant
-            userPreferences={[]} // In a real app, this would come from the user's profile
-            onPreferenceChange={(prefs) => {
-              console.log('User dietary preferences updated:', prefs);
-              // In a real app, you would save this to the user's profile in MongoDB
+            userPreferences={userPreferences?.dietaryPreferences || []}
+            onPreferenceChange={async (prefs) => {
+              if (!authUser) return;
+              try {
+                const updatedPrefs = {
+                  ...userPreferences,
+                  userId: authUser.uid,
+                  dietaryPreferences: prefs
+                };
+                await userPreferenceApi.upsert(updatedPrefs);
+                setUserPreferences(updatedPrefs);
+                toast.success('Dietary preferences updated!');
+              } catch (error) {
+                console.error('Error updating dietary preferences:', error);
+                toast.error('Failed to update dietary preferences');
+              }
             }}
           />
+        </div>
+
+        {/* Cuisine Interests Section */}
+        <div className="border-t pt-6">
+          <h2 className="text-lg font-medium mb-4 text-emerald-600">Cuisine Interests</h2>
+          <p className="text-sm text-gray-500 mb-6">
+            We've learned your taste based on your interactions. You can adjust your interests here.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {userPreferences?.cuisines?.length > 0 ? (
+              userPreferences.cuisines.map((c: any) => (
+                <div key={c.name} className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-100">
+                  <span className="font-medium">{c.name}</span>
+                  <span className="text-xs opacity-60">({c.score})</span>
+                  {isEditMode && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const updatedCuisines = userPreferences.cuisines.filter((u: any) => u.name !== c.name);
+                        const updatedPrefs = { ...userPreferences, cuisines: updatedCuisines };
+                        await userPreferenceApi.upsert(updatedPrefs);
+                        setUserPreferences(updatedPrefs);
+                      }}
+                      className="hover:text-red-500 ml-1"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-sm text-gray-400 italic">No cuisine preferences set yet. Try exploring the menu!</p>
+            )}
+          </div>
         </div>
 
         {/* Location Settings */}

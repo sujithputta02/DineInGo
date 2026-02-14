@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CreditCard, FileText, Download, Mail, Smartphone, Apple, Chrome } from 'lucide-react';
 import { walletService, WalletPass, Invoice } from '../services/walletService';
-import { toast } from 'react-hot-toast';
+import { toast } from 'react-toastify';
 
 interface WalletSectionProps {
   booking?: any;
@@ -32,7 +32,7 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
   const handleAddToAppleWallet = async (booking: any) => {
     try {
       const { passUrl } = await walletService.generateAppleWalletPass(booking);
-      
+
       // Create a temporary link to download the pass
       const link = document.createElement('a');
       link.href = passUrl;
@@ -40,7 +40,7 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       toast.success('Apple Wallet pass generated!');
     } catch (error) {
       console.error('Error generating Apple Wallet pass:', error);
@@ -51,10 +51,10 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
   const handleAddToGoogleWallet = async (booking: any) => {
     try {
       const { passUrl } = await walletService.generateGoogleWalletPass(booking);
-      
+
       // Open Google Wallet in a new tab
       window.open(passUrl, '_blank');
-      
+
       toast.success('Google Wallet pass generated!');
     } catch (error) {
       console.error('Error generating Google Wallet pass:', error);
@@ -66,10 +66,10 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
     try {
       setLoading(true);
       const invoice = await walletService.generateInvoice(booking);
-      
+
       // Send invoice via email
       await walletService.sendInvoiceEmail(invoice, booking);
-      
+
       setSelectedInvoice(invoice);
       toast.success('Invoice generated and sent via email!');
     } catch (error) {
@@ -90,7 +90,7 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
       Restaurant: ${invoice.restaurantName || invoice.eventName}
       Total: ₹${invoice.total}
     `;
-    
+
     const blob = new Blob([pdfContent], { type: 'application/pdf' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -100,21 +100,21 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    
+
     toast.success('Invoice downloaded!');
   };
 
   const handleTestEmail = async () => {
     try {
       setLoading(true);
-      
+
       // Get current user's email
       const { auth } = await import('../firebase');
       const user = auth.currentUser;
       const userEmail = user?.email || 'test@example.com';
-      
+
       // Create a test invoice
-      const testInvoice = {
+      const testInvoice: any = {
         id: 'test-invoice',
         invoiceNumber: 'TEST-001',
         date: new Date().toISOString(),
@@ -135,7 +135,8 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
         subtotal: 100,
         tax: 18,
         total: 118,
-        status: 'pending'
+        status: 'pending',
+        bookingId: 'test-booking'
       };
 
       const testBooking = {
@@ -149,7 +150,7 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
 
       // Send test email
       await walletService.sendInvoiceEmail(testInvoice, testBooking);
-      
+
       toast.success(`Test email sent to ${userEmail}! Check your inbox.`);
     } catch (error) {
       console.error('Error sending test email:', error);
@@ -203,7 +204,7 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
           <FileText className="w-5 h-5 text-gray-600" />
           Recent Invoices
         </h3>
-        
+
         {loading ? (
           <div className="text-center py-4">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto"></div>
@@ -227,11 +228,10 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${invoice.status === 'paid' ? 'bg-green-100 text-green-800' :
                       invoice.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
+                        'bg-red-100 text-red-800'
+                      }`}>
                       {invoice.status.toUpperCase()}
                     </span>
                     <button
@@ -275,7 +275,7 @@ const WalletSection: React.FC<WalletSectionProps> = ({ booking }) => {
             </ul>
           </div>
         </div>
-        
+
         {/* Test Email Button */}
         <div className="mt-4 pt-4 border-t border-gray-200">
           <button

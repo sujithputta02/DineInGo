@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { indianCities, IndianCity } from '../utils/indianCities';
 
-const OPENCAGE_API_KEY = '5a9846ac3123475899976f2ca6fed52b';
+const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 const OPENCAGE_BASE_URL = 'https://api.opencagedata.com/geocode/v1';
 
 interface Coordinates {

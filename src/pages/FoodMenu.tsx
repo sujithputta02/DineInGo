@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Plus, Minus, ShoppingCart, Calendar, Clock, Users } from 'lucide-react';
 import { getRestaurantById } from '../services/restaurantService';
 import type { MenuItem } from '../types';
+import { DinoStepper } from '../components/DinoStepper';
 
 export default function FoodMenu() {
   const { id } = useParams();
@@ -61,15 +62,15 @@ export default function FoodMenu() {
   const handleProceedToReservation = () => {
     // Convert selected items to URL parameters
     const queryParams = new URLSearchParams(searchParams);
-    
+
     // Add each selected item as a separate parameter
     Object.entries(selectedItems).forEach(([itemId, quantity]) => {
       queryParams.append('items', `${itemId}:${quantity}`);
     });
-    
+
     console.log('Selected items being passed:', selectedItems); // Debug log
     console.log('URL parameters:', queryParams.toString()); // Debug log
-    
+
     navigate(`/restaurant/${id}/preview?${queryParams.toString()}`);
   };
 
@@ -107,19 +108,24 @@ export default function FoodMenu() {
       {/* Reservation Details */}
       <div className="bg-emerald-50 border-b border-emerald-100">
         <div className="max-w-7xl mx-auto px-4 py-3">
-          <div className="flex items-center gap-6 text-sm text-emerald-700">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              <span>{date}</span>
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-6 text-sm text-emerald-700">
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>{date}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                <span>{time}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>{guests} {Number(guests) === 1 ? 'Guest' : 'Guests'}</span>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              <span>{time}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span>{guests} {Number(guests) === 1 ? 'Guest' : 'Guests'}</span>
-            </div>
+
+            {/* Dino Progress Tracker */}
+            <DinoStepper currentStep={1} />
           </div>
         </div>
       </div>
@@ -132,11 +138,10 @@ export default function FoodMenu() {
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
-              className={`px-4 py-2 rounded-full whitespace-nowrap ${
-                activeCategory === category
+              className={`px-4 py-2 rounded-full whitespace-nowrap ${activeCategory === category
                   ? 'bg-emerald-500 text-white'
                   : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
+                }`}
             >
               {category}
             </button>

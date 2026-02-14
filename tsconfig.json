@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es6",
+    "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "node",
     "outDir": "./dist",
@@ -9,23 +9,41 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
-    "lib": ["dom", "dom.iterable", "esnext"],
+    "lib": [
+      "DOM",
+      "DOM.Iterable",
+      "ES2022"
+    ],
     "allowJs": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/types/*": ["src/types/*"],
-      "@/components/*": ["src/components/*"],
-      "@/pages/*": ["src/pages/*"],
-      "@/server/*": ["server/*"]
+      "@/types/*": [
+        "src/types/*"
+      ],
+      "@/components/*": [
+        "src/components/*"
+      ],
+      "@/pages/*": [
+        "src/pages/*"
+      ],
+      "@/server/*": [
+        "server/*"
+      ]
     },
     "typeRoots": [
       "./node_modules/@types",
       "./src/types"
     ]
   },
-  "include": ["src/**/*", "server/**/*.ts"],
-  "exclude": ["node_modules", ".next"]
+  "include": [
+    "src/**/*",
+    "server/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    ".next"
+  ]
 }

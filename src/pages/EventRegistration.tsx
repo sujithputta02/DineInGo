@@ -8,6 +8,25 @@ import { seatsToRows } from '../utils/seatUtils';
 import { Seat, SeatingLayout } from '../types/seating';
 import { io, Socket } from 'socket.io-client';
 
+interface TicketType {
+  _id: string;
+  name: string;
+  price: number;
+  quantity: number;
+  sold: number;
+  description: string;
+  status: 'active' | 'sold_out' | 'hidden';
+}
+
+interface AddOn {
+  _id: string;
+  name: string;
+  price: number;
+  description: string;
+  type: 'product' | 'service';
+  isRequired: boolean;
+}
+
 interface Event {
   _id: string;
   title: string;
@@ -23,6 +42,8 @@ interface Event {
   organizer?: string;
   hasSeating?: boolean;
   seatingLayout?: SeatingLayout;
+  tickets?: TicketType[];
+  addOns?: AddOn[];
 }
 
 const EventRegistration: React.FC = () => {
@@ -38,6 +59,11 @@ const EventRegistration: React.FC = () => {
   const [selectedSeatIds, setSelectedSeatIds] = useState<string[]>([]);
   const [socket, setSocket] = useState<Socket | null>(null);
 
+  // New state for tickets and add-ons
+  const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
+  const [selectedAddOns, setSelectedAddOns] = useState<{ [key: string]: number }>({});
+
+
   useEffect(() => {
     // Check if ID is a valid MongoDB ObjectID (24 hex characters)
     if (!id || !id.match(/^[0-9a-fA-F]{24}$/)) {
@@ -46,7 +72,7 @@ const EventRegistration: React.FC = () => {
       setLoading(false);
       return;
     }
-    
+
     fetchEvent();
     checkIfFavorite();
 
@@ -61,11 +87,11 @@ const EventRegistration: React.FC = () => {
     // Listen for seat booking updates
     newSocket.on('seatsBooked', (data: { eventId: string; seatIds: string[]; userId: string; registeredCount: number; capacity: number }) => {
       console.log('Seats booked by another user:', data);
-      
+
       // Update event state to mark seats as booked
       setEvent(prevEvent => {
         if (!prevEvent || !prevEvent.seatingLayout) return prevEvent;
-        
+
         const updatedSeats = prevEvent.seatingLayout.seats.map(seat => {
           if (data.seatIds.includes(seat.id)) {
             return { ...seat, status: 'booked' as const, bookedBy: data.userId };
@@ -98,11 +124,11 @@ const EventRegistration: React.FC = () => {
     // Listen for seat cancellation updates
     newSocket.on('seatsCancelled', (data: { eventId: string; seatIds: string[]; userId: string; registeredCount: number; capacity: number; availableSeats: number }) => {
       console.log('Seats cancelled by another user:', data);
-      
+
       // Update event state to mark seats as available
       setEvent(prevEvent => {
         if (!prevEvent || !prevEvent.seatingLayout) return prevEvent;
-        
+
         const updatedSeats = prevEvent.seatingLayout.seats.map(seat => {
           if (data.seatIds.includes(seat.id)) {
             return { ...seat, status: 'available' as const, bookedBy: undefined };
@@ -132,7 +158,7 @@ const EventRegistration: React.FC = () => {
     // Listen for general event registration updates (non-seating events)
     newSocket.on('eventRegistered', (data: { eventId: string; guests: number; registeredCount: number; capacity: number; spotsLeft: number }) => {
       console.log('Event registered by another user:', data);
-      
+
       setEvent(prevEvent => {
         if (!prevEvent) return prevEvent;
         return {
@@ -163,7 +189,7 @@ const EventRegistration: React.FC = () => {
     // Listen for event cancellation updates (non-seating events)
     newSocket.on('eventCancelled', (data: { eventId: string; guests: number; registeredCount: number; capacity: number; spotsLeft: number }) => {
       console.log('Event cancelled by another user:', data);
-      
+
       setEvent(prevEvent => {
         if (!prevEvent) return prevEvent;
         return {
@@ -191,7 +217,7 @@ const EventRegistration: React.FC = () => {
   const fetchEvent = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
-      
+
       if (!response.ok) {
         if (response.status === 400 || response.status === 404) {
           toast.error('Event not found. Redirecting to events page...');
@@ -200,7 +226,7 @@ const EventRegistration: React.FC = () => {
         }
         throw new Error('Failed to fetch event');
       }
-      
+
       const data = await response.json();
       console.log('Fetched event data:', data);
       console.log('Has seating:', data.hasSeating);
@@ -221,7 +247,7 @@ const EventRegistration: React.FC = () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/favorites/${auth.currentUser.uid}`);
       const data = await response.json();
-      
+
       if (data.favorites) {
         const isFav = data.favorites.some((fav: any) => fav.eventId === id);
         setIsFavorite(isFav);
@@ -281,6 +307,23 @@ const EventRegistration: React.FC = () => {
     }
   };
 
+  const updateTicketQuantity = (ticketId: string, delta: number, max?: number) => {
+    setSelectedTickets(prev => {
+      const current = prev[ticketId] || 0;
+      const next = Math.max(0, current + delta);
+      if (max !== undefined && next > max) return prev;
+      return { ...prev, [ticketId]: next };
+    });
+  };
+
+  const updateAddOnQuantity = (addOnId: string, delta: number) => {
+    setSelectedAddOns(prev => {
+      const current = prev[addOnId] || 0;
+      const next = Math.max(0, current + delta);
+      return { ...prev, [addOnId]: next };
+    });
+  };
+
   const handleProceedToPreview = () => {
     if (!auth.currentUser) {
       toast.error('Please login to register for events');
@@ -296,29 +339,77 @@ const EventRegistration: React.FC = () => {
       return;
     }
 
-    // For events without seating, check capacity
-    if (!event.hasSeating && event.registeredCount + numberOfGuests > event.capacity) {
-      toast.error('Not enough spots available');
-      return;
+    // For events without seating
+    if (!event.hasSeating) {
+      if (event.tickets && event.tickets.length > 0) {
+        // Check if any tickets are selected
+        const totalTickets = Object.values(selectedTickets).reduce((a, b) => a + b, 0);
+        if (totalTickets === 0) {
+          toast.error('Please select at least one ticket');
+          return;
+        }
+      } else {
+        // Legacy simple guest count check
+        if (event.registeredCount + numberOfGuests > event.capacity) {
+          toast.error('Not enough spots available');
+          return;
+        }
+      }
     }
 
     // Calculate total amount
     let totalAmount = 0;
+    let finalGuests = 0;
+
     if (event.hasSeating && event.seatingLayout) {
-      const selectedSeats = event.seatingLayout.seats.filter(seat => 
+      const selectedSeats = event.seatingLayout.seats.filter(seat =>
         selectedSeatIds.includes(seat.id)
       );
       totalAmount = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
+      finalGuests = selectedSeatIds.length;
     } else {
-      totalAmount = event.price * numberOfGuests;
+      if (event.tickets && event.tickets.length > 0) {
+        // Sum up ticket prices
+        event.tickets.forEach(ticket => {
+          const qty = selectedTickets[ticket._id] || 0;
+          totalAmount += ticket.price * qty;
+          finalGuests += qty;
+        });
+      } else {
+        totalAmount = event.price * numberOfGuests;
+        finalGuests = numberOfGuests;
+      }
     }
+
+    // Add Add-ons cost
+    if (event.addOns) {
+      event.addOns.forEach(addon => {
+        const qty = selectedAddOns[addon._id] || 0;
+        totalAmount += addon.price * qty;
+      });
+    }
+
+    // Prepare ticket data for easier processing in preview
+    const selectedTicketsData = event.tickets?.filter(t => (selectedTickets[t._id] || 0) > 0).map(t => ({
+      ticketId: t._id,
+      name: t.name,
+      price: t.price,
+      quantity: selectedTickets[t._id]
+    })) || [];
+
+    const selectedAddOnsData = event.addOns?.filter(a => (selectedAddOns[a._id] || 0) > 0).map(a => ({
+      addOnId: a._id,
+      name: a.name,
+      price: a.price,
+      quantity: selectedAddOns[a._id]
+    })) || [];
 
     // Navigate to preview page with event data
     const queryParams = new URLSearchParams({
       type: 'event',
       date: new Date(event.date).toISOString().split('T')[0],
       time: event.time,
-      guests: event.hasSeating ? selectedSeatIds.length.toString() : numberOfGuests.toString(),
+      guests: finalGuests.toString(),
       ...(event.hasSeating && { seats: selectedSeatIds.join(',') })
     });
 
@@ -326,8 +417,10 @@ const EventRegistration: React.FC = () => {
       state: {
         event,
         selectedSeatIds: event.hasSeating ? selectedSeatIds : undefined,
-        numberOfGuests: event.hasSeating ? selectedSeatIds.length : numberOfGuests,
-        totalAmount
+        numberOfGuests: finalGuests,
+        totalAmount,
+        selectedTickets: selectedTicketsData,
+        selectedAddOns: selectedAddOnsData
       }
     });
   };
@@ -439,11 +532,10 @@ const EventRegistration: React.FC = () => {
             <button
               onClick={toggleFavorite}
               disabled={favoriteLoading}
-              className={`w-full mb-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${
-                isFavorite
-                  ? 'bg-red-50 text-red-600 border-2 border-red-600 hover:bg-red-100'
-                  : 'bg-white text-emerald-600 border-2 border-emerald-600 hover:bg-emerald-50'
-              }`}
+              className={`w-full mb-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${isFavorite
+                ? 'bg-red-50 text-red-600 border-2 border-red-600 hover:bg-red-100'
+                : 'bg-white text-emerald-600 border-2 border-emerald-600 hover:bg-emerald-50'
+                }`}
             >
               {favoriteLoading ? (
                 <Loader className="w-5 h-5 animate-spin" />
@@ -472,7 +564,7 @@ const EventRegistration: React.FC = () => {
                     onSeatClick={handleSeatClick}
                   />
                 </div>
-                
+
                 {/* Selected Seats Summary */}
                 {selectedSeatIds.length > 0 && (
                   <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
@@ -491,23 +583,101 @@ const EventRegistration: React.FC = () => {
                 )}
               </div>
             ) : (
+
               <div className="mb-6">
-                <label className="block text-sm font-semibold mb-2">Number of Guests</label>
-                <select
-                  value={numberOfGuests}
-                  onChange={(e) => setNumberOfGuests(Number(e.target.value))}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                >
-                  {spotsLeft > 0 ? [...Array(Math.min(10, spotsLeft))].map((_, i) => (
-                    <option key={i + 1} value={i + 1}>
-                      {i + 1} {i === 0 ? 'Guest' : 'Guests'}
-                    </option>
-                  )) : <option value={1}>No spots available</option>}
-                </select>
+                {event.tickets && event.tickets.length > 0 ? (
+                  <>
+                    <h3 className="text-lg font-semibold mb-4">Select Tickets</h3>
+                    <div className="space-y-4">
+                      {event.tickets.map(ticket => (
+                        <div key={ticket._id} className="flex justify-between items-center p-4 border rounded-lg hover:border-emerald-500 transition bg-white">
+                          <div>
+                            <h4 className="font-semibold">{ticket.name}</h4>
+                            <p className="text-sm text-gray-500">{ticket.description}</p>
+                            <p className="text-emerald-600 font-bold mt-1">₹{ticket.price}</p>
+                            <p className={`text-xs mt-1 ${ticket.quantity - ticket.sold > 0 ? 'text-gray-500' : 'text-red-500 font-medium'}`}>
+                              {ticket.quantity - ticket.sold > 0 ? `${ticket.quantity - ticket.sold} left` : 'Sold Out'}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => updateTicketQuantity(ticket._id, -1)}
+                              disabled={!selectedTickets[ticket._id]}
+                              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+                            >
+                              -
+                            </button>
+                            <span className="w-8 text-center font-semibold">{selectedTickets[ticket._id] || 0}</span>
+                            <button
+                              onClick={() => updateTicketQuantity(ticket._id, 1, ticket.quantity - ticket.sold)}
+                              disabled={ticket.quantity - ticket.sold <= (selectedTickets[ticket._id] || 0)}
+                              className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200 disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400"
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <label className="block text-sm font-semibold mb-2">Number of Guests</label>
+                    <select
+                      value={numberOfGuests}
+                      onChange={(e) => setNumberOfGuests(Number(e.target.value))}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    >
+                      {spotsLeft > 0 ? [...Array(Math.min(10, spotsLeft))].map((_, i) => (
+                        <option key={i + 1} value={i + 1}>
+                          {i + 1} {i === 0 ? 'Guest' : 'Guests'}
+                        </option>
+                      )) : <option value={1}>No spots available</option>}
+                    </select>
+                  </>
+                )}
+
               </div>
             )}
 
-            {/* Price */}
+            {/* Add-on Services */}
+            {event.addOns && event.addOns.length > 0 && (
+              <div className="mb-6 pt-6 border-t border-gray-200">
+                <h3 className="text-lg font-semibold mb-4">Add-on Services</h3>
+                <div className="space-y-4">
+                  {event.addOns.map(addon => (
+                    <div key={addon._id} className="flex justify-between items-center p-4 border rounded-lg hover:border-emerald-500 transition bg-white">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-semibold">{addon.name}</h4>
+                          {addon.isRequired && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Required</span>}
+                        </div>
+                        <p className="text-sm text-gray-500">{addon.description}</p>
+                        <p className="text-emerald-600 font-bold mt-1">₹{addon.price}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => updateAddOnQuantity(addon._id, -1)}
+                          disabled={!selectedAddOns[addon._id]}
+                          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+                        >
+                          -
+                        </button>
+                        <span className="w-8 text-center font-semibold">{selectedAddOns[addon._id] || 0}</span>
+                        <button
+                          onClick={() => updateAddOnQuantity(addon._id, 1)}
+                          className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Price Summary */}
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               {event.hasSeating && event.seatingLayout ? (
                 <>
@@ -526,14 +696,63 @@ const EventRegistration: React.FC = () => {
                 </>
               ) : (
                 <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Price per person</span>
-                    <span className="font-semibold">₹{event.price}</span>
+                  <div className="space-y-2">
+                    {/* Ticket Summary */}
+
+                    {event.tickets && event.tickets.length > 0 ? (
+                      Object.keys(selectedTickets).map(ticketId => {
+                        const qty = selectedTickets[ticketId];
+                        if (qty === 0) return null;
+                        const ticket = event.tickets?.find(t => t._id === ticketId);
+                        return (
+                          <div key={ticketId} className="flex justify-between text-sm">
+                            <span className="text-gray-600">{ticket?.name} x {qty}</span>
+                            <span>₹{(ticket?.price || 0) * qty}</span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="flex justify-between items-center">
+                        <span className="text-gray-600">Price per person</span>
+                        <span className="font-semibold">₹{event.price}</span>
+                      </div>
+                    )}
+
+                    {/* Add-on Summary */}
+                    {Object.keys(selectedAddOns).map(addOnId => {
+                      const qty = selectedAddOns[addOnId];
+                      if (qty === 0) return null;
+                      const addon = event.addOns?.find(a => a._id === addOnId);
+                      return (
+                        <div key={addOnId} className="flex justify-between text-sm text-gray-500">
+                          <span>+ {addon?.name} x {qty}</span>
+                          <span>₹{(addon?.price || 0) * qty}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+
+                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
                     <span className="font-semibold">Total</span>
                     <span className="text-2xl font-bold text-emerald-600">
-                      ₹{event.price * numberOfGuests}
+                      ₹{(() => {
+                        let total = 0;
+                        if (event.tickets && event.tickets.length > 0) {
+                          total += Object.keys(selectedTickets).reduce((sum, tid) => {
+                            const t = event.tickets?.find(tk => tk._id === tid);
+                            return sum + (t?.price || 0) * (selectedTickets[tid] || 0);
+                          }, 0);
+                        } else {
+                          total += event.price * numberOfGuests;
+                        }
+
+                        total += Object.keys(selectedAddOns).reduce((sum, aid) => {
+                          const a = event.addOns?.find(ad => ad._id === aid);
+                          return sum + (a?.price || 0) * (selectedAddOns[aid] || 0);
+                        }, 0);
+
+                        return total;
+                      })()}
                     </span>
                   </div>
                 </>
@@ -560,7 +779,7 @@ const EventRegistration: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 

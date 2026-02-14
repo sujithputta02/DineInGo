@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Booking } from '../models/Booking';
+import { Event } from '../models/Event';
 import { UserStats } from '../models/UserStats';
 import { Restaurant } from '../models/Restaurant';
 import { TableBooking } from '../models/TableBooking';
@@ -248,34 +249,34 @@ const getBookingDisplayName = (booking: any) => {
 export const createBooking = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Creating booking with data:', req.body);
-    
+
     // Validate required fields
     if (!req.body.userId) {
       res.status(400).json({ message: 'User ID is required' });
       return;
     }
-    
+
     if (!req.body.date) {
       res.status(400).json({ message: 'Date is required' });
       return;
     }
-    
+
     if (!req.body.time) {
       res.status(400).json({ message: 'Time is required' });
       return;
     }
-    
+
     if (!req.body.guests || req.body.guests < 1) {
       res.status(400).json({ message: 'Number of guests is required and must be at least 1' });
       return;
     }
-    
+
     // Ensure at least one of restaurantId or eventId is provided
     if (!req.body.restaurantId && !req.body.eventId) {
       res.status(400).json({ message: 'Either restaurant ID or event ID is required' });
       return;
     }
-    
+
     // Convert restaurantId and eventId to ObjectId if they are valid, otherwise keep as string
     const bookingData: any = {
       ...req.body,
@@ -286,7 +287,7 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     // Try to convert to ObjectId if it looks like one (24 hex characters)
     if (bookingData.restaurantId && typeof bookingData.restaurantId === 'string') {
       if (/^[0-9a-fA-F]{24}$/.test(bookingData.restaurantId)) {
@@ -297,22 +298,107 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
         }
       }
     }
-    
+
     if (bookingData.eventId && typeof bookingData.eventId === 'string') {
       if (/^[0-9a-fA-F]{24}$/.test(bookingData.eventId)) {
         try {
           bookingData.eventId = new mongoose.Types.ObjectId(bookingData.eventId);
+
+          // EVENT TICKET VALIDATION & INVENTORY UPDATE
+          if (bookingData.selectedTickets && bookingData.selectedTickets.length > 0) {
+            const event = await Event.findById(bookingData.eventId);
+            if (!event) {
+              res.status(404).json({ message: 'Event not found' });
+              return;
+            }
+
+            // Validate and update tickets
+            for (const selectedTicket of bookingData.selectedTickets) {
+              const ticket = event.tickets?.find(t => t._id?.toString() === selectedTicket.ticketId);
+              if (!ticket) {
+                res.status(400).json({ message: `Ticket type not found: ${selectedTicket.name}` });
+                return;
+              }
+
+              if (ticket.quantity - ticket.sold < selectedTicket.quantity) {
+                res.status(400).json({ message: `Not enough tickets available for: ${ticket.name}` });
+                return;
+              }
+
+              // Update sold count (in memory, will save later)
+              ticket.sold += selectedTicket.quantity;
+              if (ticket.sold >= ticket.quantity) {
+                ticket.status = 'sold_out';
+              }
+            }
+
+            // Update event registered count
+            const totalTickets = bookingData.selectedTickets.reduce((sum: number, t: any) => sum + t.quantity, 0);
+            event.registeredCount += totalTickets;
+
+            // Save the event with updated inventory
+            await event.save();
+            console.log('Event inventory updated for booking');
+          }
+
         } catch (e) {
-          console.log('Could not convert eventId to ObjectId, keeping as string');
+          console.log('Error processing event tickets:', e);
+          res.status(500).json({ message: 'Error processing event tickets' });
+          return;
         }
       }
     }
-    
+
+    // Generate ID manually to link objects
+    const bookingId = new mongoose.Types.ObjectId();
+    bookingData._id = bookingId;
+
+    // Handle Pre-order creation if items are selected
+    if (bookingData.selectedItems && bookingData.selectedItems.length > 0 && bookingData.restaurantId) {
+      try {
+        const { PreOrder } = require('../models/PreOrder');
+
+        // Calculate totals
+        const items = bookingData.selectedItems.map((item: any) => ({
+          menuItemId: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          specialRequests: ''
+        }));
+
+        const subtotal = items.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+        const tax = subtotal * 0.05; // 5% tax assumption
+        const total = subtotal + tax;
+
+        const preOrder = new PreOrder({
+          bookingId: bookingId.toString(),
+          businessId: bookingData.restaurantId.toString(),
+          customerId: bookingData.userId,
+          items: items,
+          subtotal: subtotal,
+          tax: tax,
+          total: total,
+          status: 'pending'
+        });
+
+        await preOrder.save();
+        console.log('Pre-order created successfully:', preOrder._id);
+
+        bookingData.hasPreOrder = true;
+        bookingData.preOrderId = preOrder._id.toString();
+
+      } catch (err) {
+        console.error('Error creating pre-order:', err);
+        // Continue with booking creation even if pre-order fails, but log error
+      }
+    }
+
     const booking = new Booking(bookingData);
-    
+
     await booking.save();
     console.log('Booking saved successfully:', booking._id);
-    
+
     // Update achievements after successful booking
     try {
       await updateAchievementsAfterBooking(booking);
@@ -320,7 +406,7 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
       console.error('Error updating achievements:', achievementError);
       // Don't fail the booking if achievement update fails
     }
-    
+
     // Only populate if the IDs are ObjectIds
     try {
       if (booking.restaurantId && mongoose.Types.ObjectId.isValid(booking.restaurantId as any)) {
@@ -332,10 +418,10 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
     } catch (populateError) {
       console.log('Could not populate references, continuing without population');
     }
-    
+
     // Check if this is an event booking
     const isEventBooking = !!(booking.eventId || req.body.eventId);
-    
+
     if (isEventBooking) {
       // Send event-specific confirmation email with event pass
       try {
@@ -357,7 +443,7 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
         console.error('Error sending confirmation email:', emailError);
         // Don't fail the booking creation if email fails
       }
-      
+
       // Send invoice PDF email for restaurants
       try {
         await sendInvoicePdfEmail(booking);
@@ -365,32 +451,32 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
         console.error('Error sending invoice PDF email:', invoiceError);
       }
     }
-    
+
     res.status(201).json(booking);
   } catch (error: any) {
     console.error('Error creating booking:', error);
-    
+
     // Provide more specific error messages
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map((err: any) => err.message);
-      res.status(400).json({ 
-        message: 'Validation error', 
-        errors: validationErrors 
+      res.status(400).json({
+        message: 'Validation error',
+        errors: validationErrors
       });
       return;
     }
-    
+
     if (error.name === 'CastError') {
-      res.status(400).json({ 
-        message: 'Invalid ID format', 
-        field: error.path 
+      res.status(400).json({
+        message: 'Invalid ID format',
+        field: error.path
       });
       return;
     }
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       message: 'Error creating booking',
-      error: error.message 
+      error: error.message
     });
   }
 };
@@ -664,12 +750,12 @@ export const getUserBookings = async (req: Request, res: Response): Promise<void
     const userId = req.params.userId;
     const bookings = await Booking.find({ userId })
       .sort({ date: 1, time: 1 });
-    
+
     // Manually populate only valid ObjectIds
     const populatedBookings = await Promise.all(
       bookings.map(async (booking) => {
         const bookingObj = booking.toObject();
-        
+
         // Try to populate restaurantId if it's a valid ObjectId
         if (bookingObj.restaurantId && mongoose.Types.ObjectId.isValid(bookingObj.restaurantId as any)) {
           try {
@@ -679,7 +765,7 @@ export const getUserBookings = async (req: Request, res: Response): Promise<void
             console.log('Could not populate restaurantId');
           }
         }
-        
+
         // Try to populate eventId if it's a valid ObjectId
         if (bookingObj.eventId && mongoose.Types.ObjectId.isValid(bookingObj.eventId as any)) {
           try {
@@ -689,11 +775,11 @@ export const getUserBookings = async (req: Request, res: Response): Promise<void
             console.log('Could not populate eventId');
           }
         }
-        
+
         return bookingObj;
       })
     );
-    
+
     res.json(populatedBookings);
   } catch (error) {
     console.error('Error fetching user bookings:', error);
@@ -709,7 +795,7 @@ export const getBooking = async (req: Request, res: Response): Promise<void> => 
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
-    
+
     // Try to populate, but handle errors gracefully
     try {
       if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
@@ -721,7 +807,7 @@ export const getBooking = async (req: Request, res: Response): Promise<void> => 
     } catch (populateError) {
       console.warn('Could not populate booking references:', populateError);
     }
-    
+
     res.json(booking);
   } catch (error) {
     console.error('Error fetching booking:', error);
@@ -737,12 +823,12 @@ export const updateBooking = async (req: Request, res: Response): Promise<void> 
       { ...req.body, updatedAt: new Date() },
       { new: true }
     );
-    
+
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
-    
+
     // Try to populate, but handle errors gracefully
     try {
       if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
@@ -754,7 +840,7 @@ export const updateBooking = async (req: Request, res: Response): Promise<void> 
     } catch (populateError) {
       console.warn('Could not populate booking references:', populateError);
     }
-    
+
     res.json(booking);
   } catch (error) {
     console.error('Error updating booking:', error);
@@ -771,12 +857,12 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
       { status: 'cancelled', updatedAt: new Date() },
       { new: true }
     );
-    
+
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
-    
+
     // Try to populate, but handle errors gracefully
     try {
       // Only populate if the IDs are valid ObjectIds
@@ -790,7 +876,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
       console.warn('Could not populate booking references:', populateError);
       // Continue without populated data
     }
-    
+
     // If this is a restaurant booking with a table, unblock the table
     if (booking.restaurantId && booking.table && booking.date && booking.time) {
       try {
@@ -800,9 +886,9 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         } else {
           restaurantId = String(booking.restaurantId);
         }
-        
+
         const dateStr = booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date;
-        
+
         console.log('Cancelling table booking:', {
           restaurantId,
           tableId: booking.table,
@@ -810,7 +896,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
           time: booking.time,
           userId: booking.userId
         });
-        
+
         // Update TableBooking collection to cancel the table reservation
         const tableBooking = await TableBooking.findOneAndUpdate(
           {
@@ -828,10 +914,10 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
           },
           { new: true }
         );
-        
+
         if (tableBooking) {
           console.log('Successfully cancelled table booking:', tableBooking._id);
-          
+
           // Emit Socket.IO event for real-time updates
           const io = require('../utils/socket').getIO();
           if (io) {
@@ -854,7 +940,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         // Don't fail the main booking cancellation if table cancellation fails
       }
     }
-    
+
     // If this is an event booking with seats, unblock the seats
     if (booking.eventId && booking.selectedSeats && booking.selectedSeats.length > 0) {
       try {
@@ -865,7 +951,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         } else {
           eventId = String(booking.eventId);
         }
-        
+
         const event = await Event.findById(eventId);
         if (event && event.hasSeating && event.seatingLayout) {
           // Unblock the seats - set them back to available
@@ -879,12 +965,12 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
             }
             return seat;
           });
-          
+
           // Decrease registered count
           event.registeredCount = Math.max(0, event.registeredCount - booking.selectedSeats!.length);
-          
+
           await event.save();
-          
+
           // Emit Socket.IO event for real-time updates
           const io = require('../utils/socket').getIO();
           if (io) {
@@ -904,7 +990,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         // Don't fail the cancellation if seat unblocking fails
       }
     }
-    
+
     // If this is an event booking without seats, decrease the count
     if (booking.eventId && (!booking.selectedSeats || booking.selectedSeats.length === 0)) {
       try {
@@ -915,12 +1001,12 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         } else {
           eventId = String(booking.eventId);
         }
-        
+
         const event = await Event.findById(eventId);
         if (event) {
           event.registeredCount = Math.max(0, event.registeredCount - (booking.guests || 1));
           await event.save();
-          
+
           // Emit Socket.IO event
           const io = require('../utils/socket').getIO();
           if (io) {
@@ -939,12 +1025,12 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         // Don't fail the cancellation if event count update fails
       }
     }
-    
+
     // Send cancellation email
     try {
       const { sendCancellationEmail } = require('../services/eventEmailService');
       const isEvent = !!(booking.eventId || booking.eventName);
-      
+
       // Prepare email data
       const emailData = {
         _id: booking._id,
@@ -965,7 +1051,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         specialRequest: booking.specialRequests || booking.specialRequest,
         status: 'cancelled'
       };
-      
+
       // Only send email if we have an email address
       if (emailData.email) {
         await sendCancellationEmail(emailData, isEvent);
@@ -977,7 +1063,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
       console.error('Error sending cancellation email:', emailError);
       // Don't fail the cancellation if email fails
     }
-    
+
     res.json(booking);
   } catch (error) {
     console.error('=== ERROR CANCELLING BOOKING ===');
@@ -985,7 +1071,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
     console.error('Error message:', error instanceof Error ? error.message : String(error));
     console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
     console.error('Full error:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Error cancelling booking',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
@@ -995,27 +1081,34 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
 // Get bookings for a specific business
 export const getBusinessBookings = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { businessId } = req.params;
+    const { id: businessId } = req.params;
     const { status, date, limit = 50 } = req.query;
-    
-    const query: any = { businessId };
-    
+
+    // Robust query to match businessId OR legacy fields
+    const query: any = {
+      $or: [
+        { businessId },
+        { restaurantId: businessId },
+        { eventId: businessId }
+      ]
+    };
+
     if (status && status !== 'all') {
       query.status = status;
     }
-    
+
     if (date) {
       query.date = {
         $gte: new Date(date as string),
         $lt: new Date(new Date(date as string).getTime() + 24 * 60 * 60 * 1000)
       };
     }
-    
+
     const bookings = await Booking.find(query)
       .sort({ date: -1, time: -1 })
       .limit(parseInt(limit as string))
       .lean();
-    
+
     res.json(bookings);
   } catch (error) {
     console.error('Error fetching business bookings:', error);
@@ -1026,9 +1119,9 @@ export const getBusinessBookings = async (req: Request, res: Response): Promise<
 // Get booking analytics for a business
 export const getBookingAnalytics = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { businessId } = req.params;
+    const { id: businessId } = req.params;
     const { period = '30d' } = req.query;
-    
+
     let dateFilter: Date;
     switch (period) {
       case '7d':
@@ -1043,11 +1136,15 @@ export const getBookingAnalytics = async (req: Request, res: Response): Promise<
       default:
         dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     }
-    
+
     const analytics = await Booking.aggregate([
       {
         $match: {
-          businessId,
+          $or: [
+            { businessId },
+            { restaurantId: businessId },
+            { eventId: businessId }
+          ],
           createdAt: { $gte: dateFilter }
         }
       },
@@ -1067,7 +1164,7 @@ export const getBookingAnalytics = async (req: Request, res: Response): Promise<
         }
       }
     ]);
-    
+
     const result = analytics[0] || {
       totalBookings: 0,
       totalRevenue: 0,
@@ -1076,11 +1173,11 @@ export const getBookingAnalytics = async (req: Request, res: Response): Promise<
       averageBookingValue: 0,
       totalSeats: 0
     };
-    
+
     // Calculate utilization rate (this would need capacity from business model)
-    result.utilizationRate = result.totalBookings > 0 ? 
+    result.utilizationRate = result.totalBookings > 0 ?
       Math.round((result.confirmedBookings / result.totalBookings) * 100) : 0;
-    
+
     res.json(result);
   } catch (error) {
     console.error('Error fetching booking analytics:', error);
@@ -1096,12 +1193,12 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
       { status: 'confirmed', updatedAt: new Date() },
       { new: true }
     );
-    
+
     if (!booking) {
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
-    
+
     // Try to populate, but handle errors gracefully
     try {
       if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
@@ -1121,15 +1218,15 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
       } else {
         restaurantId = String(booking.restaurantId);
       }
-      const date = booking.date instanceof Date ? booking.date.toISOString().slice(0,10) : booking.date;
+      const date = booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date;
       const time = booking.time;
       const tableId = booking.table;
 
       // Emit socket event for real-time updates
       try {
-        require('../utils/socket').getIO().to(restaurantId).emit('bookingUpdated', { 
-          restaurantId, 
-          date, 
+        require('../utils/socket').getIO().to(restaurantId).emit('bookingUpdated', {
+          restaurantId,
+          date,
           time,
           tableId,
           userId: booking.userId

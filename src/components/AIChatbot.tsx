@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Trash2, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -58,7 +59,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
         // Show welcome message if no history
         setMessages([{
           role: 'assistant',
-          content: "🦖 Rawr! Hello! I'm Dino, your friendly DineInGo assistant. I'm here to help you with:\n\n• 🍽️ Making restaurant reservations\n• 🎉 Booking events\n• 📍 Finding the perfect dining spot\n• 👤 Account management\n• ❓ Answering your questions\n• 💬 Handling feedback\n\nI know everything about DineInGo - from table bookings to event tickets, cancellation policies to digital wallet passes. How can I assist you today?",
+          content: "🦖 Rawr! Hello there! I'm Dino, your enthusiastic dining companion! 🍽️\n\nI'm here to help you stomp through the city and find the best feasts! Whether it's:\n\n• 🥘 Picking the perfect cuisine (try our new Onboarding!)\n• 📱 Fast & Secure OTP Login\n• 🪑 Reserving your favorite table\n• 🎉 Scoring tickets to the hottest events\n\nI'm ready to help you bite into something delicious! What's cooking today?",
           timestamp: new Date()
         }]);
       }
@@ -67,7 +68,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
       // Show welcome message on error
       setMessages([{
         role: 'assistant',
-        content: "🦖 Rawr! Hello! I'm Dino, your friendly DineInGo assistant. How can I help you today?",
+        content: "🦖 Rawr! I'm Dino, your friendly dining companion. I hit a small snag, but I'm still ready to help! What can I do for you?",
         timestamp: new Date()
       }]);
     } finally {
@@ -120,7 +121,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
     } catch (error: any) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message. Please try again.');
-      
+
       // Add error message
       setMessages(prev => [...prev, {
         role: 'assistant',
@@ -145,10 +146,10 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
       setMessages([{
         role: 'assistant',
-        content: "🦖 Chat history cleared! Ready for a fresh start. How can I help you today?",
+        content: "🦖 Stomp! Chat history cleared! I'm ready for a fresh start. What's on your mind?",
         timestamp: new Date()
       }]);
-      
+
       toast.success('Chat history cleared');
     } catch (error) {
       console.error('Error clearing chat:', error);
@@ -178,13 +179,13 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
           style={{ animationDuration: '2s' }}
         >
           {/* Dino Icon Image */}
-          <img 
-            src="/images/Dino Icon.svg" 
-            alt="Dino Assistant" 
+          <img
+            src="/images/Dino Icon.svg"
+            alt="Dino Assistant"
             className="w-12 h-12 object-contain"
           />
           <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
-          
+
           {/* Tooltip */}
           <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
             🦖 Chat with Dino - Ready to Help!
@@ -194,21 +195,32 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
       {/* Chatbot Window */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200">
+        <motion.div
+          initial={{ opacity: 0, y: 100, scale: 0.8 }}
+          animate={{
+            opacity: 1,
+            y: 0,
+            scale: 1,
+            transition: { type: "spring", stiffness: 300, damping: 20 }
+          }}
+          className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
+        >
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center p-2">
+              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center p-2 relative overflow-visible">
                 {/* Dino Icon */}
-                <img 
-                  src="/images/Dino Icon.svg" 
-                  alt="Dino" 
+                <img
+                  src="/images/Dino Icon.svg"
+                  alt="Dino"
                   className="w-full h-full object-contain"
                 />
+                {/* Chef Hat Overlay */}
+                <span className="absolute -top-2 -right-1 text-xl drop-shadow-md select-none">👨‍🍳</span>
               </div>
               <div>
-                <h3 className="font-semibold">🦖 Dino</h3>
-                <p className="text-xs text-white/80">Your Dining Assistant</p>
+                <h3 className="font-bold flex items-center gap-2">🦖 Dino <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Assistant</span></h3>
+                <p className="text-xs text-white/80 font-medium italic">"The Stomping Chef"</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -242,23 +254,21 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                      message.role === 'user'
-                        ? 'bg-emerald-500 text-white rounded-br-none'
-                        : 'bg-white text-gray-800 rounded-bl-none shadow-sm border border-gray-200'
-                    }`}
+                    className={`max-w-[80%] rounded-2xl px-4 py-2 ${message.role === 'user'
+                      ? 'bg-emerald-500 text-white rounded-br-none'
+                      : 'bg-white text-gray-800 rounded-bl-none shadow-sm border border-gray-200'
+                      }`}
                   >
                     <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-                    <p className={`text-xs mt-1 ${
-                      message.role === 'user' ? 'text-white/70' : 'text-gray-400'
-                    }`}>
+                    <p className={`text-xs mt-1 ${message.role === 'user' ? 'text-white/70' : 'text-gray-400'
+                      }`}>
                       {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
               ))
             )}
-            
+
             {isLoading && (
               <div className="flex justify-start">
                 <div className="bg-white text-gray-800 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm border border-gray-200">
@@ -269,7 +279,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 </div>
               </div>
             )}
-            
+
             <div ref={messagesEndRef} />
           </div>
 
@@ -297,7 +307,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
               Powered by AI • Press Enter to send
             </p>
           </div>
-        </div>
+        </motion.div>
       )}
     </>
   );

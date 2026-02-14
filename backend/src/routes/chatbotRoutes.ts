@@ -1,42 +1,42 @@
 import express, { Request, Response } from 'express';
-import { enhancedChatbotService } from '../services/enhancedChatbotService';
+import { chatbotService } from '../services/chatbotService';
 
 const router = express.Router();
 
 // Send a message to the chatbot
 router.post('/message', async (req: Request, res: Response) => {
   try {
-    const { userId, message, userContext } = req.body;
+    const { userId, message, userContext, language } = req.body;
 
     if (!userId || !message) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing required fields',
-        message: 'userId and message are required' 
+        message: 'userId and message are required'
       });
     }
 
     if (typeof message !== 'string' || message.trim().length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Invalid message',
-        message: 'Message must be a non-empty string' 
+        message: 'Message must be a non-empty string'
       });
     }
 
     if (message.length > 1000) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Message too long',
-        message: 'Message must be less than 1000 characters' 
+        message: 'Message must be less than 1000 characters'
       });
     }
 
-    console.log(`Chatbot message from user ${userId}: ${message.substring(0, 50)}...`);
+    console.log(`Chatbot message from user ${userId} (lang: ${language || 'en'}): ${message.substring(0, 50)}...`);
 
-    const result = await enhancedChatbotService.sendMessage(userId, message, userContext);
+    const response = await chatbotService.sendMessage(userId, message, userContext, language);
 
     res.json({
       success: true,
-      response: result.response,
-      timestamp: result.timestamp.toISOString()
+      response: response,
+      timestamp: new Date().toISOString()
     });
 
   } catch (error: any) {
@@ -54,13 +54,13 @@ router.get('/history/:userId', async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing userId',
-        message: 'userId is required' 
+        message: 'userId is required'
       });
     }
 
-    const history = await enhancedChatbotService.getChatHistory(userId);
+    const history = chatbotService.getChatHistory(userId);
 
     res.json({
       success: true,
@@ -83,13 +83,13 @@ router.delete('/session/:userId', async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing userId',
-        message: 'userId is required' 
+        message: 'userId is required'
       });
     }
 
-    await enhancedChatbotService.clearSession(userId);
+    chatbotService.clearSession(userId);
 
     res.json({
       success: true,
@@ -111,13 +111,13 @@ router.get('/stats/:userId', async (req: Request, res: Response) => {
     const { userId } = req.params;
 
     if (!userId) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Missing userId',
-        message: 'userId is required' 
+        message: 'userId is required'
       });
     }
 
-    const stats = await enhancedChatbotService.getSessionStats(userId);
+    const stats = chatbotService.getSessionStats(userId);
 
     res.json({
       success: true,

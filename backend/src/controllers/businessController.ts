@@ -231,7 +231,9 @@ const transformBusinessData = (business: any, req: Request): any => {
   transformed.location = business.locationData || {
     city: typeof business.location === 'string' ? business.location.split(',')[0]?.trim() || 'Unknown' : 'Unknown',
     state: typeof business.location === 'string' ? business.location.split(',')[1]?.trim() || 'Unknown' : 'Unknown',
-    country: 'India'
+    country: 'India',
+    latitude: business.locationData?.latitude,
+    longitude: business.locationData?.longitude
   };
 
   return transformed;
@@ -870,12 +872,47 @@ export const getBusinessDashboard = async (req: Request, res: Response): Promise
       .limit(10)
       .lean();
 
+    // Calculate metrics for each business from booking data
+    const businessesWithMetrics = await Promise.all(businesses.map(async (business) => {
+      // Get all bookings for this business
+      const bookings = await Booking.find({ businessId: business._id.toString() }).lean();
+
+      // Calculate total bookings
+      const totalBookings = bookings.length;
+
+      // Calculate revenue (only from confirmed bookings)
+      const revenue = bookings
+        .filter(b => b.status === 'confirmed')
+        .reduce((sum, b) => sum + (b.amount || 0), 0);
+
+      // Calculate utilization rate
+      // Total seats booked from confirmed bookings
+      const totalSeatsBooked = bookings
+        .filter(b => b.status === 'confirmed')
+        .reduce((sum, b) => sum + (b.seats || 0), 0);
+
+      // Utilization = (seats booked / capacity) * 100
+      const capacity = business.capacity || 0;
+      const utilizationRate = capacity > 0
+        ? Math.min(Math.round((totalSeatsBooked / capacity) * 100), 100)
+        : 0;
+
+      return {
+        ...business,
+        totalBookings,
+        revenue,
+        utilizationRate,
+        thumbnail: getImageUrl(business.thumbnail, req),
+        coverImage: getImageUrl(business.coverImage, req)
+      };
+    }));
+
     // Calculate overall stats
-    const totalBusinesses = businesses.length;
-    const activeBusinesses = businesses.filter(b => b.status === 'active').length;
-    const totalRevenue = businesses.reduce((sum, b) => sum + (b.revenue || 0), 0);
-    const averageRating = businesses.length > 0 ?
-      businesses.reduce((sum, b) => sum + (b.rating || 0), 0) / businesses.length : 0;
+    const totalBusinesses = businessesWithMetrics.length;
+    const activeBusinesses = businessesWithMetrics.filter(b => b.status === 'active').length;
+    const totalRevenue = businessesWithMetrics.reduce((sum, b) => sum + (b.revenue || 0), 0);
+    const averageRating = businessesWithMetrics.length > 0 ?
+      businessesWithMetrics.reduce((sum, b) => sum + (b.rating || 0), 0) / businessesWithMetrics.length : 0;
 
     // Get today's bookings
     const today = new Date();
@@ -894,15 +931,8 @@ export const getBusinessDashboard = async (req: Request, res: Response): Promise
       date: { $gte: monthStart }
     });
 
-    // Transform businesses to include full image URLs
-    const transformedBusinesses = businesses.map(business => ({
-      ...business,
-      thumbnail: getImageUrl(business.thumbnail, req),
-      coverImage: getImageUrl(business.coverImage, req)
-    }));
-
     res.json({
-      businesses: transformedBusinesses,
+      businesses: businessesWithMetrics,
       recentBookings,
       stats: {
         totalBusinesses,
@@ -916,6 +946,171 @@ export const getBusinessDashboard = async (req: Request, res: Response): Promise
   } catch (error) {
     console.error('Error fetching business dashboard:', error);
     res.status(500).json({ message: 'Error fetching dashboard data' });
+  }
+};
+
+// Get dashboard analytics with time-series data
+export const getDashboardAnalytics = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { ownerId } = req.params;
+    const { period = '30d' } = req.query;
+
+    // Calculate date filter based on period
+    let dateFilter: Date;
+    let days: number;
+    switch (period) {
+      case '7d':
+        dateFilter = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        days = 7;
+        break;
+      case '30d':
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        days = 30;
+        break;
+      case '90d':
+        dateFilter = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+        days = 90;
+        break;
+      default:
+        dateFilter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        days = 30;
+    }
+
+    // Get all businesses for the owner
+    const businesses = await Business.find({ ownerId }).lean();
+    const businessIds = businesses.map(b => b._id.toString());
+
+    if (businessIds.length === 0) {
+      // Return empty analytics if no businesses
+      res.json({
+        bookingTrends: [],
+        revenueData: [],
+        peakHours: [],
+        summary: {
+          totalBookings: 0,
+          totalRevenue: 0,
+          averageBookingValue: 0,
+          confirmationRate: 0
+        }
+      });
+      return;
+    }
+
+    // Get booking trends (daily aggregation)
+    const bookingTrends = await Booking.aggregate([
+      {
+        $match: {
+          businessId: { $in: businessIds },
+          date: { $gte: dateFilter },
+          status: { $in: ['confirmed', 'completed'] }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: '%Y-%m-%d', date: '$date' }
+          },
+          count: { $sum: 1 },
+          revenue: { $sum: '$amount' }
+        }
+      },
+      {
+        $sort: { _id: 1 }
+      },
+      {
+        $project: {
+          _id: 0,
+          date: '$_id',
+          bookings: '$count',
+          revenue: '$revenue'
+        }
+      }
+    ]);
+
+    // Fill in missing dates with zero values
+    const filledTrends = [];
+    for (let i = 0; i < days; i++) {
+      const date = new Date(dateFilter.getTime() + i * 24 * 60 * 60 * 1000);
+      const dateStr = date.toISOString().split('T')[0];
+      const existing = bookingTrends.find(t => t.date === dateStr);
+      filledTrends.push({
+        date: dateStr,
+        bookings: existing?.bookings || 0,
+        revenue: existing?.revenue || 0
+      });
+    }
+
+    // Get peak hours analysis
+    const peakHours = await Booking.aggregate([
+      {
+        $match: {
+          businessId: { $in: businessIds },
+          date: { $gte: dateFilter },
+          status: { $in: ['confirmed', 'completed'] }
+        }
+      },
+      {
+        $group: {
+          _id: '$time',
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { count: -1 }
+      },
+      {
+        $project: {
+          _id: 0,
+          time: '$_id',
+          bookings: '$count'
+        }
+      }
+    ]);
+
+    // Get summary statistics
+    const summary = await Booking.aggregate([
+      {
+        $match: {
+          businessId: { $in: businessIds },
+          date: { $gte: dateFilter }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          totalBookings: { $sum: 1 },
+          totalRevenue: { $sum: '$amount' },
+          confirmedBookings: {
+            $sum: { $cond: [{ $in: ['$status', ['confirmed', 'completed']] }, 1, 0] }
+          }
+        }
+      }
+    ]);
+
+    const stats = summary[0] || {
+      totalBookings: 0,
+      totalRevenue: 0,
+      confirmedBookings: 0
+    };
+
+    res.json({
+      bookingTrends: filledTrends,
+      revenueData: filledTrends,
+      peakHours,
+      summary: {
+        totalBookings: stats.totalBookings,
+        totalRevenue: Math.round(stats.totalRevenue || 0),
+        averageBookingValue: stats.totalBookings > 0
+          ? Math.round((stats.totalRevenue || 0) / stats.totalBookings)
+          : 0,
+        confirmationRate: stats.totalBookings > 0
+          ? Math.round((stats.confirmedBookings / stats.totalBookings) * 100)
+          : 0
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard analytics:', error);
+    res.status(500).json({ message: 'Error fetching analytics data' });
   }
 };
 

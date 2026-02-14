@@ -1033,7 +1033,7 @@ export default function LandingPage() {
           <DineInGoLogo size="small" color="white" yellowColor="#facc15" />
 
           <div style={{ fontSize: "0.9rem", marginTop: "20px" }}>
-            <p>© 2025 DineInGo | Made with ❤️ by Putta Sujith, K Vikas Aneesh Reddy, E Yashas Kumar, Karnati Mokshith, A Rohail</p>
+            <p>© 2026 DineInGo | Made with ❤️ by DineInGo Team</p>
           </div>
         </div>
       </footer>

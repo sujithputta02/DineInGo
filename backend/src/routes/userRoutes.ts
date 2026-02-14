@@ -1,15 +1,16 @@
 import express from 'express';
-import { 
-  createUser, 
-  getUser, 
-  updateUser, 
-  deleteUser, 
-  loginUser, 
+import {
+  createUser,
+  getUser,
+  updateUser,
+  deleteUser,
+  loginUser,
   logoutUser,
   getUserActivities,
   debugUserActivities,
   trackFriendReferral
 } from '../controllers/userController';
+import { getUserReviews } from '../controllers/reviewController';
 import { User } from '../models/User';
 
 const router = express.Router();
@@ -30,7 +31,7 @@ router.get('/debug', async (req, res) => {
       displayName: user.displayName,
       activityCount: user.activities ? user.activities.length : 0
     }));
-    
+
     res.json({
       totalUsers: users.length,
       users: usersWithActivityCounts,
@@ -47,25 +48,25 @@ router.post('/login', async (req, res) => {
   try {
     console.log('Login request received:', req.body);
     const { uid, loginSource = 'email' } = req.body;
-    
+
     if (!uid) {
       console.log('Missing uid in login request');
       return res.status(400).json({ message: 'User ID (uid) is required' });
     }
-    
+
     console.log(`Looking up user with uid: ${uid}`);
     const user = await User.findOne({ uid });
-    
+
     if (!user) {
       console.log(`No user found with uid: ${uid}`);
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     // Extract request info
     const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() || 
-                    req.socket.remoteAddress || 'Unknown IP';
-    
+    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
+      req.socket.remoteAddress || 'Unknown IP';
+
     // Create login activity
     const loginActivity = {
       type: 'login' as const,
@@ -74,14 +75,14 @@ router.post('/login', async (req, res) => {
       ipAddress,
       source: loginSource
     };
-    
+
     console.log('Adding login activity:', loginActivity);
-    
+
     // Update user with login activity
     user.lastLogin = new Date();
     user.activities.push(loginActivity);
     await user.save();
-    
+
     console.log('User updated with login activity');
     res.json(user);
   } catch (error) {
@@ -101,24 +102,24 @@ router.post('/update', async (req, res) => {
   try {
     console.log('Profile update request received:', req.body);
     const { userId, updates } = req.body;
-    
+
     if (!userId) {
       console.log('Missing userId in update request');
       return res.status(400).json({ message: 'User ID is required' });
     }
-    
+
     if (!updates) {
       console.log('Missing updates in request');
       return res.status(400).json({ message: 'Updates are required' });
     }
-    
+
     console.log(`Updating user with uid: ${userId}`);
-    
+
     // Prepare the update object
     const updateData: any = {
       updatedAt: new Date()
     };
-    
+
     // Add all provided fields to the update
     if (updates.displayName !== undefined) updateData.displayName = updates.displayName;
     if (updates.name !== undefined) updateData.name = updates.name;
@@ -128,21 +129,21 @@ router.post('/update', async (req, res) => {
     if (updates.locationSettings !== undefined) updateData.locationSettings = updates.locationSettings;
     if (updates.avatars !== undefined) updateData.avatars = updates.avatars;
     if (updates.currentAvatar !== undefined) updateData.currentAvatar = updates.currentAvatar;
-    
+
     // Find and update the user in MongoDB
     const user = await User.findOneAndUpdate(
       { uid: userId },
       { $set: updateData },
       { new: true, runValidators: true }
     );
-    
+
     if (!user) {
       console.log(`No user found with uid: ${userId}`);
       return res.status(404).json({ message: 'User not found' });
     }
-    
+
     console.log('User profile updated successfully in MongoDB');
-    
+
     // Emit socket event for real-time updates
     const io = req.app.get('io');
     if (io) {
@@ -162,9 +163,9 @@ router.post('/update', async (req, res) => {
       });
       console.log('Socket.IO event emitted for profile update');
     }
-    
-    res.json({ 
-      success: true, 
+
+    res.json({
+      success: true,
       message: 'Profile updated successfully in MongoDB',
       user: {
         uid: user.uid,
@@ -181,7 +182,7 @@ router.post('/update', async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating user profile:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
       message: 'Error updating user profile',
       error: error instanceof Error ? error.message : 'Unknown error'
@@ -194,6 +195,7 @@ router.post('/update', async (req, res) => {
 // router.post('/login', loginUser);
 router.post('/logout', logoutUser);
 router.get('/:id/activities', getUserActivities);
+router.get('/:userId/reviews', getUserReviews);
 
 // Friend referral tracking
 router.post('/refer-friend', trackFriendReferral);

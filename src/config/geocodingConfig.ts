@@ -1,4 +1,4 @@
-export const OPENCAGE_API_KEY = '5a9846ac3123475899976f2ca6fed52b'; // Replace with your actual API key
+export const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 
 export const OPENCAGE_API_URL = 'https://api.opencagedata.com/geocode/v1/json';
 

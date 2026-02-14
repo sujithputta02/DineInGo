@@ -211,6 +211,18 @@ const BusinessAuth: React.FC = () => {
                                 />
                             </div>
 
+                            {isLogin && (
+                                <div className="text-right">
+                                    <button
+                                        type="button"
+                                        onClick={() => navigate('/business/forgot-password')}
+                                        className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+                                    >
+                                        Forgot Password?
+                                    </button>
+                                </div>
+                            )}
+
                             {!isLogin && (
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>

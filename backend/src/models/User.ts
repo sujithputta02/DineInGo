@@ -50,6 +50,7 @@ export interface IUser extends Document {
   role: 'customer' | 'owner' | 'admin';
   password?: string;
   isAdmin?: boolean;
+  favorites?: string[] | any[];
 }
 
 // Add interface for static methods
@@ -106,7 +107,8 @@ const userSchema = new Schema<IUser>({
   activities: [activitySchema],
   role: { type: String, enum: ['customer', 'owner', 'admin'], default: 'customer' },
   password: { type: String },
-  isAdmin: { type: Boolean, default: false }
+  isAdmin: { type: Boolean, default: false },
+  favorites: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }]
 });
 
 // Static method to log activities for a user

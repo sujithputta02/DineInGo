@@ -82,27 +82,39 @@ const BookingManagement: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Load businesses first to get all business IDs
-      const businessData = await businessApi.getOwnerBusinesses();
-      
+      const response = await businessApi.getOwnerBusinesses();
+      // Extract businesses array from response (handle direct array, businesses property, or data property)
+      const businessData = Array.isArray(response) ? response : (response.businesses || response.data || []);
+
       // Load bookings for all businesses
       const allBookings: Booking[] = [];
       for (const business of businessData) {
         try {
-          const businessBookings = await businessApi.getBookings(business._id);
-          // Add business name to bookings
+          const bizId = business.id || business._id;
+          if (!bizId) continue;
+
+          const bookingsResponse = await businessApi.getBookings(bizId);
+          // Handle both direct array and object with bookings property
+          const businessBookings = Array.isArray(bookingsResponse) ? bookingsResponse : (bookingsResponse.bookings || bookingsResponse.data || []);
+
+          // Add business name to bookings and handle legacy field mapping
           const bookingsWithBusinessName = businessBookings.map((booking: any) => ({
             ...booking,
             businessName: business.name,
-            businessType: business.type
+            businessType: business.type,
+            // Map legacy fields if new ones are missing
+            customerName: booking.customerName || booking.fullName || 'Guest',
+            customerEmail: booking.customerEmail || booking.email || '',
+            bookingNumber: booking.bookingNumber || booking._id.slice(-6)
           }));
           allBookings.push(...bookingsWithBusinessName);
         } catch (err) {
           console.error(`Error loading bookings for business ${business._id}:`, err);
         }
       }
-      
+
       setBookings(allBookings);
     } catch (err: any) {
       console.error('Error loading data:', err);
@@ -114,11 +126,18 @@ const BookingManagement: React.FC = () => {
 
   const filterBookings = () => {
     let filtered = bookings.filter(booking => {
-      const matchesSearch = 
-        booking.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (booking.bookingNumber && booking.bookingNumber.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (booking.businessName && booking.businessName.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        booking.customerEmail.toLowerCase().includes(searchTerm.toLowerCase());
+      // Safe check for missing properties before searching
+      const customerName = (booking.customerName || '').toLowerCase();
+      const customerEmail = (booking.customerEmail || '').toLowerCase();
+      const businessName = (booking.businessName || '').toLowerCase();
+      const bookingNumber = (booking.bookingNumber || '').toLowerCase();
+      const s = searchTerm.toLowerCase();
+
+      const matchesSearch =
+        customerName.includes(s) ||
+        bookingNumber.includes(s) ||
+        businessName.includes(s) ||
+        customerEmail.includes(s);
 
       const matchesStatus = filters.status === 'all' || booking.status === filters.status;
       const matchesBusinessType = filters.businessType === 'all' || booking.businessType === filters.businessType;
@@ -188,8 +207,8 @@ const BookingManagement: React.FC = () => {
     try {
       // This would typically call the booking API to update status
       // For now, update locally
-      setBookings(prev => prev.map(booking => 
-        booking._id === bookingId 
+      setBookings(prev => prev.map(booking =>
+        booking._id === bookingId
           ? { ...booking, status: newStatus as any, updatedAt: new Date().toISOString() }
           : booking
       ));
@@ -442,214 +461,214 @@ const BookingManagement: React.FC = () => {
           <>
             {/* Filters */}
             <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
-                <input
-                  type="text"
-                  placeholder="Search bookings..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                    <input
+                      type="text"
+                      placeholder="Search bookings..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                  <select
+                    value={filters.status}
+                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="all">All Status</option>
+                    <option value="pending">Pending</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="no-show">No Show</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Business Type</label>
+                  <select
+                    value={filters.businessType}
+                    onChange={(e) => setFilters(prev => ({ ...prev, businessType: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="all">All Types</option>
+                    <option value="restaurant">Restaurant</option>
+                    <option value="event">Event</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Date Range</label>
+                  <select
+                    value={filters.dateRange}
+                    onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="all">All Dates</option>
+                    <option value="today">Today</option>
+                    <option value="tomorrow">Tomorrow</option>
+                    <option value="this-week">This Week</option>
+                    <option value="this-month">This Month</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Payment</label>
+                  <select
+                    value={filters.paymentStatus}
+                    onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="all">All Payments</option>
+                    <option value="paid">Paid</option>
+                    <option value="pending">Pending</option>
+                    <option value="refunded">Refunded</option>
+                  </select>
+                </div>
               </div>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="all">All Status</option>
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="no-show">No Show</option>
-              </select>
-            </div>
+            {/* Bookings Table */}
+            <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-slate-200">
+                  <thead className="bg-slate-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Booking
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Business
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Date & Time
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Details
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Amount
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-slate-200">
+                    {filteredBookings.map(booking => (
+                      <tr key={booking._id} className="hover:bg-slate-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">{booking.bookingNumber || booking._id.slice(-6)}</div>
+                            <div className="text-sm text-slate-500">{new Date(booking.createdAt).toLocaleDateString()}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">{booking.customerName}</div>
+                            <div className="text-sm text-slate-500">{booking.customerEmail}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm text-slate-900">{booking.businessName || 'Unknown Business'}</div>
+                            <div className="text-sm text-slate-500 capitalize">{booking.businessType}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm text-slate-900 flex items-center gap-1">
+                              <Calendar size={14} />
+                              {booking.date}
+                            </div>
+                            <div className="text-sm text-slate-500 flex items-center gap-1">
+                              <Clock size={14} />
+                              {booking.time}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm text-slate-900 flex items-center gap-1">
+                              <Users size={14} />
+                              {booking.seats} seats
+                            </div>
+                            {booking.tableNumber && (
+                              <div className="text-sm text-slate-500">Table {booking.tableNumber}</div>
+                            )}
+                            {booking.seatNumbers && (
+                              <div className="text-sm text-slate-500">{booking.seatNumbers.join(', ')}</div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div>
+                            <div className="text-sm font-medium text-slate-900">₹{booking.amount}</div>
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>
+                              {booking.paymentStatus}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center gap-2">
+                            {getStatusIcon(booking.status)}
+                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedBooking(booking);
+                                setShowBookingModal(true);
+                              }}
+                              className="text-emerald-600 hover:text-emerald-900"
+                            >
+                              <Eye size={16} />
+                            </button>
+                            <button className="text-slate-600 hover:text-slate-900">
+                              <Edit size={16} />
+                            </button>
+                            <button className="text-red-600 hover:text-red-900">
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Business Type</label>
-              <select
-                value={filters.businessType}
-                onChange={(e) => setFilters(prev => ({ ...prev, businessType: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="all">All Types</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="event">Event</option>
-              </select>
+              {filteredBookings.length === 0 && (
+                <div className="text-center py-12">
+                  <Calendar className="mx-auto h-12 w-12 text-slate-400" />
+                  <h3 className="mt-2 text-sm font-medium text-slate-900">No bookings found</h3>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {searchTerm || Object.values(filters).some(f => f !== 'all')
+                      ? 'Try adjusting your search or filter criteria.'
+                      : 'No bookings have been made yet.'
+                    }
+                  </p>
+                </div>
+              )}
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Date Range</label>
-              <select
-                value={filters.dateRange}
-                onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="all">All Dates</option>
-                <option value="today">Today</option>
-                <option value="tomorrow">Tomorrow</option>
-                <option value="this-week">This Week</option>
-                <option value="this-month">This Month</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Payment</label>
-              <select
-                value={filters.paymentStatus}
-                onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="all">All Payments</option>
-                <option value="paid">Paid</option>
-                <option value="pending">Pending</option>
-                <option value="refunded">Refunded</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        {/* Bookings Table */}
-        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-slate-200">
-              <thead className="bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Booking
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Customer
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Business
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Date & Time
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Details
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Amount
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-slate-200">
-                {filteredBookings.map(booking => (
-                  <tr key={booking._id} className="hover:bg-slate-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-slate-900">{booking.bookingNumber || booking._id.slice(-6)}</div>
-                        <div className="text-sm text-slate-500">{new Date(booking.createdAt).toLocaleDateString()}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-slate-900">{booking.customerName}</div>
-                        <div className="text-sm text-slate-500">{booking.customerEmail}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm text-slate-900">{booking.businessName || 'Unknown Business'}</div>
-                        <div className="text-sm text-slate-500 capitalize">{booking.businessType}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm text-slate-900 flex items-center gap-1">
-                          <Calendar size={14} />
-                          {booking.date}
-                        </div>
-                        <div className="text-sm text-slate-500 flex items-center gap-1">
-                          <Clock size={14} />
-                          {booking.time}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm text-slate-900 flex items-center gap-1">
-                          <Users size={14} />
-                          {booking.seats} seats
-                        </div>
-                        {booking.tableNumber && (
-                          <div className="text-sm text-slate-500">Table {booking.tableNumber}</div>
-                        )}
-                        {booking.seatNumbers && (
-                          <div className="text-sm text-slate-500">{booking.seatNumbers.join(', ')}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div>
-                        <div className="text-sm font-medium text-slate-900">₹{booking.amount}</div>
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>
-                          {booking.paymentStatus}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(booking.status)}
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>
-                          {booking.status}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => {
-                            setSelectedBooking(booking);
-                            setShowBookingModal(true);
-                          }}
-                          className="text-emerald-600 hover:text-emerald-900"
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <button className="text-slate-600 hover:text-slate-900">
-                          <Edit size={16} />
-                        </button>
-                        <button className="text-red-600 hover:text-red-900">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {filteredBookings.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="mx-auto h-12 w-12 text-slate-400" />
-              <h3 className="mt-2 text-sm font-medium text-slate-900">No bookings found</h3>
-              <p className="mt-1 text-sm text-slate-500">
-                {searchTerm || Object.values(filters).some(f => f !== 'all')
-                  ? 'Try adjusting your search or filter criteria.'
-                  : 'No bookings have been made yet.'
-                }
-              </p>
-            </div>
-          )}
-        </div>
           </>
         )}
 

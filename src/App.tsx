@@ -1,11 +1,12 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'react-router-dom';
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './LandingPage';
+import BusinessLandingPage from './BusinessLandingPage';
 import LoginPage from './LoginPage';
 import SignupPage from './SignupPage';
-import DashboardPage from './DashboardPage';
+import DashboardPage from './pages/DashboardPage';
 import RestaurantDetails from './pages/RestaurantDetails';
 import ReservationPreview from './pages/ReservationPreview';
 import TableSelection from './pages/TableSelection';
@@ -21,13 +22,24 @@ import EventRegistration from './pages/EventRegistration';
 import EventPreview from './pages/EventPreview';
 import EventsPage from './pages/EventsPage';
 import BusinessLayout from './layouts/BusinessLayout';
-import BusinessAuth from './pages/business/BusinessAuth';
+import BusinessLogin from './pages/business/BusinessLogin';
+import BusinessSignup from './pages/business/BusinessSignup';
+import ForgotPassword from './pages/business/ForgotPassword';
 import OwnerDashboard from './pages/business/OwnerDashboard';
 import ManageRestaurant from './pages/business/ManageRestaurant';
 import RestaurantOnboarding from './pages/business/RestaurantOnboarding';
 import BusinessOnboarding from './pages/business/BusinessOnboarding';
 import BusinessDashboard from './pages/business/BusinessDashboard';
+import PayoutDashboard from './pages/business/PayoutDashboard';
+import InvoiceManagement from './pages/business/InvoiceManagement';
+import POSSettings from './pages/business/POSSettings';
+import DigitalMenuEditor from './pages/business/DigitalMenuEditor';
+import WaitlistManagement from './pages/business/WaitlistManagement';
+import PreOrderManagement from './pages/business/PreOrderManagement';
 import BookingManagement from './pages/business/BookingManagement';
+import FloorPlanManagement from './pages/business/FloorPlanManagement';
+import BusinessSettings from './pages/business/BusinessSettings';
+import EventsManagement from './pages/business/EventsManagement';
 import ProtectedBusinessRoute from './components/ProtectedBusinessRoute';
 import CustomerRoute from './components/CustomerRoute';
 import { UserActivityProvider } from './contexts/UserActivityContext';
@@ -38,6 +50,7 @@ import FeaturesDemo from './pages/FeaturesDemo';
 import FloorPlanDesigner from './components/FloorPlanDesigner';
 import EventSeatingDesigner from './components/EventSeatingDesigner';
 import TestLocationSelector from './pages/TestLocationSelector';
+import OnboardingPage from './pages/OnboardingPage';
 
 // Custom hook to set the document title based on the current route
 function usePageTitle() {
@@ -95,6 +108,18 @@ const App: React.FC = () => {
             <AIChatbot />
             <Routes>
               <Route path="/" element={<LandingPage />} />
+
+              {/* Business Landing Page (Public) */}
+              <Route path="/business" element={<BusinessLandingPage />} />
+
+              {/* Business Auth Routes (Public) */}
+              <Route path="/business/businessLogin" element={<BusinessLogin />} />
+              <Route path="/business/businessSignup" element={<BusinessSignup />} />
+              <Route path="/business/forgot-password" element={<ForgotPassword />} />
+
+              {/* Redirect /business/dashboard to /business/app/dashboard */}
+              <Route path="/business/dashboard" element={<Navigate to="/business/app/dashboard" replace />} />
+
               <Route path="/login" element={<LoginPage />} />
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/terms" element={<TermsPage />} />
@@ -105,6 +130,7 @@ const App: React.FC = () => {
               <Route path="/test-event-designer" element={<EventSeatingDesigner />} />
               <Route path="/test-location-selector" element={<TestLocationSelector />} />
               <Route path="/auth/action" element={<AuthActionHandler />} />
+              <Route path="/onboarding" element={<OnboardingPage />} />
 
               {/* Customer Protected Routes (Redirect Owners to Business) */}
               <Route element={<CustomerRoute />}>
@@ -122,11 +148,8 @@ const App: React.FC = () => {
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
-              {/* Business Routes */}
-              <Route path="/business/login" element={<BusinessAuth />} />
-              <Route path="/business/signup" element={<BusinessAuth />} />
-
-              <Route path="/business" element={<ProtectedBusinessRoute />}>
+              {/* Business Protected Routes */}
+              <Route path="/business/app" element={<ProtectedBusinessRoute />}>
                 <Route element={<BusinessLayout />}>
                   <Route index element={<BusinessDashboard />} />
                   <Route path="dashboard" element={<BusinessDashboard />} />
@@ -135,12 +158,21 @@ const App: React.FC = () => {
                   <Route path="view/:id" element={<BusinessOnboarding />} />
                   <Route path="bookings" element={<BookingManagement />} />
                   <Route path="reservations" element={<BookingManagement />} />
-                  <Route path="floor-plans" element={<FloorPlanDesigner />} />
+                  <Route path="floor-plans" element={<FloorPlanManagement />} />
                   <Route path="event-seating" element={<EventSeatingDesigner />} />
-                  <Route path="settings" element={<BusinessDashboard />} />
+                  <Route path="settings" element={<BusinessSettings />} />
+                  <Route path="payouts" element={<PayoutDashboard />} />
+                  <Route path="invoices" element={<InvoiceManagement />} />
+                  <Route path="pos-settings" element={<POSSettings />} />
+                  <Route path="manage/:id" element={<ManageRestaurant />} />
                   <Route path="manage/:id" element={<ManageRestaurant />} />
                   <Route path="restaurants" element={<OwnerDashboard />} />
-                  
+                  <Route path="menu" element={<DigitalMenuEditor />} />
+                  <Route path="waitlist" element={<WaitlistManagement />} />
+                  <Route path="waitlist" element={<WaitlistManagement />} />
+                  <Route path="pre-orders" element={<PreOrderManagement />} />
+                  <Route path="events" element={<EventsManagement />} />
+
                   {/* Legacy routes for backward compatibility */}
                   <Route path="legacy-onboarding" element={<RestaurantOnboarding />} />
                   <Route path="legacy-dashboard" element={<OwnerDashboard />} />

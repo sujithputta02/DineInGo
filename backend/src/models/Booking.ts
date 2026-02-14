@@ -6,49 +6,67 @@ export interface IBooking extends Document {
   userId: string;
   businessId: string;
   businessType: 'restaurant' | 'event';
-  
+
   // Customer info
   customerName: string;
   customerEmail: string;
   customerPhone: string;
-  
+
   // Booking details
   date: Date;
   time: string;
   duration?: number;
   seats: number;
-  
+
   // Seating details
   tableId?: string;
   tableNumber?: string;
   seatNumbers?: string[];
   floorId?: string;
-  
+
   // Event specific
   eventAreaId?: string;
   ticketType?: 'standard' | 'premium' | 'vip';
-  
+
+  selectedTickets?: Array<{
+    ticketId: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+
+  selectedAddOns?: Array<{
+    addOnId: string;
+    name: string;
+    price: number;
+    quantity: number;
+  }>;
+
   // Pricing
   amount: number;
   basePrice: number;
   taxes: number;
   discount?: number;
-  
+
   // Status
   status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no-show';
   paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
   paymentId?: string;
-  
+
   // Additional info
   specialRequests?: string;
   notes?: string;
   occasion?: string;
-  
+
   // Review
   rating?: number;
   review?: string;
   reviewDate?: Date;
-  
+
+  // Pre-order support
+  hasPreOrder?: boolean;
+  preOrderId?: string;
+
   // Legacy fields for backward compatibility
   restaurantId?: mongoose.Types.ObjectId | string;
   eventId?: mongoose.Types.ObjectId | string;
@@ -68,7 +86,7 @@ export interface IBooking extends Document {
   }>;
   selectedSeats?: string[];
   totalAmount?: number;
-  
+
   // Timestamps
   createdAt: Date;
   updatedAt: Date;
@@ -79,67 +97,89 @@ const bookingSchema = new Schema<IBooking>({
   userId: { type: String, required: true, index: true },
   businessId: { type: String, index: true },
   businessType: { type: String, enum: ['restaurant', 'event'] },
-  
+
   // Customer info
   customerName: String,
   customerEmail: String,
   customerPhone: String,
-  
+
   // Booking details
   date: { type: Date, required: true, index: true },
   time: { type: String, required: true },
   duration: Number,
   seats: Number,
-  
+
   // Seating details
   tableId: String,
   tableNumber: String,
   seatNumbers: [String],
   floorId: String,
-  
+
   // Event specific
   eventAreaId: String,
   ticketType: { type: String, enum: ['standard', 'premium', 'vip'] },
-  
+
+  // New Event Ticketing Fields
+  selectedTickets: [
+    {
+      ticketId: String,
+      name: String,
+      price: Number,
+      quantity: Number
+    }
+  ],
+  selectedAddOns: [
+    {
+      addOnId: String,
+      name: String,
+      price: Number,
+      quantity: Number
+    }
+  ],
+
   // Pricing
   amount: Number,
   basePrice: Number,
   taxes: { type: Number, default: 0 },
   discount: Number,
-  
+
   // Status
-  status: { 
-    type: String, 
-    enum: ['pending', 'confirmed', 'cancelled', 'completed', 'no-show'], 
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'cancelled', 'completed', 'no-show'],
     default: 'pending',
     index: true
   },
-  paymentStatus: { 
-    type: String, 
-    enum: ['pending', 'paid', 'refunded', 'failed'], 
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'refunded', 'failed'],
     default: 'pending',
     index: true
   },
   paymentId: String,
-  
+
   // Additional info
   specialRequests: String,
   notes: String,
   occasion: String,
-  
+
   // Review
   rating: { type: Number, min: 1, max: 5 },
   review: String,
   reviewDate: Date,
-  
+
+  // Pre-order support
+  hasPreOrder: { type: Boolean, default: false },
+  preOrderId: { type: String },
+
   // Legacy fields for backward compatibility
-  restaurantId: { 
+  restaurantId: {
     type: Schema.Types.Mixed,
-    ref: 'Restaurant' 
+    ref: 'Restaurant'
   },
-  eventId: { 
+  eventId: {
     type: Schema.Types.Mixed,
-    ref: 'Event' 
+    ref: 'Event'
   },
   guests: { type: Number },
   table: { type: String },
@@ -159,7 +199,7 @@ const bookingSchema = new Schema<IBooking>({
   ],
   selectedSeats: [{ type: String }],
   totalAmount: { type: Number },
-  
+
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 }, {
@@ -173,12 +213,12 @@ bookingSchema.index({ bookingNumber: 1 });
 bookingSchema.index({ date: 1, time: 1 });
 
 // Generate booking number before saving
-bookingSchema.pre('save', async function(next) {
+bookingSchema.pre('save', async function (this: IBooking, next) {
   if (this.isNew && !this.bookingNumber) {
     const count = await mongoose.model('Booking').countDocuments();
     this.bookingNumber = `BK${String(count + 1).padStart(6, '0')}`;
   }
-  
+
   // Backward compatibility mapping
   if (!this.businessId && this.restaurantId) {
     this.businessId = this.restaurantId.toString();
@@ -206,7 +246,7 @@ bookingSchema.pre('save', async function(next) {
   if (!this.specialRequests && this.specialRequest) {
     this.specialRequests = this.specialRequest;
   }
-  
+
   this.updatedAt = new Date();
   next();
 });

@@ -39,8 +39,8 @@ interface BusinessDetails {
   };
   type: BusinessType;
   description: string;
-  thumbnail: File | null;
-  coverImage: File | null;
+  thumbnail: File | string | null;
+  coverImage: File | string | null;
 }
 
 interface RestaurantConfig {
@@ -218,8 +218,8 @@ const BusinessOnboarding: React.FC = () => {
         locationData: business.locationData,
         type: business.type || 'restaurant',
         description: business.description || '',
-        thumbnail: null, // File objects can't be restored
-        coverImage: null
+        thumbnail: business.thumbnail || null,
+        coverImage: business.coverImage || null
       });
 
       // Populate restaurant config
@@ -322,6 +322,10 @@ const BusinessOnboarding: React.FC = () => {
         description: businessDetails.description,
         basePrice: 100, // Default base price
         bookingType: businessDetails.type === 'restaurant' ? restaurantConfig.bookingType : eventConfig.bookingType,
+
+        // Images - include File objects if present
+        ...(businessDetails.thumbnail && { thumbnail: businessDetails.thumbnail }),
+        ...(businessDetails.coverImage && { coverImage: businessDetails.coverImage }),
 
         // Layout data
         floorPlan: floorPlanData,
@@ -591,7 +595,11 @@ const BusinessOnboarding: React.FC = () => {
                 <p className="text-slate-500 text-sm mt-1">PNG, JPG up to 10MB</p>
                 <p className="text-slate-400 text-xs mt-1">You can upload this later if needed</p>
                 {businessDetails.thumbnail && (
-                  <p className="text-emerald-600 text-sm mt-1">✓ {businessDetails.thumbnail.name}</p>
+                  <p className="text-emerald-600 text-sm mt-1">
+                    ✓ {typeof businessDetails.thumbnail === 'string'
+                      ? businessDetails.thumbnail.split('/').pop()
+                      : businessDetails.thumbnail.name}
+                  </p>
                 )}
               </div>
             </div>

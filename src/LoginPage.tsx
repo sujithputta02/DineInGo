@@ -16,7 +16,7 @@ import {
   sendEmailVerification
 } from "./firebase";
 import { storeUserData, fetchUserData } from "./dbUtils";
-import { userAPI } from './services/api';
+import { userAPI, authOtpApi } from './services/api';
 import { sendPasswordReset } from "./authUtils";
 import socketService from './utils/socketService';
 
@@ -51,6 +51,13 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
+
+  // Forgot Password State
+  const [resetStep, setResetStep] = useState<'email' | 'otp' | 'password'>('email');
+  const [resetOTP, setResetOTP] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
 
   const [errors, setErrors] = useState<FormErrors>({
     email: "",
@@ -349,43 +356,52 @@ export default function LoginPage() {
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!resetEmail.trim()) {
-      setErrors(prev => ({ ...prev, general: 'Please enter your email address' }));
-      return;
-    }
-
-    if (!/\S+@\S+\.\S+/.test(resetEmail)) {
-      setErrors(prev => ({ ...prev, general: 'Please enter a valid email address' }));
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      // First, try to send password reset email via Firebase
-      const firebaseResult = await sendPasswordReset(resetEmail);
-
-      // Then, track the password reset attempt in our backend
-      try {
-        await userAPI.resetPassword(resetEmail);
-      } catch (apiError) {
-        console.error('Backend password reset tracking failed:', apiError);
-        // Non-critical error, so we'll continue
+    if (resetStep === 'email') {
+      if (!resetEmail.trim()) {
+        setErrors(prev => ({ ...prev, general: 'Please enter your email address' }));
+        return;
       }
-
-      if (firebaseResult.success) {
+      setIsLoading(true);
+      try {
+        await authOtpApi.requestForgotPasswordOTP(resetEmail);
+        setResetStep('otp');
+        setErrors(prev => ({ ...prev, general: '' }));
+      } catch (error: any) {
+        setErrors(prev => ({ ...prev, general: error.message || 'Failed to send OTP' }));
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (resetStep === 'otp') {
+      if (!resetOTP.trim()) {
+        setErrors(prev => ({ ...prev, general: 'Please enter the OTP' }));
+        return;
+      }
+      setIsLoading(true);
+      try {
+        const response = await authOtpApi.verifyForgotPasswordOTP(resetEmail, resetOTP);
+        setResetToken(response.resetToken);
+        setResetStep('password');
+        setErrors(prev => ({ ...prev, general: '' }));
+      } catch (error: any) {
+        setErrors(prev => ({ ...prev, general: error.message || 'Invalid OTP' }));
+      } finally {
+        setIsLoading(false);
+      }
+    } else if (resetStep === 'password') {
+      if (!newPassword.trim()) {
+        setErrors(prev => ({ ...prev, general: 'Please enter a new password' }));
+        return;
+      }
+      setIsLoading(true);
+      try {
+        await authOtpApi.resetPassword(resetEmail, resetToken, newPassword);
         setResetEmailSent(true);
         setErrors(prev => ({ ...prev, general: '' }));
-      } else {
-        setErrors(prev => ({ ...prev, general: firebaseResult.message }));
+      } catch (error: any) {
+        setErrors(prev => ({ ...prev, general: error.message || 'Failed to reset password' }));
+      } finally {
+        setIsLoading(false);
       }
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      setErrors(prev => ({
-        ...prev,
-        general: error.message || 'Failed to send password reset email. Please try again.'
-      }));
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -517,23 +533,67 @@ export default function LoginPage() {
 
             {!resetEmailSent ? (
               <form onSubmit={handleForgotPassword} className="space-y-4">
-                <motion.div
-                  initial={{ x: -20, opacity: 0 }}
-                  animate={{ x: 0, opacity: 1 }}
-                  transition={{ delay: 0.2 }}
-                  className="space-y-1"
-                >
-                  <input
-                    type="email"
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="Email"
-                    className={`w-full p-3 rounded-full border ${errors.email ? "border-red-500" : "border-gray-300"
-                      } bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
-                    required
-                  />
-                  {errors.email && <p className="text-red-500 text-xs ml-4">{errors.email}</p>}
-                </motion.div>
+                {resetStep === 'email' && (
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="space-y-1"
+                  >
+                    <input
+                      type="email"
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="Email"
+                      className={`w-full p-3 rounded-full border ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                      required
+                    />
+                  </motion.div>
+                )}
+
+                {resetStep === 'otp' && (
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className="space-y-1"
+                  >
+                    <input
+                      type="text"
+                      value={resetOTP}
+                      onChange={(e) => setResetOTP(e.target.value)}
+                      placeholder="Enter 6-digit OTP"
+                      maxLength={6}
+                      className={`w-full p-3 rounded-full border ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center tracking-widest font-bold`}
+                      required
+                    />
+                  </motion.div>
+                )}
+
+                {resetStep === 'password' && (
+                  <motion.div
+                    initial={{ x: -20, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    className="space-y-1 relative"
+                  >
+                    <input
+                      type={showNewPassword ? "text" : "password"}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="New Password"
+                      className={`w-full p-3 rounded-full border ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword(!showNewPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                    >
+                      {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    </button>
+                  </motion.div>
+                )}
+
+                {errors.general && <p className="text-red-500 text-xs text-center">{errors.general}</p>}
 
                 <motion.button
                   type="submit"
@@ -542,7 +602,9 @@ export default function LoginPage() {
                   whileTap={{ scale: 0.98 }}
                   disabled={isLoading}
                 >
-                  {isLoading ? "Sending..." : "Send Reset Link"}
+                  {isLoading ? "Processing..." :
+                    resetStep === 'email' ? "Send OTP" :
+                      resetStep === 'otp' ? "Verify OTP" : "Reset Password"}
                 </motion.button>
               </form>
             ) : (

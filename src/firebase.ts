@@ -1,11 +1,11 @@
 import { initializeApp } from "firebase/app";
-import { 
-  getAuth, 
-  GoogleAuthProvider, 
-  signInWithPopup, 
+import {
+  getAuth,
+  GoogleAuthProvider,
+  signInWithPopup,
   signInWithRedirect,
-  createUserWithEmailAndPassword, 
-  sendEmailVerification, 
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   onAuthStateChanged,
   updatePassword,
@@ -23,13 +23,13 @@ import { getFunctions, httpsCallable } from "firebase/functions";
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyDrlZ28wxDI3U8jDm8WJzfIGR9Gqh3-cbc",
-  authDomain: "dineingo.firebaseapp.com",
-  projectId: "dineingo",
-  storageBucket: "dineingo.firebasestorage.app",
-  messagingSenderId: "434559391214",
-  appId: "1:434559391214:web:3e3c54d5ef351d1371eaff",
-  measurementId: "G-J08CQW2HYG"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -65,16 +65,16 @@ if (process.env.NODE_ENV === 'production') {
 }
 
 // Export everything
-export { 
+export {
   auth,
   db,
   analytics,
   provider,
   functions,
   httpsCallable,
-  createUserWithEmailAndPassword, 
-  sendEmailVerification, 
-  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword,
+  sendEmailVerification,
+  signInWithEmailAndPassword,
   signInWithPopup,
   signInWithRedirect,
   onAuthStateChanged,

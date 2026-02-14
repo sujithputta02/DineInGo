@@ -1,12 +1,12 @@
-import React, { useState, useCallback } from 'react';
-import { 
-  Plus, 
-  Trash2, 
-  RotateCw, 
-  Copy, 
-  Save, 
-  Eye, 
-  Grid, 
+import React, { useState, useCallback, useEffect } from 'react';
+import {
+  Plus,
+  Trash2,
+  RotateCw,
+  Copy,
+  Save,
+  Eye,
+  Grid,
   Move,
   Square,
   Circle,
@@ -109,9 +109,9 @@ const FLOOR_TEMPLATES = [
       { id: 'T7', label: 'T7', seats: 8, category: 'vip', shape: 'rectangle', x: 70, y: 75 },
     ],
     features: [
-      { id: 'bar-1', type: 'bar', label: 'Bar', x: 50, y: 10, width: 40, height: 12 },
-      { id: 'entrance-1', type: 'entrance', x: 50, y: 95, width: 20, height: 4 },
-      { id: 'reception-1', type: 'reception', label: 'Reception', x: 10, y: 85, width: 15, height: 8 },
+      { id: 'bar-1', type: 'bar', label: 'Bar', x: 50, y: 15, width: 40, height: 10 },
+      { id: 'entrance-1', type: 'entrance', x: 50, y: 92, width: 20, height: 4 },
+      { id: 'reception-1', type: 'reception', label: 'Reception', x: 15, y: 85, width: 15, height: 8 },
     ]
   }
 ];
@@ -139,11 +139,25 @@ const DraggableTable: React.FC<{
     if (!isDragging) return;
     const deltaX = e.clientX - dragStart.x;
     const deltaY = e.clientY - dragStart.y;
-    const newX = Math.max(0, Math.min(95, table.x + (deltaX / 8)));
-    const newY = Math.max(0, Math.min(95, table.y + (deltaY / 8)));
+
+    // Canvas dimensions: 800px x 600px (4:3 aspect ratio from max-w-[800px] aspect-[4/3])
+    const CANVAS_WIDTH = 800;
+    const CANVAS_HEIGHT = 600;
+
+    // Calculate table size in pixels (matching getTableSize function)
+    const baseSize = table.seats <= 2 ? 40 : table.seats <= 4 ? 50 : table.seats <= 6 ? 60 : 70;
+    const tableWidth = table.shape === 'rectangle' ? baseSize * 1.5 : baseSize;
+    const tableHeight = table.shape === 'rectangle' ? baseSize * 0.8 : baseSize;
+
+    // Convert pixel sizes to percentage margins (element is centered, so margin is half the size)
+    const marginX = (tableWidth / 2 / CANVAS_WIDTH) * 100;
+    const marginY = (tableHeight / 2 / CANVAS_HEIGHT) * 100;
+
+    const newX = Math.max(marginX, Math.min(100 - marginX, table.x + (deltaX / 8)));
+    const newY = Math.max(marginY, Math.min(100 - marginY, table.y + (deltaY / 8)));
     onDrag(newX, newY);
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart, table.x, table.y, onDrag]);
+  }, [isDragging, dragStart, table.x, table.y, table.seats, table.shape, onDrag]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -196,7 +210,7 @@ const DraggableTable: React.FC<{
   };
 
   return (
-    <div 
+    <div
       className={`absolute flex items-center justify-center transition-all duration-300 ${getTableColor()} ${getTableShape()} border-2 shadow-xl backdrop-blur-sm`}
       style={style}
       onMouseDown={handleMouseDown}
@@ -205,16 +219,16 @@ const DraggableTable: React.FC<{
         <div className="text-white font-bold text-xs">{table.label}</div>
         <div className="text-white/80 text-[10px]">{table.seats} seats</div>
       </div>
-      
+
       {/* Seat indicators */}
       {Array.from({ length: table.seats }).map((_, i) => {
         const angle = (i * (360 / table.seats)) * (Math.PI / 180);
         const radius = width / 2 + 8;
         const seatX = Math.cos(angle) * radius;
         const seatY = Math.sin(angle) * radius;
-        
+
         return (
-          <div 
+          <div
             key={`seat-indicator-${table.id}-${i}`}
             className={`absolute w-1.5 h-1.5 rounded-full ${isSelected && !isPreviewMode ? 'bg-emerald-500' : 'bg-slate-600'} opacity-40`}
             style={{
@@ -252,11 +266,16 @@ const DraggableFeature: React.FC<{
     if (!isDragging) return;
     const deltaX = e.clientX - dragStart.x;
     const deltaY = e.clientY - dragStart.y;
-    const newX = Math.max(0, Math.min(95, feature.x + (deltaX / 8)));
-    const newY = Math.max(0, Math.min(95, feature.y + (deltaY / 8)));
+
+    // Features use percentage-based width/height, so margins are already in percentages
+    const marginX = feature.width / 2;
+    const marginY = feature.height / 2;
+
+    const newX = Math.max(marginX, Math.min(100 - marginX, feature.x + (deltaX / 8)));
+    const newY = Math.max(marginY, Math.min(100 - marginY, feature.y + (deltaY / 8)));
     onDrag(newX, newY);
     setDragStart({ x: e.clientX, y: e.clientY });
-  }, [isDragging, dragStart, feature.x, feature.y, onDrag]);
+  }, [isDragging, dragStart, feature.x, feature.y, feature.width, feature.height, onDrag]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -289,7 +308,7 @@ const DraggableFeature: React.FC<{
       case 'reception':
         return (
           <div className={`flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl h-full w-full ${baseClasses}`}>
-            <Store size={14} className="text-amber-500 mb-1"/>
+            <Store size={14} className="text-amber-500 mb-1" />
             <span className="text-[9px] text-amber-500 font-bold uppercase tracking-wider">{feature.label}</span>
           </div>
         );
@@ -329,9 +348,9 @@ const DraggableFeature: React.FC<{
   };
 
   return (
-    <div style={style} onMouseDown={handleMouseDown}>
+    <div className="absolute" style={style} onMouseDown={handleMouseDown}>
       {getFeatureContent()}
-      
+
       {/* Rotation/Flip indicator */}
       {(isSelected && !isPreviewMode && ((feature.rotation && feature.rotation !== 0) || feature.flipX || feature.flipY)) && (
         <div className="absolute -top-2 -right-2 bg-emerald-500 text-white text-[8px] px-1 py-0.5 rounded-full flex items-center gap-0.5">
@@ -349,7 +368,11 @@ const DraggableFeature: React.FC<{
     </div>
   );
 };
-const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: any) => void }> = ({ businessId, onSave }) => {
+const FloorPlanDesigner: React.FC<{
+  businessId?: string;
+  onSave?: (floorPlan: any) => void;
+  readOnly?: boolean;
+}> = ({ businessId, onSave, readOnly = false }) => {
   const [floors, setFloors] = useState<Floor[]>([
     {
       id: 'floor-1',
@@ -360,7 +383,7 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
       features: []
     }
   ]);
-  
+
   const [activeFloorId, setActiveFloorId] = useState('floor-1');
   const [selectedElement, setSelectedElement] = useState<{ type: 'table' | 'feature'; id: string } | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
@@ -371,6 +394,52 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
   const [nextFeatureId, setNextFeatureId] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Fetch floor plan data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        let activeBusinessId = businessId;
+
+        // If no businessId provided, fetch owner's businesses and take the first one
+        if (!activeBusinessId) {
+          const businesses = await businessApi.getOwnerBusinesses();
+          const businessData = Array.isArray(businesses) ? businesses : (businesses.businesses || businesses.data || []);
+          if (businessData && businessData.length > 0) {
+            activeBusinessId = businessData[0].id || businessData[0]._id;
+          }
+        }
+
+        if (activeBusinessId) {
+          const response = await businessApi.getById(activeBusinessId);
+          const bizData = response.data || response;
+
+          if (bizData && bizData.floorPlan) {
+            const fp = bizData.floorPlan;
+            if (fp.floors && fp.floors.length > 0) {
+              setFloors(fp.floors);
+              if (fp.activeFloorId) setActiveFloorId(fp.activeFloorId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching floor plan:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [businessId]);
+
+  // Set initial preview mode if read-only
+  useEffect(() => {
+    if (readOnly) {
+      setIsPreviewMode(true);
+    }
+  }, [readOnly]);
 
   const activeFloor = floors.find(f => f.id === activeFloorId);
   const selectedTable = selectedElement?.type === 'table' ? activeFloor?.tables.find(t => t.id === selectedElement.id) : null;
@@ -390,8 +459,8 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
       rotation: 0
     };
 
-    setFloors(prev => prev.map(f => 
-      f.id === activeFloorId 
+    setFloors(prev => prev.map(f =>
+      f.id === activeFloorId
         ? { ...f, tables: [...f.tables, newTable] }
         : f
     ));
@@ -400,12 +469,18 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
 
   // Add feature
   const addFeature = (template: typeof FEATURE_TEMPLATES[0]) => {
+    // Ensure feature starts within boundaries
+    const marginX = template.width / 2;
+    const marginY = template.height / 2;
+    const safeX = Math.max(marginX, Math.min(100 - marginX, 50));
+    const safeY = Math.max(marginY, Math.min(100 - marginY, 50));
+
     const newFeature: Feature = {
       id: `F${nextFeatureId}`,
       type: template.type,
       label: template.label,
-      x: 50,
-      y: 50,
+      x: safeX,
+      y: safeY,
       width: template.width,
       height: template.height,
       rotation: 0,
@@ -413,8 +488,8 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
       flipY: false
     };
 
-    setFloors(prev => prev.map(f => 
-      f.id === activeFloorId 
+    setFloors(prev => prev.map(f =>
+      f.id === activeFloorId
         ? { ...f, features: [...f.features, newFeature] }
         : f
     ));
@@ -423,42 +498,42 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
 
   // Update table position
   const updateTablePosition = (tableId: string, x: number, y: number) => {
-    setFloors(prev => prev.map(f => 
-      f.id === activeFloorId 
-        ? { 
-            ...f, 
-            tables: f.tables.map(t => 
-              t.id === tableId ? { ...t, x, y } : t
-            )
-          }
+    setFloors(prev => prev.map(f =>
+      f.id === activeFloorId
+        ? {
+          ...f,
+          tables: f.tables.map(t =>
+            t.id === tableId ? { ...t, x, y } : t
+          )
+        }
         : f
     ));
   };
 
   // Update feature position
   const updateFeaturePosition = (featureId: string, x: number, y: number) => {
-    setFloors(prev => prev.map(f => 
-      f.id === activeFloorId 
-        ? { 
-            ...f, 
-            features: f.features.map(feat => 
-              feat.id === featureId ? { ...feat, x, y } : feat
-            )
-          }
+    setFloors(prev => prev.map(f =>
+      f.id === activeFloorId
+        ? {
+          ...f,
+          features: f.features.map(feat =>
+            feat.id === featureId ? { ...feat, x, y } : feat
+          )
+        }
         : f
     ));
   };
 
   // Update table property
   const updateTableProperty = (tableId: string, property: keyof Table, value: any) => {
-    setFloors(prev => prev.map(f => 
-      f.id === activeFloorId 
-        ? { 
-            ...f, 
-            tables: f.tables.map(t => 
-              t.id === tableId ? { ...t, [property]: value } : t
-            )
-          }
+    setFloors(prev => prev.map(f =>
+      f.id === activeFloorId
+        ? {
+          ...f,
+          tables: f.tables.map(t =>
+            t.id === tableId ? { ...t, [property]: value } : t
+          )
+        }
         : f
     ));
   };
@@ -466,44 +541,54 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
   // Delete selected element
   const deleteSelected = () => {
     if (!selectedElement) return;
-    
+
     if (selectedElement.type === 'table') {
-      setFloors(prev => prev.map(f => 
-        f.id === activeFloorId 
+      setFloors(prev => prev.map(f =>
+        f.id === activeFloorId
           ? { ...f, tables: f.tables.filter(t => t.id !== selectedElement.id) }
           : f
       ));
     } else if (selectedElement.type === 'feature') {
-      setFloors(prev => prev.map(f => 
-        f.id === activeFloorId 
+      setFloors(prev => prev.map(f =>
+        f.id === activeFloorId
           ? { ...f, features: f.features.filter(feat => feat.id !== selectedElement.id) }
           : f
       ));
     }
-    
+
     setSelectedElement(null);
   };
 
   // Apply template
   const applyTemplate = (template: typeof FLOOR_TEMPLATES[0]) => {
-    setFloors(prev => prev.map(f => 
-      f.id === activeFloorId 
-        ? { 
-            ...f, 
-            tables: template.tables.map(t => ({ 
-              ...t, 
-              status: 'available' as TableStatus,
-              category: t.category as TableCategory,
-              shape: t.shape as TableShape
-            })),
-            features: template.features.map(feat => ({
+    setFloors(prev => prev.map(f =>
+      f.id === activeFloorId
+        ? {
+          ...f,
+          tables: template.tables.map(t => ({
+            ...t,
+            status: 'available' as TableStatus,
+            category: t.category as TableCategory,
+            shape: t.shape as TableShape
+          })),
+          features: template.features.map(feat => {
+            // Ensure features are within boundaries
+            const marginX = feat.width / 2;
+            const marginY = feat.height / 2;
+            const safeX = Math.max(marginX, Math.min(100 - marginX, feat.x));
+            const safeY = Math.max(marginY, Math.min(100 - marginY, feat.y));
+
+            return {
               ...feat,
+              x: safeX,
+              y: safeY,
               type: feat.type as FeatureType,
               rotation: 0,
               flipX: false,
               flipY: false
-            }))
-          }
+            };
+          })
+        }
         : f
     ));
   };
@@ -553,520 +638,517 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
 
   return (
     <div className="flex h-full min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
-      {/* Left Sidebar - Element Palette */}
-      <div className="w-80 bg-slate-800/50 backdrop-blur-sm border-r border-slate-700/50 flex flex-col max-h-full">
-        <div className="p-4 border-b border-slate-700/50 flex-shrink-0">
-          <h2 className="text-lg font-bold text-white mb-2">Floor Plan Designer</h2>
-          <div className="flex gap-2 mb-3">
-            <button
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                isPreviewMode 
-                  ? 'bg-emerald-600 text-white' 
+      {/* Left Sidebar - Element Palette - Only show if not read-only */}
+      {!readOnly && (
+        <div className="w-80 bg-slate-800/50 backdrop-blur-sm border-r border-slate-700/50 flex flex-col max-h-full">
+          <div className="p-4 border-b border-slate-700/50 flex-shrink-0">
+            <h2 className="text-lg font-bold text-white mb-2">Floor Plan Designer</h2>
+            <div className="flex gap-2 mb-3">
+              <button
+                onClick={() => setIsPreviewMode(!isPreviewMode)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isPreviewMode
+                  ? 'bg-emerald-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              <Eye size={16} />
-              {isPreviewMode ? 'Edit Mode' : 'Preview'}
-            </button>
-            <button
-              onClick={() => setShowGrid(!showGrid)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                showGrid 
-                  ? 'bg-slate-600 text-white' 
+                  }`}
+              >
+                <Eye size={16} />
+                {isPreviewMode ? 'Edit Mode' : 'Preview'}
+              </button>
+              <button
+                onClick={() => setShowGrid(!showGrid)}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showGrid
+                  ? 'bg-slate-600 text-white'
                   : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-              }`}
-            >
-              <Grid size={16} />
-            </button>
-          </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowTemplates(!showTemplates)}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-sm"
-            >
-              <Copy size={16} />
-              Templates
-            </button>
-          </div>
-        </div>
+                  }`}
+              >
+                <Grid size={16} />
+              </button>
+            </div>
 
-        {/* Scrollable content area */}
-        <div className="flex-1 overflow-y-auto">
-          {!isPreviewMode && (
-            <div>
-              {/* Templates Section */}
-              {showTemplates && (
+            <div className="flex gap-2">
+              <button
+                onClick={() => setShowTemplates(!showTemplates)}
+                className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-sm"
+              >
+                <Copy size={16} />
+                Templates
+              </button>
+            </div>
+          </div>
+
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto">
+            {!isPreviewMode && (
+              <div>
+                {/* Templates Section */}
+                {showTemplates && (
+                  <div className="p-4 border-b border-slate-700/50">
+                    <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Floor Templates</h3>
+                    <div className="space-y-2">
+                      {FLOOR_TEMPLATES.map((template) => (
+                        <button
+                          key={template.id}
+                          onClick={() => applyTemplate(template)}
+                          className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors"
+                        >
+                          <div className="text-sm font-medium text-slate-200">{template.name}</div>
+                          <div className="text-xs text-slate-400 mt-1">{template.description}</div>
+                          <div className="text-xs text-slate-500 mt-1">
+                            {template.tables.length} tables, {template.features.length} features
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Tables Section */}
                 <div className="p-4 border-b border-slate-700/50">
-                  <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Floor Templates</h3>
+                  <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Tables</h3>
                   <div className="space-y-2">
-                    {FLOOR_TEMPLATES.map((template) => (
+                    {TABLE_TEMPLATES.map((template, index) => (
                       <button
-                        key={template.id}
-                        onClick={() => applyTemplate(template)}
-                        className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors"
+                        key={`table-template-${template.shape}-${index}`}
+                        onClick={() => addTable(template)}
+                        className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors text-left"
                       >
-                        <div className="text-sm font-medium text-slate-200">{template.name}</div>
-                        <div className="text-xs text-slate-400 mt-1">{template.description}</div>
-                        <div className="text-xs text-slate-500 mt-1">
-                          {template.tables.length} tables, {template.features.length} features
+                        {template.shape === 'circle' ? <Circle size={16} /> :
+                          template.shape === 'square' ? <Square size={16} /> :
+                            <Minus size={16} className="rotate-90" />}
+                        <div>
+                          <div className="text-sm font-medium text-slate-200">{template.label}</div>
+                          <div className="text-xs text-slate-400">{template.seats} seats</div>
                         </div>
                       </button>
                     ))}
                   </div>
                 </div>
-              )}
 
-              {/* Tables Section */}
-              <div className="p-4 border-b border-slate-700/50">
-                <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Tables</h3>
-                <div className="space-y-2">
-                  {TABLE_TEMPLATES.map((template, index) => (
-                    <button
-                      key={`table-template-${template.shape}-${index}`}
-                      onClick={() => addTable(template)}
-                      className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors text-left"
-                    >
-                      {template.shape === 'circle' ? <Circle size={16} /> : 
-                       template.shape === 'square' ? <Square size={16} /> : 
-                       <Minus size={16} className="rotate-90" />}
-                      <div>
+                {/* Features Section */}
+                <div className="p-4 border-b border-slate-700/50">
+                  <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Features</h3>
+                  <div className="space-y-2">
+                    {FEATURE_TEMPLATES.map((template, index) => (
+                      <button
+                        key={`feature-template-${template.type}-${index}`}
+                        onClick={() => addFeature(template)}
+                        className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors text-left"
+                      >
+                        {template.type === 'entrance' ? <DoorOpen size={16} /> :
+                          template.type === 'reception' ? <Store size={16} /> :
+                            template.type === 'bar' ? <Wine size={16} /> :
+                              <MapPin size={16} />}
                         <div className="text-sm font-medium text-slate-200">{template.label}</div>
-                        <div className="text-xs text-slate-400">{template.seats} seats</div>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Features Section */}
-              <div className="p-4 border-b border-slate-700/50">
-                <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Features</h3>
-                <div className="space-y-2">
-                  {FEATURE_TEMPLATES.map((template, index) => (
-                    <button
-                      key={`feature-template-${template.type}-${index}`}
-                      onClick={() => addFeature(template)}
-                      className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors text-left"
-                    >
-                      {template.type === 'entrance' ? <DoorOpen size={16} /> :
-                       template.type === 'reception' ? <Store size={16} /> :
-                       template.type === 'bar' ? <Wine size={16} /> :
-                       <MapPin size={16} />}
-                      <div className="text-sm font-medium text-slate-200">{template.label}</div>
-                    </button>
-                  ))}
+            {/* Properties Panel */}
+            {selectedElement && !isPreviewMode && (
+              <div className="p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Properties</h3>
+                  <button
+                    onClick={deleteSelected}
+                    className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
                 </div>
-              </div>
-            </div>
-          )}
 
-          {/* Properties Panel */}
-          {selectedElement && !isPreviewMode && (
-            <div className="p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider">Properties</h3>
-                <button
-                  onClick={deleteSelected}
-                  className="p-2 bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
-              </div>
-
-              {selectedTable && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Table ID</label>
-                    <input
-                      type="text"
-                      value={selectedTable.label}
-                      onChange={(e) => updateTableProperty(selectedTable.id, 'label', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Seats</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="12"
-                      value={selectedTable.seats}
-                      onChange={(e) => updateTableProperty(selectedTable.id, 'seats', parseInt(e.target.value))}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Category</label>
-                    <select
-                      value={selectedTable.category}
-                      onChange={(e) => updateTableProperty(selectedTable.id, 'category', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    >
-                      <option value="standard">Standard</option>
-                      <option value="premium">Premium</option>
-                      <option value="vip">VIP</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Shape</label>
-                    <select
-                      value={selectedTable.shape}
-                      onChange={(e) => updateTableProperty(selectedTable.id, 'shape', e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    >
-                      <option value="circle">Circle</option>
-                      <option value="square">Square</option>
-                      <option value="rectangle">Rectangle</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Rotation</label>
-                    <div className="flex items-center gap-2">
+                {selectedTable && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Table ID</label>
                       <input
-                        type="range"
-                        min="0"
-                        max="360"
-                        step="15"
-                        value={selectedTable.rotation || 0}
-                        onChange={(e) => updateTableProperty(selectedTable.id, 'rotation', parseInt(e.target.value))}
-                        className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        type="text"
+                        value={selectedTable.label}
+                        onChange={(e) => updateTableProperty(selectedTable.id, 'label', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
                       />
-                      <span className="text-xs text-slate-400 w-12 text-right">{selectedTable.rotation || 0}°</span>
                     </div>
-                    <div className="flex gap-1 mt-2">
-                      <button
-                        onClick={() => updateTableProperty(selectedTable.id, 'rotation', 0)}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Seats</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="12"
+                        value={selectedTable.seats}
+                        onChange={(e) => updateTableProperty(selectedTable.id, 'seats', parseInt(e.target.value))}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Category</label>
+                      <select
+                        value={selectedTable.category}
+                        onChange={(e) => updateTableProperty(selectedTable.id, 'category', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
                       >
-                        0°
-                      </button>
-                      <button
-                        onClick={() => updateTableProperty(selectedTable.id, 'rotation', 90)}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        <option value="standard">Standard</option>
+                        <option value="premium">Premium</option>
+                        <option value="vip">VIP</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Shape</label>
+                      <select
+                        value={selectedTable.shape}
+                        onChange={(e) => updateTableProperty(selectedTable.id, 'shape', e.target.value)}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
                       >
-                        90°
-                      </button>
-                      <button
-                        onClick={() => updateTableProperty(selectedTable.id, 'rotation', 180)}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
-                      >
-                        180°
-                      </button>
-                      <button
-                        onClick={() => updateTableProperty(selectedTable.id, 'rotation', 270)}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
-                      >
-                        270°
-                      </button>
+                        <option value="circle">Circle</option>
+                        <option value="square">Square</option>
+                        <option value="rectangle">Rectangle</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Rotation</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="360"
+                          step="15"
+                          value={selectedTable.rotation || 0}
+                          onChange={(e) => updateTableProperty(selectedTable.id, 'rotation', parseInt(e.target.value))}
+                          className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <span className="text-xs text-slate-400 w-12 text-right">{selectedTable.rotation || 0}°</span>
+                      </div>
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          onClick={() => updateTableProperty(selectedTable.id, 'rotation', 0)}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          0°
+                        </button>
+                        <button
+                          onClick={() => updateTableProperty(selectedTable.id, 'rotation', 90)}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          90°
+                        </button>
+                        <button
+                          onClick={() => updateTableProperty(selectedTable.id, 'rotation', 180)}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          180°
+                        </button>
+                        <button
+                          onClick={() => updateTableProperty(selectedTable.id, 'rotation', 270)}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          270°
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {selectedFeature && (
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Label</label>
-                    <input
-                      type="text"
-                      value={selectedFeature.label || ''}
-                      onChange={(e) => {
-                        setFloors(prev => prev.map(f => 
-                          f.id === activeFloorId 
-                            ? { 
-                                ...f, 
-                                features: f.features.map(feat => 
+                {selectedFeature && (
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Label</label>
+                      <input
+                        type="text"
+                        value={selectedFeature.label || ''}
+                        onChange={(e) => {
+                          setFloors(prev => prev.map(f =>
+                            f.id === activeFloorId
+                              ? {
+                                ...f,
+                                features: f.features.map(feat =>
                                   feat.id === selectedFeature.id ? { ...feat, label: e.target.value } : feat
                                 )
                               }
-                            : f
-                        ));
-                      }}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    />
-                  </div>
+                              : f
+                          ));
+                        }}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Width (%)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={selectedFeature.width}
-                      onChange={(e) => {
-                        setFloors(prev => prev.map(f => 
-                          f.id === activeFloorId 
-                            ? { 
-                                ...f, 
-                                features: f.features.map(feat => 
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Width (%)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={selectedFeature.width}
+                        onChange={(e) => {
+                          setFloors(prev => prev.map(f =>
+                            f.id === activeFloorId
+                              ? {
+                                ...f,
+                                features: f.features.map(feat =>
                                   feat.id === selectedFeature.id ? { ...feat, width: parseInt(e.target.value) } : feat
                                 )
                               }
-                            : f
-                        ));
-                      }}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    />
-                  </div>
+                              : f
+                          ));
+                        }}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Height (%)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={selectedFeature.height}
-                      onChange={(e) => {
-                        setFloors(prev => prev.map(f => 
-                          f.id === activeFloorId 
-                            ? { 
-                                ...f, 
-                                features: f.features.map(feat => 
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Height (%)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={selectedFeature.height}
+                        onChange={(e) => {
+                          setFloors(prev => prev.map(f =>
+                            f.id === activeFloorId
+                              ? {
+                                ...f,
+                                features: f.features.map(feat =>
                                   feat.id === selectedFeature.id ? { ...feat, height: parseInt(e.target.value) } : feat
                                 )
                               }
-                            : f
-                        ));
-                      }}
-                      className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
-                    />
-                  </div>
+                              : f
+                          ));
+                        }}
+                        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-slate-200 text-sm"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Rotation</label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="0"
-                        max="360"
-                        step="15"
-                        value={selectedFeature.rotation || 0}
-                        onChange={(e) => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Rotation</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="range"
+                          min="0"
+                          max="360"
+                          step="15"
+                          value={selectedFeature.rotation || 0}
+                          onChange={(e) => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, rotation: parseInt(e.target.value) } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
-                      />
-                      <span className="text-xs text-slate-400 w-12 text-right">{selectedFeature.rotation || 0}°</span>
-                    </div>
-                    <div className="flex gap-1 mt-2">
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                                : f
+                            ));
+                          }}
+                          className="flex-1 h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer"
+                        />
+                        <span className="text-xs text-slate-400 w-12 text-right">{selectedFeature.rotation || 0}°</span>
+                      </div>
+                      <div className="flex gap-1 mt-2">
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, rotation: 0 } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
-                      >
-                        0°
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                                : f
+                            ));
+                          }}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          0°
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, rotation: 90 } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
-                      >
-                        90°
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                                : f
+                            ));
+                          }}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          90°
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, rotation: 180 } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
-                      >
-                        180°
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                                : f
+                            ));
+                          }}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          180°
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, rotation: 270 } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
-                      >
-                        270°
-                      </button>
-                      <button
-                        onClick={() => {
-                          const currentRotation = selectedFeature.rotation || 0;
-                          const newRotation = (currentRotation + 90) % 360;
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                                : f
+                            ));
+                          }}
+                          className="px-2 py-1 text-xs bg-slate-600 hover:bg-slate-500 text-slate-300 rounded"
+                        >
+                          270°
+                        </button>
+                        <button
+                          onClick={() => {
+                            const currentRotation = selectedFeature.rotation || 0;
+                            const newRotation = (currentRotation + 90) % 360;
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, rotation: newRotation } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded flex items-center gap-1"
-                        title="Rotate 90° clockwise"
-                      >
-                        <RotateCw size={10} />
-                        +90°
-                      </button>
+                                : f
+                            ));
+                          }}
+                          className="px-2 py-1 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded flex items-center gap-1"
+                          title="Rotate 90° clockwise"
+                        >
+                          <RotateCw size={10} />
+                          +90°
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Transform Controls</label>
-                    <div className="flex gap-2 mb-3">
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
-                                    feat.id === selectedFeature.id ? { 
-                                      ...feat, 
-                                      rotation: 0, 
-                                      flipX: false, 
-                                      flipY: false 
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Transform Controls</label>
+                      <div className="flex gap-2 mb-3">
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
+                                    feat.id === selectedFeature.id ? {
+                                      ...feat,
+                                      rotation: 0,
+                                      flipX: false,
+                                      flipY: false
                                     } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className="flex items-center gap-2 px-3 py-2 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded transition-colors"
-                      >
-                        <X size={12} />
-                        Reset Transform
-                      </button>
+                                : f
+                            ));
+                          }}
+                          className="flex items-center gap-2 px-3 py-2 text-xs bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded transition-colors"
+                        >
+                          <X size={12} />
+                          Reset Transform
+                        </button>
+                      </div>
                     </div>
-                  </div>
 
-                  <div>
-                    <label className="block text-xs font-medium text-slate-400 mb-2">Flip</label>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                    <div>
+                      <label className="block text-xs font-medium text-slate-400 mb-2">Flip</label>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, flipX: !feat.flipX } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 text-xs rounded transition-colors ${
-                          selectedFeature.flipX 
-                            ? 'bg-emerald-600 text-white' 
+                                : f
+                            ));
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 text-xs rounded transition-colors ${selectedFeature.flipX
+                            ? 'bg-emerald-600 text-white'
                             : 'bg-slate-600 hover:bg-slate-500 text-slate-300'
-                        }`}
-                      >
-                        <FlipHorizontal size={12} />
-                        Flip X
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFloors(prev => prev.map(f => 
-                            f.id === activeFloorId 
-                              ? { 
-                                  ...f, 
-                                  features: f.features.map(feat => 
+                            }`}
+                        >
+                          <FlipHorizontal size={12} />
+                          Flip X
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFloors(prev => prev.map(f =>
+                              f.id === activeFloorId
+                                ? {
+                                  ...f,
+                                  features: f.features.map(feat =>
                                     feat.id === selectedFeature.id ? { ...feat, flipY: !feat.flipY } : feat
                                   )
                                 }
-                              : f
-                          ));
-                        }}
-                        className={`flex items-center gap-2 px-3 py-2 text-xs rounded transition-colors ${
-                          selectedFeature.flipY 
-                            ? 'bg-emerald-600 text-white' 
+                                : f
+                            ));
+                          }}
+                          className={`flex items-center gap-2 px-3 py-2 text-xs rounded transition-colors ${selectedFeature.flipY
+                            ? 'bg-emerald-600 text-white'
                             : 'bg-slate-600 hover:bg-slate-500 text-slate-300'
-                        }`}
-                      >
-                        <FlipVertical size={12} />
-                        Flip Y
-                      </button>
+                            }`}
+                        >
+                          <FlipVertical size={12} />
+                          Flip Y
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                )}
+              </div>
+            )}
+          </div>
 
-        {/* Action Buttons - Fixed at bottom */}
-        <div className="p-4 border-t border-slate-700/50 space-y-2 flex-shrink-0">
-          {saveMessage && (
-            <div className={`text-xs p-2 rounded-lg text-center ${
-              saveMessage.includes('Error') 
-                ? 'bg-red-600/20 text-red-400 border border-red-600/30' 
+          {/* Action Buttons - Fixed at bottom */}
+          <div className="p-4 border-t border-slate-700/50 space-y-2 flex-shrink-0">
+            {saveMessage && (
+              <div className={`text-xs p-2 rounded-lg text-center ${saveMessage.includes('Error')
+                ? 'bg-red-600/20 text-red-400 border border-red-600/30'
                 : 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
-            }`}>
-              {saveMessage}
-            </div>
-          )}
-          <button 
-            onClick={saveFloorPlan}
-            disabled={isSaving}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
-          >
-            <Save size={16} />
-            {isSaving ? 'Saving...' : 'Save Layout'}
-          </button>
+                }`}>
+                {saveMessage}
+              </div>
+            )}
+            <button
+              onClick={saveFloorPlan}
+              disabled={isSaving}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            >
+              <Save size={16} />
+              {isSaving ? 'Saving...' : 'Save Layout'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Main Canvas Area */}
       <div className="flex-1 flex flex-col">
         {/* Canvas */}
         <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex items-center justify-center p-4 md:p-8">
-          <div 
+          <div
             className="relative w-full max-w-[800px] aspect-[4/3] bg-slate-800/30 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-sm"
             onClick={() => !isPreviewMode && setSelectedElement(null)}
           >
@@ -1076,7 +1158,7 @@ const FloorPlanDesigner: React.FC<{ businessId?: string; onSave?: (floorPlan: an
                 <svg width="100%" height="100%" className="absolute inset-0">
                   <defs>
                     <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#475569" strokeWidth="1"/>
+                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#475569" strokeWidth="1" />
                     </pattern>
                   </defs>
                   <rect width="100%" height="100%" fill="url(#grid)" />
