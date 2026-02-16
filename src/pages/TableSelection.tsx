@@ -286,56 +286,13 @@ const TableSelection: React.FC = () => {
       });
       params.set('table', selectedTable);
       params.set('restaurantName', restaurantName);
-      try {
-        const formData = {
-          fullName: searchParams.get('fullName') || '',
-          email: searchParams.get('email') || '',
-          phoneNumber: searchParams.get('phoneNumber') || '',
-          occasion: searchParams.get('occasion') || '',
-          specialRequest: searchParams.get('specialRequest') || '',
-          date: date || '',
-          time: time || '',
-          guests: searchParams.get('guests') || '',
-          table: selectedTable,
-          restaurantName: restaurantName
-        };
-        sendEmail(formData);
-      } catch (error) {
-        console.error('Error sending email:', error);
-      }
       setLoadingTables(false);
       navigate(`/restaurant/${restaurantId}/reservation?${params.toString()}`);
+
     }, 0);
   };
 
-  const sendEmail = async (data: any) => {
-    try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        mode: 'cors',
-        credentials: 'omit',
-        body: JSON.stringify({
-          subject: `New Reservation - ${data.restaurantName}`,
-          message: JSON.stringify(data),
-          from: data.email,
-          formData: data,
-          type: 'reservation',
-          restaurantId: restaurantId
-        }),
-      });
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`Failed to send email: ${response.status} ${response.statusText}`);
-      }
-      return await response.json();
-    } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
-    }
-  };
+
 
   // Helper to check if a table is reserved
   const isTableReserved = (tableId: string) => reservedTables.includes(tableId);

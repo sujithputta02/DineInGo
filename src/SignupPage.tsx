@@ -450,7 +450,13 @@ const SignupPage: React.FC = () => {
       navigate("/onboarding");
     } catch (error: any) {
       console.error("Error during verification:", error);
-      setOtpError(error.message || 'Verification failed. Please try again.');
+      if (error.code === 'auth/email-already-in-use') {
+        const errorMessage = 'This email is already registered. Please try logging in.';
+        setOtpError(errorMessage);
+        toast.error(errorMessage);
+      } else {
+        setOtpError(error.message || 'Verification failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
