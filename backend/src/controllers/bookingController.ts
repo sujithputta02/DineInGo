@@ -8,6 +8,8 @@ import nodemailer from 'nodemailer';
 import { generateBothWalletPasses } from '../utils/walletPassGenerator';
 import mongoose from 'mongoose';
 import { emailService } from '../services/emailService';
+import path from 'path';
+import fs from 'fs';
 
 
 // Dynamically import pdfkit if available
@@ -85,106 +87,173 @@ const updateAchievementsAfterBooking = async (booking: any) => {
 };
 
 // Generate invoice PDF as a Buffer
-const generateInvoicePdfBuffer = (bookingData: any): Promise<Buffer> => {
-  return new Promise((resolve, reject) => {
-    if (!PDFDocument) {
-      return reject(new Error('pdfkit not installed'));
+const generateInvoicePdfBuffer = async (bookingData: any): Promise<Buffer> => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const QRCode = await import('qrcode');
+      const doc = new PDFDocument({ margin: 40, size: 'A4' });
+      const buffers: Buffer[] = [];
+      doc.on('data', buffers.push.bind(buffers));
+      doc.on('end', () => {
+        resolve(Buffer.concat(buffers));
+      });
+      doc.on('error', reject);
+
+      // --- BRANDING & HEADER ---
+      // Styled Header Bar
+      doc.rect(0, 0, 600, 80).fill('#10b981');
+
+      try {
+        const logoPath = path.join(__dirname, '../assets/logo.png');
+        if (fs.existsSync(logoPath)) {
+          doc.image(logoPath, 40, 15, { height: 50 });
+
+          doc.fillColor('#ffffff')
+            .fontSize(10)
+            .font('Helvetica')
+            .text('RESERVE • DINE • EXPERIENCE', 130, 45);
+        } else {
+          doc.fillColor('#ffffff')
+            .fontSize(28)
+            .font('Helvetica-Bold')
+            .text('DINEINGO', 40, 25);
+
+          doc.fontSize(10)
+            .font('Helvetica')
+            .text('RESERVE • DINE • EXPERIENCE', 40, 55);
+        }
+      } catch (logoError) {
+        console.error('Error embedding logo in PDF:', logoError);
+        doc.fillColor('#ffffff')
+          .fontSize(28)
+          .font('Helvetica-Bold')
+          .text('DINEINGO', 40, 25);
+
+        doc.fontSize(10)
+          .font('Helvetica')
+          .text('RESERVE • DINE • EXPERIENCE', 40, 55);
+      }
+
+      doc.fillColor('#ffffff')
+        .fontSize(16)
+        .font('Helvetica-Bold')
+        .text('INVOICE', 450, 35, { align: 'right' });
+
+      doc.moveDown(4);
+
+      // --- INVOICE INFO SECTION ---
+      const invoiceId = bookingData._id || bookingData.id || Math.random().toString(36).substr(2, 8);
+      const invoiceNumber = `INV-${String(invoiceId).slice(-6).toUpperCase()}-${new Date().getFullYear()}`;
+      const status = (bookingData.status || 'Confirmed').toUpperCase();
+
+      doc.fillColor('#1f2937').fontSize(10).font('Helvetica-Bold').text('INVOICE TO:', 40, 110);
+      doc.font('Helvetica').text(bookingData.fullName || 'Valued Guest');
+      doc.text(bookingData.email || '');
+      doc.text(bookingData.phoneNumber || '');
+
+      doc.font('Helvetica-Bold').text('INVOICE DETAILS:', 400, 110, { align: 'left' });
+      doc.font('Helvetica').text(`Invoice #: ${invoiceNumber}`, 400, 122);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 400, 134);
+      doc.fillColor(status === 'CANCELLED' ? '#ef4444' : '#10b981')
+        .font('Helvetica-Bold')
+        .text(`Status: ${status}`, 400, 146);
+
+      doc.moveDown(3);
+
+      // --- BOOKING SUMMARY BOX ---
+      const summaryY = 180;
+      doc.rect(40, summaryY, 515, 70).fill('#f9fafb');
+      doc.rect(40, summaryY, 5, 70).fill('#10b981'); // Left accent border
+
+      doc.fillColor('#111827').fontSize(11).font('Helvetica-Bold').text('RESERVATION SUMMARY', 60, summaryY + 15);
+      doc.fontSize(10).font('Helvetica').text(`${bookingData.restaurantName || bookingData.eventName}`, 60, summaryY + 35);
+      doc.text(`${bookingData.date}  |  ${bookingData.time}`, 60, summaryY + 50);
+
+      doc.font('Helvetica-Bold').text('GUESTS', 450, summaryY + 15);
+      doc.fontSize(18).fillColor('#10b981').text(`${bookingData.guests}`, 450, summaryY + 30);
+
+      doc.moveDown(5);
+
+      // --- ITEMS TABLE ---
+      const tableTop = 280;
+      doc.fillColor('#374151').fontSize(10).font('Helvetica-Bold');
+      doc.text('DESCRIPTION', 40, tableTop);
+      doc.text('QTY', 300, tableTop, { width: 50, align: 'center' });
+      doc.text('PRICE', 380, tableTop, { width: 70, align: 'right' });
+      doc.text('TOTAL', 480, tableTop, { width: 75, align: 'right' });
+
+      doc.moveTo(40, tableTop + 15).lineTo(555, tableTop + 15).strokeColor('#e5e7eb').stroke();
+
+      let rowY = tableTop + 30;
+      doc.font('Helvetica').fillColor('#4b5563');
+
+      // Base Reservation Item
+      const basePrice = bookingData.amount ? 0 : 25.00; // Mock base if no items
+      if (basePrice > 0 || bookingData.amount) {
+        doc.text(`Table Reservation - ${bookingData.restaurantName || 'Venue'}`, 40, rowY);
+        doc.text('1', 300, rowY, { width: 50, align: 'center' });
+        doc.text(`₹${(bookingData.amount || basePrice).toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
+        doc.text(`₹${(bookingData.amount || basePrice).toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+        rowY += 25;
+      }
+
+      // Pre-ordered items
+      (bookingData.selectedItems || []).forEach((item: any) => {
+        doc.text(item.name, 40, rowY);
+        doc.text(`${item.quantity}`, 300, rowY, { width: 50, align: 'center' });
+        doc.text(`₹${Number(item.price).toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
+        doc.text(`₹${(item.price * item.quantity).toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+        rowY += 25;
+      });
+
+      doc.moveTo(40, rowY + 5).lineTo(555, rowY + 5).strokeColor('#f3f4f6').stroke();
+
+      // --- TOTALS ---
+      const subtotal = bookingData.amount || (bookingData.selectedItems || []).reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
+      const tax = subtotal * 0.05; // 5% GST
+      const total = subtotal + tax;
+
+      rowY += 20;
+      doc.fontSize(10).font('Helvetica').fillColor('#6b7280').text('Subtotal', 380, rowY, { width: 70, align: 'right' });
+      doc.fillColor('#111827').text(`₹${subtotal.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+
+      rowY += 20;
+      doc.fillColor('#6b7280').text('GST (5%)', 380, rowY, { width: 70, align: 'right' });
+      doc.fillColor('#111827').text(`₹${tax.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+
+      rowY += 25;
+      doc.rect(370, rowY - 5, 185, 35).fill('#10b981');
+      doc.fillColor('#ffffff').fontSize(12).font('Helvetica-Bold').text('Total Amount', 380, rowY);
+      doc.text(`₹${total.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+
+      // --- QR CODE & FOOTER ---
+      const footerY = 700;
+
+      // Generate QR Code
+      const qrData = JSON.stringify({
+        id: invoiceId,
+        booking: invoiceNumber,
+        customer: bookingData.fullName,
+        date: bookingData.date
+      });
+      const qrImage = await QRCode.toDataURL(qrData);
+      doc.image(qrImage, 40, footerY - 50, { width: 80 });
+
+      doc.fillColor('#9ca3af').fontSize(8).font('Helvetica');
+      doc.text('SCAN TO VERIFY BOOKING', 40, footerY + 35);
+
+      doc.fillColor('#374151').fontSize(10).font('Helvetica-Bold').text('Terms & Conditions', 150, footerY - 30);
+      doc.font('Helvetica').fontSize(8).fillColor('#6b7280');
+      doc.text('1. Please present this invoice at the reception upon arrival.', 150, footerY - 15);
+      doc.text('2. Cancellations are subject to the restaurant\'s policy.', 150, footerY - 5);
+      doc.text('3. This is a computer-generated invoice and doesn\'t require a signature.', 150, footerY + 5);
+
+      doc.moveTo(0, 810).lineTo(600, 810).strokeColor('#10b981').lineWidth(3).stroke();
+
+      doc.end();
+    } catch (err) {
+      reject(err);
     }
-    const doc = new PDFDocument({ margin: 40 });
-    const buffers: Buffer[] = [];
-    doc.on('data', buffers.push.bind(buffers));
-    doc.on('end', () => {
-      resolve(Buffer.concat(buffers));
-    });
-    doc.on('error', reject);
-
-    // Header
-    doc.fontSize(24).fillColor('#10b981').text('DineInGo Invoice', { align: 'center' });
-    doc.moveDown(0.5);
-    doc.fontSize(12).fillColor('#888').text('Reserve Dining & Events', { align: 'center' });
-    doc.moveDown(1);
-
-    // Invoice Info
-    const invoiceId = bookingData._id || bookingData.id || Math.random().toString(36).substr(2, 8);
-    const invoiceNumber = `INV-${invoiceId}-${new Date().getFullYear()}`;
-    const invoiceDate = new Date().toLocaleDateString();
-    doc.fontSize(12).fillColor('#000').text(`Invoice #: ${invoiceNumber}`);
-    doc.text(`Date: ${invoiceDate}`);
-    doc.moveDown(1);
-
-    // Bill To
-    doc.fontSize(14).fillColor('#000').text('Bill To:', { underline: true });
-    doc.fontSize(12).text(bookingData.fullName || 'Guest');
-    doc.text(bookingData.email || 'N/A');
-    doc.text(bookingData.phoneNumber || 'N/A');
-    doc.moveDown(1);
-
-    // Booking Details
-    doc.fontSize(14).text('Booking Details:', { underline: true });
-    doc.fontSize(12).text(`Restaurant: ${bookingData.restaurantName}`);
-    doc.text(`Date & Time: ${bookingData.date} at ${bookingData.time}`);
-    doc.text(`Guests: ${bookingData.guests}`);
-    doc.text(`Table: ${bookingData.table || 'Not assigned'}`);
-    if (bookingData.specialRequest) doc.text(`Special Request: ${bookingData.specialRequest}`);
-    doc.moveDown(1);
-
-    // Invoice Items Table
-    doc.fontSize(14).text('Invoice Items:', { underline: true });
-    doc.moveDown(0.5);
-    const diningReservationPrice = Number(bookingData.guests) > 0 ? 25.99 : 0;
-    let y = doc.y;
-    doc.fontSize(12).text('Description', 40, y, { continued: true });
-    doc.text('Qty', 220, y, { continued: true, align: 'right' });
-    doc.text('Price', 280, y, { continued: true, align: 'right' });
-    doc.text('Amount', 360, y, { align: 'right' });
-    doc.moveDown(0.5);
-    y = doc.y;
-    if (diningReservationPrice > 0) {
-      doc.text(`Dining Reservation - ${bookingData.restaurantName}`, 40, y, { continued: true });
-      doc.text(`${bookingData.guests}`, 220, y, { continued: true, align: 'right' });
-      doc.text(`₹${diningReservationPrice.toFixed(2)}`, 280, y, { continued: true, align: 'right' });
-      doc.text(`₹${(diningReservationPrice * Number(bookingData.guests)).toFixed(2)}`, 360, y, { align: 'right' });
-      doc.moveDown(0.5);
-      y = doc.y;
-    }
-    (bookingData.selectedItems || []).forEach((item: any) => {
-      doc.text(item.name, 40, y, { continued: true });
-      doc.text(`${item.quantity}`, 220, y, { continued: true, align: 'right' });
-      doc.text(`₹${item.price.toFixed(2)}`, 280, y, { continued: true, align: 'right' });
-      doc.text(`₹${(item.price * item.quantity).toFixed(2)}`, 360, y, { align: 'right' });
-      doc.moveDown(0.5);
-      y = doc.y;
-    });
-    if (bookingData.occasion) {
-      doc.text(`Special Occasion - ${bookingData.occasion}`, 40, y, { continued: true });
-      doc.text('1', 220, y, { continued: true, align: 'right' });
-      doc.text('₹0.00', 280, y, { continued: true, align: 'right' });
-      doc.text('₹0.00', 360, y, { align: 'right' });
-      doc.moveDown(0.5);
-      y = doc.y;
-    }
-    doc.moveDown(1);
-
-    // Totals
-    const itemsTotal = (bookingData.selectedItems || []).reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-    const subtotal = diningReservationPrice + itemsTotal;
-    const tax = subtotal * 0.18;
-    const total = subtotal + tax;
-    doc.fontSize(12).text(`Subtotal: ₹${subtotal.toFixed(2)}`, { align: 'right' });
-    doc.text(`Tax (18%): ₹${tax.toFixed(2)}`, { align: 'right' });
-    doc.font('Helvetica-Bold').text(`Total: ₹${total.toFixed(2)}`, { align: 'right' });
-    doc.font('Helvetica');
-    doc.moveDown(1);
-
-    // Status
-    doc.fontSize(12).fillColor('#065f46').text(`Status: ${bookingData.status}`, { align: 'center' });
-    doc.moveDown(1);
-
-    // Footer
-    doc.fontSize(10).fillColor('#888').text('Thank you for choosing DineInGo!', { align: 'center' });
-    doc.text('For any questions regarding this invoice, please contact support@dineingo.com', { align: 'center' });
-
-    doc.end();
   });
 };
 
@@ -438,25 +507,50 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
         // Don't fail the booking creation if email fails
       }
     } else {
-      // Send restaurant reservation confirmation email
+      // Send restaurant reservation confirmation email with invoice and wallet passes
       try {
+        // Generate Invoice PDF
+        const pdfBuffer = await generateInvoicePdfBuffer(booking);
+
+        // Generate Wallet Passes
+        let walletAttachments: any[] = [];
+        try {
+          const { generateBothWalletPasses } = require('../utils/walletPassGenerator');
+          const passes = await generateBothWalletPasses(booking);
+          walletAttachments = [
+            {
+              filename: passes.apple.filename,
+              content: passes.apple.content,
+              contentType: passes.apple.contentType
+            },
+            {
+              filename: passes.google.filename,
+              content: passes.google.content,
+              contentType: passes.google.contentType
+            }
+          ];
+        } catch (walletError) {
+          console.error('Error generating wallet passes for confirmation:', walletError);
+        }
+
+        // Send confirmation email with all attachments
         await emailService.sendReservationConfirmationEmail({
           ...req.body,
           restaurantName: booking.restaurantName || req.body.restaurantName,
-          address: (booking.restaurantId as any)?.address || req.body.address
+          address: (booking.restaurantId as any)?.address || req.body.address,
+          attachments: [
+            {
+              filename: 'DineInGo_Invoice.pdf',
+              content: pdfBuffer,
+              contentType: 'application/pdf'
+            },
+            ...walletAttachments
+          ]
         });
-
+        console.log('Combined restaurant confirmation email sent successfully');
       } catch (emailError) {
-        console.error('Error sending confirmation email:', emailError);
+        console.error('Error sending combined confirmation email:', emailError);
         // Don't fail the booking creation if email fails
-      }
-
-
-      // Send invoice PDF email for restaurants
-      try {
-        await sendInvoicePdfEmail(booking);
-      } catch (invoiceError) {
-        console.error('Error sending invoice PDF email:', invoiceError);
       }
     }
 

@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DinoStepper } from '../components/DinoStepper';
 import { InitialsAvatar } from '../components/InitialsAvatar';
-import { Search, Menu, MapPin, Heart, X, Bell, Settings, Globe, ArrowLeft, Moon, Sun, Calendar, Clock, Check, Users, FileText, Trophy, Camera, Target, Award, Zap, MessageSquare, Pencil, Trash2 } from 'lucide-react';
+import { Search, Menu, MapPin, Heart, X, Bell, Settings, Globe, ArrowLeft, Moon, Sun, Calendar, Clock, Check, Users, FileText, Trophy, Camera, Target, Award, Zap, MessageSquare, Pencil, Trash2, Star } from 'lucide-react';
 import InvoiceModal from '../components/InvoiceModal';
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
+import BookingCard from '../components/BookingCard';
 import { useNavigate, useLocation } from "react-router-dom";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
@@ -1494,6 +1495,80 @@ export default function DashboardPage() {
     }
   };
 
+  // Restored: Fetch bookings from MongoDB API
+  async function fetchBookingsFromAPI() {
+    try {
+      if (!auth.currentUser) {
+        console.error('No authenticated user found');
+        setBookings([]);
+        return;
+      }
+
+      setIsLoading(true);
+
+      try {
+        // Fetch bookings from the API
+        const fetchedBookings = await bookingsApi.getAll();
+        console.log('Fetched bookings from API:', fetchedBookings);
+
+        // Ensure fetchedBookings is an array
+        const bookingsArray = Array.isArray(fetchedBookings) ? fetchedBookings : [];
+
+        // Transform the bookings to match the expected format
+        const transformedBookings = bookingsArray.map((booking: any) => ({
+          ...booking,
+          id: booking._id || booking.id,
+          date: booking.date || booking.bookingDate,
+          time: booking.time || booking.bookingTime,
+          guests: booking.guests || booking.partySize || 2,
+          status: booking.status || 'pending',
+          restaurantName: booking.restaurantName || booking.businessName || booking.venueName,
+          eventName: booking.eventName,
+          type: booking.type || (booking.eventName ? 'event' : 'restaurant'),
+        }));
+
+        console.log('Transformed bookings:', transformedBookings);
+        setBookings(transformedBookings);
+      } catch (error: any) {
+        console.error('Error fetching bookings:', error);
+        setBookings([]);
+        toast.error('Failed to fetch bookings. Please try again later.');
+      } finally {
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error('Error in fetchBookingsFromAPI:', error);
+      setIsLoading(false);
+    }
+  }
+
+  // Restored: Handle booking actions (confirm, cancel, delete)
+  async function handleBookingAction(bookingId: string, action: 'confirm' | 'cancel' | 'delete') {
+    try {
+      if (!bookingId) {
+        toast.error('Invalid booking ID');
+        return;
+      }
+      console.log('Booking ID for action:', bookingId, action);
+
+      if (action === 'confirm') {
+        await bookingsApi.confirm(bookingId);
+      } else if (action === 'cancel') {
+        await bookingsApi.cancel(bookingId);
+      } else if (action === 'delete') {
+        if (!window.confirm('Are you sure you want to delete this booking history?')) return;
+        await bookingsApi.delete(bookingId);
+      }
+
+      toast.success(`Booking ${action === 'delete' ? 'deleted' : action + 'ed'} successfully`);
+      fetchBookingsFromAPI();
+    } catch (error) {
+      console.error(`Error ${action}ing booking:`, error);
+      toast.error(`Failed to ${action} booking. Please try again.`);
+    }
+  }
+
+
   // Update the handleAvatarSelect function to handle null values
   const handleAvatarSelect = async (src: string | null): Promise<void> => {
     try {
@@ -1603,6 +1678,270 @@ export default function DashboardPage() {
       setIsDetectingLocation(false);
     }
   };
+
+  // Restored: Mark all notifications as read
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await markAllAsRead();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+      toast.error('Failed to mark notifications as read');
+    }
+  };
+
+  // Restored: Handle real-time booking updates
+  useEffect(() => {
+    const handleBookingUpdate = (data: any) => {
+      console.log('Received booking update via socket:', data);
+      fetchBookingsFromAPI();
+    };
+
+    socketService.on('bookingUpdate', handleBookingUpdate);
+    return () => socketService.off('bookingUpdate', handleBookingUpdate);
+  }, []);
+
+  // Restored: Handle booking success on mount/location change
+  useEffect(() => {
+    const handleBookingSuccess = () => {
+      if (location.state?.bookingSuccess) {
+        // Show success toast
+        if (location.state.newBooking) {
+          const venueName = location.state.newBooking.restaurantName ||
+            location.state.newBooking.eventName ||
+            'the venue';
+          toast.success(
+            `Reservation confirmed at ${venueName}!`,
+            {
+              position: "top-center",
+              autoClose: 5000,
+              hideProgressBar: false,
+              closeOnClick: true,
+              pauseOnHover: true,
+              draggable: true,
+            }
+          );
+        }
+
+        // Clear the state to prevent showing the toast again on refresh
+        navigate(location.pathname, { replace: true, state: {} });
+
+        // Fetch latest bookings
+        fetchBookingsFromAPI();
+      }
+    };
+
+    handleBookingSuccess();
+
+    // Auto-refresh interval
+    const intervalId = setInterval(() => {
+      if (auth.currentUser && activeSection === 'bookings') {
+        fetchBookingsFromAPI();
+      }
+    }, 30000);
+
+    return () => clearInterval(intervalId);
+  }, [location, auth.currentUser, activeSection]);
+
+  // Restored: Render My Reviews section
+  const renderMyReviews = () => {
+    return (
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'} p-8`}>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-4xl font-bold">{translations[language].myReviews}</h1>
+        </div>
+
+        {isReviewsLoading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+          </div>
+        ) : userReviews.length === 0 ? (
+          <div className="text-center py-12">
+            <MessageSquare className="w-16 h-16 mx-auto mb-4 text-emerald-500 opacity-20" />
+            <p className="text-lg opacity-50">You haven't written any reviews yet.</p>
+          </div>
+        ) : (
+          <div className="grid gap-6">
+            {userReviews.map((review: any) => (
+              <div
+                key={review._id}
+                className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-3xl p-6 shadow-sm`}
+              >
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl">
+                      {review.businessId?.name?.charAt(0) || 'R'}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-xl">{review.businessId?.name || 'Restaurant'}</h3>
+                      <div className="flex items-center gap-2">
+                        <StarRating rating={review.rating} size={14} />
+                        <span className="text-xs opacity-50">
+                          {new Date(review.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    {editingReviewId === review._id ? (
+                      <>
+                        <button
+                          onClick={() => handleUpdateReview(review._id)}
+                          className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
+                        >
+                          <Check size={20} />
+                        </button>
+                        <button
+                          onClick={() => setEditingReviewId(null)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <X size={20} />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => {
+                            setEditingReviewId(review._id);
+                            setEditRating(review.rating);
+                            setEditComment(review.comment);
+                          }}
+                          className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
+                        >
+                          <Pencil size={20} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteReview(review._id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                        >
+                          <Trash2 size={20} />
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {editingReviewId === review._id ? (
+                  <div className="space-y-4">
+                    <div className="flex gap-2">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          key={star}
+                          onClick={() => setEditRating(star)}
+                          className={`text-2xl ${star <= editRating ? 'text-yellow-400' : 'text-gray-300'}`}
+                        >
+                          ★
+                        </button>
+                      ))}
+                    </div>
+                    <textarea
+                      value={editComment}
+                      onChange={(e) => setEditComment(e.target.value)}
+                      className={`w-full p-4 rounded-2xl border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} focus:ring-2 focus:ring-emerald-500 outline-none resize-none`}
+                      rows={3}
+                    />
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-lg mb-4">{review.comment}</p>
+                    {review.reply && (
+                      <div className={`${isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50'} rounded-2xl p-4 border-l-4 border-emerald-500`}>
+                        <p className="text-xs font-bold text-emerald-600 mb-1 uppercase tracking-wider">Owner Response</p>
+                        <p className="text-sm opacity-80">{review.reply.text}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Restored: Render Location Update Modal
+  const renderLocationModal = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1001]">
+      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto`}>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Update Location</h3>
+          <button
+            onClick={() => setIsLocationModalOpen(false)}
+            className={`p-2 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded-full transition-colors`}
+          >
+            <X className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`} />
+          </button>
+        </div>
+
+        <button
+          onClick={detectLocation}
+          disabled={isDetectingLocation}
+          className={`w-full mb-6 px-4 py-3 rounded-xl text-white transition-colors flex items-center justify-center gap-2 ${isDetectingLocation ? 'bg-gray-400 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+        >
+          {isDetectingLocation ? 'Detecting...' : 'Use Current Location'}
+        </button>
+
+        <div className="relative mb-6">
+          <input
+            type="text"
+            value={searchTerm}
+            placeholder="Search cities..."
+            className={`w-full ${isDarkMode ? 'bg-gray-700 text-white placeholder-gray-400' : 'bg-gray-100 text-gray-900 placeholder-gray-500'} rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} size={18} />
+        </div>
+
+        <div className="space-y-2">
+          {indianCities.filter(c => c.city.toLowerCase().includes(searchTerm.toLowerCase())).slice(0, 5).map(city => (
+            <button
+              key={`${city.city}-${city.state}`}
+              onClick={() => {
+                setUserData(prev => prev ? { ...prev, location: { city: city.city, state: city.state, country: city.country }, uid: prev.uid, createdAt: prev.createdAt, lastLogin: new Date() } : null);
+                setIsLocationModalOpen(false);
+              }}
+              className={`w-full text-left px-4 py-3 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl transition-colors`}
+            >
+              {city.city}, {city.state}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Restored: Render Avatar Selection Modal
+  const renderAvatarModal = () => {
+    if (!isAvatarModalOpen) return null;
+    return (
+      <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
+        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsAvatarModalOpen(false)} />
+        <div className={`relative ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl`}>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className={`text-3xl font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Choose Your Identity</h2>
+            <button onClick={() => setIsAvatarModalOpen(false)}><X size={24} /></button>
+          </div>
+          <div className="grid grid-cols-3 gap-6">
+            {avatarOptions.map((avatar) => (
+              <button
+                key={avatar.id}
+                onClick={() => handleAvatarSelect(avatar.src === 'initials' ? null : avatar.src)}
+                className="aspect-square rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
+              >
+                {avatar.src === 'initials' ? (
+                  <InitialsAvatar name={userData?.displayName || ''} className="w-full h-full" />
+                ) : (
+                  <img src={avatar.src} alt={avatar.alt} className="w-full h-full object-cover" />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   // Add search handler function
   const handleSearch = (term: string) => {
@@ -1805,194 +2144,307 @@ export default function DashboardPage() {
       case 'home':
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
-            {/* Welcome Header */}
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-8">
-                <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {`${translations[language].welcome}, ${userData?.displayName || 'Guest'}!`}
-                </h1>
+            {/* Premium Greeting Card */}
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-emerald-500 to-teal-600 p-8 md:p-12 mb-10 shadow-2xl shadow-emerald-500/20">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-yellow-400/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+
+              <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/10 shadow-sm">
+                      {new Date().getHours() < 12 ? 'Good Morning' : new Date().getHours() < 18 ? 'Good Afternoon' : 'Good Evening'}
+                    </span>
+                    <div className="h-1 w-1 rounded-full bg-white/60"></div>
+                    <span className="text-emerald-50 text-sm font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-2 drop-shadow-sm">
+                    Hello, {userData?.displayName?.split(' ')[0] || 'Guest'}!
+                  </h1>
+                  <p className="text-emerald-50 text-lg md:text-xl font-medium max-w-lg leading-relaxed opacity-90">
+                    Ready to explore the best dining & events in your city?
+                  </p>
+                </div>
+
                 <button
                   onClick={() => setIsLocationModalOpen(true)}
-                  className={`flex items-center ${isDarkMode ? 'bg-gray-700/50 hover:bg-gray-600/50' : 'bg-white hover:bg-gray-50'
-                    } rounded-full px-4 py-2 transition-colors group`}
+                  className="group relative overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all duration-300 rounded-2xl px-5 py-4 min-w-[160px] text-left"
                 >
-                  <div className="flex items-center">
-                    <MapPin className="text-emerald-400 mr-2" size={18} />
-                    <span className={`${isDarkMode ? 'text-gray-300 group-hover:text-white' : 'text-gray-600 group-hover:text-gray-900'}`}>
-                      {typeof userData?.location === 'object' && userData?.location !== null && 'city' in userData.location && 'state' in userData.location ? `${userData.location.city}, ${userData.location.state}` : ''}
-                    </span>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
+                      <MapPin size={20} className="fill-white/20" />
+                    </div>
+                    <div>
+                      <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-0.5">Current Location</p>
+                      <p className="text-white font-bold text-lg leading-none truncate max-w-[140px]">
+                        {typeof userData?.location === 'object' && userData?.location && 'city' in userData.location
+                          ? userData.location.city
+                          : 'Select City'}
+                      </p>
+                    </div>
                   </div>
                 </button>
               </div>
+            </div>
 
-              {/* Section Selector */}
-              <div className="flex gap-4 mb-8">
-                <button
-                  onClick={() => setHomeSection('restaurants')}
-                  className={`flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors ${homeSection === 'restaurants'
-                    ? 'bg-emerald-500 text-white'
-                    : isDarkMode
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                >
-                  {translations[language].exploreRestaurants}
-                </button>
-                <button
-                  onClick={() => setHomeSection('events')}
-                  className={`flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors ${homeSection === 'events'
-                    ? 'bg-emerald-500 text-white'
-                    : isDarkMode
-                      ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
-                    }`}
-                >
-                  {translations[language].exploreEvents}
-                </button>
-              </div>
+            {/* Modern Interactive Section Selector */}
+            <div className="grid grid-cols-2 gap-4 md:gap-6 mb-10">
+              <button
+                onClick={() => setHomeSection('restaurants')}
+                className={`relative group p-6 rounded-3xl transition-all duration-300 border-2 text-left overflow-hidden ${homeSection === 'restaurants'
+                  ? 'bg-white border-emerald-500 shadow-xl shadow-emerald-500/10 scale-[1.02]'
+                  : isDarkMode
+                    ? 'bg-gray-800 border-transparent hover:bg-gray-750'
+                    : 'bg-white border-transparent hover:border-gray-200 hover:shadow-lg'
+                  }`}
+              >
+                <div className={`absolute top-0 right-0 p-4 opacity-10 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12 ${homeSection === 'restaurants' ? 'opacity-20' : ''}`}>
+                  <img src="/images/plate-doodle.png" alt="" className="w-24 h-24 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                </div>
 
-              {/* Content based on selection */}
-              {homeSection === 'restaurants' ? (
-                <div className="mb-12">
-                  <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                    Featured Restaurants
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {restaurants.length > 0 ? (
-                      restaurants.map((restaurant, idx) => (
-                        <div
-                          key={restaurant.id}
-                          className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                          onClick={() => navigate(`/restaurant/${restaurant.id}`)}
-                        >
-                          <div className="relative h-48">
-                            <img
-                              src={restaurant.image}
-                              alt={restaurant.name}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-4 left-4 flex flex-col gap-2">
-                              <div className="bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center w-fit">
-                                <span className="text-emerald-400 mr-1">★</span>
-                                <span>{restaurant.averageRating ?? restaurant.rating}</span>
-                              </div>
-                              {userPreferences && getPersonalizationScore(restaurant, userPreferences) > 100 && (
-                                <motion.div
-                                  initial={{ scale: 0.8, opacity: 0 }}
-                                  animate={{ scale: 1, opacity: 1 }}
-                                  className="bg-emerald-500 text-white px-3 py-1 rounded-full flex items-center gap-1.5 text-[10px] font-black uppercase tracking-tighter shadow-lg border border-white/20"
-                                >
-                                  <div className="w-4 h-4 bg-white/20 rounded-full flex items-center justify-center p-0.5">
-                                    <img src="/images/Dino Icon.svg" alt="Dino Approved" className="w-full h-full object-contain" />
-                                  </div>
-                                  Dino's Pick
-                                </motion.div>
-                              )}
+                <div className="relative z-10">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${homeSection === 'restaurants'
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
+                    : isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /><path d="M7 2v20" /><path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></svg>
+                  </div>
+                  <h3 className={`text-xl font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Restaurants</h3>
+                  <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Find perfect dining spots</p>
+                </div>
+
+                {homeSection === 'restaurants' && (
+                  <div className="absolute bottom-4 right-4 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                    <Check size={14} className="text-white" strokeWidth={3} />
+                  </div>
+                )}
+              </button>
+
+              <button
+                onClick={() => setHomeSection('events')}
+                className={`relative group p-6 rounded-3xl transition-all duration-300 border-2 text-left overflow-hidden ${homeSection === 'events'
+                  ? 'bg-white border-purple-500 shadow-xl shadow-purple-500/10 scale-[1.02]'
+                  : isDarkMode
+                    ? 'bg-gray-800 border-transparent hover:bg-gray-750'
+                    : 'bg-white border-transparent hover:border-gray-200 hover:shadow-lg'
+                  }`}
+              >
+                <div className={`absolute top-0 right-0 p-4 opacity-10 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-12 ${homeSection === 'events' ? 'opacity-20' : ''}`}>
+                  <img src="/images/ticket-doodle.png" alt="" className="w-24 h-24 object-contain" onError={(e) => e.currentTarget.style.display = 'none'} />
+                </div>
+
+                <div className="relative z-10">
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mb-4 transition-colors ${homeSection === 'events'
+                    ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/30'
+                    : isDarkMode ? 'bg-gray-700 text-gray-400' : 'bg-gray-100 text-gray-500'
+                    }`}>
+                    <Calendar size={24} />
+                  </div>
+                  <h3 className={`text-xl font-bold mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Events</h3>
+                  <p className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Discover local happenings</p>
+                </div>
+
+                {homeSection === 'events' && (
+                  <div className="absolute bottom-4 right-4 w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center animate-in fade-in zoom-in duration-300">
+                    <Check size={14} className="text-white" strokeWidth={3} />
+                  </div>
+                )}
+              </button>
+            </div>
+
+            {/* Content based on selection */}
+            {homeSection === 'restaurants' ? (
+              <div className="mb-12">
+                <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
+                  Featured Restaurants
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {restaurants.length > 0 ? (
+                    restaurants.map((restaurant, idx) => (
+                      <div
+                        key={restaurant.id}
+                        className={`group ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}
+                        onClick={() => navigate(`/restaurant/${restaurant.id}`)}
+                      >
+                        <div className="relative h-56 overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 z-10 transition-opacity group-hover:opacity-40" />
+                          <img
+                            src={restaurant.image}
+                            alt={restaurant.name}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+
+                          {/* Rating Badge */}
+                          <div className="absolute top-4 left-4 z-20">
+                            <div className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-xl flex items-center shadow-lg">
+                              <span className="text-emerald-400 mr-1.5 text-sm">★</span>
+                              <span className="font-bold text-sm">{restaurant.averageRating ?? restaurant.rating}</span>
                             </div>
-                            <button
-                              className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(restaurant);
-                              }}
-                            >
-                              <Heart size={20} className="text-white" fill={isItemFavorite(restaurant.id, 'restaurant') ? "white" : "none"} />
-                            </button>
                           </div>
-                          <div className="p-4">
-                            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                              {restaurant.name}
-                            </h3>
-                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                              <MapPin size={16} className="mr-1" />
-                              <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
+
+                          {/* Dino's Pick Badge */}
+                          {userPreferences && getPersonalizationScore(restaurant, userPreferences) > 100 && (
+                            <div className="absolute top-4 left-24 z-20">
+                              <motion.div
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                className="bg-emerald-500/90 backdrop-blur-sm text-white pl-1 pr-2.5 py-1 rounded-full flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20"
+                              >
+                                <div className="w-5 h-5 bg-white rounded-full flex items-center justify-center p-0.5">
+                                  <img src="/images/Dino Icon.svg" alt="" className="w-full h-full object-contain" />
+                                </div>
+                                Dino's Pick
+                              </motion.div>
                             </div>
-                            <div className="mt-2 flex items-center justify-between">
-                              <div className="flex flex-wrap gap-2">
-                                {restaurant.cuisine?.map((cuisine, index) => (
-                                  <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
-                                    {cuisine}
-                                  </span>
-                                ))}
+                          )}
+
+                          {/* Favorite Button */}
+                          <button
+                            className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all active:scale-95 group/btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(restaurant);
+                            }}
+                          >
+                            <Heart size={18} className={`transition-colors ${isItemFavorite(restaurant.id, 'restaurant') ? "fill-emerald-500 text-emerald-500" : "text-white group-hover/btn:text-emerald-400"}`} />
+                          </button>
+
+                          {/* Content Overlay used for quick info on hover if needed, or just refined look */}
+                        </div>
+
+                        <div className="p-5">
+                          <div className="flex justify-between items-start mb-2 relative">
+                            <div>
+                              <h3 className={`text-xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                {restaurant.name}
+                              </h3>
+                              <div className={`flex items-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <MapPin size={14} className="mr-1 text-emerald-500" />
+                                <span className="line-clamp-1">{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
                               </div>
                             </div>
+                            <div className={`flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-gray-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                              {restaurant.openNow ? 'Open' : 'Closed'}
+                            </div>
+                          </div>
+
+                          <div className="mt-4 flex flex-wrap gap-2">
+                            {restaurant.cuisine?.slice(0, 3).map((cuisine, index) => (
+                              <span key={index} className={`px-2.5 py-1 ${isDarkMode ? 'bg-gray-700/50 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-600 border-gray-100'} border rounded-lg text-xs font-medium`}>
+                                {cuisine}
+                              </span>
+                            ))}
+                            {restaurant.cuisine && restaurant.cuisine.length > 3 && (
+                              <span className={`px-2 py-1 ${isDarkMode ? 'text-gray-400' : 'text-gray-400'} text-xs`}>
+                                +{restaurant.cuisine.length - 3}
+                              </span>
+                            )}
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className={`col-span-full text-center py-12 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        No restaurants available
                       </div>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <div className={`col-span-full text-center py-20 ${isDarkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-3xl border-2 border-dashed ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-3xl">🍽️</div>
+                      <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No restaurants found</h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Try adjusting your filters</p>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="mb-12">
-                  <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                    Featured Events
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {events.length > 0 ? (
-                      events.map(event => (
-                        <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
-                          <div className="relative h-48">
-                            <img
-                              src={event.imageUrl}
-                              alt={event.title}
-                              className="w-full h-full object-cover"
-                            />
-                            <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                              <span className="text-emerald-400 mr-1">₹</span>
-                              <span>{event.price}</span>
+
+              </div>
+            ) : (
+              <div className="mb-12">
+                <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
+                  Featured Events
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {events.length > 0 ? (
+                    events.map(event => (
+                      <div
+                        key={event.id}
+                        className={`group ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}
+                        onClick={() => navigate(`/event/${event.id}/register`)}
+                      >
+                        <div className="relative h-56 overflow-hidden">
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 z-10 transition-opacity group-hover:opacity-40" />
+                          <img
+                            src={event.imageUrl}
+                            alt={event.title}
+                            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                          />
+
+                          {/* Price Badge */}
+                          <div className="absolute top-4 left-4 z-20">
+                            <div className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-xl flex items-center shadow-lg">
+                              <span className="font-bold text-sm">₹{event.price}</span>
                             </div>
-                            <button
-                              className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(event);
-                              }}
-                            >
-                              <Heart size={20} className="text-white" fill={isItemFavorite(event.id, 'event') ? "white" : "none"} />
-                            </button>
                           </div>
-                          <div className="p-4">
-                            <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+
+                          {/* Date Badge */}
+                          <div className="absolute bottom-4 left-4 z-20">
+                            <div className="bg-black/40 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-lg flex items-center shadow-sm">
+                              <Calendar size={12} className="mr-1.5 text-purple-400" />
+                              <span className="text-xs font-semibold">{event.date}</span>
+                            </div>
+                          </div>
+
+                          {/* Favorite Button */}
+                          <button
+                            className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all active:scale-95 group/btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(event);
+                            }}
+                          >
+                            <Heart size={18} className={`transition-colors ${isItemFavorite(event.id, 'event') ? "fill-emerald-500 text-emerald-500" : "text-white group-hover/btn:text-emerald-400"}`} />
+                          </button>
+                        </div>
+
+                        <div className="p-5">
+                          <div className="flex justify-between items-start mb-2">
+                            <h3 className={`text-xl font-bold leading-tight mb-1 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                               {event.title}
                             </h3>
-                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                              <MapPin size={16} className="mr-1" />
-                              <span>{typeof event.location === 'string' ? event.location : `${(event.location as Location).city}, ${(event.location as Location).state}`}</span>
+                          </div>
+
+                          <div className={`flex items-center text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            <MapPin size={14} className="mr-1.5 text-purple-500" />
+                            <span className="line-clamp-1">
+                              {typeof event.location === 'string' ? event.location : `${(event.location as Location).city}, ${(event.location as Location).state}`}
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 mb-3">
+                            <div className={`flex items-center p-2 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                              <Clock size={14} className={`mr-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                              <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{event.time}</span>
                             </div>
-                            <div className={`mt-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                              <div className="flex items-center">
-                                <Calendar size={16} className="mr-1" />
-                                <span>{event.date}</span>
-                              </div>
-                              <div className="flex items-center mt-1">
-                                <Clock size={16} className="mr-1" />
-                                <span>{event.time}</span>
-                              </div>
-                            </div>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
-                                {event.category}
-                              </span>
-                              <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
-                                {event.registeredCount}/{event.capacity} Registered
-                              </span>
+                            <div className={`flex items-center p-2 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                              <Users size={14} className={`mr-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                              <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{event.registeredCount} Reg.</span>
                             </div>
                           </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <span className={`px-2.5 py-1 ${isDarkMode ? 'bg-purple-500/10 text-purple-300 border-purple-500/20' : 'bg-purple-50 text-purple-600 border-purple-100'} border rounded-lg text-xs font-medium uppercase tracking-wide`}>
+                              {event.category}
+                            </span>
+                          </div>
                         </div>
-                      ))
-                    ) : (
-                      <div className={`col-span-full text-center py-12 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        No events available
                       </div>
-                    )}
-                  </div>
+                    ))
+                  ) : (
+                    <div className={`col-span-full text-center py-20 ${isDarkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-3xl border-2 border-dashed ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+                      <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4 text-3xl">🎫</div>
+                      <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No events found</h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Check back later for updates</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+              </div>
+            )}
           </div>
         );
       case 'restaurants':
@@ -2005,48 +2457,59 @@ export default function DashboardPage() {
               {restaurants.map((restaurant, idx) => (
                 <div
                   key={restaurant.id}
-                  className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
+                  className={`group ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}
                   onClick={() => navigate(`/restaurant/${restaurant.id}`)}
                 >
-                  <div className="relative h-48">
+                  <div className="relative h-56 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 z-10 transition-opacity group-hover:opacity-40" />
                     <img
                       src={restaurant.image}
                       alt={restaurant.name}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
-                    <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                      <span className="text-emerald-400 mr-1">★</span>
-                      <span>{restaurant.averageRating ?? restaurant.rating}</span>
+
+                    {/* Rating Badge */}
+                    <div className="absolute top-4 left-4 z-20">
+                      <div className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-xl flex items-center shadow-lg">
+                        <span className="text-emerald-400 mr-1.5 text-sm">★</span>
+                        <span className="font-bold text-sm">{restaurant.averageRating ?? restaurant.rating}</span>
+                      </div>
                     </div>
+
+                    {/* Favorite Button */}
                     <button
-                      className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
+                      className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all active:scale-95 group/btn"
                       onClick={(e) => {
                         e.stopPropagation();
                         toggleFavorite(restaurant);
                       }}
                     >
-                      <Heart size={20} className="text-white" fill={isItemFavorite(restaurant.id, 'restaurant') ? "white" : "none"} />
+                      <Heart size={18} className={`transition-colors ${isItemFavorite(restaurant.id, 'restaurant') ? "fill-emerald-500 text-emerald-500" : "text-white group-hover/btn:text-emerald-400"}`} />
                     </button>
+
                   </div>
-                  <div className="p-4">
-                    <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {restaurant.name}
-                    </h3>
-                    <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                      <MapPin size={16} className="mr-1" />
-                      <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
+                  <div className="p-5">
+                    <div className="flex justify-between items-start mb-2 relative">
+                      <div>
+                        <h3 className={`text-xl font-bold leading-tight mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          {restaurant.name}
+                        </h3>
+                        <div className={`flex items-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          <MapPin size={14} className="mr-1 text-emerald-500" />
+                          <span className="line-clamp-1">{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
+                        </div>
+                      </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
                       <div className="flex flex-wrap gap-2">
-                        {restaurant.cuisine?.map((cuisine: string, index: number) => (
-                          <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                            } rounded-full text-sm`}>
+                        {restaurant.cuisine?.slice(0, 2).map((cuisine: string, index: number) => (
+                          <span key={index} className={`px-2.5 py-1 ${isDarkMode ? 'bg-gray-700/50 text-gray-300 border-gray-600' : 'bg-gray-50 text-gray-600 border-gray-100'} border rounded-lg text-xs font-medium`}>
                             {cuisine}
                           </span>
                         ))}
                       </div>
                       <SustainabilityBadge
-                        score={Math.floor(Math.random() * 50) + 50} // Demonstration score
+                        score={Math.floor(Math.random() * 50) + 50}
                         ecoFriendly={true}
                         localSourcing={idx % 2 === 0}
                       />
@@ -2065,21 +2528,40 @@ export default function DashboardPage() {
             </h1>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {events.map(event => (
-                <div key={event.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`} onClick={() => navigate(`/event/${event.id}/register`)}>
-                  <div className="relative h-48">
+                <div
+                  key={event.id}
+                  className={`group ${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}
+                  onClick={() => navigate(`/event/${event.id}/register`)}
+                >
+                  <div className="relative h-56 overflow-hidden">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 z-10 transition-opacity group-hover:opacity-40" />
                     <img
                       src={event.imageUrl}
                       alt={event.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
-                    <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                      <span className="text-emerald-400 mr-1">₹</span>
-                      <span>{event.price}</span>
+
+                    {/* Price Badge */}
+                    <div className="absolute top-4 left-4 z-20">
+                      <div className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-xl flex items-center shadow-lg">
+                        <span className="font-bold text-sm">₹{event.price}</span>
+                      </div>
                     </div>
+
+                    {/* Date Badge */}
+                    <div className="absolute bottom-4 left-4 z-20">
+                      <div className="bg-black/40 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-lg flex items-center shadow-sm">
+                        <Calendar size={12} className="mr-1.5 text-purple-400" />
+                        <span className="text-xs font-semibold">{event.date}</span>
+                      </div>
+                    </div>
+
+                    {/* Favorite Button */}
                     <button
-                      className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
+                      className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all active:scale-95 group/btn"
                       onClick={(e) => {
                         e.stopPropagation();
+                        // Handle toggle logic safely
                         const eventToToggle = {
                           ...event,
                           location: typeof event.location === 'string'
@@ -2089,39 +2571,43 @@ export default function DashboardPage() {
                         toggleFavorite(eventToToggle);
                       }}
                     >
-                      <Heart size={20} className="text-white" fill={isItemFavorite(event.id, 'event') ? "white" : "none"} />
+                      <Heart size={18} className={`transition-colors ${isItemFavorite(event.id, 'event') ? "fill-emerald-500 text-emerald-500" : "text-white group-hover/btn:text-emerald-400"}`} />
                     </button>
                   </div>
-                  <div className="p-4">
-                    <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                      {event.title}
-                    </h3>
-                    <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                      <MapPin size={16} className="mr-1" />
-                      <span>{typeof event.location === 'string' ? event.location : `${(event.location as Location).city}, ${(event.location as Location).state}`}</span>
+
+                  <div className="p-5">
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className={`text-xl font-bold leading-tight mb-1 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                        {event.title}
+                      </h3>
                     </div>
-                    <div className={`mt-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                      <div className="flex items-center">
-                        <Calendar size={16} className="mr-1" />
-                        <span>{event.date}</span>
+
+                    <div className={`flex items-center text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      <MapPin size={14} className="mr-1.5 text-purple-500" />
+                      <span className="line-clamp-1">
+                        {typeof event.location === 'string' ? event.location : `${(event.location as Location).city}, ${(event.location as Location).state}`}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 mb-3">
+                      <div className={`flex items-center p-2 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                        <Clock size={14} className={`mr-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{event.time}</span>
                       </div>
-                      <div className="flex items-center mt-1">
-                        <Clock size={16} className="mr-1" />
-                        <span>{event.time}</span>
+                      <div className={`flex items-center p-2 rounded-lg ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'}`}>
+                        <Users size={14} className={`mr-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+                        <span className={`text-xs font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{event.registeredCount} Reg.</span>
                       </div>
                     </div>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        } rounded-full text-sm`}>
+
+                    <div className="flex flex-wrap gap-2 mb-3">
+                      <span className={`px-2.5 py-1 ${isDarkMode ? 'bg-purple-500/10 text-purple-300 border-purple-500/20' : 'bg-purple-50 text-purple-600 border-purple-100'} border rounded-lg text-xs font-medium uppercase tracking-wide`}>
                         {event.category}
                       </span>
-                      <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'
-                        } rounded-full text-sm`}>
-                        {event.registeredCount}/{event.capacity} Registered
-                      </span>
                     </div>
-                    <div className="mt-4">
-                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+
+                    <div className="mt-2">
+                      <p className={`text-sm line-clamp-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         {event.description}
                       </p>
                     </div>
@@ -2209,167 +2695,31 @@ export default function DashboardPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {bookings.map((booking) => {
-                  const bookingId = booking._id || booking.id;
-                  const isValidMongoId = typeof bookingId === 'string' && /^[a-f\d]{24}$/i.test(bookingId);
-
-                  const bookingName =
-                    booking.restaurantId?.name ||
-                    booking.eventId?.title ||
-                    booking.restaurantName ||
-                    booking.eventName ||
-                    'Booking';
-
-                  return (
-                    <div
-                      key={bookingId}
-                      className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                      onClick={() => {
-                        setSelectedBooking(booking);
-                        setShowInvoice(true);
-                      }}
-                    >
-                      <div className="relative h-48 bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
-                        <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-sm font-bold bg-white text-emerald-600">
-                          {booking.status}
-                        </div>
-                        <h3 className="text-3xl font-bold text-white text-center p-6">
-                          {bookingName}
-                        </h3>
-                      </div>
-                      <div className="p-6">
-                        <div className="space-y-3">
-                          <p className="flex items-center text-base">
-                            <Calendar className="w-5 h-5 mr-3 text-emerald-500" />
-                            <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                              {new Date(booking.date).toLocaleDateString('en-US', {
-                                weekday: 'long',
-                                year: 'numeric',
-                                month: 'long',
-                                day: 'numeric',
-                              })}
-                            </span>
-                          </p>
-                          <p className="flex items-center text-base">
-                            <Clock className="w-5 h-5 mr-3 text-emerald-500" />
-                            <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>{booking.time}</span>
-                          </p>
-                          <p className="flex items-center text-base">
-                            <Users className="w-5 h-5 mr-3 text-emerald-500" />
-                            <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                              {booking.guests} {Number(booking.guests) === 1 ? 'Guest' : 'Guests'}
-                            </span>
-                          </p>
-                          {booking.table && (
-                            <p className="flex items-center text-base">
-                              <span className="w-5 h-5 flex items-center justify-center mr-3 text-emerald-500 font-bold">#</span>
-                              <span className={`${isDarkMode ? 'text-gray-200' : 'text-gray-700'}`}>Table {booking.table}</span>
-                            </p>
-                          )}
-                          {booking.specialRequest && (
-                            <div className={`mt-4 p-3 rounded-lg ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                              <p className={`text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                <span className="font-medium">Special Request:</span> {booking.specialRequest}
-                              </p>
-                            </div>
-                          )}
-                          {isValidMongoId && (() => {
-                            let bookingDateTime: Date;
-                            try {
-                              const dateStr = typeof booking.date === 'string' ? booking.date : new Date(booking.date).toISOString();
-                              let timeStr = booking.time || '00:00';
-                              let datePart = dateStr.includes('T') ? dateStr.split('T')[0] : new Date(dateStr).toISOString().split('T')[0];
-
-                              if (timeStr.includes('AM') || timeStr.includes('PM')) {
-                                const isPM = timeStr.includes('PM');
-                                timeStr = timeStr.replace(/AM|PM/gi, '').trim();
-                                const [hours, minutes] = timeStr.split(':').map(s => parseInt(s.trim()));
-                                let hour24 = hours;
-                                if (isPM && hours !== 12) hour24 = hours + 12;
-                                else if (!isPM && hours === 12) hour24 = 0;
-                                timeStr = `${hour24.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                              }
-                              bookingDateTime = new Date(`${datePart}T${timeStr}:00`);
-                              if (isNaN(bookingDateTime.getTime())) throw new Error('Invalid date');
-                            } catch (error) {
-                              bookingDateTime = new Date(booking.date);
-                            }
-
-                            const now = new Date();
-                            const hoursUntilBooking = (bookingDateTime.getTime() - now.getTime()) / (1000 * 60 * 60);
-                            const canCancel = hoursUntilBooking > 2;
-
-                            if (booking.status === 'pending') {
-                              return (
-                                <div className="flex gap-2 mt-4">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleBookingAction(bookingId, 'confirm');
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors font-medium"
-                                  >
-                                    Confirm
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleBookingAction(bookingId, 'cancel');
-                                    }}
-                                    className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-                                  >
-                                    Cancel
-                                  </button>
-                                </div>
-                              );
-                            } else if (booking.status === 'confirmed') {
-                              const hoursLeft = Math.floor(hoursUntilBooking);
-                              const minutesLeft = Math.floor((hoursUntilBooking - hoursLeft) * 60);
-
-                              if (canCancel) {
-                                return (
-                                  <div className="mt-4">
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (window.confirm('Are you sure you want to cancel this confirmed booking?')) {
-                                          handleBookingAction(bookingId, 'cancel');
-                                        }
-                                      }}
-                                      className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium"
-                                    >
-                                      Cancel Booking
-                                    </button>
-                                    <p className="text-xs text-center mt-2 text-gray-500">
-                                      {hoursLeft > 24
-                                        ? `${Math.floor(hoursLeft / 24)} day(s) until booking`
-                                        : `${hoursLeft}h ${minutesLeft}m until booking`
-                                      }
-                                    </p>
-                                  </div>
-                                );
-                              } else if (hoursUntilBooking > 0) {
-                                return (
-                                  <div className="mt-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                                    <p className="text-xs text-yellow-800 text-center font-medium">⚠️ Cancellation not available</p>
-                                    <p className="text-xs text-yellow-700 text-center mt-1">Less than 2 hours until booking ({hoursLeft}h {minutesLeft}m left)</p>
-                                  </div>
-                                );
-                              } else {
-                                return (
-                                  <div className="mt-4 p-3 bg-gray-100 border border-gray-300 rounded-lg">
-                                    <p className="text-xs text-gray-600 text-center font-medium">🎉 Booking time has passed</p>
-                                  </div>
-                                );
-                              }
-                            }
-                            return null;
-                          })()}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {bookings.map((booking) => (
+                  <BookingCard
+                    key={booking._id || booking.id}
+                    booking={booking}
+                    onRefresh={() => fetchBookingsFromAPI()}
+                    onConfirm={(id) => handleBookingAction(id as string, 'confirm')}
+                    onReview={(b) => {
+                      const businessId = b.restaurantId?._id || b.restaurantId?.id || b.restaurantId ||
+                        b.eventId?._id || b.eventId?.id || b.eventId;
+                      const type = (b.restaurantId || b.restaurantName) ? 'restaurant' : 'event';
+                      navigate(`/${type}/${businessId}`);
+                    }}
+                    onGenerateInvoice={(b) => {
+                      setSelectedBooking(b);
+                      setShowInvoice(true);
+                    }}
+                    onAddToAppleWallet={(b) => {
+                      // Handled via separate service or trigger if needed
+                      toast.info('Opening wallet pass generation...');
+                      setSelectedBooking(b);
+                      setShowInvoice(true); // Re-use the modal or add a specific wallet trigger
+                    }}
+                    confirmingId={null} // Can be tied to a local state if needed
+                  />
+                ))}
               </div>
             )}
           </div>
@@ -2378,10 +2728,6 @@ export default function DashboardPage() {
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4 md:p-8`}>
             <div className="max-w-4xl mx-auto space-y-6">
-              <h1 className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                {translations[language].settings}
-              </h1>
-
               <ProfileSettings
                 user={userData ? {
                   _id: userData.uid,
@@ -2400,6 +2746,10 @@ export default function DashboardPage() {
                   lastLogin: userData.lastLogin
                 } : null}
                 isDarkMode={isDarkMode}
+                availableLanguages={availableLanguages}
+                currentLanguage={language}
+                onLanguageChange={handleLanguageChange}
+                onToggleTheme={toggleDarkMode}
                 onUpdate={async (updates) => {
                   if (!auth.currentUser) return;
                   try {
@@ -2474,90 +2824,6 @@ export default function DashboardPage() {
                   }
                 }}
               />
-
-              {/* Location Settings */}
-              <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-3xl p-6`}>
-                <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                  {translations[language].locationSettings}
-                </h2>
-                <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mb-4`}>
-                  <MapPin className="w-5 h-5 mr-2" />
-                  <span>{`${userData?.location.city}, ${userData?.location.state}`}</span>
-                </div>
-                <button
-                  onClick={() => setIsLocationModalOpen(true)}
-                  className="px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
-                >
-                  {translations[language].updateLocation}
-                </button>
-              </div>
-
-              {/* Language Settings */}
-              <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-3xl p-6`}>
-                <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                  {translations[language].languageSettings}
-                </h2>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  {availableLanguages.map((lang) => (
-                    <button
-                      key={lang.code}
-                      onClick={() => handleLanguageChange(lang.code)}
-                      className={`p-4 rounded-xl text-center transition-colors ${language === lang.code
-                        ? 'bg-emerald-500 text-white'
-                        : isDarkMode
-                          ? 'bg-gray-700/50 text-gray-300 hover:bg-gray-600/50'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
-                    >
-                      {lang.name}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Theme Settings */}
-              <div className={`${isDarkMode ? 'bg-gray-800/50' : 'bg-white'} rounded-3xl p-6`}>
-                <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-6`}>
-                  {translations[language].themeSettings}
-                </h2>
-                <div className="flex flex-col space-y-6">
-                  <div className={`flex items-center justify-between p-4 rounded-xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-100'
-                    }`}>
-                    <div className="flex items-center">
-                      {isDarkMode ? (
-                        <Moon className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mr-3`} />
-                      ) : (
-                        <Sun className={`w-5 h-5 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'} mr-3`} />
-                      )}
-                      <div>
-                        <h3 className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {isDarkMode ? translations[language].darkMode : translations[language].lightMode}
-                        </h3>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                          {isDarkMode ? 'Easier on the eyes in low light' : 'Classic bright interface'}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={toggleDarkMode}
-                      className="relative"
-                      aria-label="Toggle theme"
-                    >
-                      <div className={`w-14 h-8 rounded-full transition-colors ${isDarkMode ? 'bg-emerald-500' : 'bg-gray-300'
-                        }`}>
-                        <div className={`absolute w-6 h-6 rounded-full bg-white top-1 transition-transform ${isDarkMode ? 'translate-x-7' : 'translate-x-1'
-                          } shadow-sm flex items-center justify-center`}>
-                          {isDarkMode ? (
-                            <Moon className="w-4 h-4 text-gray-600" />
-                          ) : (
-                            <Sun className="w-4 h-4 text-yellow-500" />
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         );
@@ -2568,154 +2834,213 @@ export default function DashboardPage() {
         const favoriteEvents = favorites.filter(item => item.type === 'event');
 
         return (
-          <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
-            <h1 className={`text-4xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-8`}>
-              Your Favorites
-            </h1>
-            {favoriteRestaurants.length === 0 && favoriteEvents.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16">
-                <div className={`w-20 h-20 rounded-full ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'} flex items-center justify-center mb-6`}>
-                  <Heart className={`w-10 h-10 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} />
+          <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4 md:p-8`}>
+            {/* Premium Header Card with Gradient */}
+            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-pink-500 to-rose-600 p-8 md:p-10 mb-10 shadow-2xl shadow-pink-500/20">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-yellow-400/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/10 shadow-sm">
+                      Your Collection
+                    </span>
+                    <div className="h-1 w-1 rounded-full bg-white/60"></div>
+                    <span className="text-pink-50 text-sm font-medium">
+                      {favorites.length} {favorites.length === 1 ? 'Favorite' : 'Favorites'}
+                    </span>
+                  </div>
+                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-2 drop-shadow-sm">
+                    My Favorites
+                  </h1>
+                  <p className="text-pink-50 text-lg md:text-xl font-medium max-w-lg leading-relaxed opacity-90">
+                    Your handpicked restaurants and events, all in one place
+                  </p>
                 </div>
-                <h2 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-2`}>
-                  {translations[language].noFavorites}
-                </h2>
-                <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} text-center max-w-sm`}>
-                  {translations[language].addFavorites}
-                </p>
-                <div className="flex flex-col sm:flex-row gap-4 mt-8">
-                  <button
-                    onClick={() => handleNavigation('restaurants')}
-                    className="px-6 py-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2"
-                  >
-                    <MapPin className="w-5 h-5" />
-                    <span>Explore Restaurants</span>
-                  </button>
-                  <button
-                    onClick={() => handleNavigation('events')}
-                    className={`px-6 py-3 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-100 hover:bg-gray-200'} rounded-xl transition-colors flex items-center justify-center gap-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}
-                  >
-                    <Calendar className="w-5 h-5" />
-                    <span>Discover Events</span>
-                  </button>
+
+                <div className="flex items-center gap-3">
+                  <div className="group relative overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 transition-all duration-300 rounded-2xl px-5 py-4 min-w-[140px]">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
+                        <Heart size={20} className="fill-white/80" />
+                      </div>
+                      <div>
+                        <p className="text-pink-100 text-xs font-semibold uppercase tracking-wider mb-0.5">Total</p>
+                        <p className="text-white font-bold text-2xl leading-none">{favorites.length}</p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
+            </div>
+
+            {favorites.length === 0 ? (
+              <div className={`flex flex-col items-center justify-center py-20 px-4 rounded-3xl ${isDarkMode ? 'bg-gray-800/50' : 'bg-white'
+                } border ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200/50'} backdrop-blur-md`}>
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center mb-6">
+                  <Heart size={40} className={isDarkMode ? 'text-pink-400' : 'text-pink-500'} />
+                </div>
+                <h3 className={`text-2xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  {translations[language].noFavorites}
+                </h3>
+                <p className={`text-center max-w-md ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                  {translations[language].addFavorites}
+                </p>
+              </div>
             ) : (
-              <>
+              <div className="space-y-10">
+                {/* Favorite Restaurants */}
                 {favoriteRestaurants.length > 0 && (
-                  <div className="mb-12">
-                    <h2 className={`text-2xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Favorite Restaurants</h2>
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'
+                        }`}>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+                          <path d="M7 2v20" />
+                          <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+                        </svg>
+                      </div>
+                      <div>
+                        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Favorite Restaurants
+                        </h2>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {favoriteRestaurants.length} {favoriteRestaurants.length === 1 ? 'restaurant' : 'restaurants'}
+                        </p>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {favoriteRestaurants.map(item => (
-                        <div key={item.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30`}>
-                          <div className="relative h-48">
+                      {favoriteRestaurants.map((fav) => (
+                        <motion.div
+                          key={fav.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`group relative rounded-3xl overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${isDarkMode
+                            ? 'bg-gray-800 border-gray-700 hover:border-emerald-500/50'
+                            : 'bg-white border-gray-200 hover:border-emerald-500/50'
+                            }`}
+                        >
+                          <div className="relative h-48 overflow-hidden">
                             <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
+                              src={fav.image}
+                              alt={fav.name}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                            {item.rating && (
-                              <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                                <span className="text-emerald-400 mr-1">★</span>
-                                <span>{item.rating}</span>
-                              </div>
-                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+
+                            {/* Rating Badge */}
+                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
+                              <Star size={14} className="fill-emerald-400 text-emerald-400" />
+                              <span className="text-white font-bold text-sm">{fav.rating}</span>
+                            </div>
+
+                            {/* Favorite Button */}
                             <button
-                              className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                              onClick={() => toggleFavorite(item as any)}
+                              onClick={() => toggleFavorite(fav as any)}
+                              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all hover:bg-white/30 hover:scale-110 active:scale-95"
                             >
-                              <Heart size={20} className="text-white" fill="white" />
+                              <Heart size={18} className="fill-emerald-500 text-emerald-500" />
                             </button>
                           </div>
-                          <div className="p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.name}</h3>
-                              <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-xs`}>Restaurant</span>
+
+                          <div className="p-5">
+                            <h3 className={`text-lg font-bold mb-2 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {fav.name}
+                            </h3>
+                            <div className={`flex items-center gap-2 text-sm mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <MapPin size={14} />
+                              <span className="line-clamp-1">{typeof fav.location === 'object' ? `${(fav.location as any).city}, ${(fav.location as any).state}` : fav.location}</span>
                             </div>
-                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                              <MapPin size={16} className="mr-1" />
-                              <span>{typeof item.location === 'object' ? `${item.location.city}, ${item.location.state}` : item.location}</span>
-                            </div>
-                            {item.cuisine && (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {item.cuisine.map((cuisine: string, index: number) => (
-                                  <span key={index} className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
-                                    {cuisine}
+                            {fav.cuisine && (
+                              <div className="flex flex-wrap gap-2">
+                                {fav.cuisine.slice(0, 2).map((c, idx) => (
+                                  <span
+                                    key={idx}
+                                    className={`px-3 py-1 rounded-full text-xs font-medium ${isDarkMode
+                                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                      : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                      }`}
+                                  >
+                                    {c}
                                   </span>
                                 ))}
                               </div>
                             )}
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
                 )}
+
+                {/* Favorite Events */}
                 {favoriteEvents.length > 0 && (
-                  <div className="mb-12">
-                    <h2 className={`text-2xl font-semibold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Favorite Events</h2>
+                  <div>
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-600'
+                        }`}>
+                        <Calendar size={24} />
+                      </div>
+                      <div>
+                        <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                          Favorite Events
+                        </h2>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {favoriteEvents.length} {favoriteEvents.length === 1 ? 'event' : 'events'}
+                        </p>
+                      </div>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {favoriteEvents.map(item => (
-                        <div key={item.id} className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30`}>
-                          <div className="relative h-48">
+                      {favoriteEvents.map((fav) => (
+                        <motion.div
+                          key={fav.id}
+                          initial={{ opacity: 0, y: 20 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`group relative rounded-3xl overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${isDarkMode
+                            ? 'bg-gray-800 border-gray-700 hover:border-purple-500/50'
+                            : 'bg-white border-gray-200 hover:border-purple-500/50'
+                            }`}
+                        >
+                          <div className="relative h-48 overflow-hidden">
                             <img
-                              src={item.image}
-                              alt={item.name}
-                              className="w-full h-full object-cover"
+                              src={fav.image}
+                              alt={fav.name}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                             />
-                            {item.price && (
-                              <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                                <span className="text-emerald-400 mr-1">₹</span>
-                                <span>{item.price}</span>
-                              </div>
-                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+
+                            {/* Favorite Button */}
                             <button
-                              className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                              onClick={() => toggleFavorite(item as any)}
+                              onClick={() => toggleFavorite(fav as any)}
+                              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all hover:bg-white/30 hover:scale-110 active:scale-95"
                             >
-                              <Heart size={20} className="text-white" fill="white" />
+                              <Heart size={18} className="fill-emerald-500 text-emerald-500" />
                             </button>
                           </div>
-                          <div className="p-4">
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{item.name}</h3>
-                              <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-xs`}>Event</span>
+
+                          <div className="p-5">
+                            <h3 className={`text-lg font-bold mb-2 line-clamp-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                              {fav.name}
+                            </h3>
+                            <div className={`flex items-center gap-2 text-sm mb-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                              <MapPin size={14} />
+                              <span className="line-clamp-1">{typeof fav.location === 'object' ? `${(fav.location as any).city}, ${(fav.location as any).state}` : fav.location}</span>
                             </div>
-                            <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                              <MapPin size={16} className="mr-1" />
-                              <span>{typeof item.location === 'object' ? `${item.location.city}, ${item.location.state}` : item.location}</span>
-                            </div>
-                            {item.date && (
-                              <div className={`mt-2 text-sm ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                                <div className="flex items-center">
-                                  <Calendar size={16} className="mr-1" />
-                                  <span>{item.date}</span>
-                                </div>
-                                {item.time && (
-                                  <div className="flex items-center mt-1">
-                                    <Clock size={16} className="mr-1" />
-                                    <span>{item.time}</span>
-                                  </div>
-                                )}
+                            {fav.date && (
+                              <div className={`flex items-center gap-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                                <Calendar size={14} />
+                                <span>{new Date(fav.date).toLocaleDateString()}</span>
                               </div>
-                            )}
-                            {item.category && (
-                              <div className="mt-2">
-                                <span className={`px-2 py-1 ${isDarkMode ? 'bg-gray-700 text-gray-300' : 'bg-gray-100 text-gray-600'} rounded-full text-sm`}>
-                                  {item.category}
-                                </span>
-                              </div>
-                            )}
-                            {item.description && (
-                              <p className={`mt-2 text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{item.description}</p>
                             )}
                           </div>
-                        </div>
+                        </motion.div>
                       ))}
                     </div>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         );
@@ -2756,7 +3081,7 @@ export default function DashboardPage() {
                   </h2>
                   {unreadCount > 0 && (
                     <button
-                      onClick={markAllNotificationsAsRead}
+                      onClick={() => markAllNotificationsAsRead()}
                       className={`px-4 py-2 rounded-lg ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-200 hover:bg-gray-300'
                         } text-sm font-medium transition-colors`}
                     >
@@ -2835,452 +3160,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Update the location modal
-  const renderLocationModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto`}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className={`text-xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Update Location</h3>
-          <button
-            onClick={() => setIsLocationModalOpen(false)}
-            className={`p-2 ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} rounded-full transition-colors`}
-          >
-            <X className={`w-5 h-5 ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`} />
-          </button>
-        </div>
-
-        {/* Current Location Button */}
-        <button
-          onClick={detectLocation}
-          disabled={isDetectingLocation}
-          className={`w-full mb-6 px-4 py-3 rounded-xl text-white transition-colors flex items-center justify-center gap-2 ${isDetectingLocation
-            ? 'bg-gray-400 cursor-not-allowed'
-            : 'bg-emerald-500 hover:bg-emerald-600'
-            }`}
-        >
-          {isDetectingLocation ? (
-            <>
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>Detecting Location...</span>
-            </>
-          ) : (
-            <>
-              <MapPin className="w-5 h-5" />
-              <span>Use Current Location</span>
-            </>
-          )}
-        </button>
-
-        {/* Search Input */}
-        <div className="relative mb-6">
-          <input
-            type="text"
-            value={searchTerm}
-            placeholder="Search cities..."
-            className={`w-full ${isDarkMode
-              ? 'bg-gray-700 text-white placeholder-gray-400 focus:ring-emerald-500'
-              : 'bg-gray-100 text-gray-900 placeholder-gray-500 focus:ring-emerald-500'
-              } rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2`}
-            onChange={(e) => {
-              const term = e.target.value;
-              setSearchTerm(term);
-              const filtered = indianCities.filter(city =>
-                city.city.toLowerCase().includes(term.toLowerCase()) ||
-                city.state.toLowerCase().includes(term.toLowerCase())
-              );
-              setFilteredCities(filtered);
-            }}
-          />
-          <Search className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`} size={18} />
-        </div>
-
-        <div className="space-y-2">
-          {filteredCities.map(city => (
-            <button
-              key={`${city.city}-${city.state}`}
-              onClick={() => handleLocationSelect({
-                city: city.city,
-                state: city.state,
-                country: city.country
-              })}
-              className={`w-full text-left px-4 py-3 ${isDarkMode
-                ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-                } rounded-xl transition-colors flex items-center`}
-            >
-              <MapPin className="text-emerald-500 mr-3" size={16} />
-              <span>{city.city}, {city.state}</span>
-            </button>
-          ))}
-          {filteredCities.length === 0 && (
-            <div className={`text-center py-4 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-              No cities found matching "{searchTerm}"
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAvatarModal = () => {
-    if (!isAvatarModalOpen) return null;
-
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setIsAvatarModalOpen(false)}
-        />
-        <motion.div
-          initial={{ scale: 0.9, opacity: 0, y: 20 }}
-          animate={{ scale: 1, opacity: 1, y: 0 }}
-          className={`relative ${isDarkMode ? 'bg-gray-800/90' : 'bg-white/90'} backdrop-blur-xl border ${isDarkMode ? 'border-gray-700' : 'border-gray-200'} rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl overflow-hidden`}
-        >
-          {/* Decorative Background Glow */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 bg-emerald-500/10 rounded-full blur-3xl" />
-          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl" />
-
-          <div className="flex items-center justify-between mb-8 relative z-10">
-            <h2 className={`text-3xl font-black ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}>
-              Choose Your <span className="text-emerald-500">Identity</span>
-            </h2>
-            <button
-              onClick={() => setIsAvatarModalOpen(false)}
-              className={`p-2 rounded-full ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'} transition-colors`}
-            >
-              <X size={24} className={isDarkMode ? 'text-gray-400' : 'text-gray-500'} />
-            </button>
-          </div>
-
-          <div className="grid grid-cols-3 gap-6 relative z-10">
-            {avatarOptions.map((avatar) => {
-              const isActive = (avatar.src === 'initials' && userData?.photoURL === null) || (userData?.photoURL === avatar.src);
-
-              return (
-                <motion.button
-                  key={avatar.id}
-                  whileHover={{ y: -5, scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => {
-                    if (avatar.src === 'initials') {
-                      handleAvatarSelect(null);
-                    } else {
-                      handleAvatarSelect(avatar.src);
-                    }
-                  }}
-                  className={`group relative aspect-square rounded-2xl overflow-hidden border-2 transition-all duration-300 ${isActive
-                    ? 'border-emerald-500 shadow-lg shadow-emerald-500/20 ring-4 ring-emerald-500/10'
-                    : isDarkMode
-                      ? 'border-gray-700 hover:border-gray-600'
-                      : 'border-gray-100 hover:border-gray-200 hover:shadow-md'
-                    }`}
-                >
-                  {avatar.src === 'initials' ? (
-                    <InitialsAvatar
-                      name={userData?.displayName ?? ''}
-                      className="w-full h-full text-2xl"
-                    />
-                  ) : (
-                    <img
-                      src={avatar.src}
-                      alt={avatar.alt}
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                    />
-                  )}
-
-                  {isActive && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.5 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="absolute inset-0 bg-emerald-500/10 flex items-center justify-center"
-                    >
-                      <div className="bg-emerald-500 text-white rounded-full p-1.5 shadow-lg border-2 border-white">
-                        <Check size={16} strokeWidth={4} />
-                      </div>
-                    </motion.div>
-                  )}
-                </motion.button>
-              );
-            })}
-          </div>
-
-          <p className={`mt-8 text-center text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-            Select an avatar to update your profile across the platform 🦖
-          </p>
-        </motion.div>
-      </div>
-    );
-  };
-
-  // Update the markAllNotificationsAsRead function
-  const markAllNotificationsAsRead = async () => {
-    try {
-      await markAllAsRead();
-    } catch (error) {
-      console.error('Error marking all notifications as read:', error);
-      toast.error('Failed to mark notifications as read');
-    }
-  };
-
-  // Handle booking success and refresh bookings from API
-  useEffect(() => {
-    const handleBookingSuccess = () => {
-      if (location.state?.bookingSuccess) {
-        // Show success toast
-        if (location.state.newBooking) {
-          toast.success(
-            `Reservation confirmed at ${location.state.newBooking.restaurantName}!`,
-            {
-              position: "top-center",
-              autoClose: 5000,
-              hideProgressBar: false,
-              closeOnClick: true,
-              pauseOnHover: true,
-              draggable: true,
-            }
-          );
-        }
-
-        // Clear the state to prevent showing the toast again on refresh
-        navigate(location.pathname, { replace: true, state: {} });
-
-        // Fetch latest bookings from API to ensure we have the most up-to-date data
-        fetchBookingsFromAPI();
-      }
-    };
-
-    // Initial check for booking success when component mounts or location changes
-    handleBookingSuccess();
-
-    // Set up an interval to refresh bookings periodically
-    const intervalId = setInterval(() => {
-      if (auth.currentUser && activeSection === 'bookings') {
-        console.log('Auto-refreshing bookings from API...');
-        fetchBookingsFromAPI();
-      }
-    }, 30000); // Refresh every 30 seconds when on bookings section
-
-    // Clean up interval on component unmount
-    return () => clearInterval(intervalId);
-  }, [location, navigate, activeSection]);
-
-  // Fetch bookings from MongoDB API instead of localStorage
-  async function fetchBookingsFromAPI() {
-    try {
-      if (!auth.currentUser) {
-        console.error('No authenticated user found');
-        setBookings([]);
-        return;
-      }
-
-      setIsLoading(true);
-
-      try {
-        // Fetch bookings from the API
-        const fetchedBookings = await bookingsApi.getAll();
-        console.log('Fetched bookings from API:', fetchedBookings);
-
-        // Ensure fetchedBookings is an array
-        const bookingsArray = Array.isArray(fetchedBookings) ? fetchedBookings : [];
-
-        // Debug: Log each booking structure
-        bookingsArray.forEach((booking: Booking, index: number) => {
-          console.log(`Booking ${index + 1}:`, {
-            id: booking._id || booking.id,
-            restaurantId: booking.restaurantId,
-            eventId: booking.eventId,
-            restaurantName: booking.restaurantName,
-            eventName: booking.eventName,
-            status: booking.status,
-            date: booking.date,
-            time: booking.time
-          });
-        });
-
-        setBookings(bookingsArray);
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-        setBookings([]);
-        toast.error('Failed to fetch bookings. Please try again later.');
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  // Load bookings when component mounts
-  useEffect(() => {
-    // Only fetch bookings if user is authenticated
-    if (auth.currentUser) {
-      fetchBookingsFromAPI();
-    } else {
-      // Initialize with empty array if user is not authenticated
-      setBookings([]);
-    }
-  }, []);
-
-  // Auto-refresh bookings when user authentication state changes
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      if (user) {
-        // User is signed in, fetch their bookings
-        fetchBookingsFromAPI();
-      } else {
-        // User is signed out, clear bookings
-        setBookings([]);
-      }
-    });
-
-    // Clean up subscription on unmount
-    return () => unsubscribe();
-  }, []);
-
-  // Add this function near the other handler functions in the component
-  async function handleBookingAction(bookingId: string, action: 'confirm' | 'cancel') {
-    try {
-      if (!bookingId) {
-        toast.error('Invalid booking ID');
-        return;
-      }
-      console.log('Booking ID for action:', bookingId);
-
-      if (action === 'confirm') {
-        await bookingsApi.confirm(bookingId);
-      } else {
-        await bookingsApi.cancel(bookingId);
-      }
-
-      toast.success(`Booking ${action}ed successfully`);
-      fetchBookingsFromAPI();
-    } catch (error) {
-      console.error(`Error ${action}ing booking:`, error);
-      toast.error(`Failed to ${action} booking. Please try again.`);
-    }
-  }
-
-  const renderMyReviews = () => {
-    return (
-      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900'} p-8`}>
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">{translations[language].myReviews}</h1>
-        </div>
-
-        {isReviewsLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          </div>
-        ) : userReviews.length === 0 ? (
-          <div className="text-center py-12">
-            <MessageSquare className="w-16 h-16 mx-auto mb-4 text-emerald-500 opacity-20" />
-            <p className="text-lg opacity-50">You haven't written any reviews yet.</p>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {userReviews.map((review) => (
-              <div
-                key={review._id}
-                className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} border rounded-3xl p-6 shadow-sm`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl">
-                      {review.businessId?.name?.charAt(0) || 'R'}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-xl">{review.businessId?.name || 'Restaurant'}</h3>
-                      <div className="flex items-center gap-2">
-                        <StarRating rating={review.rating} size={14} />
-                        <span className="text-xs opacity-50">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    {editingReviewId === review._id ? (
-                      <>
-                        <button
-                          onClick={() => handleUpdateReview(review._id)}
-                          className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
-                        >
-                          <Check size={20} />
-                        </button>
-                        <button
-                          onClick={() => setEditingReviewId(null)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <X size={20} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setEditingReviewId(review._id);
-                            setEditRating(review.rating);
-                            setEditComment(review.comment);
-                          }}
-                          className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
-                        >
-                          <Pencil size={20} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteReview(review._id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-
-                {editingReviewId === review._id ? (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setEditRating(star)}
-                          className={`text-2xl ${star <= editRating ? 'text-yellow-400' : 'text-gray-300'}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                    <textarea
-                      value={editComment}
-                      onChange={(e) => setEditComment(e.target.value)}
-                      className={`w-full p-4 rounded-2xl border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} focus:ring-2 focus:ring-emerald-500 outline-none resize-none`}
-                      rows={3}
-                    />
-                  </div>
-                ) : (
-                  <>
-                    <p className="text-lg mb-4">{review.comment}</p>
-                    {review.reply && (
-                      <div className={`${isDarkMode ? 'bg-emerald-500/10' : 'bg-emerald-50'} rounded-2xl p-4 border-l-4 border-emerald-500`}>
-                        <p className="text-xs font-bold text-emerald-600 mb-1 uppercase tracking-wider">Owner Response</p>
-                        <p className="text-sm opacity-80">{review.reply.text}</p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -3299,18 +3178,37 @@ export default function DashboardPage() {
         {/* Sidebar */}
         <aside
           className={`fixed top-0 left-0 h-full w-[280px] transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'
-            } transition-transform duration-300 ease-in-out z-50 ${isDarkMode ? 'bg-gray-800' : 'bg-white'
-            } border-r border-gray-200 shadow-lg overflow-y-auto`}
+            } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 ${isDarkMode ? 'bg-gray-900/80' : 'bg-white/80'
+            } backdrop-blur-xl border-r ${isDarkMode ? 'border-gray-800' : 'border-gray-200'} shadow-2xl overflow-y-auto`}
         >
           <div className="p-6 flex flex-col h-full">
             {/* Dineingo Logo */}
-            <div className="flex items-center justify-between mb-8">
-              <div className="text-2xl font-bold relative">
-                D<span className="relative">i<span className="absolute -top-2.5 -right-0.5 text-red-500 text-2.5xl">•</span></span>neIn<span className="text-yellow-400">Go</span>
+            <div className="flex items-center justify-between mb-10">
+              <div
+                className="flex items-center gap-2 cursor-pointer group"
+                onClick={() => window.location.reload()}
+              >
+                <div className="relative w-11 h-11 flex items-center justify-center bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-all duration-300">
+                  <div className="relative flex items-center mb-0.5">
+                    <span className="text-white font-black text-2xl italic tracking-tighter">D</span>
+                    <span className="text-white font-black text-2xl italic tracking-tighter relative">
+                      i
+                      <span className="absolute top-[5px] left-[90%] -translate-x-1/2 w-[6px] h-[6px] bg-red-500 rounded-full shadow-[0_0_4px_rgba(255,0,0,0.6)]"></span>
+                    </span>
+                  </div>
+                </div>
+                <div className="text-2xl font-black tracking-tighter flex items-center">
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>D</span>
+                  <span className={`relative ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    i
+                    <span className="absolute top-[3px] left-[50%] -translate-x-1/3 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
+                  </span>
+                  <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>neIn</span><span className="text-yellow-400">Go</span>
+                </div>
               </div>
               <button
                 onClick={toggleSidebar}
-                className="lg:hidden p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
+                className={`lg:hidden p-2 rounded-xl transition-colors ${isDarkMode ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-100 text-gray-500'}`}
               >
                 <X size={20} />
               </button>
@@ -3329,15 +3227,14 @@ export default function DashboardPage() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center space-x-4 mb-8">
+              <div className={`flex items-center space-x-4 mb-10 p-4 rounded-2xl ${isDarkMode ? 'bg-gray-800/50' : 'bg-emerald-50/50'} border ${isDarkMode ? 'border-gray-700' : 'border-emerald-100/50'}`}>
                 <div className="relative">
                   {userData?.photoURL && typeof userData.photoURL === 'string' && userData.photoURL.trim() !== '' ? (
                     <img
                       src={userData.photoURL}
                       alt="Profile"
-                      className="w-12 h-12 rounded-full object-cover border-2 border-emerald-500"
+                      className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
                       onError={(e) => {
-                        // If image fails to load, show initials instead
                         const target = e.target as HTMLImageElement;
                         target.style.display = 'none';
                         forceInitialsAvatar();
@@ -3346,17 +3243,17 @@ export default function DashboardPage() {
                   ) : (
                     <InitialsAvatar
                       name={userData?.displayName ?? ''}
-                      className="w-12 h-12 rounded-full border-2 border-emerald-500"
+                      className="w-12 h-12 rounded-2xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
                     />
                   )}
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-emerald-500 rounded-full border-2 border-white"></div>
+                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm ring-2 ring-emerald-500/20 animate-pulse"></div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="text-lg font-bold text-emerald-600 truncate">
+                  <h2 className={`text-md font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'} truncate`}>
                     {userData?.displayName}
                   </h2>
-                  <p className="text-sm text-gray-500 truncate">
-                    {userData?.email}
+                  <p className="text-xs text-emerald-500 font-medium truncate uppercase tracking-wider">
+                    User
                   </p>
                 </div>
               </div>
@@ -3380,29 +3277,34 @@ export default function DashboardPage() {
                   key={id}
                   onClick={() => {
                     if (id === 'bookings') {
-                      // Force refresh bookings when navigating to the bookings section
                       fetchBookingsFromAPI();
                     }
                     handleNavigation(id as Section);
                   }}
-                  className={`w-full flex items-center px-4 py-3 text-left rounded-xl transition-colors ${activeSection === id
-                    ? 'bg-emerald-500 text-white font-medium'
+                  className={`w-full group flex items-center px-4 py-3 text-left rounded-2xl transition-all duration-300 relative overflow-hidden ${activeSection === id
+                    ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 translate-x-1'
                     : isDarkMode
-                      ? 'text-gray-200 hover:bg-gray-700/70'
-                      : 'text-gray-700 hover:bg-gray-100'
+                      ? 'text-gray-400 hover:text-white hover:bg-gray-800/50 hover:translate-x-1'
+                      : 'text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 hover:translate-x-1'
                     }`}
                 >
-                  <span className="inline-flex items-center justify-center w-8">
+                  {activeSection === id && (
+                    <motion.div
+                      layoutId="active-pill"
+                      className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full"
+                    />
+                  )}
+                  <span className={`inline-flex items-center justify-center w-8 transition-transform group-hover:scale-110 ${activeSection === id ? 'text-white' : 'text-gray-400 group-hover:text-emerald-500'}`}>
                     {icon}
                   </span>
-                  <span className="ml-3 text-sm font-medium">{label}</span>
+                  <span className="ml-3 text-sm font-bold tracking-tight">{label}</span>
                   {id === 'messages' && unreadCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                    <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">
                       {unreadCount}
                     </span>
                   )}
                   {id === 'bookings' && bookings.length > 0 && (
-                    <span className="ml-auto bg-emerald-100 text-emerald-800 text-xs font-medium px-2 py-0.5 rounded-full">
+                    <span className={`ml-auto text-[10px] font-black px-2 py-0.5 rounded-lg ${activeSection === id ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-600'}`}>
                       {bookings.length}
                     </span>
                   )}
@@ -3466,37 +3368,39 @@ export default function DashboardPage() {
 
         {/* Main Content */}
         <div className={`min-h-screen ${isSidebarOpen ? 'lg:ml-[280px]' : ''} transition-all duration-300`}>
-          {/* Header - removed sticky positioning */}
-          <header className="px-4 py-3">
-            <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-emerald-400'} rounded-2xl px-4 py-3 flex items-center justify-between shadow-lg`}>
-              <div className="flex items-center gap-3">
+          {/* Header */}
+          <header className="px-6 py-4 sticky top-0 z-30">
+            <div className={`${isDarkMode ? 'bg-gray-900/60' : 'bg-emerald-400/90'} backdrop-blur-md rounded-2xl px-6 py-3 flex items-center justify-between shadow-xl border ${isDarkMode ? 'border-gray-800' : 'border-white/20'}`}>
+              <div className="flex items-center gap-4">
                 <button
                   onClick={toggleSidebar}
-                  className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors"
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isDarkMode ? 'hover:bg-gray-800 text-white' : 'hover:bg-white/20 text-white'}`}
                   aria-label="Toggle menu"
                 >
-                  <Menu className={`w-7 h-7 ${isDarkMode ? 'text-white' : 'text-black'}`} />
+                  <Menu className="w-6 h-6" />
                 </button>
-                <div
-                  className="flex items-center cursor-pointer"
-                  onClick={() => window.location.reload()}
-                >
-                  <div className="text-2xl font-bold relative">
-                    D<span className="relative">i<span className="absolute -top-2.5 -right-0.5 text-red-500 text-2.5xl">•</span></span>neIn<span className="text-yellow-400">Go</span>
+                <div className="flex items-center gap-2 cursor-pointer group" onClick={() => window.location.reload()}>
+                  <div className="text-xl font-black tracking-tight text-white drop-shadow-sm flex items-center">
+                    <span>D</span>
+                    <span className="relative">
+                      i
+                      <span className="absolute top-[3.5px] left-[50%]  -translate-x-1/2 w-1.5 h-1.5 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
+                    </span>
+                    <span>neIn</span><span className="text-yellow-400">Go</span>
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="relative hidden md:block">
+              <div className="flex items-center gap-3">
+                <div className="relative hidden lg:block">
                   <input
                     type="text"
                     placeholder={translations[language].searchPlaceholder}
-                    className="w-[300px] px-4 py-2 pr-20 rounded-xl bg-white/90 text-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 placeholder-gray-500"
+                    className="w-[320px] px-5 py-2.5 pr-20 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm focus:outline-none focus:ring-2 focus:ring-white/40 placeholder-white/60 transition-all font-medium"
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
                     <VoiceSearchButton
                       onSearchResult={(query) => handleSearch(query)}
                       language={
@@ -3508,33 +3412,31 @@ export default function DashboardPage() {
                                   'en-IN'
                       }
                     />
-                    <Search className="w-5 h-5 text-gray-500" />
+                    <Search className="w-4 h-4 text-white/70" />
                   </div>
                 </div>
 
-                {/* Notification Bell Component */}
-                <div className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors relative">
-                  <button
-                    style={{ width: '100%', height: '100%', background: 'none', border: 'none', padding: 0, margin: 0 }}
-                    onClick={() => setActiveSection('messages')}
-                    aria-label="Show notifications/messages"
-                  >
-                    <NotificationBell />
-                  </button>
-                </div>
-
-                {/* Change Avatar Button */}
+                {/* Notifications */}
                 <button
-                  className="flex items-center justify-center w-10 h-10 hover:bg-emerald-500 rounded-xl transition-colors"
-                  onClick={() => setIsAvatarModalOpen(true)}
-                  title="Change avatar"
+                  onClick={() => setActiveSection('messages')}
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all relative ${isDarkMode ? 'hover:bg-gray-800 text-white' : 'hover:bg-white/20 text-white'}`}
                 >
-                  <Settings className={`w-5 h-5 ${isDarkMode ? 'text-white' : 'text-black'}`} />
+                  <NotificationBell />
                 </button>
 
-                {/* Profile Button */}
+                {/* Settings/Avatar */}
                 <button
-                  className="relative w-10 h-10 rounded-xl bg-white/90 flex items-center justify-center overflow-hidden hover:ring-2 hover:ring-white/50 transition-all"
+                  className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all ${isDarkMode ? 'hover:bg-gray-800 text-white' : 'hover:bg-white/20 text-white'}`}
+                  onClick={() => setIsAvatarModalOpen(true)}
+                >
+                  <Settings className="w-5 h-5" />
+                </button>
+
+                <div className="w-px h-6 bg-white/20 mx-1 hidden sm:block" />
+
+                {/* Profile */}
+                <button
+                  className="relative w-10 h-10 rounded-xl bg-white border-2 border-white/50 shadow-lg flex items-center justify-center overflow-hidden hover:scale-110 active:scale-95 transition-all"
                   onClick={() => handleNavigation('settings')}
                 >
                   {userData?.photoURL && typeof userData.photoURL === 'string' && userData.photoURL.trim() !== '' ? (
@@ -3542,11 +3444,6 @@ export default function DashboardPage() {
                       src={userData.photoURL}
                       alt="profile"
                       className="w-full h-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = 'none';
-                        forceInitialsAvatar();
-                      }}
                     />
                   ) : (
                     <InitialsAvatar
@@ -3560,9 +3457,9 @@ export default function DashboardPage() {
           </header>
 
           {/* Main Content Area */}
-          <main className="px-4 py-6 relative">
-            {/* Doodle Art Background */}
-            <div className="absolute inset-0 overflow-hidden z-0 opacity-25">
+          <main className="p-4 md:p-8 relative">
+            {/* Doodle Art Background - Improved Subtlety */}
+            <div className="absolute inset-0 overflow-hidden z-0 opacity-[0.12] pointer-events-none">
               <img
                 src="/images/dodle.png"
                 alt=""
@@ -3635,7 +3532,7 @@ export default function DashboardPage() {
 
           {/* Footer */}
           <footer className={`mt-12 text-center text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} pb-6`}>
-            <p>&copy;DineInGo2025. {translations[language].allRightsReserved}</p>
+            <p>&copy;DineInGo2026 {translations[language].allRightsReserved}</p>
           </footer>
         </div>
 

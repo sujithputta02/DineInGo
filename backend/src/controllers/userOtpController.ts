@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import PasswordReset from '../models/PasswordReset';
 import { User } from '../models/User';
-import { sendEmail } from '../services/emailService';
+import { sendEmail, emailService } from '../services/emailService';
 
 // Generate 6-digit OTP
 const generateOTP = (): string => {
@@ -59,25 +59,10 @@ export const requestSignupOTP = async (req: Request, res: Response) => {
             verified: false,
         });
 
-        const emailHtml = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
-                <h2 style="color: #10b981; text-align: center;">Verify Your Email</h2>
-                <p>Hello,</p>
-                <p>Thank you for choosing DineInGo! Use the following OTP to verify your email address and complete your registration:</p>
-                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #10b981;">${otp}</span>
-                </div>
-                <p style="color: #6b7280; font-size: 14px;">This OTP is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
-                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-                <p style="text-align: center; color: #9ca3af; font-size: 12px;">© 2026 DineInGo. All rights reserved.</p>
-            </div>
-        `;
-
-        await sendEmail({
-            to: email,
-            subject: 'Email Verification OTP - DineInGo',
-            html: emailHtml,
-        });
+        // Send OTP email (non-blocking)
+        emailService.sendOTPEmail(email, otp, 'signup').catch(err =>
+            console.error('Failed to send signup OTP email:', err)
+        );
 
         res.status(200).json({ success: true, message: 'OTP sent successfully' });
     } catch (error) {
@@ -151,25 +136,10 @@ export const requestForgotPasswordOTP = async (req: Request, res: Response) => {
             verified: false,
         });
 
-        const emailHtml = `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e5e7eb; border-radius: 12px;">
-                <h2 style="color: #10b981; text-align: center;">Reset Your Password</h2>
-                <p>Hello,</p>
-                <p>We received a request to reset your DineInGo password. Use the following OTP to proceed:</p>
-                <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                    <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #10b981;">${otp}</span>
-                </div>
-                <p style="color: #6b7280; font-size: 14px;">This OTP is valid for 10 minutes. If you didn't request this, please ignore this email.</p>
-                <hr style="border: 0; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-                <p style="text-align: center; color: #9ca3af; font-size: 12px;">© 2026 DineInGo. All rights reserved.</p>
-            </div>
-        `;
-
-        await sendEmail({
-            to: email,
-            subject: 'Password Reset OTP - DineInGo',
-            html: emailHtml,
-        });
+        // Send OTP email (non-blocking)
+        emailService.sendOTPEmail(email, otp, 'password-reset').catch(err =>
+            console.error('Failed to send password-reset OTP email:', err)
+        );
 
         res.status(200).json({ success: true, message: 'OTP sent successfully' });
     } catch (error) {

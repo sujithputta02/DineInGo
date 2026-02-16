@@ -18,13 +18,15 @@ interface BookingData {
 
 /**
  * Generate Apple Wallet Pass (.pkpass)
- * Note: For production, you need Apple Developer certificates
- * This creates a basic pass structure that can be enhanced with proper signing
+ * Note: A valid .pkpass MUST be a signed ZIP archive.
+ * This function creates the ZIP structure. Proper signing requires Apple Developer certificates (.p12).
  */
 export async function generateAppleWalletPass(booking: BookingData): Promise<{ filename: string; content: Buffer; contentType: string }> {
+  const archiver = await import('archiver');
+  const crypto = await import('crypto');
   const bookingId = String(booking._id || booking.id || 'unknown');
   const restaurantName = booking.restaurantName || booking.eventName || 'DineInGo';
-  const dateStr = booking.date instanceof Date ? booking.date.toLocaleDateString() : new Date(booking.date).toLocaleDateString();
+  const dateStr = booking.date instanceof Date ? booking.date.toLocaleDateString('en-US') : new Date(booking.date).toLocaleDateString('en-US');
   const guests = booking.numberOfGuests || booking.guests || 1;
 
   // Create pass.json structure
@@ -94,7 +96,7 @@ export async function generateAppleWalletPass(booking: BookingData): Promise<{ f
         {
           key: 'terms',
           label: 'Terms & Conditions',
-          value: 'Please arrive 5 minutes before your reservation time. Cancellations must be made at least 2 hours in advance.'
+          value: 'Please arrive 5 minutes before your reservation time. Cancellations must be made at least 2 hours in advance. For support, contact DineInGo.'
         }
       ]
     },
@@ -115,20 +117,38 @@ export async function generateAppleWalletPass(booking: BookingData): Promise<{ f
     relevantDate: booking.date instanceof Date ? booking.date.toISOString() : new Date(booking.date).toISOString()
   };
 
-  // Create manifest.json
-  const manifest = {
-    'pass.json': 'sha1-hash-placeholder'
-  };
+  const passContent = JSON.stringify(passJson, null, 2);
 
-  // For a proper .pkpass file, we need to create a ZIP archive
-  // In production, you would also need to sign this with Apple certificates
-  const passBuffer = Buffer.from(JSON.stringify(passJson, null, 2), 'utf8');
-  
-  return {
-    filename: `DineInGo-Booking-${bookingId}.pkpass`,
-    content: passBuffer,
-    contentType: 'application/vnd.apple.pkpass'
-  };
+  return new Promise((resolve, reject) => {
+    const buffers: Buffer[] = [];
+    const archive = archiver.default('zip', { zlib: { level: 9 } });
+
+    archive.on('data', (data) => buffers.push(data));
+    archive.on('end', () => {
+      resolve({
+        filename: `DineInGo-Booking-${bookingId}.pkpass`,
+        content: Buffer.concat(buffers),
+        contentType: 'application/vnd.apple.pkpass'
+      });
+    });
+    archive.on('error', (err) => reject(err));
+
+    // Add pass.json
+    archive.append(passContent, { name: 'pass.json' });
+
+    // Create manifest.json
+    const passHash = crypto.createHash('sha1').update(passContent).digest('hex');
+    const manifest = {
+      'pass.json': passHash
+    };
+    archive.append(JSON.stringify(manifest), { name: 'manifest.json' });
+
+    // For unsigned passes, we don't include a signature file or we include a dummy one.
+    // Real signature requires signing with a private key.
+    // archive.append('DUMMY_SIGNATURE', { name: 'signature' });
+
+    archive.finalize();
+  });
 }
 
 /**
@@ -206,12 +226,12 @@ export async function generateGoogleWalletPass(booking: BookingData): Promise<{ 
     .replace(/\+/g, '-')
     .replace(/\//g, '_')
     .replace(/=+$/, '');
-  
+
   const saveUrl = `https://pay.google.com/gp/v/save/${base64Object}`;
 
   // Also create a JSON file for download
   const passBuffer = Buffer.from(JSON.stringify(walletObject, null, 2), 'utf8');
-  
+
   return {
     filename: `DineInGo-Booking-${bookingId}-GoogleWallet.json`,
     content: passBuffer,
@@ -229,6 +249,6 @@ export async function generateBothWalletPasses(booking: BookingData): Promise<{
 }> {
   const apple = await generateAppleWalletPass(booking);
   const google = await generateGoogleWalletPass(booking);
-  
+
   return { apple, google };
 }

@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import PasswordReset from '../models/PasswordReset';
 import { Business } from '../models/Business';
-import { sendEmail } from '../services/emailService';
+import { sendEmail, emailService } from '../services/emailService';
 
 // Generate 6-digit OTP
 const generateOTP = (): string => {
@@ -63,58 +63,10 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
             verified: false,
         });
 
-        // Send OTP email
-        const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <style>
-            body { font-family: 'Arial', sans-serif; background-color: #f6f9ff; margin: 0; padding: 0; }
-            .container { max-width: 600px; margin: 40px auto; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #00F29D 0%, #facc15 100%); padding: 40px 20px; text-align: center; }
-            .logo { font-size: 2.5rem; font-weight: bold; color: #000; margin-bottom: 10px; }
-            .logo .yellow { color: #000; }
-            .business-tag { font-size: 1rem; font-weight: 700; letter-spacing: 0.3em; color: #000; margin-top: 8px; }
-            .content { padding: 40px 30px; }
-            .otp-box { background: #f6f9ff; border: 2px solid #00F29D; border-radius: 12px; padding: 30px; text-align: center; margin: 30px 0; }
-            .otp-code { font-size: 3rem; font-weight: 900; color: #00F29D; letter-spacing: 0.3em; margin: 10px 0; }
-            .footer { background: #1a1a2e; color: rgba(255,255,255,0.7); padding: 30px; text-align: center; font-size: 0.9rem; }
-            .button { display: inline-block; background: #00F29D; color: white; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-weight: 700; margin: 20px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <div class="logo">DineIn<span class="yellow">Go</span></div>
-              <div class="business-tag">BUSINESS</div>
-            </div>
-            <div class="content">
-              <h2 style="color: #1a1a2e; margin-bottom: 20px;">Password Reset Request</h2>
-              <p style="color: #666; font-size: 1.1rem; line-height: 1.6;">
-                We received a request to reset your password. Use the OTP below to verify your identity:
-              </p>
-              <div class="otp-box">
-                <p style="color: #666; margin: 0; font-size: 0.9rem;">Your OTP Code</p>
-                <div class="otp-code">${otp}</div>
-                <p style="color: #999; margin: 10px 0 0 0; font-size: 0.85rem;">Valid for 10 minutes</p>
-              </div>
-              <p style="color: #666; font-size: 0.95rem; line-height: 1.6;">
-                If you didn't request this password reset, please ignore this email or contact support if you have concerns.
-              </p>
-            </div>
-            <div class="footer">
-              <p>© 2026 DineInGo Business. All rights reserved.</p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-        await sendEmail({
-            to: email,
-            subject: 'Password Reset OTP - DineInGo Business',
-            html: emailHtml,
-        });
+        // Send OTP email (non-blocking)
+        emailService.sendOTPEmail(email, otp, 'password-reset').catch(err =>
+            console.error('Failed to send password-reset OTP email:', err)
+        );
 
         res.status(200).json({
             success: true,

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Trophy, Target, Award, Star, Users, Leaf, MapPin, ChefHat, Lock, CheckCircle } from 'lucide-react';
+import { Trophy, Target, Award, Star, Users, Leaf, MapPin, ChefHat, Lock, CheckCircle, Sparkles, TrendingUp } from 'lucide-react';
 import { auth } from '../firebase';
 import { achievementsApi } from '../services/achievementsApi';
+import { motion } from 'framer-motion';
 
 interface Achievement {
   id: string;
@@ -41,10 +42,10 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
   const loadAchievements = async () => {
     try {
       if (!auth.currentUser) return;
-      
+
       setLoading(true);
       const response = await achievementsApi.getUserAchievements(auth.currentUser.uid);
-      
+
       if (response.success) {
         setAchievements(response.data.achievements);
         setTotalPoints(response.data.totalPoints);
@@ -186,7 +187,7 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
     ];
 
     setAchievements(achievementsList);
-    
+
     // Calculate total points
     const points = achievementsList
       .filter(achievement => achievement.unlocked)
@@ -202,8 +203,8 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
     { id: 'social', label: 'Social', icon: <Users className="w-4 h-4" /> }
   ];
 
-  const filteredAchievements = selectedCategory === 'all' 
-    ? achievements 
+  const filteredAchievements = selectedCategory === 'all'
+    ? achievements
     : achievements.filter(achievement => achievement.category === selectedCategory);
 
   const unlockedCount = achievements.filter(a => a.unlocked).length;
@@ -211,26 +212,16 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4`}>
-        <div className="max-w-6xl mx-auto">
-          <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 mb-6 shadow-lg`}>
-            <div className="animate-pulse">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-14 h-14 bg-gray-300 rounded-xl"></div>
-                <div>
-                  <div className="h-6 bg-gray-300 rounded w-32 mb-2"></div>
-                  <div className="h-4 bg-gray-300 rounded w-48"></div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-                    <div className="h-4 bg-gray-300 rounded mb-2"></div>
-                    <div className="h-8 bg-gray-300 rounded"></div>
-                  </div>
-                ))}
-              </div>
-            </div>
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
+        <div className="max-w-7xl mx-auto space-y-8 animate-pulse">
+          <div className="flex gap-4">
+            <div className="w-1/3 h-48 bg-gray-300/20 rounded-3xl"></div>
+            <div className="w-2/3 h-48 bg-gray-300/20 rounded-3xl"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className={`h-64 rounded-3xl ${isDarkMode ? 'bg-gray-800' : 'bg-white'}`}></div>
+            ))}
           </div>
         </div>
       </div>
@@ -238,102 +229,89 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
   }
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4`}>
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 mb-6 shadow-lg`}>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-gradient-to-r from-yellow-400 to-orange-500 rounded-xl">
-                <Trophy className="w-8 h-8 text-white" />
-              </div>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-8`}>
+      <div className="max-w-7xl mx-auto space-y-10">
+
+        {/* Hero Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Level/Points Card */}
+          <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-emerald-500 to-teal-600 p-8 shadow-2xl shadow-emerald-500/20 text-white">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-400/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+
+            <div className="relative z-10 h-full flex flex-col justify-between">
               <div>
-                <h1 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {translations.achievements}
-                </h1>
-                <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {translations.gamification} • Live tracking from your bookings
-                </p>
+                <div className="flex items-center gap-2 mb-2">
+                  <Trophy className="w-5 h-5 text-emerald-100" />
+                  <span className="text-emerald-100 font-bold uppercase tracking-wider text-xs">Current Level</span>
+                </div>
+                <h2 className="text-3xl font-black">Foodie Explorer</h2>
               </div>
-            </div>
-            <div className="text-right">
-              <div className={`text-3xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {totalPoints}
-              </div>
-              <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Total Points
+
+              <div className="mt-8">
+                <div className="flex items-end gap-2 mb-1">
+                  <span className="text-5xl font-black tracking-tight">{totalPoints}</span>
+                  <span className="text-xl text-emerald-100 font-medium mb-1.5">pts</span>
+                </div>
+                <div className="w-full bg-black/20 h-2 rounded-full overflow-hidden backdrop-blur-sm">
+                  <div className="bg-white h-full rounded-full w-[75%]" />
+                </div>
+                <p className="text-xs text-emerald-100 mt-2 font-medium">150 pts to next level</p>
               </div>
             </div>
           </div>
 
-          {/* Progress Overview */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <CheckCircle className="w-5 h-5 text-green-500" />
-                <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  {translations.unlocked}
-                </span>
+          {/* Stats Overview */}
+          <div className={`lg:col-span-2 rounded-[2.5rem] p-8 relative overflow-hidden ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-white'} border shadow-xl`}>
+            <h2 className={`text-xl font-bold mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Your Impact</h2>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className={`p-4 rounded-3xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} border ${isDarkMode ? 'border-gray-600' : 'border-gray-100'}`}>
+                <div className="w-10 h-10 rounded-2xl bg-orange-100 flex items-center justify-center mb-3 text-orange-600">
+                  <ChefHat size={20} className="fill-current" />
+                </div>
+                <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{userStats.cuisinesTried}</div>
+                <div className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Cuisines</div>
               </div>
-              <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {unlockedCount}/{totalCount}
+              <div className={`p-4 rounded-3xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} border ${isDarkMode ? 'border-gray-600' : 'border-gray-100'}`}>
+                <div className="w-10 h-10 rounded-2xl bg-blue-100 flex items-center justify-center mb-3 text-blue-600">
+                  <MapPin size={20} className="fill-current" />
+                </div>
+                <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{userStats.localRestaurants}</div>
+                <div className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Local Spots</div>
               </div>
-            </div>
-            
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <ChefHat className="w-5 h-5 text-blue-500" />
-                <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Cuisines
-                </span>
+              <div className={`p-4 rounded-3xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} border ${isDarkMode ? 'border-gray-600' : 'border-gray-100'}`}>
+                <div className="w-10 h-10 rounded-2xl bg-green-100 flex items-center justify-center mb-3 text-green-600">
+                  <Leaf size={20} className="fill-current" />
+                </div>
+                <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{userStats.sustainableChoices}</div>
+                <div className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Eco Choices</div>
               </div>
-              <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {userStats.cuisinesTried}
-              </div>
-            </div>
-
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-5 h-5 text-emerald-500" />
-                <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Local Spots
-                </span>
-              </div>
-              <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {userStats.localRestaurants}
-              </div>
-            </div>
-
-            <div className={`p-4 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <Users className="w-5 h-5 text-purple-500" />
-                <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                  Friends
-                </span>
-              </div>
-              <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {userStats.friendsReferred}
+              <div className={`p-4 rounded-3xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} border ${isDarkMode ? 'border-gray-600' : 'border-gray-100'}`}>
+                <div className="w-10 h-10 rounded-2xl bg-purple-100 flex items-center justify-center mb-3 text-purple-600">
+                  <Users size={20} className="fill-current" />
+                </div>
+                <div className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{userStats.friendsReferred}</div>
+                <div className={`text-xs font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Referred</div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Category Filter */}
-        <div className="flex gap-2 mb-6 overflow-x-auto pb-2">
+        {/* Filters */}
+        <div className="flex items-center gap-3 overflow-x-auto pb-4 no-scrollbar">
           {categories.map((category) => (
             <button
               key={category.id}
               onClick={() => setSelectedCategory(category.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl whitespace-nowrap transition-colors ${
-                selectedCategory === category.id
-                  ? 'bg-emerald-500 text-white'
+              className={`flex items-center gap-2 px-5 py-2.5 rounded-2xl whitespace-nowrap transition-all duration-300 font-semibold text-sm ${selectedCategory === category.id
+                  ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/25'
                   : isDarkMode
-                  ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
-                  : 'bg-white text-gray-700 hover:bg-gray-100'
-              }`}
+                    ? 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
             >
               {category.icon}
-              <span className="font-medium">{category.label}</span>
+              <span>{category.label}</span>
             </button>
           ))}
         </div>
@@ -341,97 +319,72 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
         {/* Achievements Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredAchievements.map((achievement) => (
-            <div
+            <motion.div
               key={achievement.id}
-              className={`${
-                isDarkMode ? 'bg-gray-800' : 'bg-white'
-              } rounded-2xl p-6 shadow-lg transition-transform hover:scale-105 ${
-                achievement.unlocked ? 'ring-2 ring-emerald-500' : ''
-              }`}
+              whileHover={{ y: -4 }}
+              className={`relative overflow-hidden rounded-[2rem] p-6 transition-all duration-300 border ${achievement.unlocked
+                  ? isDarkMode
+                    ? 'bg-gray-800 border-emerald-500/30 shadow-[0_0_30px_-10px_rgba(16,185,129,0.2)]'
+                    : 'bg-white border-emerald-100 shadow-xl shadow-emerald-500/5'
+                  : isDarkMode
+                    ? 'bg-gray-900 border-gray-800 opacity-60 grayscale'
+                    : 'bg-gray-50 border-gray-100 opacity-70 grayscale'
+                }`}
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`p-3 rounded-xl ${
-                  achievement.unlocked 
-                    ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' 
-                    : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                }`}>
-                  {achievement.unlocked ? (
-                    <div className="text-white">{achievement.icon}</div>
-                  ) : (
-                    <Lock className={`w-6 h-6 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`} />
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className={`text-lg font-bold ${
-                    achievement.unlocked 
-                      ? 'text-emerald-500' 
-                      : isDarkMode ? 'text-gray-500' : 'text-gray-400'
+              {achievement.unlocked && (
+                <div className="absolute -top-12 -right-12 w-24 h-24 bg-emerald-500/20 rounded-full blur-2xl"></div>
+              )}
+
+              <div className="relative flex items-start justify-between mb-6">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl shadow-sm ${achievement.unlocked
+                    ? 'bg-emerald-100 text-emerald-600'
+                    : isDarkMode ? 'bg-gray-800 text-gray-600' : 'bg-gray-200 text-gray-400'
                   }`}>
-                    {achievement.points}
-                  </div>
-                  <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                    points
-                  </div>
+                  {achievement.icon}
+                </div>
+                <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${achievement.unlocked
+                    ? 'bg-emerald-500 text-white shadow-emerald-500/20 shadow-md'
+                    : isDarkMode ? 'bg-gray-800 text-gray-500' : 'bg-gray-200 text-gray-500'
+                  }`}>
+                  {achievement.points} pts
                 </div>
               </div>
 
-              <h3 className={`text-lg font-bold mb-2 ${
-                achievement.unlocked 
-                  ? isDarkMode ? 'text-white' : 'text-gray-900'
-                  : isDarkMode ? 'text-gray-500' : 'text-gray-400'
-              }`}>
+              <h3 className={`text-xl font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                 {achievement.title}
               </h3>
-
-              <p className={`text-sm mb-4 ${
-                achievement.unlocked 
-                  ? isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                  : isDarkMode ? 'text-gray-500' : 'text-gray-400'
-              }`}>
+              <p className={`text-sm mb-6 leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                 {achievement.description}
               </p>
 
-              {/* Progress Bar */}
-              <div className="mb-4">
-                <div className="flex justify-between text-sm mb-2">
-                  <span className={`${
-                    achievement.unlocked 
-                      ? isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      : isDarkMode ? 'text-gray-500' : 'text-gray-400'
-                  }`}>
-                    {translations.progress}
-                  </span>
-                  <span className={`${
-                    achievement.unlocked 
-                      ? isDarkMode ? 'text-gray-300' : 'text-gray-600'
-                      : isDarkMode ? 'text-gray-500' : 'text-gray-400'
-                  }`}>
-                    {achievement.progress}/{achievement.maxProgress}
+              {/* Progress */}
+              <div>
+                <div className="flex justify-between text-xs font-bold mb-2 uppercase tracking-wide">
+                  <span className={isDarkMode ? 'text-gray-500' : 'text-gray-400'}>Progress</span>
+                  <span className={achievement.unlocked ? 'text-emerald-500' : isDarkMode ? 'text-gray-500' : 'text-gray-400'}>
+                    {achievement.progress} / {achievement.maxProgress}
                   </span>
                 </div>
-                <div className={`w-full h-2 rounded-full ${
-                  isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
-                }`}>
-                  <div
-                    className={`h-2 rounded-full transition-all duration-500 ${
-                      achievement.unlocked 
-                        ? 'bg-gradient-to-r from-emerald-400 to-emerald-600' 
+                <div className={`w-full h-2.5 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((achievement.progress / achievement.maxProgress) * 100, 100)}%` }}
+                    transition={{ duration: 1, ease: "circOut" }}
+                    className={`h-full rounded-full ${achievement.unlocked
+                        ? 'bg-gradient-to-r from-emerald-400 to-teal-500'
                         : 'bg-gray-400'
-                    }`}
-                    style={{
-                      width: `${Math.min((achievement.progress / achievement.maxProgress) * 100, 100)}%`
-                    }}
+                      }`}
                   />
                 </div>
               </div>
 
-              {achievement.unlocked && achievement.unlockedDate && (
-                <div className="flex items-center gap-2 text-xs text-emerald-500">
-                  <CheckCircle className="w-4 h-4" />
-                  <span>Unlocked {achievement.unlockedDate.toLocaleDateString()}</span>
+              {achievement.unlocked && (
+                <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-emerald-500">
+                  <CheckCircle size={14} />
+                  <span>Unlocked {achievement.unlockedDate ? new Date(achievement.unlockedDate).toLocaleDateString() : 'Recently'}</span>
                 </div>
               )}
-            </div>
+            </motion.div>
           ))}
         </div>
       </div>

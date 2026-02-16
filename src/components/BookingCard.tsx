@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Calendar, Clock, MapPin, Users, Apple, Chrome, FileText, ShoppingBag, MessageSquare, Star } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Apple, Chrome, FileText, ShoppingBag, MessageSquare, Star, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { bookingsApi } from '../services/api';
 
@@ -32,6 +32,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
 }) => {
     const navigate = useNavigate();
     const [localIsCancelling, setLocalIsCancelling] = useState(false);
+    const [localIsDeleting, setLocalIsDeleting] = useState(false);
 
     // Determine booking type and name
     const isEvent = !!(booking.eventId || booking.eventName);
@@ -47,22 +48,39 @@ const BookingCard: React.FC<BookingCardProps> = ({
 
     // Logic for cancellation and review availability
     const isPast = dayjs().isAfter(bookingDateTime);
-    const canCancel = booking.status === 'confirmed' && dayjs().isBefore(bookingDateTime.subtract(2, 'hours'));
+    const isWithinOneHour = dayjs().isAfter(bookingDateTime.subtract(1, 'hour'));
+    const canCancel = booking.status === 'confirmed' && !isWithinOneHour && !isPast;
     const isVisitCompleted = dayjs().isAfter(bookingDateTime.add(2, 'hours'));
 
     const handleCancel = async () => {
-        if (!window.confirm('Are you sure you want to cancel this booking?')) return;
+        if (!window.confirm('Are you sure you want to cancel this reservation? This cannot be undone.')) return;
 
         setLocalIsCancelling(true);
         try {
             await bookingsApi.cancel(booking._id || booking.id);
-            toast.success('Booking cancelled successfully');
+            toast.success('Your reservation has been cancelled');
             onRefresh();
         } catch (error) {
             console.error('Error cancelling booking:', error);
-            toast.error('Failed to cancel booking');
+            toast.error('Failed to cancel reservation. Please try again.');
         } finally {
             setLocalIsCancelling(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm('Are you sure you want to delete this booking history? This action cannot be undone.')) return;
+
+        setLocalIsDeleting(true);
+        try {
+            await bookingsApi.delete(booking._id || booking.id);
+            toast.success('Booking deleted successfully');
+            onRefresh();
+        } catch (error) {
+            console.error('Error deleting booking:', error);
+            toast.error('Failed to delete booking');
+        } finally {
+            setLocalIsDeleting(false);
         }
     };
 
@@ -77,172 +95,160 @@ const BookingCard: React.FC<BookingCardProps> = ({
     };
 
     return (
-        <div className="bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-shadow">
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                {/* Left Side: Info */}
-                <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="text-lg font-semibold">{name}</div>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${isEvent ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                            {type}
-                        </span>
-                    </div>
-
-                    <div className="text-gray-700 text-sm">
-                        <span className="font-medium">Date:</span> {new Date(dateStr).toLocaleDateString()} |
-                        <span className="font-medium ml-2">Time:</span> {booking.time}
-                    </div>
-
-                    <div className="text-gray-700 text-sm">
-                        <span className="font-medium">{isEvent ? 'Attendees' : 'Guests'}:</span> {booking.guests || booking.numberOfGuests || 1}
-                    </div>
-
-                    {booking.table && (
-                        <div className="text-gray-700 text-sm">
-                            <span className="font-medium">Table:</span> {booking.table}
-                        </div>
-                    )}
-
-                    {booking.totalAmount && (
-                        <div className="text-gray-700 text-sm">
-                            <span className="font-medium">Total:</span> ₹{booking.totalAmount}
-                        </div>
-                    )}
-
-                    <div className="text-gray-700 text-sm mt-1">
-                        <span className="font-medium">Status:</span>
-                        <span className={`ml-1 uppercase ${getStatusColor(booking.status)}`}>{booking.status}</span>
-                    </div>
-
-                    {/* Detailed Selections */}
-                    {(booking.selectedTickets?.length > 0 || booking.selectedAddOns?.length > 0) && (
-                        <div className="mt-2 text-sm">
-                            {booking.selectedTickets?.length > 0 && (
-                                <div className="text-gray-700 text-sm mt-1">
-                                    <span className="font-medium">Tickets:</span>
-                                    <ul className="list-disc list-inside ml-2 text-xs">
-                                        {booking.selectedTickets.map((t: any) => (
-                                            <li key={t.ticketId || t._id}>{t.quantity}x {t.name}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                            {booking.selectedAddOns?.length > 0 && (
-                                <div className="text-gray-700 text-sm mt-1">
-                                    <span className="font-medium">Add-ons:</span>
-                                    <ul className="list-disc list-inside ml-2 text-xs">
-                                        {booking.selectedAddOns.map((t: any) => (
-                                            <li key={t.addOnId || t._id}>{t.quantity}x {t.name}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Pre-order Status */}
-                    {preOrder && (
-                        <div className="mt-2 bg-indigo-50 p-2 rounded-lg border border-indigo-100">
-                            <div className="flex items-center justify-between">
-                                <span className="text-sm font-bold text-indigo-900 flex items-center gap-1">
-                                    <ShoppingBag size={14} /> Pre-order
-                                </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full font-bold uppercase ${preOrder.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                        preOrder.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                                            preOrder.status === 'preparing' ? 'bg-orange-100 text-orange-800' :
-                                                preOrder.status === 'ready' ? 'bg-green-100 text-green-800' :
-                                                    preOrder.status === 'served' ? 'bg-gray-100 text-gray-800' :
-                                                        'bg-red-100 text-red-800'
-                                    }`}>
-                                    {preOrder.status}
-                                </span>
-                            </div>
-                            <div className="text-xs text-indigo-700 mt-1">
-                                {preOrder.items.length} items • ₹{preOrder.total}
-                            </div>
-                        </div>
-                    )}
+        <div
+            className="bg-white rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer"
+            onClick={() => onGenerateInvoice && onGenerateInvoice(booking)}
+        >
+            {/* Header with Gradient and Status */}
+            <div className={`relative h-48 flex items-center justify-center p-6 ${isEvent ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
+                <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 backdrop-blur-sm text-emerald-700 shadow-sm uppercase tracking-wider">
+                    {booking.status}
                 </div>
+                <div className="text-center">
+                    <h3 className="text-2xl font-bold text-white mb-1 drop-shadow-sm">
+                        {name}
+                    </h3>
+                    <p className="text-white/80 text-xs font-medium uppercase tracking-[0.2em]">
+                        {type}
+                    </p>
+                </div>
+            </div>
 
-                {/* Right Side: Actions */}
-                <div className="flex flex-col gap-2">
-                    {/* Wallet Actions */}
-                    <div className="flex gap-2">
-                        {onAddToAppleWallet && (
-                            <button
-                                onClick={() => onAddToAppleWallet(booking)}
-                                className="flex items-center gap-1 px-3 py-1 bg-black text-white rounded text-sm hover:bg-gray-800 transition-colors"
-                                title="Add to Apple Wallet"
-                            >
-                                <Apple className="w-3 h-3" />
-                                Apple
-                            </button>
+            {/* Content Body */}
+            <div className="p-6">
+                <div className="space-y-4">
+                    {/* Date and Time */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center text-gray-700">
+                            <Calendar className="w-5 h-5 mr-3 text-emerald-500" />
+                            <span className="font-medium">
+                                {new Date(dateStr).toLocaleDateString('en-US', {
+                                    weekday: 'long',
+                                    month: 'short',
+                                    day: 'numeric'
+                                })}
+                            </span>
+                        </div>
+                        <div className="flex items-center text-gray-700">
+                            <Clock className="w-5 h-5 mr-2 text-emerald-500" />
+                            <span className="font-semibold">{booking.time}</span>
+                        </div>
+                    </div>
+
+                    {/* Guests and Details */}
+                    <div className="flex items-center gap-6 py-3 border-y border-gray-50">
+                        <div className="flex items-center text-gray-600">
+                            <Users className="w-4 h-4 mr-2" />
+                            <span className="text-sm font-medium">{booking.guests || booking.numberOfGuests || 1} Guests</span>
+                        </div>
+                        {booking.table && (
+                            <div className="flex items-center text-gray-600">
+                                <span className="w-4 h-4 mr-2 text-xs flex items-center justify-center border-2 border-gray-400 rounded-sm font-bold">#</span>
+                                <span className="text-sm font-medium">Table {booking.table}</span>
+                            </div>
                         )}
-                        {onAddToGoogleWallet && (
-                            <button
-                                onClick={() => onAddToGoogleWallet(booking)}
-                                className="flex items-center gap-1 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 transition-colors"
-                                title="Add to Google Wallet"
-                            >
-                                <Chrome className="w-3 h-3" />
-                                Google
-                            </button>
-                        )}
-                        {onGenerateInvoice && (
-                            <button
-                                onClick={() => onGenerateInvoice(booking)}
-                                className="flex items-center gap-1 px-3 py-1 bg-emerald-500 text-white rounded text-sm hover:bg-emerald-600 transition-colors"
-                                title="Generate Invoice"
-                            >
-                                <FileText className="w-3 h-3" />
-                                Invoice
-                            </button>
+                        {booking.bookingNumber && (
+                            <div className="text-[10px] text-gray-400 font-mono ml-auto">
+                                {booking.bookingNumber}
+                            </div>
                         )}
                     </div>
 
-                    {/* Booking Actions */}
-                    <div className="flex gap-2">
+                    {/* Action Area */}
+                    <div className="space-y-3 pt-2">
+                        {/* Primary Buttons */}
                         {booking.status === 'pending' && (
-                            <>
-                                {onConfirm && (
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onConfirm && onConfirm(booking._id || booking.id); }}
+                                    className="py-2.5 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all font-bold shadow-sm active:scale-95 text-sm"
+                                    disabled={confirmingId === (booking._id || booking.id) || localIsCancelling}
+                                >
+                                    {confirmingId === (booking._id || booking.id) ? 'Confirming...' : 'Confirm'}
+                                </button>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleCancel(); }}
+                                    className="py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-bold active:scale-95 text-sm"
+                                    disabled={localIsCancelling}
+                                >
+                                    {localIsCancelling ? '...' : 'Cancel'}
+                                </button>
+                            </div>
+                        )}
+
+                        {booking.status === 'confirmed' && (
+                            <div className="space-y-3">
+                                {canCancel ? (
                                     <button
-                                        className="px-4 py-2 bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                        onClick={() => onConfirm(booking._id || booking.id)}
-                                        disabled={confirmingId === (booking._id || booking.id) || cancellingId === (booking._id || booking.id)}
+                                        onClick={(e) => { e.stopPropagation(); handleCancel(); }}
+                                        className="w-full py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all font-bold active:scale-95 text-sm border border-rose-100"
                                     >
-                                        {confirmingId === (booking._id || booking.id) ? 'Confirming...' : 'Confirm'}
+                                        Cancel Reservation
+                                    </button>
+                                ) : !isVisitCompleted && (
+                                    <div className="text-center p-2 rounded-xl bg-amber-50 border border-amber-100">
+                                        <p className="text-[11px] text-amber-700 font-medium flex items-center justify-center gap-1">
+                                            <Clock size={12} /> Non-cancellable (Within 1 hour)
+                                        </p>
+                                    </div>
+                                )}
+
+                                {isVisitCompleted && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onReview(booking); }}
+                                        className="w-full py-2.5 bg-yellow-400 text-yellow-950 rounded-xl hover:bg-yellow-500 transition-all font-bold shadow-sm flex items-center justify-center gap-2 active:scale-95 text-sm"
+                                    >
+                                        <Star size={14} className="fill-current" />
+                                        Rate Your Experience
                                     </button>
                                 )}
-                                <button
-                                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    onClick={handleCancel}
-                                    disabled={cancellingId === (booking._id || booking.id) || confirmingId === (booking._id || booking.id) || localIsCancelling}
-                                >
-                                    {cancellingId === (booking._id || booking.id) || localIsCancelling ? 'Cancelling...' : 'Cancel'}
-                                </button>
-                            </>
+                            </div>
                         )}
 
-                        {booking.status === 'confirmed' && canCancel && (
-                            <button
-                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                onClick={handleCancel}
-                                disabled={cancellingId === (booking._id || booking.id) || localIsCancelling}
-                            >
-                                {cancellingId === (booking._id || booking.id) || localIsCancelling ? 'Cancelling...' : 'Cancel'}
-                            </button>
+                        {/* Special Requests or Notes */}
+                        {(booking.specialRequests || booking.specialRequest) && (
+                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
+                                <p className="text-[11px] text-gray-500 leading-relaxed">
+                                    <span className="font-bold text-gray-700">Request:</span> {booking.specialRequests || booking.specialRequest}
+                                </p>
+                            </div>
                         )}
 
-                        {/* Rate & Review Button for completed bookings */}
-                        {booking.status === 'confirmed' && isVisitCompleted && (
-                            <button
-                                className="px-4 py-2 bg-yellow-500 text-white rounded hover:bg-yellow-600 shadow-sm transition-all font-semibold flex items-center gap-2"
-                                onClick={() => onReview(booking)}
-                            >
-                                <Star size={16} className="fill-current" />
-                                Rate & Review
-                            </button>
-                        )}
+                        {/* Secondary Actions (Wallet, Invoice, Delete) */}
+                        <div className="flex items-center justify-between gap-2 pt-2">
+                            <div className="flex gap-2">
+                                {onAddToAppleWallet && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onAddToAppleWallet(booking); }}
+                                        className="p-2 bg-black text-white rounded-lg hover:scale-110 transition-all"
+                                        title="Apple Wallet"
+                                    >
+                                        <Apple size={14} />
+                                    </button>
+                                )}
+                                {onAddToGoogleWallet && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); onAddToGoogleWallet(booking); }}
+                                        className="p-2 bg-blue-600 text-white rounded-lg hover:scale-110 transition-all"
+                                        title="Google Wallet"
+                                    >
+                                        <Chrome size={14} />
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex gap-2 items-center">
+                                {(isPast || booking.status === 'cancelled') && (
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+                                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                        title="Delete from History"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

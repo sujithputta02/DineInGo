@@ -215,8 +215,21 @@ bookingSchema.index({ date: 1, time: 1 });
 // Generate booking number before saving
 bookingSchema.pre('save', async function (this: IBooking, next) {
   if (this.isNew && !this.bookingNumber) {
-    const count = await mongoose.model('Booking').countDocuments();
-    this.bookingNumber = `BK${String(count + 1).padStart(6, '0')}`;
+    // Generate a unique booking number: BK + YYMMDD + 4 random digits
+    const now = new Date();
+    const datePart = now.toISOString().slice(2, 10).replace(/-/g, '');
+    const randomPart = Math.floor(1000 + Math.random() * 9000); // 4 digit random
+    this.bookingNumber = `BK${datePart}${randomPart}`;
+
+    // Safety check for collisions (extremely unlikely with this format but good practice)
+    let exists = await mongoose.model('Booking').findOne({ bookingNumber: this.bookingNumber });
+    let attempts = 0;
+    while (exists && attempts < 5) {
+      const extraRandom = Math.floor(1000 + Math.random() * 9000);
+      this.bookingNumber = `BK${datePart}${extraRandom}`;
+      exists = await mongoose.model('Booking').findOne({ bookingNumber: this.bookingNumber });
+      attempts++;
+    }
   }
 
   // Backward compatibility mapping
