@@ -14,7 +14,6 @@ import ReservationDetailsPage from './pages/ReservationDetailsPage';
 import TermsPage from './TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import UserFeedbackForm from './components/UserFeedbackForm';
-import DebugPage from './pages/DebugPage';
 import FoodMenu from './pages/FoodMenu';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
@@ -61,10 +60,8 @@ import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
 import AIChatbot from './components/AIChatbot';
-import FeaturesDemo from './pages/FeaturesDemo';
 import FloorPlanDesigner from './components/FloorPlanDesigner';
 import EventSeatingDesigner from './components/EventSeatingDesigner';
-import TestLocationSelector from './pages/TestLocationSelector';
 import OnboardingPage from './pages/OnboardingPage';
 
 // Custom hook to set the document title based on the current route
@@ -141,11 +138,8 @@ const App: React.FC = () => {
               <Route path="/signup" element={<SignupPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/feedback" element={<UserFeedbackForm />} />
-              <Route path="/debug" element={<DebugPage />} />
-              <Route path="/features-demo" element={<FeaturesDemo />} />
               <Route path="/test-floor-designer" element={<FloorPlanDesigner />} />
               <Route path="/test-event-designer" element={<EventSeatingDesigner />} />
-              <Route path="/test-location-selector" element={<TestLocationSelector />} />
               <Route path="/auth/action" element={<AuthActionHandler />} />
               <Route path="/onboarding" element={<OnboardingPage />} />
 

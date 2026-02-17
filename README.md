@@ -1,132 +1,342 @@
 ![DineInGo Logo](public/images/DineInGo%20Logo.png)
 
-# 🍽️ DineInGo - The Future of Indian Dining (Version 1.0) 🚀
+# 🍽️ DineInGo - Smart Restaurant & Event Booking Platform
 
-> **Revolutionizing dining experiences across India with AI, AR, and Personality.** 🇮🇳
+> **Revolutionizing the dining experience with intelligent reservations, real-time management, and innovative features for the modern Indian food lover.**
 
-DineInGo is a next-generation restaurant and event reservation platform specifically designed for the vibrant Indian market. Built for both food enthusiasts and business owners, it combines cutting-edge technology like Augmented Reality and Multilingual AI with a playful, interactive mascot to make every meal memorable.
-
-[![Version](https://img.shields.io/badge/version-1.0.0-emerald.svg)](package.json)
-[![Status](https://img.shields.io/badge/status-production--ready-success.svg)](RELEASE_CHECKLIST.md)
-[![AI Powered](https://img.shields.io/badge/AI-Sarvam%20AI-orange.svg)](https://www.sarvam.ai/)
+DineInGo is a comprehensive full-stack restaurant and event booking platform that connects food enthusiasts with their favorite dining destinations while empowering restaurant owners with powerful management tools. Built with cutting-edge technology, it offers seamless table reservations, event bookings, and an engaging user experience.
 
 ---
 
-## 🦖 Meet Dino: Your Interactive Dining Companion
-DineInGo is no longer just a booking app; it has a personality. **Dino**, our friendly mascot, is integrated into every flow:
-- **Interactive Onboarding**: Dino reacts to your preferences in real-time as you set up your profile.
-- **Smart Waitlist Guard**: Dino watches your spot in the queue and keeps you updated.
-- **Dino's Picks**: High-confidence personalized recommendations highlighted on your dashboard.
-- **"Stomp" Stepper**: A custom booking progress tracker that makes every reservation feel like an adventure.
+## 🌟 What is DineInGo?
+
+DineInGo transforms how people discover, book, and experience restaurants and food events. Whether you're a food lover looking for your next dining adventure or a restaurant owner managing reservations, DineInGo provides an intuitive, feature-rich platform that makes every interaction delightful.
+
+### For Food Lovers 🍕
+Discover restaurants, make instant reservations, join exciting food events, and build your culinary journey with personalized recommendations and achievements.
+
+### For Restaurant Owners �
+Manage your restaurant operations, handle bookings, engage with customers, and grow your business with comprehensive analytics and tools.
 
 ---
 
-## 👤 For Diners (User App)
-The user experience is built around discovery, personalization, and gamification.
+## ✨ Core Features
 
-### 🌟 Personalized Discovery
-- **Hyper-Personalization**: A unique onboarding journey that learns your favorite cuisines, spice levels, and dietary requirements.
-- **Dino's Smart Recommendations**: Get a "Match Score" for every restaurant based on your personal profile.
-- **Premium Identity**: Custom `InitialsAvatar` system with dynamic gradients and a glassmorphic identity selector.
+### 🎯 Smart Restaurant Discovery
+- **Intelligent Search**: Find restaurants by cuisine, location, price range, and dietary preferences
+- **Real-Time Availability**: See live table availability and book instantly
+- **Interactive Maps**: Visualize restaurant locations with integrated mapping
+- **Favorites System**: Save your favorite restaurants for quick access
+- **Personalized Recommendations**: Get restaurant suggestions based on your preferences
 
-### 🍽️ Booking & Reservations
-- **Visual 2D Floor Plans**: Navigate through multiple floors (Ground to 3rd) and choose your exact table.
-- **Real-Time Status**: Instant table availability updates powered by Socket.IO.
-- **Special Requests**: Add notes for celebrations, seating preferences, or allergies.
-- **Instant Confirmation**: Receive professional HTML invoices and digital tickets directly in your inbox.
+### 📅 Seamless Booking Experience
+- **Visual Table Selection**: Choose your exact table with interactive 2D floor plans
+- **Multi-Floor Support**: Navigate through different floors (Ground, 1st, 2nd, 3rd)
+- **Real-Time Status**: See table availability updated in real-time
+- **Flexible Scheduling**: Book for any date and time with dynamic slot management
+- **Guest Management**: Specify party size and special requirements
+- **Instant Confirmation**: Receive booking confirmations via email with detailed invoices
 
-### � Events & Lifestyle
-- **Interactive Seat Mapping**: Choose your specific seat for concerts, food festivals, or networking events.
-- **Digital Ticketing**: Every booking generates a unique QR code for seamless venue entry.
-- **Waitlist Control**: If an event is full, Dino helps you join the waitlist with real-time position tracking.
+### 🎉 Event Booking & Management
+- **Food Events**: Discover and register for food festivals, tasting events, and culinary experiences
+- **Interactive Seating**: Choose your seats with visual seating charts
+- **Capacity Tracking**: Real-time attendee count and availability
+- **Waitlist System**: Join waitlists for sold-out events with position tracking
+- **Digital Tickets**: Get QR code tickets for easy event check-in
 
-### 👓 Cutting-Edge Experience
-- **AR Menu Preview**: View dishes in 1:1 scale 3D using your camera before ordering.
-- **Nutritional Analytics**: Swipe on an AR dish to see calories, macros, and sustainability scores.
-- **Achievement System**: Earn points and badges like "Cuisine Explorer" or "Sustainable Diner" for your activities.
+### 👤 Personalized User Experience
+- **Custom Profiles**: Create your profile with dietary preferences and favorite cuisines
+- **Onboarding Journey**: Guided setup to personalize your experience
+- **Avatar System**: Choose from multiple avatar styles with custom initials
+- **Booking History**: Track all your past and upcoming reservations
+- **Achievement System**: Earn badges and rewards for your dining activities
+- **Review & Rating**: Share your experiences and help others discover great places
 
-### 💬 Content Management
-- **My Reviews Dashboard**: A dedicated hub to manage all your feedback.
-- **Edit/Delete Controls**: Update your ratings or comments at any time to reflect your latest experience.
+### 💬 Social & Engagement Features
+- **Restaurant Reviews**: Rate and review restaurants with emoji support
+- **Half-Star Ratings**: Precise rating system with 0.5 increments (1.0, 1.5, 2.0, etc.)
+- **Review Management**: Edit or delete your reviews anytime
+- **Photo Sharing**: Add photos to your reviews
+- **Business Responses**: See how restaurants respond to feedback
+
+### 🔔 Real-Time Notifications
+- **Booking Updates**: Get instant notifications for booking confirmations and changes
+- **Event Reminders**: Receive reminders for upcoming events
+- **Promotional Offers**: Stay updated with special deals and promotions
+- **Waitlist Alerts**: Know when a spot opens up in your waitlist
+
+### 🎨 Innovative Features
+- **AR Menu Preview**: View dishes in augmented reality before ordering
+- **Nutritional Information**: See detailed nutrition facts and sustainability scores
+- **Voice Search**: Search restaurants using voice commands
+- **Sustainability Badges**: Discover eco-friendly restaurants
+- **Dietary Assistant**: Get personalized recommendations based on dietary restrictions
+- **AI Chatbot**: Get instant help and recommendations
+
+### 🏢 Business Owner Dashboard
+- **Comprehensive Analytics**: Track bookings, revenue, and customer trends
+- **Booking Management**: View, confirm, modify, or cancel reservations
+- **Floor Plan Designer**: Create and manage table layouts with drag-and-drop
+- **Menu Management**: Update your menu items and categories
+- **Review Management**: Respond to customer reviews with emoji support
+- **Staff Management**: Manage staff schedules and shifts
+- **Promotion Tools**: Create and manage special offers
+- **Real-Time Updates**: See bookings and updates as they happen
+- **Customer Insights**: Understand your customers better with detailed analytics
+
+### 🎪 Event Hosting Tools
+- **Event Creation**: Set up food events with custom details
+- **Seating Designer**: Create custom seating arrangements
+- **Ticket Management**: Track registrations and capacity
+- **Attendee Management**: Manage event participants
+- **Event Analytics**: Monitor event performance
 
 ---
 
-## 🏢 For Businesses (Owner/Admin App)
-A robust management suite designed to empower restaurant and event owners.
-
-### 📊 Real-Time Command Center
-- **Performance Analytics**: Track revenue, booking counts, and peak hours at a glance.
-- **Customer Insights**: Monitor average ratings and sentiment trends.
-- **Live Feed**: See incoming bookings, waitlist additions, and check-ins in real-time.
-
-### �️ Operation Management
-- **Visual Floor Plan Designer**: Drag-and-drop tool to create and manage table layouts across multiple levels.
-- **Booking Control**: Confirm, cancel, or modify reservations with instant customer notifications.
-- **Waitlist Management**: Prioritize VIP guests or manage walk-ins during rush hours.
-
-### 🤝 Customer Engagement
-- **Review Reply Portal**: Respond directly to customer feedback with a professional business voice.
-- **Content Moderation**: Edit or delete owner responses to maintain a high-quality public profile.
-- **Sustainability Dashboard**: Update and showcase your restaurant's eco-friendly practices and local sourcing scores.
-
----
-
-## 🌍 Multilingual Support
-DineInGo is build for the diverse Indian landscape, supporting 6 major languages with AI-powered context awareness:
-- 🇬🇧 English | 🇮🇳 Hindi (हिंदी) | 🇮🇳 Tamil (தமிழ்)
-- 🇮🇳 Kannada (ಕನ್ನಡ) | 🇮🇳 Telugu (తెలుగు) | 🇮🇳 Malayalam (മലയാളം)
-
----
-
-## 🚀 Technology Stack
+## 🛠️ Technology Stack
 
 ### Frontend
-- **Framework**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + Framer Motion (Animations) + Lucide Icons
-- **Real-Time**: Socket.IO Client
-- **Auth**: Firebase Authentication (Google & Email/OTP flow)
+- **React 18** with TypeScript for type-safe development
+- **Vite** for lightning-fast development and optimized builds
+- **Tailwind CSS** for beautiful, responsive design
+- **Framer Motion** for smooth animations and transitions
+- **Socket.IO Client** for real-time updates
+- **Firebase Authentication** for secure user management
+- **Recharts** for data visualization
+- **Lucide React** for modern icons
 
 ### Backend
-- **Core**: Node.js + Express + TypeScript
-- **Database**: MongoDB Atlas + Mongoose ODM
-- **AI Engine**: **Sarvam AI** (Primary Multilingual LLM) with **OpenRouter** (Fallback)
-- **Infrastructure**: Nodemailer (SMTP), PDFKit (Invoices), QRCode, GridFS (Media)
+- **Node.js** with Express.js framework
+- **TypeScript** for type safety
+- **MongoDB** with Mongoose ODM for data management
+- **Socket.IO** for real-time bidirectional communication
+- **JWT** for secure authentication
+- **Nodemailer** for email notifications
+- **PDFKit** for invoice generation
+- **Firebase Admin SDK** for authentication
+
+### Key Features Implementation
+- **Real-Time Updates**: Socket.IO for live booking status
+- **Email System**: Professional HTML emails with Nodemailer
+- **File Uploads**: Multer for image handling
+- **PDF Generation**: Automated invoice and ticket creation
+- **QR Codes**: Digital tickets with QR code generation
+- **Geolocation**: Location-based restaurant discovery
+- **Responsive Design**: Mobile-first approach with Tailwind CSS
 
 ---
 
-## 🛠️ Installation & Setup
+## 🚀 Getting Started
 
-1. **Clone & Install**:
+### Prerequisites
+- Node.js 18 or higher
+- MongoDB database (local or Atlas)
+- Firebase project for authentication
+- Gmail account for email notifications (optional)
+
+### Installation Steps
+
+1. **Clone the Repository**
    ```bash
-   git clone https://github.com/dineingo/app.git
+   git clone <repository-url>
+   cd dineingo
+   ```
+
+2. **Install Frontend Dependencies**
+   ```bash
    npm install
-   cd backend && npm install
    ```
 
-2. **Environment Configuration**:
-   Run our automated setup script:
-   ```bash
-   node scripts/setup-team-env.js
-   ```
-
-3. **Database Initialization**:
+3. **Install Backend Dependencies**
    ```bash
    cd backend
-   npm run init:chatbot
+   npm install
+   cd ..
    ```
 
-4. **Launch Development Environment**:
+4. **Configure Environment Variables**
+
+   Create `.env` in the root directory:
+   ```env
+   VITE_API_URL=http://localhost:5001
+   VITE_FIREBASE_API_KEY=your_firebase_api_key
+   VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
+   VITE_FIREBASE_PROJECT_ID=your_project_id
+   VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
+   VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+   VITE_FIREBASE_APP_ID=your_app_id
+   ```
+
+   Create `backend/.env`:
+   ```env
+   PORT=5001
+   MONGODB_URI=your_mongodb_connection_string
+   JWT_SECRET=your_secret_key_here
+   
+   # Firebase Admin SDK
+   FIREBASE_PROJECT_ID=your_project_id
+   FIREBASE_PRIVATE_KEY="your_private_key"
+   FIREBASE_CLIENT_EMAIL=your_service_account_email
+   
+   # Email Configuration (Optional)
+   EMAIL_USER=your_email@gmail.com
+   EMAIL_PASS=your_app_specific_password
+   ```
+
+5. **Start Development Servers**
+
+   Option 1 - Run both servers together:
    ```bash
-   # From root
    npm run start:all
    ```
 
+   Option 2 - Run separately:
+   ```bash
+   # Terminal 1 - Frontend
+   npm run dev
+
+   # Terminal 2 - Backend
+   cd backend
+   npm run dev
+   ```
+
+6. **Access the Application**
+   - Frontend: http://localhost:5173
+   - Backend API: http://localhost:5001
+
 ---
 
-## 🎯 Our Mission
-DineInGo's mission is to make every meal memorable. By combining AI-driven personalization with a playful mascot and professional business tools, we are shaping the future of dining in India—one booking at a time.
+## � User Journey
 
-**Let's make every meal an adventure!** 🍽️🦖✨
+### For Customers
+
+1. **Sign Up / Login**
+   - Create account with email or Google
+   - Complete personalized onboarding
+   - Set dietary preferences and favorite cuisines
+
+2. **Discover Restaurants**
+   - Browse restaurants by location, cuisine, or price
+   - View detailed restaurant profiles with photos and reviews
+   - Check real-time availability
+
+3. **Make a Reservation**
+   - Select date, time, and number of guests
+   - Choose your table from interactive floor plan
+   - Add special requests or notes
+   - Receive instant confirmation email
+
+4. **Attend & Review**
+   - Get reminder notifications
+   - Show digital ticket at venue
+   - Leave review and rating after dining
+
+5. **Explore Events**
+   - Browse food events and festivals
+   - Register for events with seat selection
+   - Join waitlists for popular events
+
+### For Restaurant Owners
+
+1. **Business Registration**
+   - Create business account
+   - Complete restaurant profile
+   - Set up operating hours and capacity
+
+2. **Setup Restaurant**
+   - Design floor plan with table layout
+   - Add menu items and categories
+   - Configure booking settings
+
+3. **Manage Operations**
+   - View and manage incoming bookings
+   - Respond to customer reviews
+   - Track analytics and performance
+
+4. **Host Events**
+   - Create food events
+   - Design seating arrangements
+   - Manage registrations
 
 ---
-© DineInGo 2025. All rights reserved. **Version 1.0.0** | **Production Ready** 🚀
+
+## 🎨 Key Highlights
+
+### User-Centric Design
+- Clean, modern interface with smooth animations
+- Dark mode support for comfortable viewing
+- Mobile-responsive design for all devices
+- Intuitive navigation and user flows
+
+### Real-Time Experience
+- Live table availability updates
+- Instant booking confirmations
+- Real-time notification system
+- Socket-based communication
+
+### Smart Features
+- AI-powered chatbot assistance
+- Voice search capability
+- AR menu visualization
+- Personalized recommendations
+
+### Business Intelligence
+- Comprehensive analytics dashboard
+- Customer behavior insights
+- Revenue tracking
+- Performance metrics
+
+---
+
+## � Security & Privacy
+
+- Secure authentication with Firebase
+- JWT-based API authentication
+- Password encryption with bcrypt
+- Input validation and sanitization
+- CORS protection
+- Secure file upload handling
+- Privacy-focused data management
+
+---
+
+## 📊 Platform Statistics
+
+- **Multi-Floor Support**: Up to 4 floors per restaurant
+- **Real-Time Updates**: Instant synchronization across all users
+- **Scalable Architecture**: Built to handle growing user base
+- **Email Notifications**: Professional HTML email templates
+- **Digital Tickets**: QR code generation for events
+- **Review System**: Half-star precision rating
+
+---
+
+## 🤝 Contributing
+
+We welcome contributions! Whether it's bug fixes, feature additions, or documentation improvements, your help makes DineInGo better.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License.
+
+---
+
+## 📧 Support
+
+For questions, issues, or feedback:
+- Email: support@dineingo.com
+- GitHub Issues: [Report a bug](https://github.com/yourusername/dineingo/issues)
+
+---
+
+## 🙏 Acknowledgments
+
+Built with modern technologies and best practices to deliver an exceptional dining experience platform.
+
+---
+
+**Made with ❤️ for food lovers and restaurant owners**
+
+© DineInGo 2025. All rights reserved. | Version 1.0.0 🚀
