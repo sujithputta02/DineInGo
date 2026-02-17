@@ -72,6 +72,24 @@ const AdminDashboard: React.FC = () => {
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [socket, setSocket] = useState<any>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
+  const [currentTime, setCurrentTime] = useState<Date>(new Date());
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+
+  // Real-time clock update - optimized to prevent re-renders
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, []);
+
+  // Mark initial load as complete after first render
+  useEffect(() => {
+    if (!loading && isInitialLoad) {
+      setIsInitialLoad(false);
+    }
+  }, [loading, isInitialLoad]);
 
   useEffect(() => {
     // Check admin authentication
@@ -151,12 +169,8 @@ const AdminDashboard: React.FC = () => {
     loadDashboardData();
   };
 
-  const StatCard = ({ title, value, change, icon: Icon, color = 'emerald' }: any) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all"
-    >
+  const StatCard = React.memo(({ title, value, change, icon: Icon, color = 'emerald' }: any) => (
+    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
       <div className="flex items-center justify-between mb-4">
         <div className={`p-3 rounded-xl bg-${color}-100`}>
           <Icon className={`text-${color}-600`} size={24} />
@@ -172,8 +186,8 @@ const AdminDashboard: React.FC = () => {
       </div>
       <h3 className="text-2xl font-bold text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
       <p className="text-slate-600 text-sm">{title}</p>
-    </motion.div>
-  );
+    </div>
+  ));
 
   const ActivityItem = ({ activity }: { activity: ActivityItem }) => {
     const getActivityIcon = (type: string) => {
@@ -221,6 +235,30 @@ const AdminDashboard: React.FC = () => {
     { name: 'Inactive Users', value: stats.totalUsers - stats.activeUsers, color: '#64748b' }
   ] : [];
 
+  // Memoized Clock Component to prevent re-renders
+  const Clock = React.memo(() => (
+    <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl shadow-lg">
+      <div className="text-center">
+        <div className="text-2xl font-bold font-mono tracking-wider transition-opacity duration-100">
+          {currentTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+          })}
+        </div>
+        <div className="text-xs font-medium opacity-90 mt-1">
+          {currentTime.toLocaleDateString('en-US', { 
+            weekday: 'short',
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          })}
+        </div>
+      </div>
+    </div>
+  ));
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
@@ -233,9 +271,19 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="space-y-8"
+    >
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+      >
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
             <Shield className="text-red-600" size={32} />
@@ -245,7 +293,9 @@ const AdminDashboard: React.FC = () => {
             System overview and management • Last updated: {lastUpdated.toLocaleTimeString()}
           </p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          {/* Real-time Clock */}
+          <Clock />
           <button 
             onClick={handleRefresh}
             disabled={loading}
@@ -259,39 +309,68 @@ const AdminDashboard: React.FC = () => {
             Live Monitor
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Users"
-          value={stats?.totalUsers}
-          change={12.5}
-          icon={Users}
-          color="blue"
-        />
-        <StatCard
-          title="Active Businesses"
-          value={stats?.activeBusinesses}
-          change={8.2}
-          icon={Building2}
-          color="purple"
-        />
-        <StatCard
-          title="Today's Bookings"
-          value={stats?.todayBookings}
-          change={-2.1}
-          icon={Calendar}
-          color="green"
-        />
-        <StatCard
-          title="Monthly Revenue"
-          value={stats?.monthlyRevenue}
-          change={15.3}
-          icon={DollarSign}
-          color="emerald"
-        />
-      </div>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
+      >
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <StatCard
+            title="Total Users"
+            value={stats?.totalUsers}
+            change={12.5}
+            icon={Users}
+            color="blue"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          <StatCard
+            title="Active Businesses"
+            value={stats?.activeBusinesses}
+            change={8.2}
+            icon={Building2}
+            color="purple"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+        >
+          <StatCard
+            title="Today's Bookings"
+            value={stats?.todayBookings}
+            change={-2.1}
+            icon={Calendar}
+            color="green"
+          />
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.6 }}
+        >
+          <StatCard
+            title="Monthly Revenue"
+            value={stats?.monthlyRevenue}
+            change={15.3}
+            icon={DollarSign}
+            color="emerald"
+          />
+        </motion.div>
+      </motion.div>
 
       {/* System Health */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -333,7 +412,7 @@ const AdminDashboard: React.FC = () => {
 
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">User Distribution</h3>
-          <div className="h-48">
+          <div className="w-full" style={{ height: '192px', minHeight: '192px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
@@ -394,7 +473,7 @@ const AdminDashboard: React.FC = () => {
         {/* Growth Chart */}
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
           <h3 className="text-lg font-semibold text-slate-900 mb-4">Platform Growth</h3>
-          <div className="h-64">
+          <div className="w-full" style={{ height: '256px', minHeight: '256px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -446,7 +525,7 @@ const AdminDashboard: React.FC = () => {
       {/* Revenue Chart */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
         <h3 className="text-lg font-semibold text-slate-900 mb-4">Revenue Trends</h3>
-        <div className="h-80">
+        <div className="w-full" style={{ height: '320px', minHeight: '320px' }}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
@@ -464,7 +543,7 @@ const AdminDashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 };
 
