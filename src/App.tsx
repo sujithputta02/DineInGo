@@ -16,12 +16,25 @@ import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import UserFeedbackForm from './components/UserFeedbackForm';
 import DebugPage from './pages/DebugPage';
 import FoodMenu from './pages/FoodMenu';
+import AdminLoginPage from './pages/AdminLoginPage';
+import AdminDashboard from './pages/AdminDashboard';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminBusinessesPage from './pages/AdminBusinessesPage';
+import AdminManagementPage from './pages/AdminManagementPage';
+import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
+import AdminSystemHealthPage from './pages/AdminSystemHealthPage';
+import AdminReportsPage from './pages/AdminReportsPage';
+import AdminIssueReportsPage from './pages/AdminIssueReportsPage';
+import AdminSettingsPage from './pages/AdminSettingsPage';
+import MaintenancePage from './pages/MaintenancePage';
+import MaintenanceCheck from './components/MaintenanceCheck';
 import AuthActionHandler from './pages/AuthActionHandler';
 import EventRegistration from './pages/EventRegistration';
 import EventPreview from './pages/EventPreview';
 import EventsPage from './pages/EventsPage';
 import BusinessLayout from './layouts/BusinessLayout';
+import AdminLayout from './layouts/AdminLayout';
 import BusinessLogin from './pages/business/BusinessLogin';
 import BusinessSignup from './pages/business/BusinessSignup';
 import ForgotPassword from './pages/business/ForgotPassword';
@@ -30,6 +43,7 @@ import ManageRestaurant from './pages/business/ManageRestaurant';
 import RestaurantOnboarding from './pages/business/RestaurantOnboarding';
 import BusinessOnboarding from './pages/business/BusinessOnboarding';
 import BusinessDashboard from './pages/business/BusinessDashboard';
+import BusinessNotifications from './components/BusinessNotifications';
 import PayoutDashboard from './pages/business/PayoutDashboard';
 import InvoiceManagement from './pages/business/InvoiceManagement';
 import POSSettings from './pages/business/POSSettings';
@@ -41,6 +55,7 @@ import FloorPlanManagement from './pages/business/FloorPlanManagement';
 import BusinessSettings from './pages/business/BusinessSettings';
 import EventsManagement from './pages/business/EventsManagement';
 import ProtectedBusinessRoute from './components/ProtectedBusinessRoute';
+import ProtectedAdminRoute from './components/ProtectedAdminRoute';
 import CustomerRoute from './components/CustomerRoute';
 import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
@@ -93,21 +108,23 @@ const App: React.FC = () => {
       <AuthProvider>
         <UserActivityProvider>
           <NotificationProvider>
-            <ToastContainer
-              position="top-center"
-              autoClose={5000}
-              hideProgressBar={false}
-              newestOnTop
-              closeOnClick
-              rtl={false}
-              pauseOnFocusLoss
-              draggable
-              pauseOnHover
-              theme="light"
-            />
-            <AIChatbot />
-            <Routes>
-              <Route path="/" element={<LandingPage />} />
+            <MaintenanceCheck>
+              <ToastContainer
+                position="top-center"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+              />
+              <AIChatbot />
+              <Routes>
+                <Route path="/maintenance" element={<MaintenancePage />} />
+                <Route path="/" element={<LandingPage />} />
 
               {/* Business Landing Page (Public) */}
               <Route path="/business" element={<BusinessLandingPage />} />
@@ -145,6 +162,23 @@ const App: React.FC = () => {
                 <Route path="/event/:id/preview" element={<EventPreview />} />
               </Route>
 
+              <Route path="/admin-login" element={<AdminLoginPage />} />
+              
+              {/* Admin Protected Routes */}
+              <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
+                <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                <Route path="dashboard" element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="notifications" element={<AdminNotificationsPage />} />
+                <Route path="businesses" element={<AdminBusinessesPage />} />
+                <Route path="team" element={<AdminManagementPage />} />
+                <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="system" element={<AdminSystemHealthPage />} />
+                <Route path="reports" element={<AdminReportsPage />} />
+                <Route path="issues" element={<AdminIssueReportsPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+              </Route>
+
               <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
               <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
@@ -153,6 +187,7 @@ const App: React.FC = () => {
                 <Route element={<BusinessLayout />}>
                   <Route index element={<BusinessDashboard />} />
                   <Route path="dashboard" element={<BusinessDashboard />} />
+                  <Route path="notifications" element={<BusinessNotifications />} />
                   <Route path="onboarding" element={<BusinessOnboarding />} />
                   <Route path="edit/:id" element={<BusinessOnboarding />} />
                   <Route path="view/:id" element={<BusinessOnboarding />} />
@@ -179,6 +214,7 @@ const App: React.FC = () => {
                 </Route>
               </Route>
             </Routes>
+            </MaintenanceCheck>
           </NotificationProvider>
         </UserActivityProvider>
       </AuthProvider>

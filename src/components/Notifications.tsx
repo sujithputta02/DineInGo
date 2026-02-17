@@ -98,8 +98,9 @@ const Notifications: React.FC = () => {
           </div>
         </div>
         <div className={`space-y-4 ${refreshing ? 'opacity-50' : ''}`}>
-          {notifications.map((n) => {
-            const notificationRead = isRead(n._id);
+          {notifications.map((n: any) => {
+            // Directly check the isRead property from the notification object
+            const notificationRead = n.isRead === true;
             
             return (
               <div 

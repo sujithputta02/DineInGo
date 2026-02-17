@@ -1,124 +1,431 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import {
+  MessageSquare,
+  Send,
+  Users,
+  Building2,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  Bell,
+  Target,
+  Globe,
+  UserCheck,
+  RefreshCw
+} from 'lucide-react';
+import EmojiPicker from '../components/EmojiPicker';
+import { adminApi } from '../utils/adminApi';
 
 const AdminNotificationsPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [type, setType] = useState<'info' | 'success' | 'warning' | 'error'>('info');
+  const [targetType, setTargetType] = useState<'all' | 'users' | 'businesses'>('all');
   const [success, setSuccess] = useState<string | null>(null);
-  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+  const [stats, setStats] = useState({ today: 0, week: 0, total: 0 });
+  const [statsLoading, setStatsLoading] = useState(true);
 
-  useEffect(() => {
-    if (localStorage.getItem('isAdmin') !== 'true') {
-      navigate('/dashboard');
-    }
-  }, [navigate]);
+  // Fetch notification stats
+  React.useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const data = await adminApi.getNotificationStats();
+        if (data.success) {
+          setStats(data.stats);
+        }
+      } catch (err) {
+        console.error('Error fetching stats:', err);
+      } finally {
+        setStatsLoading(false);
+      }
+    };
 
-  if (localStorage.getItem('isAdmin') !== 'true') {
-    return null;
-  }
+    fetchStats();
+    // Refresh stats every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!title.trim() || !message.trim()) {
+      setError('Title and message are required');
+      return;
+    }
+
     setLoading(true);
     setError(null);
     setSuccess(null);
+
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/notifications`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, message }),
+      const data = await adminApi.sendNotification({
+        title: title.trim(),
+        message: message.trim(),
+        type,
+        targetType
       });
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to send notification');
+      
+      if (data.success) {
+        setSuccess(`Notification sent successfully to ${data.recipientCount} recipients`);
+        setTitle('');
+        setMessage('');
+        setType('info');
+        setTargetType('all');
+        
+        // Refresh stats after sending
+        const statsData = await adminApi.getNotificationStats();
+        if (statsData.success) {
+          setStats(statsData.stats);
+        }
+      } else {
+        setError(data.message || 'Failed to send notification');
       }
-      setSuccess('Notification sent to all users!');
-      setTitle('');
-      setMessage('');
     } catch (err: any) {
-      setError(err.message || 'Failed to send notification');
+      console.error('Error sending notification:', err);
+      setError(err.message || 'Failed to send notification. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('isAdmin');
-    navigate('/admin-login');
+  const getTypeIcon = (notificationType: string) => {
+    switch (notificationType) {
+      case 'success': return <CheckCircle className="text-green-600" size={20} />;
+      case 'warning': return <AlertCircle className="text-yellow-600" size={20} />;
+      case 'error': return <AlertCircle className="text-red-600" size={20} />;
+      default: return <Info className="text-blue-600" size={20} />;
+    }
+  };
+
+  const getTypeColor = (notificationType: string) => {
+    switch (notificationType) {
+      case 'success': return 'border-green-200 bg-green-50';
+      case 'warning': return 'border-yellow-200 bg-yellow-50';
+      case 'error': return 'border-red-200 bg-red-50';
+      default: return 'border-blue-200 bg-blue-50';
+    }
+  };
+
+  const getTargetIcon = (target: string) => {
+    switch (target) {
+      case 'users': return <Users className="text-blue-600" size={16} />;
+      case 'businesses': return <Building2 className="text-purple-600" size={16} />;
+      default: return <Globe className="text-green-600" size={16} />;
+    }
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Send Notification to All Users</h1>
-        <button 
-          onClick={handleLogout}
-          className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 rounded transition"
-        >
-          Admin Logout
-        </button>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
+            <MessageSquare className="text-blue-600" size={32} />
+            Send Notifications
+          </h1>
+          <p className="text-slate-600 mt-1">
+            Send system-wide notifications to users and businesses
+          </p>
+        </div>
+        <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-xl">
+          <Bell size={16} />
+          <span className="text-sm font-medium">Notification Center</span>
+        </div>
       </div>
-      
-      <div className="bg-white rounded-xl shadow p-6">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">Title</label>
-            <input
-              type="text"
-              id="title"
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <div>
-            <label htmlFor="message" className="block text-sm font-medium text-gray-700 mb-1">Message</label>
-            <textarea
-              id="message"
-              value={message}
-              onChange={e => setMessage(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2 h-32 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-            />
-          </div>
-          <button 
-            type="submit" 
-            className="w-full bg-green-600 text-white py-3 rounded-lg font-medium hover:bg-green-700 transition"
-            disabled={loading}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Notification Form */}
+        <div className="lg:col-span-2">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200"
           >
-            {loading ? 'Sending...' : 'Send Notification'}
-          </button>
-        </form>
-        
-        {success && (
-          <div className="mt-4 p-3 bg-green-100 text-green-700 rounded-lg">
-            {success}
-          </div>
-        )}
-        
-        {error && (
-          <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
-      </div>
-      
-      <div className="mt-6 flex justify-center">
-        <button
-          onClick={() => navigate('/dashboard')}
-          className="text-blue-600 hover:text-blue-800 flex items-center"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-          </svg>
-          Back to Dashboard
-        </button>
+            <div className="flex items-center gap-3 mb-6">
+              <div className="p-3 bg-blue-100 rounded-xl">
+                <Send className="text-blue-600" size={24} />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Create Notification</h2>
+                <p className="text-slate-600 text-sm">Compose and send notifications to your audience</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSendNotification} className="space-y-6">
+              {/* Title */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Notification Title
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Enter notification title..."
+                  className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                />
+              </div>
+
+              {/* Message */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Message Content
+                </label>
+                <div className="relative">
+                  <textarea
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Enter your notification message..."
+                    rows={4}
+                    className="w-full px-4 py-3 pr-12 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                    required
+                  />
+                  <div className="absolute bottom-2 right-2">
+                    <EmojiPicker 
+                      onEmojiSelect={(emoji) => setMessage(prev => prev + emoji)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500 mt-1">
+                  {message.length}/500 characters
+                </p>
+              </div>
+
+              {/* Type and Target */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Notification Type
+                  </label>
+                  <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value as any)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="info">Information</option>
+                    <option value="success">Success</option>
+                    <option value="warning">Warning</option>
+                    <option value="error">Error/Alert</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Target Audience
+                  </label>
+                  <select
+                    value={targetType}
+                    onChange={(e) => setTargetType(e.target.value as any)}
+                    className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="all">All Users</option>
+                    <option value="users">Customers Only</option>
+                    <option value="businesses">Businesses Only</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Preview */}
+              {(title || message) && (
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Preview
+                  </label>
+                  <div className={`p-4 rounded-xl border-2 ${getTypeColor(type)}`}>
+                    <div className="flex items-start gap-3">
+                      {getTypeIcon(type)}
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-slate-900 mb-1">
+                          {title || 'Notification Title'}
+                        </h3>
+                        <p className="text-slate-700 text-sm">
+                          {message || 'Your notification message will appear here...'}
+                        </p>
+                        <div className="flex items-center gap-2 mt-2">
+                          {getTargetIcon(targetType)}
+                          <span className="text-xs text-slate-600 capitalize">
+                            {targetType === 'all' ? 'All Users' : targetType}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Success/Error Messages */}
+              {success && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700"
+                >
+                  <CheckCircle size={16} />
+                  <span className="text-sm font-medium">{success}</span>
+                </motion.div>
+              )}
+
+              {error && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700"
+                >
+                  <AlertCircle size={16} />
+                  <span className="text-sm font-medium">{error}</span>
+                </motion.div>
+              )}
+
+              {/* Submit Button */}
+              <button
+                type="submit"
+                disabled={loading || !title.trim() || !message.trim()}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw size={18} className="animate-spin" />
+                    Sending Notification...
+                  </>
+                ) : (
+                  <>
+                    <Send size={18} />
+                    Send Notification
+                  </>
+                )}
+              </button>
+            </form>
+          </motion.div>
+        </div>
+
+        {/* Quick Actions & Tips */}
+        <div className="space-y-6">
+          {/* Quick Templates */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+          >
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <Target size={20} className="text-purple-600" />
+              Quick Templates
+            </h3>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  setTitle('System Maintenance Notice');
+                  setMessage('We will be performing scheduled maintenance on our servers. The platform may be temporarily unavailable during this time.');
+                  setType('warning');
+                  setTargetType('all');
+                }}
+                className="w-full text-left p-3 hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                <p className="font-medium text-slate-900 text-sm">Maintenance Notice</p>
+                <p className="text-xs text-slate-600">System maintenance alert</p>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setTitle('New Feature Available');
+                  setMessage('We\'ve just released exciting new features to enhance your dining experience. Check them out now!');
+                  setType('success');
+                  setTargetType('users');
+                }}
+                className="w-full text-left p-3 hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                <p className="font-medium text-slate-900 text-sm">Feature Announcement</p>
+                <p className="text-xs text-slate-600">New feature release</p>
+              </button>
+              
+              <button
+                onClick={() => {
+                  setTitle('Important Policy Update');
+                  setMessage('We have updated our terms of service and privacy policy. Please review the changes at your earliest convenience.');
+                  setType('info');
+                  setTargetType('all');
+                }}
+                className="w-full text-left p-3 hover:bg-slate-50 rounded-xl transition-colors"
+              >
+                <p className="font-medium text-slate-900 text-sm">Policy Update</p>
+                <p className="text-xs text-slate-600">Terms and privacy changes</p>
+              </button>
+            </div>
+          </motion.div>
+
+          {/* Best Practices */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+          >
+            <h3 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+              <UserCheck size={20} className="text-green-600" />
+              Best Practices
+            </h3>
+            <div className="space-y-3 text-sm text-slate-600">
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Keep titles concise and descriptive</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Use appropriate notification types for better user experience</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Target specific audiences when relevant</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Preview notifications before sending</p>
+              </div>
+              <div className="flex items-start gap-2">
+                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
+                <p>Avoid sending too many notifications to prevent fatigue</p>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Statistics */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+          >
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Notification Stats</h3>
+            {statsLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="animate-spin text-blue-600" size={24} />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Today's Notifications</span>
+                  <span className="font-semibold text-slate-900">{stats.today}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">This Week</span>
+                  <span className="font-semibold text-slate-900">{stats.week}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-slate-600">Total Sent</span>
+                  <span className="font-semibold text-slate-900">{stats.total}</span>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        </div>
       </div>
     </div>
   );
 };
 
-export default AdminNotificationsPage; 
+export default AdminNotificationsPage;

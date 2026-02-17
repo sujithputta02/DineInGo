@@ -5,10 +5,13 @@ import { NotificationService } from '../services/NotificationService';
 
 interface Notification {
   _id: string;
+  userId: string;
   title: string;
   message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  isRead: boolean;
   createdAt: string;
-  readBy: string[];
+  target?: string;
 }
 
 interface NotificationContextType {
@@ -38,17 +41,24 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const shownNotifications = useRef(new Set<string>());
   
   const refreshNotifications = async () => {
+    if (!auth.currentUser?.uid) {
+      console.log('No user logged in, skipping notification fetch');
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const data = await notificationsApi.getAll();
+      const data = await notificationsApi.getAll(auth.currentUser.uid);
       console.log('Fetched notifications from API:', data);
 
+      // Show desktop notifications for unread notifications
       if (NotificationService.getPermission() === 'granted') {
-        const unread = data.filter(n => 
-          !n.readBy?.includes(auth.currentUser!.uid) && !shownNotifications.current.has(n._id)
+        const unread = data.filter((n: Notification) => 
+          !n.isRead && !shownNotifications.current.has(n._id)
         );
 
-        unread.forEach(n => {
+        unread.forEach((n: Notification) => {
           NotificationService.show(n.title, { body: n.message });
           shownNotifications.current.add(n._id);
         });
@@ -57,6 +67,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       setNotifications(data);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
+      setNotifications([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -68,28 +79,25 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
     
-    try {
-      await notificationsApi.markAsRead(id, auth.currentUser.uid);
-      
-      // Update local state to reflect the change
-      setNotifications(prev => 
-        prev.map(n => {
-          if (n._id === id) {
-            // Make a copy of readBy array or initialize it if undefined
-            const readBy = [...(n.readBy || [])];
-            
-            // Add user ID if it's not already in the array
-            if (!readBy.includes(auth.currentUser!.uid)) {
-              readBy.push(auth.currentUser!.uid);
-            }
-            
-            return { ...n, readBy };
-          }
-          return n;
-        })
+    console.log(`Marking notification ${id} as read for user ${auth.currentUser.uid}`);
+    
+    // Immediately update UI (optimistic update)
+    setNotifications(prev => {
+      const updated = prev.map(n => 
+        n._id === id ? { ...n, isRead: true } : n
       );
+      console.log(`Optimistically updated notification ${id} to read`);
+      return updated;
+    });
+    
+    try {
+      // Then update on server
+      await notificationsApi.markAsRead(id, auth.currentUser.uid);
+      console.log(`Notification ${id} marked as read on server successfully`);
     } catch (error) {
-      console.error('Error marking notification as read:', error);
+      console.error('Error marking notification as read on server:', error);
+      // Revert the optimistic update on error
+      await refreshNotifications();
     }
   };
   
@@ -99,45 +107,44 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
     
+    console.log(`Marking all notifications as read for user ${auth.currentUser.uid}`);
+    
+    // Immediately update UI (optimistic update)
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, isRead: true }));
+      console.log(`Optimistically marked ${updated.length} notifications as read`);
+      return updated;
+    });
+    
     try {
+      // Then update on server
       await notificationsApi.markAllAsRead(auth.currentUser.uid);
-      
-      // Update local state to reflect all notifications as read
-      setNotifications(prev => 
-        prev.map(n => {
-          // Make a copy of readBy array or initialize it if undefined
-          const readBy = [...(n.readBy || [])];
-          
-          // Add user ID if it's not already in the array
-          if (!readBy.includes(auth.currentUser!.uid)) {
-            readBy.push(auth.currentUser!.uid);
-          }
-          
-          return { ...n, readBy };
-        })
-      );
+      console.log('All notifications marked as read on server successfully');
     } catch (error) {
-      console.error('Error marking all notifications as read:', error);
+      console.error('Error marking all notifications as read on server:', error);
+      // Revert the optimistic update on error
+      await refreshNotifications();
     }
   };
   
   const isRead = (id: string): boolean => {
-    if (!auth.currentUser?.uid) return false;
-    
     const notification = notifications.find(n => n._id === id);
-    if (!notification) return false;
+    if (!notification) {
+      return false;
+    }
     
-    return notification.readBy?.includes(auth.currentUser.uid) || false;
+    return notification.isRead || false;
   };
   
   // Calculate unread count
-  const unreadCount = notifications.filter(n => !isRead(n._id)).length;
+  const unreadCount = notifications.filter(n => !n.isRead).length;
   
   useEffect(() => {
     if (auth.currentUser) {
       refreshNotifications();
       
-      const interval = setInterval(refreshNotifications, 60000); // Check every minute
+      // Refresh notifications every minute
+      const interval = setInterval(refreshNotifications, 60000);
       
       return () => clearInterval(interval);
     }

@@ -43,6 +43,7 @@ import {
   Check
 } from 'lucide-react';
 import socketService from '../../utils/socketService';
+import EmojiPicker from '../../components/EmojiPicker';
 import {
   LineChart,
   Line,
@@ -133,11 +134,11 @@ const StarRating = ({ rating, size = 16, className = "" }: { rating: number | st
 };
 
 // Read URL parameter for initial view mode
-const getInitialViewMode = (): 'overview' | 'businesses' | 'bookings' | 'analytics' => {
+const getInitialViewMode = (): 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' => {
   const params = new URLSearchParams(window.location.search);
   const view = params.get('view');
-  if (view && ['overview', 'businesses', 'bookings', 'analytics'].includes(view)) {
-    return view as 'overview' | 'businesses' | 'bookings' | 'analytics';
+  if (view && ['overview', 'businesses', 'bookings', 'analytics', 'operations', 'marketing', 'reviews'].includes(view)) {
+    return view as 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews';
   }
   return 'overview';
 };
@@ -145,12 +146,35 @@ const getInitialViewMode = (): 'overview' | 'businesses' | 'bookings' | 'analyti
 const BusinessDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const [viewMode, setViewMode] = useState<'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews'>(getInitialViewMode() as any);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'draft'>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Function to change view mode and update URL
+  const changeViewMode = (newView: typeof viewMode) => {
+    setViewMode(newView);
+    // Update URL without page reload
+    const url = new URL(window.location.href);
+    url.searchParams.set('view', newView);
+    window.history.pushState({}, '', url.toString());
+    // Scroll to top for better UX
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Listen to browser back/forward buttons
+  useEffect(() => {
+    const handlePopState = () => {
+      const newView = getInitialViewMode();
+      setViewMode(newView);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Analytics state
   const [analyticsData, setAnalyticsData] = useState<any>(null);
@@ -775,13 +799,20 @@ const BusinessDashboard: React.FC = () => {
                         </div>
 
                         {editingReplyId === review._id ? (
-                          <textarea
-                            autoFocus
-                            className="w-full text-sm bg-white border-slate-200 rounded p-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
-                            value={editingReplyText}
-                            onChange={(e) => setEditingReplyText(e.target.value)}
-                            rows={2}
-                          />
+                          <div className="relative">
+                            <textarea
+                              autoFocus
+                              className="w-full text-sm bg-white border-slate-200 rounded p-2 pr-10 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                              value={editingReplyText}
+                              onChange={(e) => setEditingReplyText(e.target.value)}
+                              rows={2}
+                            />
+                            <div className="absolute bottom-2 right-2">
+                              <EmojiPicker 
+                                onEmojiSelect={(emoji) => setEditingReplyText(prev => prev + emoji)}
+                              />
+                            </div>
+                          </div>
                         ) : (
                           <>
                             <p className="text-sm text-slate-700">{review.reply.text}</p>
@@ -790,20 +821,27 @@ const BusinessDashboard: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="flex gap-2">
-                        <input
-                          type="text"
-                          placeholder="Type your response..."
-                          className="flex-1 text-sm bg-slate-50 border-slate-200 rounded-lg focus:ring-emerald-500"
-                          value={replyTexts[review._id] || ''}
-                          onChange={(e) => setReplyTexts(prev => ({ ...prev, [review._id]: e.target.value }))}
-                          onKeyPress={(e) => {
-                            if (e.key === 'Enter') {
-                              handleReplySubmit(review._id);
-                            }
-                          }}
-                          disabled={isReplying[review._id]}
-                        />
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 relative">
+                          <input
+                            type="text"
+                            placeholder="Type your response..."
+                            className="w-full text-sm bg-slate-50 border-slate-200 rounded-lg focus:ring-emerald-500 pr-10"
+                            value={replyTexts[review._id] || ''}
+                            onChange={(e) => setReplyTexts(prev => ({ ...prev, [review._id]: e.target.value }))}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleReplySubmit(review._id);
+                              }
+                            }}
+                            disabled={isReplying[review._id]}
+                          />
+                          <div className="absolute bottom-1 right-1">
+                            <EmojiPicker 
+                              onEmojiSelect={(emoji) => setReplyTexts(prev => ({ ...prev, [review._id]: (prev[review._id] || '') + emoji }))}
+                            />
+                          </div>
+                        </div>
                         <button
                           onClick={() => handleReplySubmit(review._id)}
                           disabled={isReplying[review._id] || !replyTexts[review._id]?.trim()}
@@ -1003,7 +1041,7 @@ const BusinessDashboard: React.FC = () => {
               <p className="text-sm text-slate-600 mt-1">Your businesses and their current status</p>
             </div>
             <button
-              onClick={() => setViewMode('businesses')}
+              onClick={() => changeViewMode('businesses')}
               className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
             >
               View all
@@ -1102,7 +1140,7 @@ const BusinessDashboard: React.FC = () => {
 
                   <div className="flex gap-2">
                     <button
-                      onClick={() => setViewMode('businesses')}
+                      onClick={() => changeViewMode('businesses')}
                       className="flex-1 px-3 py-2 text-sm font-medium text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
                     >
                       View Details
@@ -1137,7 +1175,7 @@ const BusinessDashboard: React.FC = () => {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-slate-900">Recent Bookings</h3>
               <button
-                onClick={() => setViewMode('bookings')}
+                onClick={() => changeViewMode('bookings')}
                 className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
               >
                 View all
@@ -1178,7 +1216,7 @@ const BusinessDashboard: React.FC = () => {
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-lg font-semibold text-slate-900">Business Performance</h3>
               <button
-                onClick={() => setViewMode('businesses')}
+                onClick={() => changeViewMode('businesses')}
                 className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
               >
                 View all
@@ -2192,7 +2230,7 @@ const BusinessDashboard: React.FC = () => {
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
-                onClick={() => setViewMode(id as any)}
+                onClick={() => changeViewMode(id as any)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${viewMode === id
                   ? 'bg-emerald-600 text-white shadow-sm'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'

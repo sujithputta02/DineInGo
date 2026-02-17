@@ -9,6 +9,7 @@ import { Restaurant, Event, MenuItem } from '../types';
 import RestaurantMap from '../components/RestaurantMap';
 import StarRating from '../components/StarRating';
 import { DinoStepper } from '../components/DinoStepper';
+import EmojiPicker from '../components/EmojiPicker';
 
 const RestaurantDetails = () => {
   const { id } = useParams();
@@ -611,28 +612,58 @@ const RestaurantDetails = () => {
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-sm font-medium text-gray-700 mr-2">Your Rating:</span>
                     {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        onClick={() => setNewRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        className="transition-transform hover:scale-110"
-                      >
-                        <Star
-                          size={24}
-                          className={(hoverRating || newRating) >= star ? "text-yellow-400 fill-current" : "text-gray-300"}
+                      <div key={star} className="relative inline-block">
+                        {/* Left half of star (0.5 rating) */}
+                        <button
+                          type="button"
+                          onClick={() => setNewRating(star - 0.5)}
+                          onMouseEnter={() => setHoverRating(star - 0.5)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className="absolute left-0 top-0 w-1/2 h-full z-10"
+                          style={{ cursor: 'pointer' }}
                         />
-                      </button>
+                        {/* Right half of star (full rating) */}
+                        <button
+                          type="button"
+                          onClick={() => setNewRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className="absolute right-0 top-0 w-1/2 h-full z-10"
+                          style={{ cursor: 'pointer' }}
+                        />
+                        {/* Star display */}
+                        <div className="relative pointer-events-none">
+                          {(hoverRating || newRating) >= star ? (
+                            <Star size={28} className="text-yellow-400 fill-yellow-400" />
+                          ) : (hoverRating || newRating) >= star - 0.5 ? (
+                            <div className="relative">
+                              <Star size={28} className="text-gray-300" />
+                              <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+                                <Star size={28} className="text-yellow-400 fill-yellow-400" />
+                              </div>
+                            </div>
+                          ) : (
+                            <Star size={28} className="text-gray-300" />
+                          )}
+                        </div>
+                      </div>
                     ))}
+                    <span className="ml-2 text-sm font-semibold text-gray-600">
+                      {newRating > 0 ? newRating.toFixed(1) : '0.0'}
+                    </span>
                   </div>
-                  <div>
+                  <div className="relative">
                     <textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
                       placeholder="Tell us about your visit, the food, and the service..."
-                      className="w-full p-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
+                      className="w-full p-4 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
                     />
+                    <div className="absolute bottom-2 right-2">
+                      <EmojiPicker 
+                        onEmojiSelect={(emoji) => setNewComment(prev => prev + emoji)}
+                      />
+                    </div>
                   </div>
                   <button
                     type="submit"

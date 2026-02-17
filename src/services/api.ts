@@ -1313,11 +1313,11 @@ export const checkApiConnection = async () => {
 
 // Notification API endpoints
 export const notificationsApi = {
-  // Get all notifications
-  getAll: async () => {
+  // Get all notifications for a specific user
+  getAll: async (userId: string) => {
     try {
-      console.log('Fetching all notifications from API');
-      const response = await fetch(`${API_URL}/api/notifications`);
+      console.log('Fetching notifications for user:', userId);
+      const response = await fetch(`${API_URL}/api/notifications?userId=${userId}`);
 
       if (!response.ok) {
         throw new Error(`Error fetching notifications: ${response.status}`);
@@ -1355,11 +1355,6 @@ export const notificationsApi = {
       console.error('Failed to mark notification as read:', error);
       throw error;
     }
-  },
-
-  // Check if a notification is read by a specific user
-  isReadByUser: (notification: any, userId: string): boolean => {
-    return notification.readBy && notification.readBy.includes(userId);
   },
 
   // Mark all notifications as read

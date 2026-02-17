@@ -25,6 +25,7 @@ import { auth } from '../../firebase';
 import { toast } from 'react-toastify';
 import BusinessLocationSelector from '../../components/BusinessLocationSelector';
 import SafeImage from '../../components/SafeImage';
+import ReportIssueModal from '../../components/ReportIssueModal';
 
 interface Business {
     id: string;
@@ -73,6 +74,7 @@ const BusinessSettings: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [showReportIssueModal, setShowReportIssueModal] = useState(false);
 
     // Form states
     const [profileForm, setProfileForm] = useState<UserProfile | null>(null);
@@ -662,6 +664,28 @@ const BusinessSettings: React.FC = () => {
                     </div>
                 </header>
 
+                {/* Report Issue Section */}
+                <div className="mb-6 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+                                <AlertCircle className="text-red-500" size={20} />
+                                Report an Issue
+                            </h3>
+                            <p className="text-sm text-slate-500">
+                                Found a bug or have feedback about the platform? Let us know!
+                            </p>
+                        </div>
+                        <button
+                            onClick={() => setShowReportIssueModal(true)}
+                            className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-red-500/20"
+                        >
+                            <AlertCircle size={18} />
+                            Report Issue
+                        </button>
+                    </div>
+                </div>
+
                 <main className="relative min-h-[600px]">
                     <AnimatePresence mode="wait">
                         {!selectedBusinessId && activeTab === 'profile' && (
@@ -697,6 +721,16 @@ const BusinessSettings: React.FC = () => {
                     </AnimatePresence>
                 </main>
             </div>
+
+            {/* Report Issue Modal */}
+            <ReportIssueModal
+                isOpen={showReportIssueModal}
+                onClose={() => setShowReportIssueModal(false)}
+                userType="business"
+                userId={auth.currentUser?.uid}
+                userEmail={profile?.email}
+                userName={profile?.displayName || profile?.name}
+            />
         </div>
     );
 };

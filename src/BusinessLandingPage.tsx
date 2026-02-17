@@ -165,7 +165,7 @@ export default function BusinessLandingPage() {
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => navigate('/business/signup')}
+                            onClick={() => navigate('/business/businessSignup')}
                             style={{
                                 backgroundColor: "#facc15",
                                 padding: "10px 24px",
@@ -252,7 +252,7 @@ export default function BusinessLandingPage() {
                         <motion.button
                             whileHover={{ scale: 1.08, y: -5 }}
                             whileTap={{ scale: 0.95 }}
-                            onClick={() => navigate('/business/signup')}
+                            onClick={() => navigate('/business/businessSignup')}
                             style={{
                                 backgroundColor: "#00F29D",
                                 padding: "18px 40px",
@@ -663,7 +663,7 @@ export default function BusinessLandingPage() {
                     <motion.button
                         whileHover={{ scale: 1.1, y: -5 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate('/business/signup')}
+                        onClick={() => navigate('/business/businessSignup')}
                         style={{
                             backgroundColor: "#000",
                             color: "#fff",

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DinoStepper } from '../components/DinoStepper';
 import { InitialsAvatar } from '../components/InitialsAvatar';
-import { Search, Menu, MapPin, Heart, X, Bell, Settings, Globe, ArrowLeft, Moon, Sun, Calendar, Clock, Check, Users, FileText, Trophy, Camera, Target, Award, Zap, MessageSquare, Pencil, Trash2, Star } from 'lucide-react';
+import { Search, Menu, MapPin, Heart, X, Bell, Settings, Globe, ArrowLeft, Moon, Sun, Calendar, Clock, Check, Users, FileText, Trophy, Camera, Target, Award, Zap, MessageSquare, Pencil, Trash2, Star, AlertCircle } from 'lucide-react';
 import InvoiceModal from '../components/InvoiceModal';
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import BookingCard from '../components/BookingCard';
@@ -19,6 +19,7 @@ import { indianCities } from '../utils/indianCities';
 import SkeletonLoading from '../components/SkeletonLoading';
 import RestaurantMap from '../components/RestaurantMap';
 import ProfileSettings from '../components/ProfileSettings';
+import ReportIssueModal from '../components/ReportIssueModal';
 import NotificationBell from '../components/NotificationBell';
 import { useNotifications } from '../contexts/NotificationContext';
 import { User, LocationSettings } from '../types/user';
@@ -30,6 +31,7 @@ import { SustainabilityBadge } from '../components/SustainabilityBadge';
 import AchievementsSection from '../components/AchievementsSection';
 import ARMenuSection from '../components/ARMenuSection';
 import StarRating from '../components/StarRating';
+import EmojiPicker from '../components/EmojiPicker';
 
 interface UserData {
   uid: string;
@@ -729,6 +731,7 @@ export default function DashboardPage() {
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
   const [editRating, setEditRating] = useState<number>(0);
   const [editComment, setEditComment] = useState<string>('');
+  const [showReportIssueModal, setShowReportIssueModal] = useState(false);
 
   const { unreadCount, markAllAsRead, notifications: notificationContextNotifications, markAsRead: markSingleAsRead, isRead } = useNotifications();
 
@@ -1834,12 +1837,20 @@ export default function DashboardPage() {
                         </button>
                       ))}
                     </div>
-                    <textarea
-                      value={editComment}
-                      onChange={(e) => setEditComment(e.target.value)}
-                      className={`w-full p-4 rounded-2xl border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} focus:ring-2 focus:ring-emerald-500 outline-none resize-none`}
-                      rows={3}
-                    />
+                    <div className="relative">
+                      <textarea
+                        value={editComment}
+                        onChange={(e) => setEditComment(e.target.value)}
+                        className={`w-full p-4 pr-12 rounded-2xl border ${isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'} focus:ring-2 focus:ring-emerald-500 outline-none resize-none`}
+                        rows={3}
+                      />
+                      <div className="absolute bottom-2 right-2">
+                        <EmojiPicker 
+                          onEmojiSelect={(emoji) => setEditComment(prev => prev + emoji)}
+                          isDarkMode={isDarkMode}
+                        />
+                      </div>
+                    </div>
                   </div>
                 ) : (
                   <>
@@ -2728,6 +2739,27 @@ export default function DashboardPage() {
         return (
           <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4 md:p-8`}>
             <div className="max-w-4xl mx-auto space-y-6">
+              {/* Report Issue Button */}
+              <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-xl shadow-sm p-6`}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className={`text-lg font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'} mb-1`}>
+                      Report an Issue
+                    </h3>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Found a bug or have feedback? Let us know!
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowReportIssueModal(true)}
+                    className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium"
+                  >
+                    <AlertCircle className="w-5 h-5" />
+                    Report Issue
+                  </button>
+                </div>
+              </div>
+
               <ProfileSettings
                 user={userData ? {
                   _id: userData.uid,
@@ -3051,7 +3083,7 @@ export default function DashboardPage() {
           id: n.id || n._id,
           title: n.title || 'Notification',
           message: n.message || n.title || '',
-          read: Array.isArray(n.readBy) && typeof userData?.uid === 'string' ? n.readBy.includes(userData.uid) : false,
+          read: n.isRead || false,
           timestamp: n.createdAt ? new Date(n.createdAt) : new Date(),
         }));
 
@@ -3648,6 +3680,16 @@ export default function DashboardPage() {
           <img src="/images/Dino Icon.svg" alt="Hidden Dino" className="w-8 h-8" />
         </motion.div>
       </div>
+
+      {/* Report Issue Modal */}
+      <ReportIssueModal
+        isOpen={showReportIssueModal}
+        onClose={() => setShowReportIssueModal(false)}
+        userType="user"
+        userId={userData?.uid}
+        userEmail={userData?.email}
+        userName={userData?.displayName || userData?.name}
+      />
     </>
   );
 }

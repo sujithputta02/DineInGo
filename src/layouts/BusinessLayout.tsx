@@ -10,25 +10,29 @@ import {
     User as UserIcon,
     Menu,
     Users,
-
     Bell,
     ChevronDown,
     Search,
     ShoppingBag,
-    Ticket
+    Ticket,
+    X,
+    Check
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { auth } from '../firebase';
 import { toast } from 'react-toastify';
 import DineInGoLogo from '../components/DineInGoLogo';
 import { useAuth } from '../contexts/AuthContext';
+import { useNotifications } from '../contexts/NotificationContext';
 
 const BusinessLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
+    const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
     // Helper to check if link is active
     const isActive = (path: string) => location.pathname.startsWith(path);
@@ -55,6 +59,8 @@ const BusinessLayout: React.FC = () => {
         { name: 'Floor Plans', path: '/business/app/floor-plans', icon: Map },
         { name: 'Settings', path: '/business/app/settings', icon: Settings },
     ];
+
+    const notificationsPath = '/business/app/notifications';
 
     const getInitials = (name: string | null) => {
         if (!name) return 'B';
@@ -86,6 +92,24 @@ const BusinessLayout: React.FC = () => {
                             <span className="font-medium">{item.name}</span>
                         </Link>
                     ))}
+                    
+                    {/* Notifications Link */}
+                    <Link
+                        to={notificationsPath}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative ${
+                            isActive('/business/app/notifications')
+                                ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
+                                : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                        }`}
+                    >
+                        <Bell size={20} />
+                        <span className="font-medium">Notifications</span>
+                        {unreadCount > 0 && (
+                            <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                                {unreadCount > 99 ? '99+' : unreadCount}
+                            </span>
+                        )}
+                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-slate-800">
@@ -118,10 +142,115 @@ const BusinessLayout: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                        <button className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative">
-                            <Bell size={20} />
-                            <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-                        </button>
+                        {/* Notifications Bell with Dropdown */}
+                        <div className="relative">
+                            <button 
+                                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative"
+                            >
+                                <Bell size={20} />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold bg-red-500 text-white rounded-full border-2 border-white">
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
+                            </button>
+
+                            <AnimatePresence>
+                                {isNotificationsOpen && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-2 w-96 bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden max-h-[500px] flex flex-col"
+                                    >
+                                        <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                                            <div>
+                                                <p className="text-sm font-bold text-slate-900">Notifications</p>
+                                                {unreadCount > 0 && (
+                                                    <p className="text-xs text-slate-500">{unreadCount} unread</p>
+                                                )}
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                {unreadCount > 0 && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            await markAllAsRead();
+                                                            toast.success('All notifications marked as read');
+                                                        }}
+                                                        className="text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                                                    >
+                                                        Mark all read
+                                                    </button>
+                                                )}
+                                                <button
+                                                    onClick={() => setIsNotificationsOpen(false)}
+                                                    className="p-1 hover:bg-slate-200 rounded-lg transition-colors"
+                                                >
+                                                    <X size={16} className="text-slate-400" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="overflow-y-auto flex-1">
+                                            {notifications.length === 0 ? (
+                                                <div className="p-8 text-center">
+                                                    <Bell size={32} className="mx-auto text-slate-300 mb-2" />
+                                                    <p className="text-sm text-slate-500">No notifications</p>
+                                                </div>
+                                            ) : (
+                                                <div className="divide-y divide-slate-100">
+                                                    {notifications.slice(0, 5).map((notification: any) => (
+                                                        <div
+                                                            key={notification._id}
+                                                            className={`p-4 hover:bg-slate-50 transition-colors cursor-pointer ${
+                                                                !notification.isRead ? 'bg-blue-50/50' : ''
+                                                            }`}
+                                                            onClick={async () => {
+                                                                if (!notification.isRead) {
+                                                                    await markAsRead(notification._id);
+                                                                }
+                                                                setIsNotificationsOpen(false);
+                                                                navigate(notificationsPath);
+                                                            }}
+                                                        >
+                                                            <div className="flex items-start gap-3">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <p className={`text-sm ${!notification.isRead ? 'font-bold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                                                        {notification.title}
+                                                                    </p>
+                                                                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                                                        {notification.message}
+                                                                    </p>
+                                                                    <p className="text-xs text-slate-400 mt-1">
+                                                                        {new Date(notification.createdAt).toLocaleDateString()}
+                                                                    </p>
+                                                                </div>
+                                                                {!notification.isRead && (
+                                                                    <div className="w-2 h-2 bg-blue-500 rounded-full mt-1 flex-shrink-0"></div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {notifications.length > 0 && (
+                                            <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+                                                <Link
+                                                    to={notificationsPath}
+                                                    onClick={() => setIsNotificationsOpen(false)}
+                                                    className="block text-center text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+                                                >
+                                                    View all notifications
+                                                </Link>
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
 
                         <div className="h-8 w-[1px] bg-slate-200"></div>
 
