@@ -38,6 +38,8 @@ const AdminManagementPage: React.FC = () => {
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [maxAdmins, setMaxAdmins] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
+  const [showCapacityModal, setShowCapacityModal] = useState(false);
+  const [newMaxAdmins, setNewMaxAdmins] = useState(5);
 
   const currentAdminEmail = localStorage.getItem('adminEmail');
   const currentAdminRole = localStorage.getItem('adminRole');
@@ -61,6 +63,7 @@ const AdminManagementPage: React.FC = () => {
       setAdmins(data.admins);
       setTotalCount(data.totalCount);
       setMaxAdmins(data.maxAdmins);
+      setNewMaxAdmins(data.maxAdmins);
     } catch (err: any) {
       setError(err.message || 'Failed to load admins');
     } finally {
@@ -126,13 +129,29 @@ const AdminManagementPage: React.FC = () => {
     }
   };
 
-  const AddAdminModal = () => (
+  const handleUpdateCapacity = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setActionLoading('capacity');
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const data = await adminApi.updateMaxAdmins(newMaxAdmins);
+
+      setSuccess(data.message);
+      setMaxAdmins(newMaxAdmins);
+      setShowCapacityModal(false);
+      await loadAdmins();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update admin capacity');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const AddAdminModal = React.memo(() => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl max-w-md w-full"
-      >
+      <div className="bg-white rounded-2xl max-w-md w-full">
         <div className="p-6 border-b border-slate-200">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
@@ -141,7 +160,7 @@ const AdminManagementPage: React.FC = () => {
             </h2>
             <button
               onClick={() => setShowAddModal(false)}
-              className="text-slate-400 hover:text-slate-600 p-2"
+              className="text-slate-400 hover:text-slate-600 p-2 text-2xl leading-none"
             >
               ×
             </button>
@@ -157,9 +176,10 @@ const AdminManagementPage: React.FC = () => {
               type="email"
               value={newAdminEmail}
               onChange={(e) => setNewAdminEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
               placeholder="admin@example.com"
               required
+              autoFocus
             />
           </div>
 
@@ -207,9 +227,91 @@ const AdminManagementPage: React.FC = () => {
             </button>
           </div>
         </form>
-      </motion.div>
+      </div>
     </div>
-  );
+  ));
+
+  const CapacityModal = React.memo(() => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full">
+        <div className="p-6 border-b border-slate-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <Shield className="text-purple-600" size={24} />
+              Update Admin Capacity
+            </h2>
+            <button
+              onClick={() => setShowCapacityModal(false)}
+              className="text-slate-400 hover:text-slate-600 p-2 text-2xl leading-none"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleUpdateCapacity} className="p-6 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Maximum Admins
+            </label>
+            <input
+              type="number"
+              min={totalCount}
+              value={newMaxAdmins}
+              onChange={(e) => setNewMaxAdmins(parseInt(e.target.value))}
+              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="text-purple-600 mt-0.5" size={16} />
+              <div className="text-sm text-purple-800">
+                <p className="font-medium mb-1">Current: {totalCount} active admins</p>
+                <p>You can only set the capacity to {totalCount} or higher.</p>
+              </div>
+            </div>
+          </div>
+
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
+              <AlertTriangle size={16} />
+              <span className="text-sm font-medium">{error}</span>
+            </div>
+          )}
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={() => setShowCapacityModal(false)}
+              className="flex-1 px-4 py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={actionLoading === 'capacity' || newMaxAdmins < totalCount}
+              className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {actionLoading === 'capacity' ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                  Updating...
+                </>
+              ) : (
+                <>
+                  <Shield size={16} />
+                  Update Capacity
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  ));
 
   if (loading) {
     return (
@@ -256,9 +358,18 @@ const AdminManagementPage: React.FC = () => {
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-          <div className="flex items-center gap-3 mb-2">
-            <Users className="text-blue-600" size={20} />
-            <span className="text-sm font-medium text-slate-600">Total Admins</span>
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <Users className="text-blue-600" size={20} />
+              <span className="text-sm font-medium text-slate-600">Total Admins</span>
+            </div>
+            <button
+              onClick={() => setShowCapacityModal(true)}
+              className="text-xs px-2 py-1 bg-purple-100 text-purple-700 rounded-lg hover:bg-purple-200 transition-colors font-medium"
+              title="Update capacity"
+            >
+              Edit Limit
+            </button>
           </div>
           <p className="text-2xl font-bold text-slate-900">{totalCount}</p>
           <p className="text-xs text-slate-500 mt-1">Maximum: {maxAdmins}</p>
@@ -401,6 +512,7 @@ const AdminManagementPage: React.FC = () => {
       </div>
 
       {showAddModal && <AddAdminModal />}
+      {showCapacityModal && <CapacityModal />}
     </div>
   );
 };

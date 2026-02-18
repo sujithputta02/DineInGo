@@ -6,6 +6,7 @@ import {
   addAdmin,
   removeAdmin,
   toggleAdminStatus,
+  updateMaxAdmins,
   initializeSuperAdmin,
   getAdminStats,
   getAllUsers,
@@ -86,6 +87,7 @@ router.get('/list', verifyAdminToken, verifySuperAdmin, getAdmins);
 router.post('/add', verifyAdminToken, verifySuperAdmin, addAdmin);
 router.delete('/remove', verifyAdminToken, verifySuperAdmin, removeAdmin);
 router.patch('/toggle-status', verifyAdminToken, verifySuperAdmin, toggleAdminStatus);
+router.patch('/update-max-admins', verifyAdminToken, verifySuperAdmin, updateMaxAdmins);
 
 // System health routes
 router.get('/system-health', verifyAdminToken, getSystemHealth);

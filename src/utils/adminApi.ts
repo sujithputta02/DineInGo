@@ -129,6 +129,11 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ adminEmail }),
     }),
+  updateMaxAdmins: (maxAdmins: number) =>
+    adminApiRequest('/api/admin/update-max-admins', {
+      method: 'PATCH',
+      body: JSON.stringify({ maxAdmins }),
+    }),
 
   // System health
   getSystemHealth: () => adminApiRequest('/api/admin/system-health'),

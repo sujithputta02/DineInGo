@@ -7,6 +7,7 @@ export interface ISystemSettings extends Document {
   maintenanceStartedBy?: string;
   allowedAdminEmails: string[];
   estimatedEndTime?: Date;
+  maxAdmins: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,6 +35,10 @@ const SystemSettingsSchema = new Schema<ISystemSettings>(
     estimatedEndTime: {
       type: Date,
     },
+    maxAdmins: {
+      type: Number,
+      default: 5,
+    },
   },
   {
     timestamps: true,
@@ -49,6 +54,7 @@ export const getSystemSettings = async (): Promise<ISystemSettings> => {
     settings = await SystemSettings.create({
       maintenanceMode: false,
       maintenanceMessage: 'We are currently performing scheduled maintenance. We\'ll be back shortly!',
+      maxAdmins: 5,
     });
   }
   return settings;

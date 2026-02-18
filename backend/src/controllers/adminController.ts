@@ -8,6 +8,7 @@ import UserNotification from '../models/UserNotification';
 import BusinessNotification from '../models/BusinessNotification';
 import AllUserNotification from '../models/AllUserNotification';
 import NotificationStats from '../models/NotificationStats';
+import { getSystemSettings } from '../models/SystemSettings';
 import nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
 import { generateAdminToken } from '../middleware/adminAuth';
@@ -54,7 +55,6 @@ const getEmailTransporter = () => {
 
 // Super admin email (DineInGo owner)
 const SUPER_ADMIN_EMAIL = 'sujithputta02@gmail.com';
-const MAX_ADMINS = 5;
 
 // Initialize super admin on first run
 export const initializeSuperAdmin = async () => {
@@ -351,11 +351,13 @@ export const getAdmins = async (req: Request, res: Response) => {
       lastLogin: 1 
     }).sort({ createdAt: -1 });
 
+    const settings = await getSystemSettings();
+
     res.json({ 
       success: true, 
       admins,
       totalCount: admins.length,
-      maxAdmins: MAX_ADMINS
+      maxAdmins: settings.maxAdmins
     });
 
   } catch (error) {
@@ -381,6 +383,10 @@ export const addAdmin = async (req: Request, res: Response) => {
 
     // Admin is already verified by middleware (verifySuperAdmin)
     // req.admin contains the authenticated super admin's data
+
+    // Get max admins from settings
+    const settings = await getSystemSettings();
+    const MAX_ADMINS = settings.maxAdmins;
 
     // Check admin limit
     const currentAdminCount = await Admin.countDocuments({ isActive: true });
@@ -1378,6 +1384,48 @@ export const getNotificationStats = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error getting notification stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
+  }
+};
+
+// Update max admins capacity (only for super admin)
+export const updateMaxAdmins = async (req: Request, res: Response) => {
+  try {
+    const { maxAdmins } = req.body;
+
+    if (!maxAdmins || typeof maxAdmins !== 'number' || maxAdmins < 1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Valid max admins number is required (minimum 1)' 
+      });
+    }
+
+    // Get current admin count
+    const currentAdminCount = await Admin.countDocuments({ isActive: true });
+    
+    if (maxAdmins < currentAdminCount) {
+      return res.status(400).json({ 
+        success: false, 
+        message: `Cannot set max admins to ${maxAdmins}. You currently have ${currentAdminCount} active admins. Please remove some admins first.` 
+      });
+    }
+
+    // Update settings
+    const settings = await getSystemSettings();
+    settings.maxAdmins = maxAdmins;
+    await settings.save();
+
+    res.json({ 
+      success: true, 
+      message: `Admin capacity updated to ${maxAdmins} successfully`,
+      maxAdmins: settings.maxAdmins
+    });
+
+  } catch (error) {
+    console.error('Error updating max admins:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 
