@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { User, IActivity } from '../models/User';
 import { UserStats } from '../models/UserStats';
+import UserNotification from '../models/UserNotification';
+import AllUserNotification from '../models/AllUserNotification';
 
 // Helper function to extract device and IP info
 const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: string } => {
@@ -67,6 +69,36 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       activities: [signupActivity]
     });
     await user.save();
+
+    // Send welcome notification to the new user
+    try {
+      const welcomeNotification = new AllUserNotification({
+        userId: uid,
+        title: `Welcome to DineInGo, ${name}! 🎉`,
+        message: `Hi ${name}! We're thrilled to have you join our community. Discover amazing restaurants, book tables, attend events, and enjoy exclusive dining experiences. Start exploring now!`,
+        type: 'success',
+        isRead: false,
+        sentBy: 'system',
+        createdAt: new Date()
+      });
+      await welcomeNotification.save();
+      console.log(`Welcome notification sent to new user: ${name} (${uid})`);
+
+      // Emit real-time notification if socket.io is available
+      const io = req.app.get('io');
+      if (io) {
+        io.to(`user_${uid}`).emit('newNotification', {
+          title: welcomeNotification.title,
+          message: welcomeNotification.message,
+          type: welcomeNotification.type,
+          createdAt: welcomeNotification.createdAt
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error sending welcome notification:', notificationError);
+      // Don't fail user creation if notification fails
+    }
+
     res.status(201).json(user);
   } catch (error: any) {
     // Handle race condition for duplicate key error explicitly
