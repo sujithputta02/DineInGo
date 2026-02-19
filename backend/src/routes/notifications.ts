@@ -27,6 +27,51 @@ router.get('/', async (req: Request, res: Response) => {
 
     console.log(`User role: ${user.role}`);
 
+    // Check if there are any "All Users" notifications that this user doesn't have
+    // Get one sample notification to check if there are broadcasts this user is missing
+    const existingNotifications = await AllUserNotification.find({ userId: userId }).select('sentBy createdAt').lean();
+    const existingTimestamps = new Set(existingNotifications.map(n => n.createdAt?.getTime()));
+    
+    // Find broadcast notifications (those sent to multiple users at the same time)
+    // by looking for notifications with the same sentBy and createdAt
+    const broadcastNotifications = await AllUserNotification.aggregate([
+      {
+        $group: {
+          _id: { sentBy: '$sentBy', createdAt: '$createdAt', title: '$title', message: '$message', type: '$type' },
+          count: { $sum: 1 },
+          sample: { $first: '$$ROOT' }
+        }
+      },
+      {
+        $match: {
+          count: { $gt: 5 }, // If sent to more than 5 users, it's likely a broadcast
+          '_id.createdAt': { $gte: new Date(user.createdAt || 0) } // Only notifications after user joined
+        }
+      }
+    ]);
+
+    // Create missing notifications for this user
+    const missingNotifications = [];
+    for (const broadcast of broadcastNotifications) {
+      const timestamp = broadcast._id.createdAt.getTime();
+      if (!existingTimestamps.has(timestamp)) {
+        missingNotifications.push({
+          userId: userId,
+          title: broadcast._id.title,
+          message: broadcast._id.message,
+          type: broadcast._id.type,
+          sentBy: broadcast._id.sentBy,
+          isRead: false,
+          createdAt: broadcast._id.createdAt
+        });
+      }
+    }
+
+    if (missingNotifications.length > 0) {
+      await AllUserNotification.insertMany(missingNotifications);
+      console.log(`Created ${missingNotifications.length} missing broadcast notifications for user ${userId}`);
+    }
+
     let notifications: any[] = [];
 
     // Always fetch from AllUserNotification (sent to everyone)
