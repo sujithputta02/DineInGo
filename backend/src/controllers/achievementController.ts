@@ -9,7 +9,7 @@ import { Event } from '../models/Event';
 const calculateRealUserStats = async (userId: string) => {
   try {
     // Get all user bookings
-    const bookings = await Booking.find({ userId }).populate('restaurantId').populate('eventId');
+    const bookings = await Booking.find({ userId });
     
     // Calculate cuisines tried from restaurant bookings
     const cuisineSet = new Set<string>();
@@ -21,26 +21,35 @@ const calculateRealUserStats = async (userId: string) => {
     for (const booking of bookings) {
       totalBookings++;
 
-      // Count cuisines from restaurant bookings
-      if (booking.restaurantId && typeof booking.restaurantId === 'object') {
-        const restaurant = booking.restaurantId as any;
-        if (restaurant.cuisine && Array.isArray(restaurant.cuisine)) {
-          restaurant.cuisine.forEach((cuisine: string) => cuisineSet.add(cuisine));
-        }
-        
-        // Count local restaurants (you can define criteria for "local")
-        // For now, let's assume all restaurants are local
-        localRestaurantSet.add(restaurant._id.toString());
-        
-        // Count sustainable choices (restaurants with sustainability features)
-        if (restaurant.sustainability && restaurant.sustainability.score > 7) {
-          sustainableChoices++;
-        }
-      }
-
       // Count events
       if (booking.eventId) {
         totalEvents++;
+      }
+
+      // Only process restaurant bookings with valid ObjectIds
+      if (booking.restaurantId) {
+        try {
+          // Manually populate restaurant to handle invalid IDs gracefully
+          const restaurant = await Restaurant.findById(booking.restaurantId);
+          
+          if (restaurant) {
+            // Count cuisines from restaurant bookings
+            if (restaurant.cuisine && Array.isArray(restaurant.cuisine)) {
+              restaurant.cuisine.forEach((cuisine: string) => cuisineSet.add(cuisine));
+            }
+            
+            // Count local restaurants
+            localRestaurantSet.add(restaurant._id.toString());
+            
+            // Count sustainable choices (restaurants with sustainability features)
+            if (restaurant.sustainability && restaurant.sustainability.score > 7) {
+              sustainableChoices++;
+            }
+          }
+        } catch (err) {
+          // Skip invalid restaurant IDs
+          console.log(`Skipping invalid restaurant ID: ${booking.restaurantId}`);
+        }
       }
     }
 
