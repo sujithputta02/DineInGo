@@ -49,20 +49,38 @@ const BookingCard: React.FC<BookingCardProps> = ({
     // Logic for cancellation and review availability
     const isPast = dayjs().isAfter(bookingDateTime);
     const isWithinOneHour = dayjs().isAfter(bookingDateTime.subtract(1, 'hour'));
-    const canCancel = booking.status === 'confirmed' && !isWithinOneHour && !isPast;
+    
+    // For events, allow cancellation up to 24 hours before
+    // For restaurants, allow cancellation up to 1 hour before
+    const cancellationDeadline = isEvent 
+        ? bookingDateTime.subtract(24, 'hours') 
+        : bookingDateTime.subtract(1, 'hour');
+    const isWithinCancellationDeadline = dayjs().isAfter(cancellationDeadline);
+    
+    const canCancel = booking.status === 'confirmed' && !isWithinCancellationDeadline && !isPast;
     const isVisitCompleted = dayjs().isAfter(bookingDateTime.add(2, 'hours'));
 
     const handleCancel = async () => {
-        if (!window.confirm('Are you sure you want to cancel this reservation? This cannot be undone.')) return;
+        const cancellationMessage = isEvent 
+            ? 'Are you sure you want to cancel this event registration? This cannot be undone.'
+            : 'Are you sure you want to cancel this reservation? This cannot be undone.';
+            
+        if (!window.confirm(cancellationMessage)) return;
 
         setLocalIsCancelling(true);
         try {
             await bookingsApi.cancel(booking._id || booking.id);
-            toast.success('Your reservation has been cancelled');
+            const successMessage = isEvent 
+                ? 'Your event registration has been cancelled'
+                : 'Your reservation has been cancelled';
+            toast.success(successMessage);
             onRefresh();
         } catch (error) {
             console.error('Error cancelling booking:', error);
-            toast.error('Failed to cancel reservation. Please try again.');
+            const errorMessage = isEvent
+                ? 'Failed to cancel event registration. Please try again.'
+                : 'Failed to cancel reservation. Please try again.';
+            toast.error(errorMessage);
         } finally {
             setLocalIsCancelling(false);
         }
@@ -182,18 +200,19 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleCancel(); }}
                                         className="w-full py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all font-bold active:scale-95 text-sm border border-rose-100"
+                                        disabled={localIsCancelling}
                                     >
-                                        Cancel Reservation
+                                        {localIsCancelling ? 'Cancelling...' : `Cancel ${isEvent ? 'Registration' : 'Reservation'}`}
                                     </button>
                                 ) : !isVisitCompleted && (
                                     <div className="text-center p-2 rounded-xl bg-amber-50 border border-amber-100">
                                         <p className="text-[11px] text-amber-700 font-medium flex items-center justify-center gap-1">
-                                            <Clock size={12} /> Non-cancellable (Within 1 hour)
+                                            <Clock size={12} /> Non-cancellable (Within {isEvent ? '24 hours' : '1 hour'})
                                         </p>
                                     </div>
                                 )}
 
-                                {isVisitCompleted && (
+                                {isVisitCompleted && !isEvent && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); onReview(booking); }}
                                         className="w-full py-2.5 bg-yellow-400 text-yellow-950 rounded-xl hover:bg-yellow-500 transition-all font-bold shadow-sm flex items-center justify-center gap-2 active:scale-95 text-sm"

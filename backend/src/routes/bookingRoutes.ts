@@ -17,6 +17,25 @@ import mongoose from 'mongoose';
 
 const router = express.Router();
 
+// Health check endpoint to verify cancellation fix is loaded
+router.get('/health/cancellation-fix', (req, res) => {
+  res.json({
+    status: 'active',
+    version: '2.0',
+    fixApplied: true,
+    features: [
+      'Multi-field table extraction (table, tableId, tableNumber)',
+      'Multi-field restaurant extraction (restaurantId, businessId)',
+      'Triple-strategy TableBooking cancellation',
+      'Unconditional TableStatus reset',
+      '$unset operator for field removal',
+      'Real-time Socket.IO events',
+      'Comprehensive logging'
+    ],
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Get all bookings for a user
 router.get('/user/:userId', getUserBookings);
 
@@ -60,6 +79,52 @@ router.post('/table-booking', async (req, res) => {
       { userId, guests, status, createdAt: new Date() },
       { upsert: true, new: true }
     );
+    
+    // Update TableStatus when table is reserved/confirmed
+    if (status === 'reserved' || status === 'confirmed') {
+      try {
+        const { TableStatus } = require('../models/TableStatus');
+        const tableStatus = await TableStatus.findOneAndUpdate(
+          {
+            businessId: new mongoose.Types.ObjectId(restaurantId),
+            tableId: tableId
+          },
+          {
+            status: status === 'confirmed' ? 'Occupied' : 'Reserved',
+            currentBookingId: booking._id,
+            lastStatusChange: new Date()
+          },
+          { upsert: true, new: true }
+        );
+        console.log(`Updated table status for table ${tableId} to ${tableStatus.status}`);
+      } catch (statusError) {
+        console.error('Error updating table status:', statusError);
+      }
+    }
+    
+    // Update TableStatus when table is cancelled
+    if (status === 'cancelled') {
+      try {
+        const { TableStatus } = require('../models/TableStatus');
+        const tableStatus = await TableStatus.findOneAndUpdate(
+          {
+            businessId: new mongoose.Types.ObjectId(restaurantId),
+            tableId: tableId
+          },
+          {
+            status: 'Ready',
+            currentBookingId: undefined,
+            lastStatusChange: new Date()
+          },
+          { new: true }
+        );
+        if (tableStatus) {
+          console.log(`Reset table status for table ${tableId} to Ready`);
+        }
+      } catch (statusError) {
+        console.error('Error updating table status:', statusError);
+      }
+    }
     
     // Emit Socket.IO event for real-time updates
     const io = getIO();
@@ -122,22 +187,24 @@ router.get('/booked-tables', async (req, res) => {
     return res.status(400).json({ error: 'Missing or invalid required fields' });
   }
   try {
-    console.log('Fetching booked tables for:', { restaurantId, date, time });
+    console.log('=== FETCHING BOOKED TABLES ===');
+    console.log('Query params:', { restaurantId, date, time });
     
     // Query TableBooking collection for ONLY reserved/confirmed/blocked tables (exclude cancelled)
     const tableBookings = await TableBooking.find({
       restaurantId: restaurantId,
       date: String(date),
       time: String(time),
-      status: { $in: ['reserved', 'confirmed', 'blocked'] },
-      // Explicitly exclude cancelled bookings
-      $nor: [{ status: 'cancelled' }]
+      status: { $in: ['reserved', 'confirmed', 'blocked'] }
     });
     
-    console.log('Found active table bookings:', tableBookings.length);
+    console.log('Found table bookings:', tableBookings.length);
+    tableBookings.forEach(booking => {
+      console.log(`  - Table ${booking.tableId}: status=${booking.status}, userId=${booking.userId}`);
+    });
     
     const bookedTableIds = tableBookings.map(b => b.tableId);
-    console.log('Booked table IDs:', bookedTableIds);
+    console.log('Returning booked table IDs:', bookedTableIds);
     
     res.json(bookedTableIds);
   } catch (error) {
@@ -179,6 +246,26 @@ router.post('/block-table', async (req, res) => {
     { userId, guests, status: 'blocked', blockedUntil, autoConfirmAt, confirmedAt: null, cancelledAt: null },
     { upsert: true, new: true }
   );
+  
+  // Update TableStatus to Reserved
+  try {
+    const { TableStatus } = require('../models/TableStatus');
+    await TableStatus.findOneAndUpdate(
+      {
+        businessId: new mongoose.Types.ObjectId(restaurantId),
+        tableId: tableId
+      },
+      {
+        status: 'Reserved',
+        currentBookingId: booking._id,
+        lastStatusChange: new Date()
+      },
+      { upsert: true, new: true }
+    );
+  } catch (statusError) {
+    console.error('Error updating table status:', statusError);
+  }
+  
   getIO().to(restaurantId).emit('tableBlocked', { tableId, date, time, userId });
   res.json(booking);
 });
@@ -195,6 +282,26 @@ router.post('/confirm-table', async (req, res) => {
     { status: 'confirmed', confirmedAt: now, blockedUntil: null },
     { new: true }
   );
+  
+  // Update TableStatus to Occupied
+  try {
+    const { TableStatus } = require('../models/TableStatus');
+    await TableStatus.findOneAndUpdate(
+      {
+        businessId: new mongoose.Types.ObjectId(restaurantId),
+        tableId: tableId
+      },
+      {
+        status: 'Occupied',
+        currentBookingId: booking?._id,
+        lastStatusChange: new Date()
+      },
+      { upsert: true, new: true }
+    );
+  } catch (statusError) {
+    console.error('Error updating table status:', statusError);
+  }
+  
   getIO().to(restaurantId).emit('tableConfirmed', { tableId, date, time, userId });
   res.json(booking);
 });
@@ -382,6 +489,32 @@ router.post('/cancel-table', async (req, res) => {
     }
   }
   
+  // Update TableStatus to unblock the table
+  try {
+    const { TableStatus } = require('../models/TableStatus');
+    const tableStatus = await TableStatus.findOneAndUpdate(
+      {
+        businessId: new mongoose.Types.ObjectId(restaurantId),
+        tableId: tableId
+      },
+      {
+        status: 'Ready',
+        currentBookingId: undefined,
+        lastStatusChange: new Date()
+      },
+      { new: true }
+    );
+    
+    if (tableStatus) {
+      console.log(`✓ Successfully reset table status for table ${tableId} to Ready`);
+    } else {
+      console.log(`No table status found for table ${tableId}, table may not have been in TableStatus collection`);
+    }
+  } catch (statusError) {
+    console.error('Error updating table status:', statusError);
+    // Don't fail the cancellation if status update fails
+  }
+  
   // Emit Socket.IO event to notify all users
   const io = getIO();
   if (io) {
@@ -413,6 +546,127 @@ router.get('/table-status', async (req, res) => {
   }
   const bookings = await TableBooking.find({ restaurantId, date, time });
   res.json(bookings);
+});
+
+// Debug endpoint to check all bookings for a table
+router.get('/debug-table/:restaurantId/:tableId', async (req, res) => {
+  const { restaurantId, tableId } = req.params;
+  const { date, time } = req.query;
+  
+  try {
+    console.log('=== DEBUG TABLE BOOKINGS ===');
+    console.log('Params:', { restaurantId, tableId, date, time });
+    
+    // Find all bookings for this table
+    const query: any = { restaurantId, tableId };
+    if (date) query.date = String(date);
+    if (time) query.time = String(time);
+    
+    const tableBookings = await TableBooking.find(query).sort({ createdAt: -1 });
+    console.log(`Found ${tableBookings.length} bookings for table ${tableId}`);
+    
+    const mainBookings = await Booking.find({
+      restaurantId: new mongoose.Types.ObjectId(restaurantId),
+      table: tableId,
+      ...(date && { date: new Date(String(date)) }),
+      ...(time && { time: String(time) })
+    }).sort({ createdAt: -1 });
+    console.log(`Found ${mainBookings.length} main bookings for table ${tableId}`);
+    
+    res.json({
+      tableBookings: tableBookings.map(b => ({
+        _id: b._id,
+        tableId: b.tableId,
+        date: b.date,
+        time: b.time,
+        userId: b.userId,
+        status: b.status,
+        createdAt: b.createdAt,
+        cancelledAt: b.cancelledAt
+      })),
+      mainBookings: mainBookings.map(b => ({
+        _id: b._id,
+        table: b.table,
+        date: b.date,
+        time: b.time,
+        userId: b.userId,
+        status: b.status,
+        createdAt: b.createdAt
+      }))
+    });
+  } catch (error) {
+    console.error('Error in debug endpoint:', error);
+    res.status(500).json({ error: 'Failed to fetch debug info' });
+  }
+});
+
+// Manual unblock endpoint for debugging
+router.post('/manual-unblock', async (req, res) => {
+  const { restaurantId, tableId, date, time } = req.body;
+  
+  try {
+    console.log('=== MANUAL UNBLOCK REQUEST ===');
+    console.log('Params:', { restaurantId, tableId, date, time });
+    
+    // Update all TableBookings for this table to cancelled
+    const result = await TableBooking.updateMany(
+      {
+        restaurantId,
+        tableId,
+        ...(date && { date: String(date) }),
+        ...(time && { time: String(time) }),
+        status: { $in: ['reserved', 'confirmed', 'blocked'] }
+      },
+      {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        blockedUntil: undefined
+      }
+    );
+    
+    console.log(`Updated ${result.modifiedCount} table bookings`);
+    
+    // Update TableStatus
+    const { TableStatus } = require('../models/TableStatus');
+    const tableStatus = await TableStatus.findOneAndUpdate(
+      {
+        businessId: new mongoose.Types.ObjectId(restaurantId),
+        tableId: tableId
+      },
+      {
+        status: 'Ready',
+        currentBookingId: undefined,
+        lastStatusChange: new Date()
+      },
+      { new: true, upsert: true }
+    );
+    
+    console.log('TableStatus updated:', tableStatus);
+    
+    // Emit socket event
+    const io = getIO();
+    if (io) {
+      io.to(restaurantId).emit('tableCancelled', {
+        restaurantId,
+        tableId,
+        date,
+        time,
+        status: 'cancelled',
+        manual: true
+      });
+      console.log('✓ Emitted tableCancelled event');
+    }
+    
+    res.json({
+      success: true,
+      message: `Unblocked table ${tableId}`,
+      tableBookingsUpdated: result.modifiedCount,
+      tableStatus: tableStatus
+    });
+  } catch (error) {
+    console.error('Error in manual unblock:', error);
+    res.status(500).json({ error: 'Failed to unblock table' });
+  }
 });
 
 export default router; 

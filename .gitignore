@@ -54,3 +54,8 @@ secrets/
 *.pem
 *.key
 *.cert
+
+# Early Access Pages (separate deployments)
+dineingo-early-access/
+early-access-page/
+push-early-access.sh

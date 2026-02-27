@@ -692,21 +692,61 @@ export const updateBooking = async (req: Request, res: Response): Promise<void> 
 // Cancel a booking
 export const cancelBooking = async (req: Request, res: Response): Promise<void> => {
   try {
-    // First, update the booking without populate to avoid casting errors
-    const booking = await Booking.findByIdAndUpdate(
-      req.params.id,
-      { status: 'cancelled', updatedAt: new Date() },
-      { new: true }
-    );
+    console.log('=== CANCEL BOOKING REQUEST ===');
+    console.log('Booking ID:', req.params.id);
+    
+    // First, get the booking to extract table info BEFORE updating
+    const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
+      console.log('Booking not found:', req.params.id);
       res.status(404).json({ message: 'Booking not found' });
       return;
     }
 
-    // Try to populate, but handle errors gracefully
+    console.log('Found booking to cancel:', {
+      id: booking._id,
+      restaurantId: booking.restaurantId,
+      businessId: booking.businessId,
+      table: booking.table,
+      tableId: booking.tableId,
+      tableNumber: booking.tableNumber,
+      date: booking.date,
+      time: booking.time,
+      userId: booking.userId,
+      status: booking.status
+    });
+
+    // Extract table identifier (try all possible fields)
+    const tableIdentifier = booking.table || booking.tableId || booking.tableNumber;
+    
+    // Extract restaurant identifier (try all possible fields)
+    let restaurantId: string | null = null;
+    if (booking.restaurantId) {
+      if (typeof booking.restaurantId === 'object' && booking.restaurantId !== null && '_id' in booking.restaurantId) {
+        restaurantId = String((booking.restaurantId as any)._id);
+      } else {
+        restaurantId = String(booking.restaurantId);
+      }
+    } else if (booking.businessId && booking.businessType === 'restaurant') {
+      restaurantId = booking.businessId;
+    }
+
+    console.log('Extracted identifiers:', {
+      tableIdentifier,
+      restaurantId,
+      hasTable: !!tableIdentifier,
+      hasRestaurant: !!restaurantId
+    });
+
+    // Now update the booking status
+    booking.status = 'cancelled';
+    booking.updatedAt = new Date();
+    await booking.save();
+    console.log('✓ Booking status updated to cancelled');
+
+    // Try to populate for email purposes
     try {
-      // Only populate if the IDs are valid ObjectIds
       if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
         await booking.populate('restaurantId');
       }
@@ -715,34 +755,29 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
       }
     } catch (populateError) {
       console.warn('Could not populate booking references:', populateError);
-      // Continue without populated data
     }
 
     // If this is a restaurant booking with a table, unblock the table
-    if (booking.restaurantId && booking.table && booking.date && booking.time) {
+    if (restaurantId && tableIdentifier && booking.date && booking.time) {
       try {
-        let restaurantId: string;
-        if (typeof booking.restaurantId === 'object' && booking.restaurantId !== null && '_id' in booking.restaurantId) {
-          restaurantId = String((booking.restaurantId as any)._id);
-        } else {
-          restaurantId = String(booking.restaurantId);
-        }
+        const dateStr = booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : String(booking.date);
 
-        const dateStr = booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date;
-
-        console.log('Cancelling table booking:', {
+        console.log('Attempting to unblock table:', {
           restaurantId,
-          tableId: booking.table,
+          tableId: tableIdentifier,
           date: dateStr,
           time: booking.time,
           userId: booking.userId
         });
 
-        // Update TableBooking collection to cancel the table reservation
-        const tableBooking = await TableBooking.findOneAndUpdate(
+        // Update TableBooking collection - try multiple strategies
+        let tableBooking = null;
+        
+        // Strategy 1: Try with userId
+        tableBooking = await TableBooking.findOneAndUpdate(
           {
             restaurantId,
-            tableId: booking.table,
+            tableId: tableIdentifier,
             date: dateStr,
             time: booking.time,
             userId: booking.userId,
@@ -751,35 +786,110 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
           {
             status: 'cancelled',
             cancelledAt: new Date(),
-            blockedUntil: undefined
+            $unset: { blockedUntil: "" }
           },
           { new: true }
         );
 
-        if (tableBooking) {
-          console.log('Successfully cancelled table booking:', tableBooking._id);
-
-          // Emit Socket.IO event for real-time updates
-          const io = require('../utils/socket').getIO();
-          if (io) {
-            io.to(restaurantId).emit('tableCancelled', {
+        // Strategy 2: Try without userId
+        if (!tableBooking) {
+          console.log('⚠ Strategy 1 failed, trying without userId...');
+          tableBooking = await TableBooking.findOneAndUpdate(
+            {
               restaurantId,
-              tableId: booking.table,
+              tableId: tableIdentifier,
               date: dateStr,
               time: booking.time,
-              userId: booking.userId,
+              status: { $in: ['reserved', 'confirmed', 'blocked'] }
+            },
+            {
               status: 'cancelled',
-              booking: tableBooking
-            });
-            console.log(`Emitted tableCancelled event for table ${booking.table} at restaurant ${restaurantId}`);
-          }
+              cancelledAt: new Date(),
+              $unset: { blockedUntil: "" }
+            },
+            { new: true }
+          );
+        }
+
+        // Strategy 3: Try with any status (in case it's already cancelled but blockedUntil is set)
+        if (!tableBooking) {
+          console.log('⚠ Strategy 2 failed, trying with any status...');
+          tableBooking = await TableBooking.findOneAndUpdate(
+            {
+              restaurantId,
+              tableId: tableIdentifier,
+              date: dateStr,
+              time: booking.time
+            },
+            {
+              status: 'cancelled',
+              cancelledAt: new Date(),
+              $unset: { blockedUntil: "" }
+            },
+            { new: true }
+          );
+        }
+
+        if (tableBooking) {
+          console.log('✓ Successfully cancelled table booking:', tableBooking._id);
         } else {
-          console.log('No table booking found to cancel - may have been already cancelled or not exist');
+          console.log('⚠ No table booking found in TableBooking collection');
+        }
+
+        // ALWAYS update TableStatus regardless of TableBooking result
+        try {
+          const { TableStatus } = require('../models/TableStatus');
+          const tableStatus = await TableStatus.findOneAndUpdate(
+            {
+              businessId: new mongoose.Types.ObjectId(restaurantId),
+              tableId: tableIdentifier
+            },
+            {
+              status: 'Ready',
+              $unset: { currentBookingId: "" },
+              lastStatusChange: new Date()
+            },
+            { new: true }
+          );
+
+          if (tableStatus) {
+            console.log(`✓ Successfully reset table status for table ${tableIdentifier} to Ready`);
+          } else {
+            console.log(`⚠ No table status found for table ${tableIdentifier}`);
+          }
+        } catch (statusError) {
+          console.error('✗ Error updating table status:', statusError);
+        }
+
+        // ALWAYS emit Socket.IO event for real-time updates
+        const io = require('../utils/socket').getIO();
+        if (io) {
+          const eventData = {
+            restaurantId,
+            tableId: tableIdentifier,
+            date: dateStr,
+            time: booking.time,
+            userId: booking.userId,
+            status: 'cancelled',
+            booking: tableBooking
+          };
+          
+          io.to(restaurantId).emit('tableCancelled', eventData);
+          console.log(`✓ Emitted tableCancelled event for table ${tableIdentifier} at restaurant ${restaurantId}`);
+        } else {
+          console.log('⚠ Socket.IO not available, cannot emit real-time event');
         }
       } catch (tableError) {
-        console.error('Error cancelling table booking:', tableError);
+        console.error('✗ Error cancelling table booking:', tableError);
         // Don't fail the main booking cancellation if table cancellation fails
       }
+    } else {
+      console.log('⚠ Not a restaurant booking with table, skipping table cancellation', {
+        hasRestaurantId: !!restaurantId,
+        hasTableId: !!tableIdentifier,
+        hasDate: !!booking.date,
+        hasTime: !!booking.time
+      });
     }
 
     // If this is an event booking with seats, unblock the seats
