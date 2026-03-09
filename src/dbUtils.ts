@@ -27,7 +27,7 @@ export const storeUserData = async (user: User | UserData, location?: { city: st
 
     const userRef = doc(db, 'users', user.uid);
     const existingDoc = await getDoc(userRef);
-    
+
     // Create a clean user data object with no undefined values
     const userData: Partial<UserData> = {
       uid: user.uid,
@@ -37,7 +37,7 @@ export const storeUserData = async (user: User | UserData, location?: { city: st
       photoURL: user.photoURL || null,
       lastLogin: new Date(),
       // Preserve the original creation date if it exists
-      createdAt: existingDoc.exists() 
+      createdAt: existingDoc.exists()
         ? existingDoc.data().createdAt?.toDate() || new Date()
         : 'createdAt' in user ? user.createdAt : new Date()
     };
@@ -45,8 +45,8 @@ export const storeUserData = async (user: User | UserData, location?: { city: st
     // Only add location if it's provided and has all required fields
     if (location && location.city && location.state && location.country) {
       userData.location = location;
-    } else if ('location' in user && user.location && 
-               user.location.city && user.location.state && user.location.country) {
+    } else if ('location' in user && user.location &&
+      user.location.city && user.location.state && user.location.country) {
       userData.location = user.location;
     } else if (existingDoc.exists() && existingDoc.data().location) {
       // Preserve existing location if no new location is provided
@@ -74,6 +74,7 @@ export async function fetchUserData(userId: string) {
       const data = userDoc.data();
       return {
         ...data,
+        uid: userDoc.id, // Always ensure uid is present from the document ID
         lastLogin: data.lastLogin?.toDate() || new Date(),
         createdAt: data.createdAt?.toDate() || new Date()
       } as UserData;

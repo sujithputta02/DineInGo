@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Heart } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Heart, CheckCircle, MessageSquare, Star, Send, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { toast } from 'react-toastify';
 import SeatingChart from '../components/SeatingChart';
+import IndividualSeatingChart from '../components/IndividualSeatingChart';
+import EventSeatingViewer from '../components/EventSeatingViewer';
+import StarRating from '../components/StarRating';
+import EmojiPicker from '../components/EmojiPicker';
 import { seatsToRows } from '../utils/seatUtils';
 import { Seat, SeatingLayout } from '../types/seating';
 import { io, Socket } from 'socket.io-client';
@@ -62,6 +66,14 @@ const EventRegistration: React.FC = () => {
   // New state for tickets and add-ons
   const [selectedTickets, setSelectedTickets] = useState<{ [key: string]: number }>({});
   const [selectedAddOns, setSelectedAddOns] = useState<{ [key: string]: number }>({});
+
+  // Review state
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [newRating, setNewRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [newComment, setNewComment] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
 
   useEffect(() => {
@@ -155,6 +167,68 @@ const EventRegistration: React.FC = () => {
       }
     });
 
+    // Listen for area booking updates
+    newSocket.on('areaBooked', (data: { eventId: string; areaId: string; userId: string; guests: number; booked: number; capacity: number; availableSpots: number }) => {
+      console.log('Area booked by another user:', data);
+
+      setEvent(prevEvent => {
+        if (!prevEvent || !prevEvent.seatingLayout || !prevEvent.seatingLayout.areas) return prevEvent;
+
+        const updatedAreas = prevEvent.seatingLayout.areas.map((area: any) => {
+          if (area.id === data.areaId) {
+            return { ...area, booked: data.booked };
+          }
+          return area;
+        });
+
+        return {
+          ...prevEvent,
+          seatingLayout: {
+            ...prevEvent.seatingLayout,
+            areas: updatedAreas
+          }
+        };
+      });
+
+      if (data.userId !== auth.currentUser?.uid) {
+        toast.info(`${data.guests} spot(s) just booked in an area`, {
+          position: 'top-right',
+          autoClose: 3000
+        });
+      }
+    });
+
+    // Listen for area cancellation updates
+    newSocket.on('areaCancelled', (data: { eventId: string; areaId: string; userId: string; guests: number; booked: number; capacity: number; availableSpots: number }) => {
+      console.log('Area cancelled by another user:', data);
+
+      setEvent(prevEvent => {
+        if (!prevEvent || !prevEvent.seatingLayout || !prevEvent.seatingLayout.areas) return prevEvent;
+
+        const updatedAreas = prevEvent.seatingLayout.areas.map((area: any) => {
+          if (area.id === data.areaId) {
+            return { ...area, booked: data.booked };
+          }
+          return area;
+        });
+
+        return {
+          ...prevEvent,
+          seatingLayout: {
+            ...prevEvent.seatingLayout,
+            areas: updatedAreas
+          }
+        };
+      });
+
+      if (data.userId !== auth.currentUser?.uid) {
+        toast.success(`${data.guests} spot(s) now available in an area!`, {
+          position: 'top-right',
+          autoClose: 3000
+        });
+      }
+    });
+
     // Listen for general event registration updates (non-seating events)
     newSocket.on('eventRegistered', (data: { eventId: string; guests: number; registeredCount: number; capacity: number; spotsLeft: number }) => {
       console.log('Event registered by another user:', data);
@@ -214,6 +288,13 @@ const EventRegistration: React.FC = () => {
     };
   }, [id]);
 
+  // Reset guests to 1 when area selection changes to prevent overbooking errors
+  useEffect(() => {
+    if (selectedSeatIds.length > 0) {
+      setNumberOfGuests(1);
+    }
+  }, [selectedSeatIds]);
+
   const fetchEvent = async () => {
     try {
       const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
@@ -231,13 +312,185 @@ const EventRegistration: React.FC = () => {
       console.log('Fetched event data:', data);
       console.log('Has seating:', data.hasSeating);
       console.log('Seating layout:', data.seatingLayout);
+
+      // If this is an area-based event, silently recalculate area counts from
+      // confirmed bookings to fix any stale/corrupted numbers
+      if (data.seatingLayout?.areas?.length > 0 || data.seatingLayout?.eventConfig?.concertAreas?.length > 0) {
+        try {
+          await fetch(
+            `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}/recalculate-areas`,
+            { method: 'POST' }
+          );
+          // Re-fetch with fresh counts
+          const fresh = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
+          if (fresh.ok) {
+            const freshData = await fresh.json();
+            setEvent(freshData);
+            fetchReviews();
+            return;
+          }
+        } catch (e) {
+          console.warn('Area recalculate failed, using original data:', e);
+        }
+      }
+
       setEvent(data);
+
+      // Fetch reviews
+      fetchReviews();
     } catch (error) {
       console.error('Error fetching event:', error);
       toast.error('Failed to load event details. Redirecting to events page...');
       setTimeout(() => navigate('/events'), 2000);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReviews = async () => {
+    try {
+      setReviewsLoading(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}/reviews`);
+      const data = await response.json();
+      setReviews(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      setReviews([]);
+    } finally {
+      setReviewsLoading(false);
+    }
+  };
+
+  const handleLikeReview = async (reviewId: string) => {
+    if (!auth.currentUser) {
+      toast.error('Please login to like reviews');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/reviews/${reviewId}/like`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: auth.currentUser.uid
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update the review in the list
+        setReviews(prev => prev.map(review =>
+          review._id === reviewId
+            ? { ...review, likes: data.likes, dislikes: data.dislikes }
+            : review
+        ));
+      }
+    } catch (error) {
+      console.error('Error liking review:', error);
+    }
+  };
+
+  const handleDislikeReview = async (reviewId: string) => {
+    if (!auth.currentUser) {
+      toast.error('Please login to dislike reviews');
+      return;
+    }
+
+    try {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/reviews/${reviewId}/dislike`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: auth.currentUser.uid
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update the review in the list
+        setReviews(prev => prev.map(review =>
+          review._id === reviewId
+            ? { ...review, likes: data.likes, dislikes: data.dislikes }
+            : review
+        ));
+      }
+    } catch (error) {
+      console.error('Error disliking review:', error);
+    }
+  };
+
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!id) return;
+
+    if (newRating === 0) {
+      toast.error('Please select a rating');
+      return;
+    }
+
+    if (!newComment.trim()) {
+      toast.error('Please write a comment');
+      return;
+    }
+
+    if (!auth.currentUser) {
+      toast.error('You must be logged in to submit a review');
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setIsSubmittingReview(true);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          userId: auth.currentUser.uid,
+          userName: auth.currentUser.displayName || 'Anonymous',
+          userPhoto: auth.currentUser.photoURL,
+          rating: newRating,
+          comment: newComment
+        })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.message && data.message.includes('updated')) {
+          toast.success('Review updated successfully!');
+        } else {
+          toast.success('Review submitted successfully!');
+        }
+        setNewRating(0);
+        setNewComment('');
+        fetchReviews();
+      } else {
+        const error = await response.json();
+        console.error('Review submission error:', error);
+
+        // Check if user already reviewed
+        if (error.message && error.message.includes('already reviewed')) {
+          // Find user's existing review
+          const existingReview = reviews.find(r => r.userId === auth.currentUser?.uid);
+          if (existingReview) {
+            toast.info('You have already reviewed this event. Your previous review is shown below.');
+          } else {
+            toast.error('You have already reviewed this event. Please refresh the page to see your review.');
+          }
+        } else {
+          toast.error(error.message || 'Failed to submit review');
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      toast.error('Failed to submit review. Please try again.');
+    } finally {
+      setIsSubmittingReview(false);
     }
   };
 
@@ -362,11 +615,19 @@ const EventRegistration: React.FC = () => {
     let finalGuests = 0;
 
     if (event.hasSeating && event.seatingLayout) {
-      const selectedSeats = event.seatingLayout.seats.filter(seat =>
-        selectedSeatIds.includes(seat.id)
-      );
-      totalAmount = selectedSeats.reduce((sum, seat) => sum + seat.price, 0);
-      finalGuests = selectedSeatIds.length;
+      if (event.seatingLayout.areas && event.seatingLayout.areas.length > 0) {
+        const selectedArea = event.seatingLayout.areas.find((area: any) =>
+          selectedSeatIds.includes(area.id)
+        );
+        totalAmount = selectedArea ? selectedArea.price * numberOfGuests : 0;
+        finalGuests = numberOfGuests;
+      } else if (event.seatingLayout.seats && event.seatingLayout.seats.length > 0) {
+        const selectedSeats = event.seatingLayout.seats.filter((seat: any) =>
+          selectedSeatIds.includes(seat.id)
+        );
+        totalAmount = selectedSeats.reduce((sum: number, seat: any) => sum + seat.price, 0);
+        finalGuests = selectedSeatIds.length;
+      }
     } else {
       if (event.tickets && event.tickets.length > 0) {
         // Sum up ticket prices
@@ -557,35 +818,101 @@ const EventRegistration: React.FC = () => {
             {event.hasSeating && event.seatingLayout ? (
               <div className="mb-6">
                 <h3 className="text-lg font-semibold mb-4">Select Your Seats</h3>
-                <div className="bg-gray-950 rounded-lg p-4">
-                  <SeatingChart
-                    layout={seatsToRows(event.seatingLayout.seats)}
-                    selectedSeatIds={selectedSeatIds}
-                    onSeatClick={handleSeatClick}
-                  />
-                </div>
 
-                {/* Selected Seats Summary */}
-                {selectedSeatIds.length > 0 && (
-                  <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                    <h4 className="font-semibold text-emerald-800 mb-2">Selected Seats:</h4>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedSeatIds.map(seatId => {
-                        const seat = event.seatingLayout!.seats.find(s => s.id === seatId);
-                        return seat ? (
-                          <span key={seatId} className="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm">
-                            {seat.id} ({seat.tier}) - ₹{seat.price}
-                          </span>
-                        ) : null;
-                      })}
-                    </div>
+                {/* Check if it's concert areas or individual seats */}
+                {event.seatingLayout.areas && event.seatingLayout.areas.length > 0 ? (
+                  <>
+                    <EventSeatingViewer
+                      seatingLayout={event.seatingLayout}
+                      eventId={String(event._id)}
+                      selectedAreaIds={selectedSeatIds}
+                      onAreaClick={(areaId) => {
+                        const area = event.seatingLayout?.areas?.find((a: any) => a.id === areaId);
+                        if (!area) return;
+
+                        // Check if area is full
+                        if (area.booked >= area.capacity) {
+                          toast.error('This area is full');
+                          return;
+                        }
+
+                        // Toggle area selection
+                        if (selectedSeatIds.includes(areaId)) {
+                          setSelectedSeatIds(prev => prev.filter(id => id !== areaId));
+                        } else {
+                          setSelectedSeatIds([areaId]); // Only one area at a time
+                        }
+                      }}
+                    />
+
+                    {/* Guest count selector for area */}
+                    {selectedSeatIds.length > 0 && (
+                      <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <h4 className="font-semibold text-emerald-800 mb-2">Number of Guests:</h4>
+                        <select
+                          value={numberOfGuests}
+                          onChange={(e) => setNumberOfGuests(Number(e.target.value))}
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        >
+                          {(() => {
+                            const area = event.seatingLayout!.areas.find((a: any) => a.id === selectedSeatIds[0]);
+                            const availableSpots = area ? area.capacity - (area.booked || 0) : 0;
+                            return [...Array(Math.min(10, availableSpots))].map((_, i) => (
+                              <option key={i + 1} value={i + 1}>
+                                {i + 1} {i === 0 ? 'Guest' : 'Guests'}
+                              </option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    )}
+                  </>
+                ) : event.seatingLayout.seats && event.seatingLayout.seats.length > 0 ? (
+                  <>
+                    {/* Check if seats have x, y coordinates (individual seats) or rowLabel (grid seats) */}
+                    {event.seatingLayout.seats[0] && 'x' in event.seatingLayout.seats[0] && 'y' in event.seatingLayout.seats[0] ? (
+                      <IndividualSeatingChart
+                        seats={event.seatingLayout.seats as any}
+                        selectedSeatIds={selectedSeatIds}
+                        onSeatClick={(seat: any) => handleSeatClick(seat)}
+                      />
+                    ) : (
+                      <div className="bg-gray-950 rounded-lg p-4">
+                        <SeatingChart
+                          layout={seatsToRows(event.seatingLayout.seats)}
+                          selectedSeatIds={selectedSeatIds}
+                          onSeatClick={handleSeatClick}
+                        />
+                      </div>
+                    )}
+
+                    {/* Selected Seats Summary */}
+                    {selectedSeatIds.length > 0 && (
+                      <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
+                        <h4 className="font-semibold text-emerald-800 mb-2">Selected Seats:</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedSeatIds.map(seatId => {
+                            const seat = event.seatingLayout!.seats.find((s: any) => s.id === seatId);
+                            return seat ? (
+                              <span key={seatId} className="px-3 py-1 bg-emerald-600 text-white rounded-full text-sm">
+                                {(seat as any).label || seat.id} ({seat.tier}) - ₹{seat.price}
+                              </span>
+                            ) : null;
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No seating layout available
                   </div>
                 )}
               </div>
             ) : (
 
               <div className="mb-6">
-                {event.tickets && event.tickets.length > 0 ? (
+                {event.tickets && event.tickets.length > 0 && (
                   <>
                     <h3 className="text-lg font-semibold mb-4">Select Tickets</h3>
                     <div className="space-y-4">
@@ -620,9 +947,11 @@ const EventRegistration: React.FC = () => {
                       ))}
                     </div>
                   </>
-                ) : (
+                )}
+
+                {(!event.tickets || event.tickets.length === 0) && (
                   <>
-                    <label className="block text-sm font-semibold mb-2">Number of Guests</label>
+                    <label className="block text-sm font-semibold mb-2 mt-4">Number of Guests</label>
                     <select
                       value={numberOfGuests}
                       onChange={(e) => setNumberOfGuests(Number(e.target.value))}
@@ -681,18 +1010,49 @@ const EventRegistration: React.FC = () => {
             <div className="mb-6 p-4 bg-gray-50 rounded-lg">
               {event.hasSeating && event.seatingLayout ? (
                 <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Selected Seats</span>
-                    <span className="font-semibold">{selectedSeatIds.length}</span>
-                  </div>
-                  <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
-                    <span className="font-semibold">Total</span>
-                    <span className="text-2xl font-bold text-emerald-600">
-                      ₹{event.seatingLayout.seats
-                        .filter(seat => selectedSeatIds.includes(seat.id))
-                        .reduce((sum, seat) => sum + seat.price, 0)}
-                    </span>
-                  </div>
+                  {(() => {
+                    const hasAreas = event.seatingLayout.areas && event.seatingLayout.areas.length > 0;
+                    const isAreaSelected = hasAreas && event.seatingLayout.areas?.some((area: any) => selectedSeatIds.includes(area.id));
+
+                    if (isAreaSelected) {
+                      const selectedArea = event.seatingLayout.areas?.find((area: any) => selectedSeatIds.includes(area.id));
+                      return (
+                        <>
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-gray-600">Selected Area</span>
+                            <span className="font-semibold">{selectedArea?.name || selectedArea?.label || 'Area'}</span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Guests</span>
+                            <span className="font-semibold">{numberOfGuests}</span>
+                          </div>
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                            <span className="font-semibold">Total</span>
+                            <span className="text-2xl font-bold text-emerald-600">
+                              ₹{(selectedArea?.price || 0) * numberOfGuests}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    } else {
+                      return (
+                        <>
+                          <div className="flex justify-between items-center">
+                            <span className="text-gray-600">Selected Seats</span>
+                            <span className="font-semibold">{selectedSeatIds.length}</span>
+                          </div>
+                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
+                            <span className="font-semibold">Total</span>
+                            <span className="text-2xl font-bold text-emerald-600">
+                              ₹{event.seatingLayout.seats
+                                .filter((seat: any) => selectedSeatIds.includes(seat.id))
+                                .reduce((sum: number, seat: any) => sum + seat.price, 0)}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    }
+                  })()}
                 </>
               ) : (
                 <>
@@ -776,6 +1136,173 @@ const EventRegistration: React.FC = () => {
                 'Continue to Preview'
               )}
             </button>
+          </div>
+        </div>
+
+        {/* Reviews Section */}
+        <div className="bg-white rounded-2xl shadow-lg mt-8">
+          <div className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold flex items-center gap-2">
+                <MessageSquare className="text-emerald-500" size={24} />
+                Event Reviews
+              </h2>
+              <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl">
+                {(() => {
+                  const avgRating = reviews.length > 0
+                    ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
+                    : 0;
+                  return avgRating > 0 ? (
+                    <>
+                      <StarRating rating={avgRating} size={20} />
+                      <span className="text-xl font-bold text-emerald-900">{avgRating.toFixed(1)}</span>
+                    </>
+                  ) : null;
+                })()}
+                <span className="text-emerald-600 text-sm">({reviews?.length || 0} reviews)</span>
+              </div>
+            </div>
+
+            {/* Review Submission Form */}
+            <div className="mb-10 bg-gray-50 rounded-2xl p-6 border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Send className="text-emerald-500" size={18} />
+                Share Your Experience
+              </h3>
+              <form onSubmit={handleReviewSubmit} className="space-y-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-sm font-medium text-gray-700 mr-2">Your Rating:</span>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <div key={star} className="relative inline-block">
+                      {/* Left half of star (0.5 rating) */}
+                      <button
+                        type="button"
+                        onClick={() => setNewRating(star - 0.5)}
+                        onMouseEnter={() => setHoverRating(star - 0.5)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="absolute left-0 top-0 w-1/2 h-full z-10"
+                        style={{ cursor: 'pointer' }}
+                      />
+                      {/* Right half of star (full rating) */}
+                      <button
+                        type="button"
+                        onClick={() => setNewRating(star)}
+                        onMouseEnter={() => setHoverRating(star)}
+                        onMouseLeave={() => setHoverRating(0)}
+                        className="absolute right-0 top-0 w-1/2 h-full z-10"
+                        style={{ cursor: 'pointer' }}
+                      />
+                      {/* Star display */}
+                      <div className="relative pointer-events-none">
+                        {(hoverRating || newRating) >= star ? (
+                          <Star size={28} className="text-emerald-400 fill-emerald-400" />
+                        ) : (hoverRating || newRating) >= star - 0.5 ? (
+                          <div className="relative">
+                            <Star size={28} className="text-gray-300" />
+                            <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+                              <Star size={28} className="text-emerald-400 fill-emerald-400" />
+                            </div>
+                          </div>
+                        ) : (
+                          <Star size={28} className="text-gray-300" />
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  <span className="ml-2 text-sm font-semibold text-gray-600">
+                    {newRating > 0 ? newRating.toFixed(1) : '0.0'}
+                  </span>
+                </div>
+                <div className="relative">
+                  <textarea
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Tell us about your experience at this event..."
+                    className="w-full p-4 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
+                  />
+                  <div className="absolute bottom-2 right-2">
+                    <EmojiPicker
+                      onEmojiSelect={(emoji) => setNewComment(prev => prev + emoji)}
+                    />
+                  </div>
+                </div>
+                <button
+                  type="submit"
+                  disabled={isSubmittingReview}
+                  className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl hover:bg-emerald-600 transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                >
+                  {isSubmittingReview ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                  ) : null}
+                  Submit Review
+                </button>
+              </form>
+            </div>
+
+            {reviewsLoading ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              </div>
+            ) : (!reviews || !Array.isArray(reviews) || reviews.length === 0) ? (
+              <div className="text-center py-12 bg-gray-50 rounded-xl">
+                <p className="text-gray-500">No reviews yet. Be the first to attend!</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {reviews.map((review) => (
+                  <div key={review._id} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
+                          {review.userName?.charAt(0) || 'U'}
+                        </div>
+                        <div>
+                          <div className="font-semibold text-gray-900">{review.userName || 'Anonymous'}</div>
+                          <div className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <StarRating rating={review.rating} size={14} />
+                      </div>
+                    </div>
+                    <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
+
+                    {/* Like/Dislike buttons */}
+                    <div className="flex items-center gap-4 mt-3">
+                      <button
+                        onClick={() => handleLikeReview(review._id)}
+                        className={`flex items-center gap-1 text-sm transition-colors ${review.likes?.includes(auth.currentUser?.uid || '')
+                          ? 'text-emerald-600 font-semibold'
+                          : 'text-gray-500 hover:text-emerald-600'
+                          }`}
+                      >
+                        <ThumbsUp size={16} className={review.likes?.includes(auth.currentUser?.uid || '') ? 'fill-emerald-600' : ''} />
+                        <span>{review.likes?.length || 0}</span>
+                      </button>
+                      <button
+                        onClick={() => handleDislikeReview(review._id)}
+                        className={`flex items-center gap-1 text-sm transition-colors ${review.dislikes?.includes(auth.currentUser?.uid || '')
+                          ? 'text-red-600 font-semibold'
+                          : 'text-gray-500 hover:text-red-600'
+                          }`}
+                      >
+                        <ThumbsDown size={16} className={review.dislikes?.includes(auth.currentUser?.uid || '') ? 'fill-red-600' : ''} />
+                        <span>{review.dislikes?.length || 0}</span>
+                      </button>
+                    </div>
+
+                    {review.reply && (
+                      <div className="mt-4 bg-gray-50 rounded-xl p-4 border-l-4 border-emerald-500">
+                        <div className="text-xs font-bold text-emerald-700 mb-1">Owner Response</div>
+                        <p className="text-gray-600 text-sm">
+                          {typeof review.reply === 'object' ? review.reply.text : review.reply}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

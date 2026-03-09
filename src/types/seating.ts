@@ -20,4 +20,6 @@ export interface SeatingLayout {
   rows: number;
   columns: number;
   seats: Seat[];
+  sections?: any[];
+  areas?: any[];
 }

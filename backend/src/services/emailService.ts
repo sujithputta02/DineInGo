@@ -186,6 +186,80 @@ export const emailService = {
   },
 
   /**
+   * Send email to business owner when a user submits a new review
+   */
+  async sendNewReviewAlertEmail(data: ReviewEmailData & { ownerName?: string }): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const ratingNum = data.rating || 0;
+      const starsHtml = '★'.repeat(ratingNum) + '☆'.repeat(5 - ratingNum);
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+            body { font-family: 'Outfit', sans-serif; background-color: #f3f4f6; margin: 0; padding: 0; }
+            .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+            .header { background: linear-gradient(135deg, #1e293b 0%, #334155 100%); padding: 40px; text-align: center; color: white; }
+            .content { padding: 40px; color: #1f2937; }
+            .review-card { background: #f9fafb; padding: 24px; border-radius: 16px; border: 1px solid #e5e7eb; margin: 24px 0; border-left: 4px solid #10b981; }
+            .stars { color: #facc15; font-size: 24px; margin-bottom: 8px; }
+            .reviewer-badge { display: inline-block; background: #d1fae5; color: #065f46; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 99px; margin-bottom: 12px; }
+            .btn { display: inline-block; background: #059669; color: white !important; padding: 12px 24px; border-radius: 12px; text-decoration: none; font-weight: 600; margin-top: 20px; }
+            .footer { padding: 30px; text-align: center; color: #6b7280; font-size: 14px; background: #f9fafb; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="cid:${cidLogo}" alt="DineInGo" style="height: 48px; margin-bottom: 16px;">
+              <h1 style="margin: 0; font-size: 26px;">⭐ New Review Received!</h1>
+            </div>
+            <div class="content">
+              <h2 style="color: #1e293b; margin-top: 0;">Hi ${data.ownerName || 'there'},</h2>
+              <p>A customer just left a review for <strong>${data.businessName}</strong>. Here's what they said:</p>
+              <div class="review-card">
+                <span class="reviewer-badge">📝 ${data.userName}</span>
+                <div class="stars">${starsHtml}</div>
+                <p style="margin: 0; font-style: italic; color: #374151;">"${data.comment}"</p>
+              </div>
+              <p>Responding to reviews builds trust with your customers. Log in to your dashboard to reply.</p>
+              <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/business/dashboard" class="btn">Reply in Dashboard</a>
+              <p style="margin-top: 30px;">Best regards,<br><strong>The DineInGo Team</strong></p>
+            </div>
+            <div class="footer">
+              <p>© 2026 DineInGo. Growing great businesses, one review at a time.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        to: data.to,
+        subject: `New ${ratingNum}⭐ Review on ${data.businessName}`,
+        html,
+        attachments: [{
+          filename: 'logo.png',
+          path: logoPath,
+          cid: cidLogo
+        }]
+      });
+
+      console.log(`New review alert email sent to business owner at ${data.to}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending new review alert email:', error);
+      return false;
+    }
+  },
+
+  /**
    * Send reservation confirmation email
    */
   async sendReservationConfirmationEmail(data: ReservationEmailData): Promise<boolean> {
@@ -403,8 +477,249 @@ export const emailService = {
       console.error('Error sending OTP email:', error);
       return false;
     }
-  }
+  },
 
+  /**
+   * Send premium welcome email to new users
+   */
+  async sendUserWelcomeEmail(to: string, name: string): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap');
+            body { 
+              font-family: 'Outfit', sans-serif; 
+              background-color: #f8fafc; 
+              margin: 0; 
+              padding: 0; 
+              -webkit-font-smoothing: antialiased;
+            }
+            .wrapper { width: 100%; background-color: #f8fafc; padding: 40px 0; }
+            .container { 
+              max-width: 600px; 
+              margin: 0 auto; 
+              background: #ffffff; 
+              border-radius: 32px; 
+              overflow: hidden; 
+              box-shadow: 0 20px 50px rgba(0,0,0,0.05);
+              border: 1px solid rgba(0,0,0,0.05);
+            }
+            .header { 
+              background: linear-gradient(135deg, #059669 0%, #10b981 100%); 
+              padding: 60px 40px; 
+              text-align: center; 
+              color: white; 
+            }
+            .content { padding: 50px 40px; text-align: center; color: #0f172a; }
+            .tagline { 
+              text-transform: uppercase; 
+              letter-spacing: 0.3em; 
+              font-size: 12px; 
+              font-weight: 900; 
+              color: #10b981; 
+              margin-bottom: 16px; 
+              display: block;
+            }
+            h1 { 
+              font-size: 36px; 
+              font-weight: 900; 
+              margin: 0 0 24px 0; 
+              line-height: 1.1; 
+              letter-spacing: -0.04em; 
+            }
+            .highlight { font-style: italic; color: #10b981; }
+            p { font-size: 18px; line-height: 1.6; color: #64748b; margin-bottom: 32px; }
+            .btn { 
+              display: inline-block; 
+              background: #059669; 
+              color: white !important; 
+              padding: 20px 40px; 
+              border-radius: 100px; 
+              text-decoration: none; 
+              font-weight: 900; 
+              font-size: 16px;
+              box-shadow: 0 10px 20px rgba(5, 150, 105, 0.2);
+              transition: all 0.3s ease;
+            }
+            .footer { 
+              padding: 40px; 
+              text-align: center; 
+              color: #94a3b8; 
+              font-size: 14px; 
+              background: #f8fafc;
+              border-top: 1px solid #f1f5f9;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <img src="cid:${cidLogo}" alt="DineInGo" style="height: 56px; margin-bottom: 24px;">
+                <h1 style="color: white; margin: 0;">Welcome to the <br/><span style="opacity: 0.8;">Future of Dining.</span></h1>
+              </div>
+              <div class="content">
+                <span class="tagline">The Feast Awaits</span>
+                <h1>Hi ${name}, <br/>Ready to <span class="highlight">Explore?</span></h1>
+                <p>We're thrilled to have you at DineInGo. Your journey to discovering perfect tables and exclusive events starts right here.</p>
+                <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/explore" class="btn">Discover Experiences</a>
+              </div>
+              <div class="footer">
+                <p>© 2026 DineInGo. Elevating your experiences.</p>
+                <p style="margin-top: 10px; font-size: 12px;">This email was sent because you created an account on DineInGo.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: `Welcome to DineInGo, ${name}! 🎉`,
+        html,
+        attachments: [{
+          filename: 'logo.png',
+          path: logoPath,
+          cid: cidLogo
+        }]
+      });
+
+      console.log(`User welcome email sent to ${to}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending user welcome email:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send premium welcome email to new business owners
+   */
+  async sendBusinessWelcomeEmail(to: string, name: string): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap');
+            body { 
+              font-family: 'Outfit', sans-serif; 
+              background-color: #0f172a; 
+              margin: 0; 
+              padding: 0; 
+              -webkit-font-smoothing: antialiased;
+            }
+            .wrapper { width: 100%; background-color: #0f172a; padding: 60px 0; }
+            .container { 
+              max-width: 600px; 
+              margin: 0 auto; 
+              background: #1e293b; 
+              border-radius: 32px; 
+              overflow: hidden; 
+              box-shadow: 0 40px 100px rgba(0,0,0,0.5);
+              border: 1px solid rgba(255,255,255,0.1);
+            }
+            .header { 
+              background: linear-gradient(135deg, #059669 0%, #10b981 100%); 
+              padding: 70px 40px; 
+              text-align: center; 
+              color: white; 
+            }
+            .content { padding: 60px 40px; text-align: center; color: #f8fafc; }
+            .tagline { 
+              text-transform: uppercase; 
+              letter-spacing: 0.4em; 
+              font-size: 12px; 
+              font-weight: 900; 
+              color: #10b981; 
+              margin-bottom: 20px; 
+              display: block;
+            }
+            h1 { 
+              font-size: 38px; 
+              font-weight: 900; 
+              margin: 0 0 24px 0; 
+              line-height: 1; 
+              letter-spacing: -0.04em; 
+              color: #ffffff;
+            }
+            .highlight { font-style: italic; color: #fbbf24; }
+            p { font-size: 18px; line-height: 1.6; color: #94a3b8; margin-bottom: 40px; }
+            .btn { 
+              display: inline-block; 
+              background: #ffffff; 
+              color: #0f172a !important; 
+              padding: 20px 45px; 
+              border-radius: 100px; 
+              text-decoration: none; 
+              font-weight: 900; 
+              font-size: 16px;
+              box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            }
+            .footer { 
+              padding: 40px; 
+              text-align: center; 
+              color: #475569; 
+              font-size: 13px; 
+              background: #0f172a;
+              border-top: 1px solid rgba(255,255,255,0.05);
+            }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <img src="cid:${cidLogo}" alt="DineInGo" style="height: 60px; margin-bottom: 24px; filter: brightness(0) invert(1);">
+                <h1 style="color: white; margin: 0;">Partner with <br/><span style="color: #fbbf24;">Intelligence.</span></h1>
+              </div>
+              <div class="content">
+                <span class="tagline">For Venue Partners</span>
+                <h1>Hi ${name}, <br/>Let's scale your <span class="highlight">Success.</span></h1>
+                <p>Welcome to the DineInGo Business family. You now have the tools to manage your floors in 3D, automate bookings, and grow your revenue like never before.</p>
+                <a href="${process.env.CLIENT_URL || 'http://localhost:5173'}/business/dashboard" class="btn">Access Dashboard</a>
+              </div>
+              <div class="footer">
+                <p>© 2026 DineInGo for Business. The OS for hospitality.</p>
+                <p style="margin-top: 10px; opacity: 0.5;">This email was sent to confirm your partner registration.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: `"DineInGo Business" <${process.env.EMAIL_USER}>`,
+        to,
+        subject: `Welcome to DineInGo for Business, ${name}! 🚀`,
+        html,
+        attachments: [{
+          filename: 'logo.png',
+          path: logoPath,
+          cid: cidLogo
+        }]
+      });
+
+      console.log(`Business welcome email sent to ${to}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending business welcome email:', error);
+      return false;
+    }
+  },
 };
 
 // Generic email sending function

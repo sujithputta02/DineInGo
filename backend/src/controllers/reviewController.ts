@@ -11,7 +11,23 @@ import mongoose from 'mongoose';
 export const getBusinessReviews = async (req: Request, res: Response) => {
     try {
         const { businessId } = req.params;
-        const reviews = await Review.find({ businessId: new mongoose.Types.ObjectId(businessId) }).sort({ createdAt: -1 });
+
+        // Check if this business is an event by looking at the Business collection
+        const business = await Business.findById(businessId);
+
+        let reviews;
+        if (business && (business.type === 'event' || business.type === 'both')) {
+            // For events, look for reviews with eventId
+            reviews = await Review.find({
+                eventId: new mongoose.Types.ObjectId(businessId)
+            }).sort({ createdAt: -1 });
+        } else {
+            // For regular businesses, look for reviews with businessId
+            reviews = await Review.find({
+                businessId: new mongoose.Types.ObjectId(businessId)
+            }).sort({ createdAt: -1 });
+        }
+
         res.json(reviews);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -24,8 +40,11 @@ export const getBusinessReviews = async (req: Request, res: Response) => {
 export const getUserReviews = async (req: Request, res: Response) => {
     try {
         const { userId } = req.params;
-        // Populate the business details to show where the review was left
-        const reviews = await Review.find({ userId }).sort({ createdAt: -1 }).populate('businessId', 'name image location');
+        // Populate both business and event details
+        const reviews = await Review.find({ userId })
+            .sort({ createdAt: -1 })
+            .populate('businessId', 'name thumbnail location')
+            .populate('eventId', 'name thumbnail location');
         res.json(reviews);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -54,17 +73,20 @@ export const addReview = async (req: Request, res: Response) => {
             rating,
             comment,
             bookingId: bookingId ? new mongoose.Types.ObjectId(bookingId) : undefined,
-            images: images || []
+            images: images || [],
+            likes: [],
+            dislikes: []
         });
 
         await review.save();
 
-        // Send email notification to user
+        // Send email notifications
         try {
             const user = await User.findOne({ uid: userId });
             const business = await Business.findById(businessIdRaw);
 
             if (user && business) {
+                // Notify user: their review was submitted
                 await emailService.sendReviewSubmissionEmail({
                     to: user.email,
                     userName: user.displayName || user.name,
@@ -72,6 +94,19 @@ export const addReview = async (req: Request, res: Response) => {
                     rating,
                     comment
                 });
+
+                // Notify business owner: a new review was received
+                const owner = await User.findOne({ uid: business.ownerId });
+                if (owner && owner.email) {
+                    await emailService.sendNewReviewAlertEmail({
+                        to: owner.email,
+                        ownerName: owner.displayName || owner.name || business.name,
+                        userName: user.displayName || user.name || 'A customer',
+                        businessName: business.name,
+                        rating,
+                        comment
+                    });
+                }
             }
         } catch (emailError) {
             console.error('Failed to send review email:', emailError);
@@ -223,8 +258,27 @@ export const deleteReview = async (req: Request, res: Response) => {
 export const getBusinessRatingStats = async (req: Request, res: Response) => {
     try {
         const { businessId } = req.params;
+
+        // Check if this business is an event
+        const business = await Business.findById(businessId);
+
+        let matchCondition;
+        if (business && (business.type === 'event' || business.type === 'both')) {
+            // For events, match eventId
+            matchCondition = {
+                eventId: new mongoose.Types.ObjectId(businessId),
+                status: 'published'
+            };
+        } else {
+            // For regular businesses, match businessId
+            matchCondition = {
+                businessId: new mongoose.Types.ObjectId(businessId),
+                status: 'published'
+            };
+        }
+
         const stats = await Review.aggregate([
-            { $match: { businessId: new mongoose.Types.ObjectId(businessId), status: 'published' } },
+            { $match: matchCondition },
             {
                 $facet: {
                     summary: [
@@ -262,6 +316,279 @@ export const getBusinessRatingStats = async (req: Request, res: Response) => {
             ratingDistribution
         });
     } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Get all reviews for an event
+ */
+export const getEventReviews = async (req: Request, res: Response) => {
+    try {
+        const { eventId } = req.params;
+        const reviews = await Review.find({
+            eventId: new mongoose.Types.ObjectId(eventId),
+            entityType: 'event'
+        }).sort({ createdAt: -1 });
+        res.json(reviews);
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Add a review for an event
+ */
+export const addEventReview = async (req: Request, res: Response) => {
+    try {
+        const eventIdRaw = req.params.eventId || req.body.eventId;
+
+        console.log('addEventReview called with eventId:', eventIdRaw);
+        console.log('Request body:', req.body);
+
+        if (!eventIdRaw) {
+            return res.status(400).json({ message: 'Event ID is required' });
+        }
+
+        const { userId, userName, userPhoto, rating, comment, bookingId, images } = req.body;
+
+        // Validate required fields
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+        if (!userName) {
+            return res.status(400).json({ message: 'User name is required' });
+        }
+        if (!rating || rating < 1 || rating > 5) {
+            return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+        }
+        if (!comment || !comment.trim()) {
+            return res.status(400).json({ message: 'Comment is required' });
+        }
+
+        // Check if user has already reviewed this event
+        const existingReview = await Review.findOne({
+            eventId: new mongoose.Types.ObjectId(eventIdRaw),
+            userId: userId
+        });
+
+        if (existingReview) {
+            console.log('User has already reviewed this event, updating existing review:', existingReview._id);
+
+            // Update the existing review instead of creating a new one
+            existingReview.rating = rating;
+            existingReview.comment = comment;
+            existingReview.userPhoto = userPhoto;
+            existingReview.userName = userName;
+
+            await existingReview.save();
+
+            return res.status(200).json({
+                message: 'Review updated successfully',
+                review: existingReview
+            });
+        }
+
+        const review = new Review({
+            eventId: new mongoose.Types.ObjectId(eventIdRaw),
+            entityType: 'event',
+            userId,
+            userName,
+            userPhoto,
+            rating,
+            comment,
+            bookingId: bookingId ? new mongoose.Types.ObjectId(bookingId) : undefined,
+            images: images || [],
+            likes: [],
+            dislikes: []
+        });
+
+        await review.save();
+
+        // Send email notifications
+        try {
+            const user = await User.findOne({ uid: userId });
+            const event = await Business.findById(eventIdRaw);
+
+            if (user && event) {
+                // Notify user: their review was submitted
+                await emailService.sendReviewSubmissionEmail({
+                    to: user.email,
+                    userName: user.displayName || user.name,
+                    businessName: event.name,
+                    rating,
+                    comment
+                });
+
+                // Notify event organizer: a new review was received
+                const owner = await User.findOne({ uid: event.ownerId });
+                if (owner && owner.email) {
+                    await emailService.sendNewReviewAlertEmail({
+                        to: owner.email,
+                        ownerName: owner.displayName || owner.name || event.name,
+                        userName: user.displayName || user.name || 'A customer',
+                        businessName: event.name,
+                        rating,
+                        comment
+                    });
+                }
+            }
+        } catch (emailError) {
+            console.error('Failed to send review email:', emailError);
+        }
+
+        res.status(201).json(review);
+    } catch (error: any) {
+        console.error('Error in addEventReview:', error);
+        if (error.code === 11000) {
+            console.error('Duplicate key error details:', error.keyPattern, error.keyValue);
+            return res.status(400).json({
+                message: 'You have already reviewed this event',
+                details: error.keyPattern
+            });
+        }
+        res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Get average rating for an event
+ */
+export const getEventRatingStats = async (req: Request, res: Response) => {
+    try {
+        const { eventId } = req.params;
+        const stats = await Review.aggregate([
+            {
+                $match: {
+                    eventId: new mongoose.Types.ObjectId(eventId),
+                    entityType: 'event',
+                    status: 'published'
+                }
+            },
+            {
+                $facet: {
+                    summary: [
+                        {
+                            $group: {
+                                _id: null,
+                                averageRating: { $avg: '$rating' },
+                                totalReviews: { $sum: 1 }
+                            }
+                        }
+                    ],
+                    distribution: [
+                        {
+                            $group: {
+                                _id: '$rating',
+                                count: { $sum: 1 }
+                            }
+                        }
+                    ]
+                }
+            }
+        ]);
+
+        const summary = stats[0].summary[0] || { averageRating: 0, totalReviews: 0 };
+        const distributionRaw = stats[0].distribution || [];
+
+        const ratingDistribution: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        distributionRaw.forEach((d: any) => {
+            ratingDistribution[d._id] = d.count;
+        });
+
+        res.json({
+            averageRating: summary.averageRating || 0,
+            totalReviews: summary.totalReviews || 0,
+            ratingDistribution
+        });
+    } catch (error: any) {
+        res.status(500).json({ message: error.message });
+    }
+};
+
+
+// Like a review
+export const likeReview = async (req: Request, res: Response) => {
+    try {
+        const { reviewId } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ message: 'Review not found' });
+        }
+
+        // Initialize arrays if they don't exist
+        if (!review.likes) review.likes = [];
+        if (!review.dislikes) review.dislikes = [];
+
+        // Remove from dislikes if present
+        review.dislikes = review.dislikes.filter(id => id !== userId);
+
+        // Toggle like
+        if (review.likes.includes(userId)) {
+            review.likes = review.likes.filter(id => id !== userId);
+        } else {
+            review.likes.push(userId);
+        }
+
+        await review.save();
+
+        res.status(200).json({
+            likes: review.likes,
+            dislikes: review.dislikes,
+            likesCount: review.likes.length,
+            dislikesCount: review.dislikes.length
+        });
+    } catch (error: any) {
+        console.error('Error liking review:', error);
+        res.status(500).json({ message: error.message });
+    }
+};
+
+// Dislike a review
+export const dislikeReview = async (req: Request, res: Response) => {
+    try {
+        const { reviewId } = req.params;
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const review = await Review.findById(reviewId);
+        if (!review) {
+            return res.status(404).json({ message: 'Review not found' });
+        }
+
+        // Initialize arrays if they don't exist
+        if (!review.likes) review.likes = [];
+        if (!review.dislikes) review.dislikes = [];
+
+        // Remove from likes if present
+        review.likes = review.likes.filter(id => id !== userId);
+
+        // Toggle dislike
+        if (review.dislikes.includes(userId)) {
+            review.dislikes = review.dislikes.filter(id => id !== userId);
+        } else {
+            review.dislikes.push(userId);
+        }
+
+        await review.save();
+
+        res.status(200).json({
+            likes: review.likes,
+            dislikes: review.dislikes,
+            likesCount: review.likes.length,
+            dislikesCount: review.dislikes.length
+        });
+    } catch (error: any) {
+        console.error('Error disliking review:', error);
         res.status(500).json({ message: error.message });
     }
 };

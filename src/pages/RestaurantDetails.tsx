@@ -10,6 +10,8 @@ import RestaurantMap from '../components/RestaurantMap';
 import StarRating from '../components/StarRating';
 import { DinoStepper } from '../components/DinoStepper';
 import EmojiPicker from '../components/EmojiPicker';
+import { isRestaurantOpen } from '../utils/openStatus';
+
 
 const RestaurantDetails = () => {
   const { id } = useParams();
@@ -413,7 +415,8 @@ const RestaurantDetails = () => {
             <div className="flex items-center gap-6 text-sm">
               <div className="flex items-center gap-2">
                 <Clock size={16} />
-                <span>{restaurant.openNow ? 'Open Now' : 'Closed'}</span>
+                <span>{restaurant && isRestaurantOpen(restaurant) ? 'Open Now' : 'Closed'}</span>
+
               </div>
               <div className="flex items-center gap-2">
                 <MapPin size={16} />
@@ -660,7 +663,7 @@ const RestaurantDetails = () => {
                       className="w-full p-4 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
                     />
                     <div className="absolute bottom-2 right-2">
-                      <EmojiPicker 
+                      <EmojiPicker
                         onEmojiSelect={(emoji) => setNewComment(prev => prev + emoji)}
                       />
                     </div>
@@ -726,7 +729,7 @@ const RestaurantDetails = () => {
               <h2 className="text-2xl font-semibold mb-6">About {restaurant.name}</h2>
               <p className="text-gray-600 mb-6">
                 {restaurant.name} is located in {restaurant.location.city}, offering {restaurant.cuisine?.join(', ')} cuisine.
-                {restaurant.openNow ? " We're currently open and ready to serve you!" : " We're currently closed."}
+                {restaurant && isRestaurantOpen(restaurant) ? " We're currently open and ready to serve you!" : " We're currently closed."}
               </p>
 
               <div className="space-y-4">

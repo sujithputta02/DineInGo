@@ -13,6 +13,82 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { businessApi } from '../../services/api';
 import FloorPlanDesigner from '../../components/FloorPlanDesigner';
+import EventSeatingViewer from '../../components/EventSeatingViewer';
+import IndividualSeatingChart from '../../components/IndividualSeatingChart';
+
+const EventLayoutViewerWrapper: React.FC<{ businessId: string }> = ({ businessId }) => {
+    const [bizData, setBizData] = useState<any>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchBiz = async () => {
+            try {
+                setLoading(true);
+                const res = await businessApi.getById(businessId);
+                setBizData(res.data || res);
+            } catch (err) {
+                console.error("Failed to load business details for floor plan", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchBiz();
+    }, [businessId]);
+
+    if (loading) {
+        return <div className="p-8 text-center text-slate-500">Loading layout...</div>;
+    }
+
+    if (!bizData) {
+        return <div className="p-8 text-center text-red-500">Failed to load business data.</div>;
+    }
+
+    const isEvent = bizData.type === 'event' || bizData.type === 'both';
+
+    if (isEvent && bizData.seatingLayout) {
+        // Normalize seating layout in case it's nested
+        const layout = bizData.seatingLayout.eventConfig?.seatingLayout || bizData.seatingLayout;
+        const areas = bizData.seatingLayout.eventConfig?.concertAreas || bizData.seatingLayout.areas || [];
+        const individualSeats = bizData.seatingLayout.eventConfig?.individualSeats || layout.seats || [];
+
+        if (areas.length > 0) {
+            return (
+                <div className="p-8 bg-slate-50 overflow-auto h-full w-full">
+                    <h3 className="text-xl font-bold text-slate-800 mb-6">Area Layout Preview</h3>
+                    <EventSeatingViewer seatingLayout={{ areas, seats: individualSeats, rows: layout.rows, columns: layout.columns }} />
+                </div>
+            );
+        } else if (individualSeats.length > 0) {
+            return (
+                <div className="p-8 bg-slate-50 overflow-auto h-full w-full">
+                    <h3 className="text-xl font-bold text-slate-800 mb-6">Seating Chart Preview</h3>
+                    {layout.seats && layout.seats[0] && 'x' in layout.seats[0] && 'y' in layout.seats[0] ? (
+                        <IndividualSeatingChart seats={individualSeats} selectedSeatIds={[]} onSeatClick={() => { }} />
+                    ) : (
+                        <div className="bg-gray-950 rounded-lg p-4">
+                            <div className="text-center text-white mb-6 font-bold tracking-[0.5em] border-b border-gray-800 pb-2">STAGE</div>
+                            <div className="flex flex-col gap-2 relative">
+                                <div className="absolute inset-0 grid" style={{ gridTemplateRows: `repeat(${layout.rows || 10}, minmax(0, 1fr))`, gridTemplateColumns: `repeat(${layout.columns || 10}, minmax(0, 1fr))` }}>
+                                    {/* Placeholder grid to align seats */}
+                                </div>
+                                <div className="relative">
+                                    {individualSeats.map((seat: any) => (
+                                        <div key={seat.id} className="absolute w-8 h-8 flex items-center justify-center text-xs font-bold rounded cursor-default border-2 border-slate-500 bg-slate-600/30 text-white" style={{ left: `${seat.x}%`, top: `${seat.y}%`, transform: 'translate(-50%, -50%)' }}>
+                                            {seat.rowLabel}{seat.number}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+    }
+
+    // Default to restaurant FloorPlanner
+    return <FloorPlanDesigner businessId={businessId} readOnly={true} />;
+};
 
 interface Business {
     id: string;
@@ -86,11 +162,8 @@ const FloorPlanManagement: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-                    <FloorPlanDesigner
-                        businessId={selectedBusinessId}
-                        readOnly={true}
-                    />
+                <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden min-h-[600px]">
+                    <EventLayoutViewerWrapper businessId={selectedBusinessId} />
                 </div>
             </div>
         );

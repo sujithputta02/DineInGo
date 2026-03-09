@@ -49,7 +49,7 @@ export interface IBooking extends Document {
   discount?: number;
 
   // Status
-  status: 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'no-show';
+  status: 'pending' | 'confirmed' | 'checked-in' | 'cancelled' | 'completed' | 'no-show';
   paymentStatus: 'pending' | 'paid' | 'refunded' | 'failed';
   paymentId?: string;
 
@@ -146,7 +146,7 @@ const bookingSchema = new Schema<IBooking>({
   // Status
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'cancelled', 'completed', 'no-show'],
+    enum: ['pending', 'confirmed', 'checked-in', 'cancelled', 'completed', 'no-show'],
     default: 'pending',
     index: true
   },

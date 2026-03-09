@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { Waitlist } from '../models/Waitlist';
 import { Business } from '../models/Business';
+import { EarlyAccess } from '../models/EarlyAccess';
 import { getIO } from '../utils/socket';
 
 // Join waitlist
@@ -331,5 +332,39 @@ export const expireOldEntries = async (): Promise<void> => {
         console.log(`Expired ${expiredEntries.modifiedCount} waitlist entries`);
     } catch (error) {
         console.error('Error expiring waitlist entries:', error);
+    }
+};
+// Join early access (landing page)
+export const joinEarlyAccess = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email, userType } = req.body;
+
+        if (!email || !userType) {
+            res.status(400).json({ success: false, message: 'Email and userType are required' });
+            return;
+        }
+
+        // Check for existing signup
+        const existing = await EarlyAccess.findOne({ email, userType });
+        if (existing) {
+            res.status(200).json({
+                success: true,
+                message: 'You are already on the list! Dino is guarding your spot.',
+                data: existing
+            });
+            return;
+        }
+
+        const entry = new EarlyAccess({ email, userType });
+        await entry.save();
+
+        res.status(201).json({
+            success: true,
+            message: 'Successfully joined early access!',
+            data: entry
+        });
+    } catch (error) {
+        console.error('Error joining early access:', error);
+        res.status(500).json({ success: false, message: 'Error joining early access' });
     }
 };

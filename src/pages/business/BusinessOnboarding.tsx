@@ -58,6 +58,8 @@ interface EventConfig {
   duration: number;
   bookingType: BookingType;
   timeSlots: TimeSlot[];
+  startDate?: string;
+  endDate?: string;
 }
 
 interface MenuItem {
@@ -112,11 +114,15 @@ interface ValidationResult {
 }
 
 const BusinessOnboarding: React.FC = () => {
+  console.log('BusinessOnboarding component rendering');
+  
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
   const isEditMode = location.pathname.includes('/edit/');
   const isViewMode = location.pathname.includes('/view/');
   const isReadOnly = isViewMode;
+
+  console.log('BusinessOnboarding state:', { id, isEditMode, isViewMode, pathname: location.pathname });
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -164,7 +170,9 @@ const BusinessOnboarding: React.FC = () => {
     capacity: 0,
     duration: 0,
     bookingType: 'seat-based',
-    timeSlots: []
+    timeSlots: [],
+    startDate: '',
+    endDate: ''
   });
 
   const [validation, setValidation] = useState<ValidationResult>({
@@ -257,7 +265,9 @@ const BusinessOnboarding: React.FC = () => {
           capacity: business.capacity || 0,
           duration: business.duration || 0,
           bookingType: business.bookingType || 'seat-based',
-          timeSlots: business.timeSlots || []
+          timeSlots: business.timeSlots || [],
+          startDate: business.startDate ? new Date(business.startDate).toISOString().split('T')[0] : '',
+          endDate: business.endDate ? new Date(business.endDate).toISOString().split('T')[0] : ''
         });
       }
 
@@ -348,7 +358,9 @@ const BusinessOnboarding: React.FC = () => {
           eventType: eventConfig.eventType,
           capacity: eventConfig.capacity,
           duration: eventConfig.duration,
-          timeSlots: eventConfig.timeSlots
+          timeSlots: eventConfig.timeSlots,
+          startDate: eventConfig.startDate ? new Date(eventConfig.startDate) : undefined,
+          endDate: eventConfig.endDate ? new Date(eventConfig.endDate) : undefined
         },
 
         // Tier pricing defaults
@@ -443,6 +455,18 @@ const BusinessOnboarding: React.FC = () => {
       if (!eventConfig.eventType) errors.push('Event type is required');
       if (eventConfig.capacity <= 0) errors.push('Event capacity must be greater than 0');
       if (eventConfig.duration <= 0) errors.push('Event duration must be greater than 0');
+      if (!eventConfig.startDate) errors.push('Event start date is required');
+      if (!eventConfig.endDate) errors.push('Event end date is required');
+      
+      // Validate date range
+      if (eventConfig.startDate && eventConfig.endDate) {
+        const start = new Date(eventConfig.startDate);
+        const end = new Date(eventConfig.endDate);
+        if (end < start) {
+          errors.push('Event end date cannot be before start date');
+        }
+      }
+      
       if (eventConfig.timeSlots.length === 0) errors.push('At least one time slot is required for events');
 
       // Seating layout validation for seat-based events
@@ -1178,6 +1202,38 @@ const BusinessOnboarding: React.FC = () => {
             </div>
 
             <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Start Date *</label>
+              <input
+                type="date"
+                value={eventConfig.startDate || ''}
+                onChange={(e) => setEventConfig(prev => ({ ...prev, startDate: e.target.value }))}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                min={new Date().toISOString().split('T')[0]}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">End Date *</label>
+              <input
+                type="date"
+                value={eventConfig.endDate || ''}
+                onChange={(e) => setEventConfig(prev => ({ ...prev, endDate: e.target.value }))}
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                min={eventConfig.startDate || new Date().toISOString().split('T')[0]}
+              />
+              {eventConfig.startDate && eventConfig.endDate && (
+                <p className="text-xs text-emerald-600 mt-1">
+                  {(() => {
+                    const start = new Date(eventConfig.startDate);
+                    const end = new Date(eventConfig.endDate);
+                    const days = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                    return days === 1 ? 'Single-day event' : `${days}-day event`;
+                  })()}
+                </p>
+              )}
+            </div>
+
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Duration (hours)</label>
               <input
                 type="number"
@@ -1367,6 +1423,7 @@ const BusinessOnboarding: React.FC = () => {
           <div className="h-[600px] rounded-lg overflow-hidden border border-slate-200">
             <EventSeatingDesigner
               businessId={businessId || undefined}
+              initialData={seatingLayoutData}
               onSave={(seatingLayout) => {
                 setSeatingLayoutData(seatingLayout);
                 console.log('Seating layout saved:', seatingLayout);
@@ -1437,7 +1494,12 @@ const BusinessOnboarding: React.FC = () => {
                   {seatingLayoutData && (
                     <div className="mt-2 text-xs text-emerald-600 flex items-center gap-1">
                       <CheckCircle size={12} />
-                      Seating layout saved ({seatingLayoutData.sections?.length || 0} sections)
+                      Seating layout saved ({
+                        seatingLayoutData.sections?.length || 
+                        seatingLayoutData.eventConfig?.seatingLayout?.sections?.length || 
+                        seatingLayoutData.eventConfig?.concertAreas?.length ||
+                        0
+                      } sections)
                     </div>
                   )}
                 </div>

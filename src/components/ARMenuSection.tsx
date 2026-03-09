@@ -1,10 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, Play, Pause, RotateCcw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
+import { createWorker } from 'tesseract.js';
 
 interface ARMenuSectionProps {
   isDarkMode: boolean;
   language: string;
   translations: any;
+  menuItems?: any[];
+  isLoading?: boolean;
 }
 
 interface NutritionInfo {
@@ -37,82 +42,30 @@ interface DishInfo {
   };
 }
 
-const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, translations }) => {
+const ARMenuSection: React.FC<ARMenuSectionProps> = ({
+  isDarkMode,
+  language,
+  translations,
+  menuItems = [],
+  isLoading = false
+}) => {
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedDish, setScannedDish] = useState<DishInfo | null>(null);
+  const [scannedDish, setScannedDish] = useState<any | null>(null);
   const [showNutrition, setShowNutrition] = useState(false);
   const [showIngredients, setShowIngredients] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [showManualSelection, setShowManualSelection] = useState(false);
+  const [isProcessingOCR, setIsProcessingOCR] = useState(false);
+  const [ocrProgress, setOcrProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Mock dish data for demonstration
-  const mockDishes: DishInfo[] = [
-    {
-      id: '1',
-      name: 'Butter Chicken',
-      description: 'Creamy tomato-based curry with tender chicken pieces',
-      price: 18.99,
-      ingredients: ['Chicken', 'Tomatoes', 'Cream', 'Butter', 'Onions', 'Garlic', 'Ginger', 'Spices'],
-      allergens: ['Dairy'],
-      nutrition: {
-        calories: 520,
-        protein: 35,
-        carbs: 12,
-        fat: 38,
-        fiber: 3,
-        sodium: 890
-      },
-      cookingMethod: 'Slow-cooked in traditional tandoor style',
-      prepTime: 25,
-      spiceLevel: 2,
-      isVegetarian: false,
-      isVegan: false,
-      isGlutenFree: true,
-      sustainability: {
-        score: 7,
-        localIngredients: 60,
-        carbonFootprint: 'Medium'
-      }
-    },
-    {
-      id: '2',
-      name: 'Quinoa Buddha Bowl',
-      description: 'Nutritious bowl with quinoa, roasted vegetables, and tahini dressing',
-      price: 16.99,
-      ingredients: ['Quinoa', 'Kale', 'Sweet Potato', 'Chickpeas', 'Avocado', 'Tahini', 'Lemon'],
-      allergens: ['Sesame'],
-      nutrition: {
-        calories: 420,
-        protein: 18,
-        carbs: 52,
-        fat: 16,
-        fiber: 12,
-        sodium: 340
-      },
-      cookingMethod: 'Fresh assembly with roasted vegetables',
-      prepTime: 15,
-      spiceLevel: 1,
-      isVegetarian: true,
-      isVegan: true,
-      isGlutenFree: true,
-      sustainability: {
-        score: 9,
-        localIngredients: 85,
-        carbonFootprint: 'Low'
-      }
-    }
-  ];
-
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'environment' } 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'environment' }
       });
       setCameraStream(stream);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
       setIsScanning(true);
     } catch (error) {
       console.error('Error accessing camera:', error);
@@ -129,13 +82,119 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
     setIsScanning(false);
   };
 
+  const performOCR = async () => {
+    if (isLoading) {
+      toast.info('Syncing menu data... Please wait.');
+      return;
+    }
+
+    if (!videoRef.current || !canvasRef.current || (menuItems || []).length === 0) {
+      const errorMsg = (menuItems || []).length === 0
+        ? 'Menu data not ready. Please try again in a moment.'
+        : 'Camera not ready. Please ensure camera access is allowed.';
+      toast.error(errorMsg);
+      return;
+    }
+
+    try {
+      setIsProcessingOCR(true);
+      setOcrProgress(0);
+
+      // 1. Capture Frame
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      }
+
+      // 2. Process with Tesseract
+      const worker = await createWorker('eng', 1, {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            setOcrProgress(Math.floor(m.progress * 100));
+          }
+        }
+      });
+
+      const { data: { text } } = await worker.recognize(canvas.toDataURL('image/jpeg'));
+      await worker.terminate();
+
+      console.log('OCR Result:', text);
+
+      // 3. Fuzzy Match with Menu Items
+      const normalizedOCR = text.toLowerCase().replace(/[^a-z0-9 ]/g, '');
+      let bestMatch: any = null;
+      let highestScore = 0;
+
+      (menuItems || []).forEach(item => {
+        const itemName = item.name.toLowerCase();
+        // Simple word-based matching score
+        const words = itemName.split(' ');
+        let matches = 0;
+        words.forEach((word: string) => {
+          if (normalizedOCR.includes(word) && word.length > 2) {
+            matches++;
+          }
+        });
+
+        const score = matches / words.length;
+        if (score > highestScore) {
+          highestScore = score;
+          bestMatch = item;
+        }
+      });
+
+      if (bestMatch && highestScore > 0.4) {
+        handleManualSelect(bestMatch);
+        toast.success(`Identified: ${bestMatch.name}`);
+      } else {
+        toast.warn('Could not identify dish clearly. Try again or select manually.');
+      }
+    } catch (error) {
+      console.error('OCR Error:', error);
+      toast.error('Identification failed. Please try manual selection.');
+    } finally {
+      setIsProcessingOCR(false);
+      setOcrProgress(0);
+    }
+  };
+
   const simulateScan = () => {
-    // Simulate scanning delay
-    setTimeout(() => {
-      const randomDish = mockDishes[Math.floor(Math.random() * mockDishes.length)];
-      setScannedDish(randomDish);
-      stopCamera();
-    }, 2000);
+    // Keep this as a "Demo/Test" function or remove if no longer needed
+    // For now, let's keep it but label it clearly in UI if needed
+    if (menuItems.length > 0) {
+      setTimeout(() => {
+        const randomDish = menuItems[Math.floor(Math.random() * menuItems.length)];
+        handleManualSelect(randomDish);
+      }, 1500);
+    }
+  };
+
+  const handleManualSelect = (dish: any) => {
+    const mappedDish = {
+      ...dish,
+      id: dish._id || dish.id,
+      ingredients: dish.ingredients || [],
+      allergens: dish.allergens || [],
+      nutrition: dish.nutrition || {
+        calories: 350,
+        protein: 15,
+        carbs: 40,
+        fat: 12,
+        fiber: 4,
+        sodium: 300
+      },
+      cookingMethod: dish.description || 'Traditional preparation',
+      prepTime: dish.prepTime || 20,
+      spiceLevel: dish.spiceLevel || 1,
+      sustainability: dish.sustainability || { score: 8, localIngredients: 75, carbonFootprint: 'Low' }
+    };
+    setScannedDish(mappedDish);
+    setShowManualSelection(false);
+    stopCamera();
   };
 
   const resetScan = () => {
@@ -143,6 +202,12 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
     setShowNutrition(false);
     setShowIngredients(false);
   };
+
+  useEffect(() => {
+    if (isScanning && cameraStream && videoRef.current) {
+      videoRef.current.srcObject = cameraStream;
+    }
+  }, [isScanning, cameraStream]);
 
   useEffect(() => {
     return () => {
@@ -292,59 +357,142 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
 
         {isScanning && !scannedDish && (
           <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 shadow-lg`}>
-            <div className="relative">
+            <div className="relative rounded-xl overflow-hidden bg-gray-200 aspect-video md:aspect-auto md:h-96">
               <video
                 ref={videoRef}
                 autoPlay
                 playsInline
-                className="w-full h-64 md:h-96 object-cover rounded-xl bg-gray-200"
+                muted
+                className="w-full h-full object-cover"
               />
               <canvas
                 ref={canvasRef}
                 className="absolute inset-0 w-full h-full"
                 style={{ display: 'none' }}
               />
-              
-              {/* Scanning Overlay */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <div className="w-48 h-48 border-4 border-purple-500 rounded-xl relative">
-                  <div className="absolute inset-0 border-4 border-purple-500 rounded-xl animate-pulse"></div>
-                  <div className="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-purple-500"></div>
-                  <div className="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-purple-500"></div>
-                  <div className="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-purple-500"></div>
-                  <div className="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-purple-500"></div>
-                </div>
-              </div>
 
-              <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
-                <div className={`px-4 py-2 rounded-full ${isDarkMode ? 'bg-gray-900/80' : 'bg-white/80'} backdrop-blur-sm`}>
-                  <p className={`text-sm font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                    Point camera at a dish to scan...
+              {/* Scanning Crosshair Overlay */}
+              {!isProcessingOCR && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="w-48 h-48 border-2 border-white/30 rounded-2xl relative">
+                    <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-purple-500 rounded-tl-lg" />
+                    <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-purple-500 rounded-tr-lg" />
+                    <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-purple-500 rounded-bl-lg" />
+                    <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-purple-500 rounded-br-lg" />
+                    <motion.div
+                      animate={{ y: [0, 192, 0] }}
+                      transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
+                      className="absolute top-0 left-0 right-0 h-0.5 bg-purple-500/50 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Processing Overlay */}
+              <AnimatePresence>
+                {isProcessingOCR && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-20 bg-black/70 backdrop-blur-md flex flex-col items-center justify-center"
+                  >
+                    <div className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full animate-spin mb-6" />
+                    <p className="text-white font-bold text-xl mb-4">Reading Menu Card...</p>
+                    <div className="w-64 h-2 bg-white/20 rounded-full overflow-hidden mb-2">
+                      <motion.div
+                        className="h-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.8)]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${ocrProgress}%` }}
+                      />
+                    </div>
+                    <p className="text-white/60 text-sm">{ocrProgress}% complete</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Bottom Hint */}
+              <div className="absolute bottom-6 left-0 right-0 flex justify-center">
+                <div className={`px-6 py-2 rounded-full ${isDarkMode ? 'bg-black/60' : 'bg-white/60'} backdrop-blur-md border border-white/10 shadow-xl`}>
+                  <p className={`text-sm font-bold tracking-wide ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {isProcessingOCR ? 'Hold steady...' : 'Align menu text within frame'}
                   </p>
                 </div>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4 mt-6">
+            <div className="flex flex-col items-center gap-6 mt-8">
+              <div className="grid grid-cols-2 gap-4 w-full max-w-sm">
+                <button
+                  onClick={performOCR}
+                  disabled={isProcessingOCR || isLoading}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-4 rounded-2xl font-bold hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 group"
+                >
+                  {isLoading ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Scan className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                  )}
+                  {isLoading ? 'Syncing...' : 'Identify'}
+                </button>
+                <button
+                  onClick={stopCamera}
+                  disabled={isProcessingOCR}
+                  className={`px-6 py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 ${isDarkMode
+                    ? 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white border border-white/10'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                    }`}
+                >
+                  <X className="w-5 h-5" />
+                  Cancel
+                </button>
+              </div>
+
               <button
-                onClick={simulateScan}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 text-white px-6 py-3 rounded-xl font-medium hover:from-purple-600 hover:to-pink-600 transition-colors flex items-center gap-2"
+                onClick={() => setShowManualSelection(true)}
+                disabled={isProcessingOCR}
+                className="text-purple-400 text-sm font-bold hover:text-purple-300 transition-colors flex items-center gap-2"
               >
-                <Scan className="w-5 h-5" />
-                Simulate Scan
-              </button>
-              <button
-                onClick={stopCamera}
-                className={`px-6 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 ${
-                  isDarkMode 
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
-              >
-                <X className="w-5 h-5" />
-                Cancel
+                Can't scan? Select from list
               </button>
             </div>
+
+            {/* Manual Selection Modal */}
+            <AnimatePresence>
+              {showManualSelection && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="absolute inset-0 z-50 bg-gray-900/95 backdrop-blur-sm rounded-2xl flex flex-col p-6 overflow-hidden"
+                >
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-xl font-bold text-white">Select a Dish</h3>
+                    <button onClick={() => setShowManualSelection(false)} className="p-2 hover:bg-white/10 rounded-full">
+                      <X className="w-6 h-6 text-white" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-hide">
+                    {menuItems.map((dish) => (
+                      <button
+                        key={dish._id || dish.id}
+                        onClick={() => handleManualSelect(dish)}
+                        className="w-full p-4 bg-white/5 border border-white/10 rounded-2xl text-left hover:bg-white/10 transition-all flex items-center justify-between group"
+                      >
+                        <div>
+                          <p className="font-bold text-white group-hover:text-purple-400 transition-colors">{dish.name}</p>
+                          <p className="text-xs text-gray-400 line-clamp-1">{dish.categoryName}</p>
+                        </div>
+                        <span className="text-emerald-400 font-bold">${dish.price}</span>
+                      </button>
+                    ))}
+                    {menuItems.length === 0 && (
+                      <p className="text-center text-gray-500 mt-10">No items available in the digital menu.</p>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
 
@@ -385,9 +533,8 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
                 </div>
                 <button
                   onClick={resetScan}
-                  className={`p-2 rounded-xl ${
-                    isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
-                  }`}
+                  className={`p-2 rounded-xl ${isDarkMode ? 'hover:bg-gray-700' : 'hover:bg-gray-100'
+                    }`}
                 >
                   <X className={`w-5 h-5 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`} />
                 </button>
@@ -397,26 +544,24 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
               <div className="flex gap-3 mb-6">
                 <button
                   onClick={() => setShowNutrition(!showNutrition)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${
-                    showNutrition
-                      ? 'bg-emerald-500 text-white'
-                      : isDarkMode
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${showNutrition
+                    ? 'bg-emerald-500 text-white'
+                    : isDarkMode
                       ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <Info className="w-4 h-4" />
                   {translations.nutritionInfo}
                 </button>
                 <button
                   onClick={() => setShowIngredients(!showIngredients)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${
-                    showIngredients
-                      ? 'bg-emerald-500 text-white'
-                      : isDarkMode
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-colors ${showIngredients
+                    ? 'bg-emerald-500 text-white'
+                    : isDarkMode
                       ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}
+                    }`}
                 >
                   <ChefHat className="w-4 h-4" />
                   {translations.ingredients}
@@ -448,9 +593,8 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
                     {[1, 2, 3, 4, 5].map((level) => (
                       <div
                         key={level}
-                        className={`w-2 h-4 rounded-full ${
-                          level <= scannedDish.spiceLevel ? 'bg-red-500' : 'bg-gray-300'
-                        }`}
+                        className={`w-2 h-4 rounded-full ${level <= scannedDish.spiceLevel ? 'bg-red-500' : 'bg-gray-300'
+                          }`}
                       />
                     ))}
                   </div>
@@ -499,7 +643,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
                   {translations.ingredients}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-                  {scannedDish.ingredients.map((ingredient, index) => (
+                  {scannedDish.ingredients.map((ingredient: string, index: number) => (
                     <div
                       key={index}
                       className={`p-3 rounded-xl ${isDarkMode ? 'bg-gray-700' : 'bg-gray-100'} text-center`}
@@ -526,7 +670,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
                       Allergens
                     </h4>
                     <div className="flex gap-2">
-                      {scannedDish.allergens.map((allergen, index) => (
+                      {scannedDish.allergens.map((allergen: string, index: number) => (
                         <span
                           key={index}
                           className="px-3 py-1 bg-red-100 text-red-800 text-sm rounded-full"
@@ -544,11 +688,10 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
             <div className="text-center">
               <button
                 onClick={resetScan}
-                className={`px-6 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 mx-auto ${
-                  isDarkMode 
-                    ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' 
-                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                }`}
+                className={`px-6 py-3 rounded-xl font-medium transition-colors flex items-center gap-2 mx-auto ${isDarkMode
+                  ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
               >
                 <RotateCcw className="w-5 h-5" />
                 Scan Another Dish
@@ -557,7 +700,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({ isDarkMode, language, tra
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 };
 

@@ -3,6 +3,7 @@ import { User, IActivity } from '../models/User';
 import { UserStats } from '../models/UserStats';
 import UserNotification from '../models/UserNotification';
 import AllUserNotification from '../models/AllUserNotification';
+import { emailService } from '../services/emailService';
 
 // Helper function to extract device and IP info
 const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: string } => {
@@ -83,6 +84,9 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       });
       await welcomeNotification.save();
       console.log(`Welcome notification sent to new user: ${name} (${uid})`);
+
+      // Send welcome email
+      await emailService.sendUserWelcomeEmail(email, name);
 
       // Emit real-time notification if socket.io is available
       const io = req.app.get('io');
@@ -275,13 +279,13 @@ export const debugUserActivities = async (req: Request, res: Response): Promise<
     console.error('Error in debug activities:', error);
     res.status(500).json({ message: 'Error fetching debug activities' });
   }
-}; 
+};
 
 // Track friend referral
 export const trackFriendReferral = async (req: Request, res: Response): Promise<void> => {
   try {
     const { referrerId, referredUserId } = req.body;
-    
+
     if (!referrerId || !referredUserId) {
       res.status(400).json({ message: 'Both referrer ID and referred user ID are required' });
       return;
@@ -306,15 +310,15 @@ export const trackFriendReferral = async (req: Request, res: Response): Promise<
     if (!userStats.friendsReferred.includes(referredUserId)) {
       userStats.friendsReferred.push(referredUserId);
       await userStats.save();
-      
-      res.json({ 
-        success: true, 
+
+      res.json({
+        success: true,
         message: 'Friend referral tracked successfully',
         totalReferrals: userStats.friendsReferred.length
       });
     } else {
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: 'Friend already tracked',
         totalReferrals: userStats.friendsReferred.length
       });

@@ -33,6 +33,8 @@ export interface IBusiness extends Document {
   // Event specific
   eventType?: string;
   duration?: number;
+  startDate?: Date;
+  endDate?: Date;
   
   // Common
   bookingType: 'seat-based' | 'slot-based';
@@ -192,6 +194,8 @@ const BusinessSchema = new Schema<IBusiness>({
   // Event specific
   eventType: String,
   duration: Number,
+  startDate: Date,
+  endDate: Date,
   
   // Common
   bookingType: { type: String, enum: ['seat-based', 'slot-based'], required: true },

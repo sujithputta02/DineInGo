@@ -6,6 +6,7 @@ import {
   updateBooking,
   cancelBooking,
   confirmBooking,
+  checkInBooking,
   deleteBooking
 } from '../controllers/bookingController';
 import { Tracking } from '../models/Tracking';
@@ -56,7 +57,7 @@ router.post('/table-booking', async (req, res) => {
     if (!restaurantId || !tableId || !date || !time || !userId || !guests || !status) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
-    
+
     // Check if table is already booked
     const existingBooking = await TableBooking.findOne({
       restaurantId,
@@ -65,21 +66,21 @@ router.post('/table-booking', async (req, res) => {
       time,
       status: { $in: ['reserved', 'confirmed', 'blocked'] }
     });
-    
+
     if (existingBooking && existingBooking.userId !== userId) {
-      return res.status(409).json({ 
+      return res.status(409).json({
         error: 'Table already booked',
         message: 'This table has already been reserved by another user'
       });
     }
-    
+
     // Upsert: one booking per table/date/time
     const booking = await TableBooking.findOneAndUpdate(
       { restaurantId, tableId, date, time },
       { userId, guests, status, createdAt: new Date() },
       { upsert: true, new: true }
     );
-    
+
     // Update TableStatus when table is reserved/confirmed
     if (status === 'reserved' || status === 'confirmed') {
       try {
@@ -101,7 +102,7 @@ router.post('/table-booking', async (req, res) => {
         console.error('Error updating table status:', statusError);
       }
     }
-    
+
     // Update TableStatus when table is cancelled
     if (status === 'cancelled') {
       try {
@@ -125,14 +126,14 @@ router.post('/table-booking', async (req, res) => {
         console.error('Error updating table status:', statusError);
       }
     }
-    
+
     // Emit Socket.IO event for real-time updates
     const io = getIO();
     if (io) {
-      const eventName = status === 'reserved' ? 'tableBlocked' : 
-                       status === 'confirmed' ? 'tableConfirmed' : 
-                       status === 'cancelled' ? 'tableCancelled' : 'bookingUpdated';
-      
+      const eventName = status === 'reserved' ? 'tableBlocked' :
+        status === 'confirmed' ? 'tableConfirmed' :
+          status === 'cancelled' ? 'tableCancelled' : 'bookingUpdated';
+
       io.to(restaurantId).emit(eventName, {
         tableId,
         date,
@@ -141,10 +142,10 @@ router.post('/table-booking', async (req, res) => {
         status,
         booking
       });
-      
+
       console.log(`Emitted ${eventName} for table ${tableId} at ${restaurantId}`);
     }
-    
+
     res.status(201).json(booking);
   } catch (error) {
     console.error('Error in table booking:', error);
@@ -189,7 +190,7 @@ router.get('/booked-tables', async (req, res) => {
   try {
     console.log('=== FETCHING BOOKED TABLES ===');
     console.log('Query params:', { restaurantId, date, time });
-    
+
     // Query TableBooking collection for ONLY reserved/confirmed/blocked tables (exclude cancelled)
     const tableBookings = await TableBooking.find({
       restaurantId: restaurantId,
@@ -197,15 +198,15 @@ router.get('/booked-tables', async (req, res) => {
       time: String(time),
       status: { $in: ['reserved', 'confirmed', 'blocked'] }
     });
-    
+
     console.log('Found table bookings:', tableBookings.length);
     tableBookings.forEach(booking => {
       console.log(`  - Table ${booking.tableId}: status=${booking.status}, userId=${booking.userId}`);
     });
-    
+
     const bookedTableIds = tableBookings.map(b => b.tableId);
     console.log('Returning booked table IDs:', bookedTableIds);
-    
+
     res.json(bookedTableIds);
   } catch (error) {
     console.error('Error in /bookings/booked-tables:', error, { restaurantId, date, time });
@@ -228,6 +229,9 @@ router.patch('/:id/cancel', cancelBooking);
 // Confirm a booking
 router.patch('/:id/confirm', confirmBooking);
 
+// Check-in a booking
+router.post('/:id/check-in', checkInBooking);
+
 // Delete a booking
 router.delete('/:id', deleteBooking);
 
@@ -246,7 +250,7 @@ router.post('/block-table', async (req, res) => {
     { userId, guests, status: 'blocked', blockedUntil, autoConfirmAt, confirmedAt: null, cancelledAt: null },
     { upsert: true, new: true }
   );
-  
+
   // Update TableStatus to Reserved
   try {
     const { TableStatus } = require('../models/TableStatus');
@@ -265,7 +269,7 @@ router.post('/block-table', async (req, res) => {
   } catch (statusError) {
     console.error('Error updating table status:', statusError);
   }
-  
+
   getIO().to(restaurantId).emit('tableBlocked', { tableId, date, time, userId });
   res.json(booking);
 });
@@ -282,7 +286,7 @@ router.post('/confirm-table', async (req, res) => {
     { status: 'confirmed', confirmedAt: now, blockedUntil: null },
     { new: true }
   );
-  
+
   // Update TableStatus to Occupied
   try {
     const { TableStatus } = require('../models/TableStatus');
@@ -301,7 +305,7 @@ router.post('/confirm-table', async (req, res) => {
   } catch (statusError) {
     console.error('Error updating table status:', statusError);
   }
-  
+
   getIO().to(restaurantId).emit('tableConfirmed', { tableId, date, time, userId });
   res.json(booking);
 });
@@ -309,10 +313,10 @@ router.post('/confirm-table', async (req, res) => {
 // Cancel a table booking (only if more than 2 hours before slot)
 router.post('/cancel-table', async (req, res) => {
   const { restaurantId, tableId, date, time, userId } = req.body;
-  
+
   console.log('=== CANCEL TABLE REQUEST ===');
   console.log('Request body:', { restaurantId, tableId, date, time, userId });
-  
+
   // Validate required fields
   if (!restaurantId) {
     return res.status(400).json({ error: 'Missing restaurantId', message: 'Restaurant ID is required' });
@@ -329,22 +333,22 @@ router.post('/cancel-table', async (req, res) => {
   if (!userId) {
     return res.status(400).json({ error: 'Missing userId', message: 'User ID is required' });
   }
-  
+
   // Check if cancellation is allowed (must be more than 2 hours before booking time)
   try {
     const slotDateTime = dayjs(`${date} ${time}`);
     const twoHoursBefore = slotDateTime.subtract(2, 'hours');
     const now = dayjs();
-    
+
     console.log('Time check:', {
       now: now.format(),
       slotDateTime: slotDateTime.format(),
       twoHoursBefore: twoHoursBefore.format(),
       canCancel: now.isBefore(twoHoursBefore)
     });
-    
+
     if (now.isAfter(twoHoursBefore)) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Cannot cancel within 2 hours of the booking time',
         message: 'Cancellations must be made at least 2 hours before your reservation time'
       });
@@ -353,9 +357,9 @@ router.post('/cancel-table', async (req, res) => {
     console.error('Error parsing date/time:', dateError);
     // Continue anyway - don't block cancellation due to date parsing issues
   }
-  
+
   const now = new Date();
-  
+
   // First, let's see what bookings exist for this table
   const existingBookings = await TableBooking.find({
     restaurantId,
@@ -364,56 +368,56 @@ router.post('/cancel-table', async (req, res) => {
     time: String(time)
   });
   console.log('Existing bookings for this table:', existingBookings);
-  
+
   // Try to find and cancel in TableBooking collection first
-  console.log('Searching TableBooking with:', { 
-    restaurantId, 
-    tableId, 
-    date: String(date), 
-    time: String(time), 
-    userId 
+  console.log('Searching TableBooking with:', {
+    restaurantId,
+    tableId,
+    date: String(date),
+    time: String(time),
+    userId
   });
-  
+
   // Try with userId first
   let booking = await TableBooking.findOneAndUpdate(
-    { 
-      restaurantId, 
-      tableId, 
-      date: String(date), 
-      time: String(time), 
-      userId, 
+    {
+      restaurantId,
+      tableId,
+      date: String(date),
+      time: String(time),
+      userId,
       status: { $in: ['reserved', 'confirmed', 'blocked'] }
     },
-    { 
-      status: 'cancelled', 
-      cancelledAt: now, 
-      blockedUntil: undefined 
+    {
+      status: 'cancelled',
+      cancelledAt: now,
+      blockedUntil: undefined
     },
     { new: true }
   );
-  
+
   // If not found with userId, try without userId (in case userId doesn't match)
   if (!booking) {
     console.log('Not found with userId, trying without userId...');
     booking = await TableBooking.findOneAndUpdate(
-      { 
-        restaurantId, 
-        tableId, 
-        date: String(date), 
-        time: String(time), 
+      {
+        restaurantId,
+        tableId,
+        date: String(date),
+        time: String(time),
         status: { $in: ['reserved', 'confirmed', 'blocked'] }
       },
-      { 
-        status: 'cancelled', 
-        cancelledAt: now, 
-        blockedUntil: undefined 
+      {
+        status: 'cancelled',
+        cancelledAt: now,
+        blockedUntil: undefined
       },
       { new: true }
     );
   }
-  
+
   console.log('TableBooking cancellation result:', booking ? 'Updated successfully' : 'Not found');
-  
+
   // Also update the main Booking collection
   console.log('Updating main Booking collection...');
   let dateObj: Date;
@@ -424,7 +428,7 @@ router.post('/cancel-table', async (req, res) => {
     console.error('Error parsing date:', err);
     dateObj = new Date();
   }
-  
+
   // Try to find the booking in the main Booking collection
   console.log('Searching for booking with:', {
     userId,
@@ -433,7 +437,7 @@ router.post('/cancel-table', async (req, res) => {
     time: String(time),
     table: tableId
   });
-  
+
   const mainBooking = await Booking.findOneAndUpdate(
     {
       userId,
@@ -449,13 +453,13 @@ router.post('/cancel-table', async (req, res) => {
     },
     { new: true }
   );
-  
+
   console.log('Main Booking cancellation result:', mainBooking ? 'Updated successfully' : 'Not found');
-  
+
   // If neither collection had the booking, try alternative searches
   if (!booking && !mainBooking) {
     console.log('Booking not found with exact match, trying alternative searches...');
-    
+
     // Try finding any booking for this user at this restaurant/date/time
     const anyBooking = await Booking.findOne({
       userId,
@@ -463,9 +467,9 @@ router.post('/cancel-table', async (req, res) => {
       date: dateObj,
       time: String(time)
     });
-    
+
     console.log('Alternative search result:', anyBooking);
-    
+
     if (anyBooking) {
       // Found a booking, update it
       anyBooking.status = 'cancelled';
@@ -473,7 +477,7 @@ router.post('/cancel-table', async (req, res) => {
       await anyBooking.save();
       console.log('Updated booking via alternative search');
     } else {
-      return res.status(404).json({ 
+      return res.status(404).json({
         error: 'Booking not found',
         message: 'This booking may have already been cancelled or does not exist',
         debug: {
@@ -488,7 +492,7 @@ router.post('/cancel-table', async (req, res) => {
       });
     }
   }
-  
+
   // Update TableStatus to unblock the table
   try {
     const { TableStatus } = require('../models/TableStatus');
@@ -504,7 +508,7 @@ router.post('/cancel-table', async (req, res) => {
       },
       { new: true }
     );
-    
+
     if (tableStatus) {
       console.log(`✓ Successfully reset table status for table ${tableId} to Ready`);
     } else {
@@ -514,27 +518,27 @@ router.post('/cancel-table', async (req, res) => {
     console.error('Error updating table status:', statusError);
     // Don't fail the cancellation if status update fails
   }
-  
+
   // Emit Socket.IO event to notify all users
   const io = getIO();
   if (io) {
-    io.to(restaurantId).emit('tableCancelled', { 
-      tableId, 
-      date: String(date), 
-      time: String(time), 
+    io.to(restaurantId).emit('tableCancelled', {
+      tableId,
+      date: String(date),
+      time: String(time),
       userId,
       status: 'cancelled',
       booking: booking || mainBooking
     });
     console.log(`✓ Emitted tableCancelled event for table ${tableId} at restaurant ${restaurantId}`);
   }
-  
+
   console.log('=== CANCELLATION SUCCESSFUL ===');
-  
-  res.json({ 
+
+  res.json({
     success: true,
     message: 'Booking cancelled successfully',
-    booking: booking || mainBooking 
+    booking: booking || mainBooking
   });
 });
 
@@ -552,19 +556,19 @@ router.get('/table-status', async (req, res) => {
 router.get('/debug-table/:restaurantId/:tableId', async (req, res) => {
   const { restaurantId, tableId } = req.params;
   const { date, time } = req.query;
-  
+
   try {
     console.log('=== DEBUG TABLE BOOKINGS ===');
     console.log('Params:', { restaurantId, tableId, date, time });
-    
+
     // Find all bookings for this table
     const query: any = { restaurantId, tableId };
     if (date) query.date = String(date);
     if (time) query.time = String(time);
-    
+
     const tableBookings = await TableBooking.find(query).sort({ createdAt: -1 });
     console.log(`Found ${tableBookings.length} bookings for table ${tableId}`);
-    
+
     const mainBookings = await Booking.find({
       restaurantId: new mongoose.Types.ObjectId(restaurantId),
       table: tableId,
@@ -572,7 +576,7 @@ router.get('/debug-table/:restaurantId/:tableId', async (req, res) => {
       ...(time && { time: String(time) })
     }).sort({ createdAt: -1 });
     console.log(`Found ${mainBookings.length} main bookings for table ${tableId}`);
-    
+
     res.json({
       tableBookings: tableBookings.map(b => ({
         _id: b._id,
@@ -603,11 +607,11 @@ router.get('/debug-table/:restaurantId/:tableId', async (req, res) => {
 // Manual unblock endpoint for debugging
 router.post('/manual-unblock', async (req, res) => {
   const { restaurantId, tableId, date, time } = req.body;
-  
+
   try {
     console.log('=== MANUAL UNBLOCK REQUEST ===');
     console.log('Params:', { restaurantId, tableId, date, time });
-    
+
     // Update all TableBookings for this table to cancelled
     const result = await TableBooking.updateMany(
       {
@@ -623,9 +627,9 @@ router.post('/manual-unblock', async (req, res) => {
         blockedUntil: undefined
       }
     );
-    
+
     console.log(`Updated ${result.modifiedCount} table bookings`);
-    
+
     // Update TableStatus
     const { TableStatus } = require('../models/TableStatus');
     const tableStatus = await TableStatus.findOneAndUpdate(
@@ -640,9 +644,9 @@ router.post('/manual-unblock', async (req, res) => {
       },
       { new: true, upsert: true }
     );
-    
+
     console.log('TableStatus updated:', tableStatus);
-    
+
     // Emit socket event
     const io = getIO();
     if (io) {
@@ -656,7 +660,7 @@ router.post('/manual-unblock', async (req, res) => {
       });
       console.log('✓ Emitted tableCancelled event');
     }
-    
+
     res.json({
       success: true,
       message: `Unblocked table ${tableId}`,

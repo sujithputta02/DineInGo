@@ -808,7 +808,7 @@ const BusinessDashboard: React.FC = () => {
                               rows={2}
                             />
                             <div className="absolute bottom-2 right-2">
-                              <EmojiPicker 
+                              <EmojiPicker
                                 onEmojiSelect={(emoji) => setEditingReplyText(prev => prev + emoji)}
                               />
                             </div>
@@ -821,41 +821,37 @@ const BusinessDashboard: React.FC = () => {
                         )}
                       </div>
                     ) : (
-                      <div className="flex gap-2 items-end">
-                        <div className="flex-1 relative">
-                          <input
-                            type="text"
-                            placeholder="Type your response..."
-                            className="w-full text-sm bg-slate-50 border-slate-200 rounded-lg focus:ring-emerald-500 pr-10"
+                      <div className="bg-slate-50 rounded-lg p-4 border border-slate-100 mt-4">
+                        <div className="relative">
+                          <textarea
+                            placeholder="Write your response to this review..."
+                            className="w-full text-sm bg-white border border-slate-200 rounded-lg p-3 pr-10 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none min-h-[80px]"
                             value={replyTexts[review._id] || ''}
                             onChange={(e) => setReplyTexts(prev => ({ ...prev, [review._id]: e.target.value }))}
-                            onKeyPress={(e) => {
-                              if (e.key === 'Enter') {
-                                handleReplySubmit(review._id);
-                              }
-                            }}
                             disabled={isReplying[review._id]}
                           />
-                          <div className="absolute bottom-1 right-1">
-                            <EmojiPicker 
+                          <div className="absolute bottom-3 right-3">
+                            <EmojiPicker
                               onEmojiSelect={(emoji) => setReplyTexts(prev => ({ ...prev, [review._id]: (prev[review._id] || '') + emoji }))}
                             />
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleReplySubmit(review._id)}
-                          disabled={isReplying[review._id] || !replyTexts[review._id]?.trim()}
-                          className={`p-2 rounded-lg transition-colors ${isReplying[review._id] || !replyTexts[review._id]?.trim()
-                            ? 'text-slate-300'
-                            : 'text-emerald-600 hover:bg-emerald-50'
-                            }`}
-                        >
-                          {isReplying[review._id] ? (
-                            <div className="w-4 h-4 border-2 border-emerald-600/30 border-t-emerald-600 rounded-full animate-spin"></div>
-                          ) : (
-                            <Send size={18} />
-                          )}
-                        </button>
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            onClick={() => handleReplySubmit(review._id)}
+                            disabled={isReplying[review._id] || !replyTexts[review._id]?.trim()}
+                            className="px-6 py-2 bg-emerald-600 text-white text-sm font-medium rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                          >
+                            {isReplying[review._id] ? (
+                              <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Sending...
+                              </>
+                            ) : (
+                              'Post Reply'
+                            )}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>
