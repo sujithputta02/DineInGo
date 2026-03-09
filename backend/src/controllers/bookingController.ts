@@ -694,7 +694,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
   try {
     console.log('=== CANCEL BOOKING REQUEST ===');
     console.log('Booking ID:', req.params.id);
-    
+
     // First, get the booking to extract table info BEFORE updating
     const booking = await Booking.findById(req.params.id);
 
@@ -719,7 +719,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
 
     // Extract table identifier (try all possible fields)
     const tableIdentifier = booking.table || booking.tableId || booking.tableNumber;
-    
+
     // Extract restaurant identifier (try all possible fields)
     let restaurantId: string | null = null;
     if (booking.restaurantId) {
@@ -772,7 +772,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
 
         // Update TableBooking collection - try multiple strategies
         let tableBooking = null;
-        
+
         // Strategy 1: Try with userId
         tableBooking = await TableBooking.findOneAndUpdate(
           {
@@ -873,7 +873,7 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
             status: 'cancelled',
             booking: tableBooking
           };
-          
+
           io.to(restaurantId).emit('tableCancelled', eventData);
           console.log(`✓ Emitted tableCancelled event for table ${tableIdentifier} at restaurant ${restaurantId}`);
         } else {
@@ -904,36 +904,86 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         }
 
         const event = await Event.findById(eventId);
-        if (event && event.hasSeating && event.seatingLayout) {
-          // Unblock the seats - set them back to available
-          event.seatingLayout.seats = event.seatingLayout.seats.map((seat: any) => {
-            if (booking.selectedSeats!.includes(seat.id) && seat.bookedBy === booking.userId) {
-              return {
-                ...seat,
-                status: 'available',
-                bookedBy: undefined
-              };
+
+        // Also try Business collection (events created via Business Portal)
+        const { Business } = require('../models/Business');
+        const businessEvent = !event ? await Business.findById(eventId) : null;
+        const doc = event || businessEvent;
+        const isBusinessDoc = !!businessEvent;
+
+        if (doc) {
+          const sl = isBusinessDoc
+            ? (doc.seatingLayout?.eventConfig || doc.seatingLayout)
+            : doc.seatingLayout;
+
+          if (sl) {
+            const areas = sl.concertAreas || sl.areas || [];
+            const hasAreas = areas.length > 0;
+            const isAreaCancellation = hasAreas && areas.some((area: any) => booking.selectedSeats!.includes(area.id));
+
+            if (isAreaCancellation) {
+              const selectedAreaId = booking.selectedSeats![0];
+              const areaIndex = areas.findIndex((a: any) => a.id === selectedAreaId);
+
+              if (areaIndex !== -1) {
+                const area = areas[areaIndex];
+                const guestsRefunding = booking.guests || 1;
+                const newBooked = Math.max(0, (area.booked || 0) - guestsRefunding);
+
+                if (isBusinessDoc) {
+                  if (doc.seatingLayout?.eventConfig?.concertAreas) {
+                    doc.seatingLayout.eventConfig.concertAreas[areaIndex].booked = newBooked;
+                  } else if (doc.seatingLayout?.areas) {
+                    doc.seatingLayout.areas[areaIndex].booked = newBooked;
+                  }
+                  doc.markModified('seatingLayout');
+                } else {
+                  doc.seatingLayout.areas[areaIndex].booked = newBooked;
+                  doc.registeredCount = Math.max(0, doc.registeredCount - guestsRefunding);
+                  doc.markModified('seatingLayout');
+                }
+
+                await doc.save();
+                console.log('--- AREA CANCEL SAVED ---', { areaId: selectedAreaId, newBooked, guestsRefunding });
+
+                const io = require('../utils/socket').getIO();
+                if (io) {
+                  io.to(`event-${eventId}`).emit('areaCancelled', {
+                    eventId,
+                    areaId: selectedAreaId,
+                    userId: booking.userId,
+                    guests: guestsRefunding,
+                    booked: newBooked,
+                    capacity: area.capacity,
+                    availableSpots: area.capacity - newBooked
+                  });
+                  console.log(`Emitted areaCancelled for area ${selectedAreaId}, refunded: ${guestsRefunding}`);
+                }
+              }
+            } else if (!isBusinessDoc && doc.seatingLayout?.seats) {
+              // Individual seat cancellation (Event model only)
+              doc.seatingLayout.seats = doc.seatingLayout.seats.map((seat: any) => {
+                if (booking.selectedSeats!.includes(seat.id) && seat.bookedBy === booking.userId) {
+                  return { ...seat, status: 'available', bookedBy: undefined };
+                }
+                return seat;
+              });
+              doc.registeredCount = Math.max(0, doc.registeredCount - booking.selectedSeats!.length);
+              await doc.save();
+
+              const io = require('../utils/socket').getIO();
+              if (io) {
+                io.to(`event-${eventId}`).emit('seatsCancelled', {
+                  eventId,
+                  seatIds: booking.selectedSeats,
+                  userId: booking.userId,
+                  registeredCount: doc.registeredCount,
+                  capacity: doc.capacity,
+                  availableSeats: doc.seatingLayout.seats.filter((s: any) => s.status === 'available').length
+                });
+                console.log(`Emitted seatsCancelled for event ${eventId}`);
+              }
             }
-            return seat;
-          });
-
-          // Decrease registered count
-          event.registeredCount = Math.max(0, event.registeredCount - booking.selectedSeats!.length);
-
-          await event.save();
-
-          // Emit Socket.IO event for real-time updates
-          const io = require('../utils/socket').getIO();
-          if (io) {
-            io.to(`event-${eventId}`).emit('seatsCancelled', {
-              eventId,
-              seatIds: booking.selectedSeats,
-              userId: booking.userId,
-              registeredCount: event.registeredCount,
-              capacity: event.capacity,
-              availableSeats: event.seatingLayout.seats.filter((s: any) => s.status === 'available').length
-            });
-            console.log(`Emitted seatsCancelled event for event ${eventId}, seats: ${booking.selectedSeats!.join(', ')}`);
           }
         }
       } catch (eventError) {
@@ -1225,6 +1275,48 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
     console.error('Error confirming booking:', error);
     res.status(500).json({
       message: 'Error confirming booking',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+};
+
+// Check-in a booking
+export const checkInBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      res.status(404).json({ message: 'Booking not found' });
+      return;
+    }
+
+    // Update status to checked-in
+    booking.status = 'checked-in';
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    // Populate business details for the companion hub
+    try {
+      if (booking.restaurantId && mongoose.Types.ObjectId.isValid(String(booking.restaurantId))) {
+        await booking.populate('restaurantId');
+      }
+      if (booking.eventId && mongoose.Types.ObjectId.isValid(String(booking.eventId))) {
+        await booking.populate('eventId');
+      }
+    } catch (populateError) {
+      console.warn('Could not populate booking references for check-in:', populateError);
+    }
+
+    res.json({
+      success: true,
+      message: 'Checked in successfully',
+      booking
+    });
+  } catch (error) {
+    console.error('Error checking in booking:', error);
+    res.status(500).json({
+      message: 'Error checking in booking',
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }

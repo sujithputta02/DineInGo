@@ -295,6 +295,8 @@ export default function LoginPage() {
           // Update the existing data with the latest Google profile picture
           const updatedUserData = {
             ...existingData,
+            uid: user.uid,
+
             photoURL: user.photoURL || existingData.photoURL,
             lastLogin: new Date()
           };

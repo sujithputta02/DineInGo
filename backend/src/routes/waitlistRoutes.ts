@@ -5,6 +5,7 @@ const router = express.Router();
 
 // Waitlist routes
 router.post('/join', waitlistController.joinWaitlist);
+router.post('/early-access', waitlistController.joinEarlyAccess);
 router.get('/business/:businessId', waitlistController.getBusinessWaitlist);
 router.get('/customer/:customerId/status', waitlistController.getCustomerWaitlistStatus);
 router.patch('/:entryId/notify', waitlistController.notifyCustomer);

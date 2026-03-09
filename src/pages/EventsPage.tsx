@@ -9,6 +9,8 @@ interface Event {
   title: string;
   description?: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   time: string;
   location: string;
   capacity: number;
@@ -37,7 +39,29 @@ const EventsPage: React.FC = () => {
       }
       
       const data = await response.json();
-      setEvents(data.data || data);
+      const eventsData = (data.data || data) as Event[];
+      
+      // Debug: Check for duplicates
+      console.log('Fetched events count:', eventsData.length);
+      console.log('Event IDs:', eventsData.map((e) => ({ id: e._id, title: e.title })));
+      
+      // Check for duplicate IDs
+      const ids = eventsData.map((e) => e._id);
+      const uniqueIds = new Set(ids);
+      if (ids.length !== uniqueIds.size) {
+        console.error('DUPLICATE IDs FOUND!');
+        console.error('Total events:', ids.length);
+        console.error('Unique IDs:', uniqueIds.size);
+        
+        // Remove duplicates on frontend as fallback
+        const uniqueEvents = Array.from(
+          new Map(eventsData.map((e) => [e._id, e])).values()
+        );
+        console.log('After deduplication:', uniqueEvents.length);
+        setEvents(uniqueEvents);
+      } else {
+        setEvents(eventsData);
+      }
     } catch (error) {
       console.error('Error fetching events:', error);
       toast.error('Failed to load events');
@@ -99,7 +123,24 @@ const EventsPage: React.FC = () => {
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 text-gray-600">
                         <Calendar size={16} className="text-emerald-500" />
-                        <span className="text-sm">{new Date(event.date).toLocaleDateString()}</span>
+                        <span className="text-sm">
+                          {event.startDate && event.endDate ? (
+                            (() => {
+                              const start = new Date(event.startDate);
+                              const end = new Date(event.endDate);
+                              const isSameDay = start.toDateString() === end.toDateString();
+                              
+                              if (isSameDay) {
+                                return start.toLocaleDateString();
+                              } else {
+                                const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                                return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (${daysDiff} days)`;
+                              }
+                            })()
+                          ) : (
+                            new Date(event.date).toLocaleDateString()
+                          )}
+                        </span>
                       </div>
                       
                       <div className="flex items-center gap-2 text-gray-600">

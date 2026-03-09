@@ -10,16 +10,33 @@ export interface ISeat {
   bookedBy?: string; // userId
 }
 
+export interface IArea {
+  id: string;
+  name?: string;
+  label?: string;
+  capacity: number;
+  booked: number;
+  price: number;
+  tier: 'standard' | 'premium' | 'vip';
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface ISeatingLayout {
   rows: number;
   columns: number;
   seats: ISeat[];
+  areas?: IArea[];
 }
 
 export interface IEvent extends Document {
   title: string;
   description?: string;
-  date: Date;
+  date: Date; // Kept for backward compatibility
+  startDate: Date; // New: Event start date
+  endDate: Date; // New: Event end date
   time: string;
   location: string;
   capacity: number;
@@ -61,16 +78,33 @@ const seatSchema = new Schema({
   bookedBy: { type: String }
 }, { _id: false });
 
+const areaSchema = new Schema({
+  id: { type: String, required: true },
+  name: { type: String },
+  label: { type: String },
+  capacity: { type: Number, required: true },
+  booked: { type: Number, default: 0 },
+  price: { type: Number, required: true },
+  tier: { type: String, enum: ['standard', 'premium', 'vip'], default: 'standard' },
+  x: { type: Number, required: true },
+  y: { type: Number, required: true },
+  width: { type: Number, required: true },
+  height: { type: Number, required: true }
+}, { _id: false });
+
 const seatingLayoutSchema = new Schema({
   rows: { type: Number, required: true },
   columns: { type: Number, required: true },
-  seats: [seatSchema]
+  seats: [seatSchema],
+  areas: [areaSchema]
 }, { _id: false });
 
 const eventSchema = new Schema<IEvent>({
   title: { type: String, required: true },
   description: { type: String },
-  date: { type: Date, required: true },
+  date: { type: Date, required: true }, // Kept for backward compatibility
+  startDate: { type: Date, required: true }, // New: Event start date
+  endDate: { type: Date, required: true }, // New: Event end date
   time: { type: String, required: true },
   location: { type: String, required: true },
   capacity: { type: Number, required: true, default: 100 },
@@ -106,6 +140,25 @@ const eventSchema = new Schema<IEvent>({
 
 eventSchema.pre('save', function (this: IEvent, next) {
   this.updatedAt = new Date();
+
+  // Validate that endDate is not before startDate
+  if (this.startDate && this.endDate && this.endDate < this.startDate) {
+    return next(new Error('End date cannot be before start date'));
+  }
+
+  // If startDate is provided but date is not, set date to startDate for backward compatibility
+  if (this.startDate && !this.date) {
+    this.date = this.startDate;
+  }
+
+  // If date is provided but startDate/endDate are not, set them to date for backward compatibility
+  if (this.date && !this.startDate) {
+    this.startDate = this.date;
+  }
+  if (this.date && !this.endDate) {
+    this.endDate = this.date;
+  }
+
   next();
 });
 

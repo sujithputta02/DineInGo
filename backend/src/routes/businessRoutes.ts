@@ -24,7 +24,7 @@ import { getBusinessShifts, createShift, updateShift, deleteShift } from '../con
 import { getBusinessTableStatuses, updateTableStatus, batchUpdateTableStatus } from '../controllers/tableStatusController';
 import { getBusinessCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign } from '../controllers/marketingController';
 import { getBusinessPromotions, createPromotion, updatePromotion, deletePromotion, validatePromotion } from '../controllers/promotionController';
-import { getBusinessReviews, addReview, replyToReview, deleteReview, getBusinessRatingStats, updateReview, updateReply, deleteReply } from '../controllers/reviewController';
+import { getBusinessReviews, addReview, replyToReview, deleteReview, getBusinessRatingStats, updateReview, updateReply, deleteReply, likeReview, dislikeReview } from '../controllers/reviewController';
 import { registerOrLinkOwner, getOwnerProfile, linkGoogleAccount, setPassword } from '../controllers/ownerController';
 import { getOwnerPayouts, calculatePayout, requestPayout, getPayoutAnalytics, updatePayoutStatus } from '../controllers/payoutController';
 import { generatePDFInvoice, getBusinessInvoices } from '../controllers/invoiceController';
@@ -121,6 +121,8 @@ router.post('/reviews/:id/reply', replyToReview);
 router.put('/reviews/:id/reply', updateReply);
 router.delete('/reviews/:id/reply', deleteReply);
 router.delete('/reviews/:id', deleteReview);
+router.post('/reviews/:reviewId/like', likeReview);
+router.post('/reviews/:reviewId/dislike', dislikeReview);
 router.get('/:businessId/rating-stats', getBusinessRatingStats);
 
 // Payout Management

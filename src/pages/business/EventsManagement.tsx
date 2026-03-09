@@ -24,7 +24,8 @@ interface Event {
     _id?: string;
     title: string;
     description: string;
-    date: string;
+    startDate: string;
+    endDate: string;
     time: string;
     location: string;
     capacity: number;
@@ -46,7 +47,8 @@ const EventsManagement: React.FC = () => {
     const emptyEvent: Event = {
         title: '',
         description: '',
-        date: '',
+        startDate: '',
+        endDate: '',
         time: '',
         location: '',
         capacity: 100,
@@ -87,10 +89,12 @@ const EventsManagement: React.FC = () => {
     };
 
     const handleEdit = (event: any) => {
-        const formattedDate = new Date(event.date).toISOString().split('T')[0];
+        const formattedStartDate = event.startDate ? new Date(event.startDate).toISOString().split('T')[0] : (event.date ? new Date(event.date).toISOString().split('T')[0] : '');
+        const formattedEndDate = event.endDate ? new Date(event.endDate).toISOString().split('T')[0] : (event.date ? new Date(event.date).toISOString().split('T')[0] : '');
         setFormData({
             ...event,
-            date: formattedDate,
+            startDate: formattedStartDate,
+            endDate: formattedEndDate,
             tickets: event.tickets || [],
             addOns: event.addOns || []
         });
@@ -217,13 +221,23 @@ const EventsManagement: React.FC = () => {
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
                                     <input
                                         type="date"
                                         required
                                         className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
-                                        value={formData.date}
-                                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                                        value={formData.startDate}
+                                        onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                                    <input
+                                        type="date"
+                                        required
+                                        className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500"
+                                        value={formData.endDate}
+                                        onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                                     />
                                 </div>
                                 <div>
@@ -473,7 +487,7 @@ const EventsManagement: React.FC = () => {
                                 <div className="space-y-2 text-gray-600 text-sm mb-4">
                                     <div className="flex items-center gap-2">
                                         <Calendar size={16} />
-                                        <span>{new Date(event.date).toLocaleDateString()} at {event.time}</span>
+                                        <span>{new Date(event.startDate || event.date).toLocaleDateString()} at {event.time}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <MapPin size={16} />

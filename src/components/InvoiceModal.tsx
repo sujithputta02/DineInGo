@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { X, Printer, Download } from 'lucide-react';
 import type { Booking } from '../types';
 import html2canvas from 'html2canvas';
@@ -12,6 +13,7 @@ interface InvoiceModalProps {
 
 const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMode }) => {
   const invoiceRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
 
   const generatePDF = async () => {
     if (!invoiceRef.current) return;
@@ -101,6 +103,20 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
               <X size={20} />
             </button>
           </div>
+        </div>
+
+        {/* Check-in Quick Link */}
+        <div className="bg-emerald-600 p-4 text-white flex justify-between items-center">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-wider">At the restaurant?</p>
+            <p className="text-xs opacity-90">Start your smart dining experience now.</p>
+          </div>
+          <button
+            onClick={() => navigate(`/check-in/${booking.id || booking._id}`)}
+            className="px-4 py-2 bg-white text-emerald-600 rounded-lg text-sm font-bold hover:bg-emerald-50 transition-all"
+          >
+            CHECK IN NOW
+          </button>
         </div>
 
         <div className="p-8" id="invoice-content" ref={invoiceRef}>

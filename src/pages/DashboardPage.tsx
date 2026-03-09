@@ -32,6 +32,9 @@ import AchievementsSection from '../components/AchievementsSection';
 import ARMenuSection from '../components/ARMenuSection';
 import StarRating from '../components/StarRating';
 import EmojiPicker from '../components/EmojiPicker';
+import { menuApi } from '../services/api';
+import { isRestaurantOpen } from '../utils/openStatus';
+
 
 interface UserData {
   uid: string;
@@ -62,7 +65,13 @@ interface Restaurant {
   address?: string;
   photos?: string[];
   openNow?: boolean;
+  timeSlots?: Array<{
+    startTime: string;
+    endTime: string;
+    label: string;
+  }>;
   phoneNumber?: string;
+
   averageRating?: number | string | null;
 }
 
@@ -732,6 +741,8 @@ export default function DashboardPage() {
   const [editRating, setEditRating] = useState<number>(0);
   const [editComment, setEditComment] = useState<string>('');
   const [showReportIssueModal, setShowReportIssueModal] = useState(false);
+  const [arMenuItems, setArMenuItems] = useState<any[]>([]);
+  const [isArMenuItemsLoading, setIsArMenuItemsLoading] = useState(false);
 
   const { unreadCount, markAllAsRead, notifications: notificationContextNotifications, markAsRead: markSingleAsRead, isRead } = useNotifications();
 
@@ -858,21 +869,29 @@ export default function DashboardPage() {
 
         // Fetch events from both APIs (legacy events + new businesses)
         try {
-          const [eventsResponse, businessEventsResponse] = await Promise.all([
-            fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events`).catch(() => null),
-            fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/business?type=event`).catch(() => null)
-          ]);
+          // Fetch events from unified endpoint (includes both Event collection and Business collection)
+          const eventsResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events`).catch(() => null);
 
-          let allEvents: DashboardEvent[] = []; // Start with empty array for events
+          let allEvents: DashboardEvent[] = [];
 
-          // Add legacy events if API is available
           if (eventsResponse && eventsResponse.ok) {
             const data = await eventsResponse.json();
             const apiEvents = (data.data || data).map((event: any) => ({
               id: event._id,
               title: event.title,
               description: event.description,
-              date: new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+              date: event.startDate && event.endDate
+                ? (() => {
+                  const start = new Date(event.startDate);
+                  const end = new Date(event.endDate);
+                  const isSameDay = start.toDateString() === end.toDateString();
+                  if (isSameDay) {
+                    return start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+                  } else {
+                    return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+                  }
+                })()
+                : new Date(event.date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
               time: event.time,
               location: event.location,
               imageUrl: event.image || event.imageUrl,
@@ -882,28 +901,7 @@ export default function DashboardPage() {
               capacity: event.capacity,
               registeredCount: event.registeredCount || 0
             }));
-            allEvents = [...allEvents, ...apiEvents];
-          }
-
-          // Add new businesses (events) if API is available
-          if (businessEventsResponse && businessEventsResponse.ok) {
-            const businessData = await businessEventsResponse.json();
-            const businessEvents = (businessData.data || []).map((b: any) => ({
-              id: b.id || b._id,
-              title: b.name,
-              description: b.description || 'Event details coming soon',
-              date: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }), // Default to today
-              time: '7:00 PM', // Default time
-              location: b.location,
-              imageUrl: b.image || '/images/placeholder-food.svg',
-              price: b.basePrice || 100,
-              category: b.eventType || 'General',
-              organizer: 'DineInGo',
-              capacity: b.capacity || 100,
-              registeredCount: 0
-            }));
-            allEvents = [...allEvents, ...businessEvents];
-            console.log('Fetched business events:', businessEvents.length, 'events');
+            allEvents = apiEvents;
           }
 
           setEvents(allEvents);
@@ -1845,7 +1843,7 @@ export default function DashboardPage() {
                         rows={3}
                       />
                       <div className="absolute bottom-2 right-2">
-                        <EmojiPicker 
+                        <EmojiPicker
                           onEmojiSelect={(emoji) => setEditComment(prev => prev + emoji)}
                           isDarkMode={isDarkMode}
                         />
@@ -2033,9 +2031,14 @@ export default function DashboardPage() {
                       <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
                         {restaurant.name}
                       </h3>
-                      <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
-                        <MapPin size={16} className="mr-1" />
-                        <span>{restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`}</span>
+                      <div className="flex justify-between items-center mb-1">
+                        <div className={`flex items-center ${isDarkMode ? 'text-gray-300' : 'text-gray-600'} mt-1`}>
+                          <MapPin size={16} className="mr-1" />
+                          <span>{restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`}</span>
+                        </div>
+                        <div className={`flex items-center px-2 py-0.5 rounded-lg text-[10px] font-semibold ${isDarkMode ? 'bg-gray-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                          {isRestaurantOpen(restaurant) ? 'Open' : 'Closed'}
+                        </div>
                       </div>
 
                       {/* Add the map component */}
@@ -2335,7 +2338,7 @@ export default function DashboardPage() {
                               </div>
                             </div>
                             <div className={`flex items-center px-2 py-1 rounded-lg text-xs font-semibold ${isDarkMode ? 'bg-gray-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
-                              {restaurant.openNow ? 'Open' : 'Closed'}
+                              {isRestaurantOpen(restaurant) ? 'Open' : 'Closed'}
                             </div>
                           </div>
 
@@ -2509,6 +2512,9 @@ export default function DashboardPage() {
                           <MapPin size={14} className="mr-1 text-emerald-500" />
                           <span className="line-clamp-1">{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
                         </div>
+                      </div>
+                      <div className={`flex items-center px-2 py-1 rounded-lg text-[10px] font-semibold ${isDarkMode ? 'bg-gray-700 text-emerald-400' : 'bg-emerald-50 text-emerald-700'}`}>
+                        {isRestaurantOpen(restaurant) ? 'Open' : 'Closed'}
                       </div>
                     </div>
                     <div className="mt-2 flex items-center justify-between">
@@ -3185,12 +3191,98 @@ export default function DashboardPage() {
             isDarkMode={isDarkMode}
             language={language}
             translations={translations[language]}
+            menuItems={arMenuItems}
+            isLoading={isArMenuItemsLoading}
           />
         );
       default:
         return null;
     }
   };
+
+  // Fetch menu items for AR Menu section
+  useEffect(() => {
+    const fetchArMenuItems = async () => {
+      if (activeSection === 'ar-menu' && arMenuItems.length === 0) {
+        setIsArMenuItemsLoading(true);
+        try {
+          // Find the most relevant booking to show its menu
+          const relevantBooking = bookings.find(b => b.status === 'confirmed' || b.status === 'pending') || bookings[0];
+
+          if (relevantBooking) {
+            const bId = (relevantBooking as any).businessId || (relevantBooking.restaurantId as any)?._id || (relevantBooking as any).restaurantId;
+
+            if (bId) {
+              const res = await menuApi.getItems(bId);
+              const items = Array.isArray(res) ? res : (res.data || []);
+              if (items.length > 0) {
+                setArMenuItems(items);
+                return;
+              }
+            }
+
+            if (restaurants.length > 0) {
+              const res = await menuApi.getItems(restaurants[0].id);
+              const items = Array.isArray(res) ? res : (res.data || []);
+              if (items.length > 0) {
+                setArMenuItems(items);
+                return;
+              }
+            }
+          } else if (restaurants.length > 0) {
+            const res = await menuApi.getItems(restaurants[0].id);
+            const items = Array.isArray(res) ? res : (res.data || []);
+            if (items.length > 0) {
+              setArMenuItems(items);
+              return;
+            }
+          }
+
+          // Fallback if all API calls return empty (common in dev environment)
+          setArMenuItems([
+            {
+              id: 'm1',
+              name: 'Truffle Burger',
+              description: 'Wagyu beef patty with truffle mayo, caramelized onions, and aged cheddar.',
+              price: 18.99,
+              ingredients: ['Wagyu Beef', 'Truffle Mayo', 'Brioche Bun', 'Cheddar'],
+              allergens: ['Dairy', 'Gluten', 'Eggs'],
+              nutrition: { calories: 850, protein: 45, carbs: 42, fat: 55, fiber: 3, sodium: 920 },
+              cookingMethod: 'Grilled to perfection',
+              prepTime: 15,
+              spiceLevel: 1,
+              isVegetarian: false,
+              isVegan: false,
+              isGlutenFree: false,
+              sustainability: { score: 85, localIngredients: 70, carbonFootprint: 'Low' }
+            },
+            {
+              id: 'm2',
+              name: 'Spicy Pasta',
+              description: 'Penne arrabbiata with fresh basil and parmesan.',
+              price: 14.99,
+              ingredients: ['Penne', 'Tomato Sauce', 'Chili', 'Garlic', 'Parmesan'],
+              allergens: ['Gluten', 'Dairy'],
+              nutrition: { calories: 650, protein: 18, carbs: 85, fat: 22, fiber: 6, sodium: 750 },
+              cookingMethod: 'Sautéed',
+              prepTime: 12,
+              spiceLevel: 3,
+              isVegetarian: true,
+              isVegan: false,
+              isGlutenFree: false,
+              sustainability: { score: 92, localIngredients: 85, carbonFootprint: 'Very Low' }
+            }
+          ]);
+        } catch (err) {
+          console.error('Error fetching AR menu items:', err);
+        } finally {
+          setIsArMenuItemsLoading(false);
+        }
+      }
+    };
+
+    fetchArMenuItems();
+  }, [activeSection, bookings, restaurants, arMenuItems.length]);
 
   if (error) {
     return (

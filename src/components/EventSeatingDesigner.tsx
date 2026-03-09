@@ -511,7 +511,11 @@ const DraggableSeat: React.FC<{
 };
 
 // Main Event Seating Designer Component
-const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLayout: any) => void }> = ({ businessId, onSave }) => {
+const EventSeatingDesigner: React.FC<{ 
+  businessId?: string; 
+  onSave?: (seatingLayout: any) => void;
+  initialData?: any;
+}> = ({ businessId, onSave, initialData }) => {
   const [eventConfig, setEventConfig] = useState<EventSeatingConfig>({
     id: 'event-1',
     name: 'Sample Event',
@@ -544,10 +548,49 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
   const [nextSeatId, setNextSeatId] = useState(1);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [zoomLevel, setZoomLevel] = useState(1);
+
+  // Load initial data if provided
+  React.useEffect(() => {
+    if (initialData) {
+      console.log('Loading initial seating data:', initialData);
+      
+      // Check if initialData is wrapped in eventConfig (saved format)
+      const configData = initialData.eventConfig || initialData;
+      
+      console.log('Config data to load:', {
+        hasSeatingLayout: !!configData.seatingLayout,
+        seatsCount: configData.seatingLayout?.seats?.length || 0,
+        individualSeatsCount: configData.individualSeats?.length || 0,
+        concertAreasCount: configData.concertAreas?.length || 0
+      });
+      
+      setEventConfig(prev => ({
+        ...prev,
+        ...configData,
+        // Ensure required fields have defaults
+        tierPricing: configData.tierPricing || prev.tierPricing,
+        seatingLayout: configData.seatingLayout || prev.seatingLayout,
+        individualSeats: configData.individualSeats || [],
+        concertAreas: configData.concertAreas || []
+      }));
+      
+      // Also restore selected states if available
+      if (initialData.selectedSeats) {
+        setSelectedSeats(initialData.selectedSeats);
+      }
+      if (initialData.selectedIndividualSeats) {
+        setSelectedIndividualSeats(initialData.selectedIndividualSeats);
+      }
+      if (initialData.selectedArea) {
+        setSelectedArea(initialData.selectedArea);
+      }
+    }
+  }, [initialData]);
 
   // Initialize seating layout
   React.useEffect(() => {
-    if (eventConfig.hasSeating && eventConfig.seatingLayout && eventConfig.seatingLayout.seats.length === 0) {
+    if (eventConfig.hasSeating && eventConfig.seatingLayout && eventConfig.seatingLayout.seats.length === 0 && !initialData) {
       generateInitialSeating();
     }
   }, []);
@@ -1143,39 +1186,61 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
   const layout = eventConfig.seatingLayout ? seatsToRows(eventConfig.seatingLayout.seats) : [];
 
   return (
-    <div className="flex h-full min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
+    <div className="flex h-full min-h-[700px] bg-gradient-to-br from-slate-50 via-white to-slate-100">
       {/* Left Sidebar - Controls */}
-      <div className="w-80 bg-slate-800/50 backdrop-blur-sm border-r border-slate-700/50 flex flex-col max-h-full">
-        <div className="p-4 border-b border-slate-700/50 flex-shrink-0">
-          <h2 className="text-lg font-bold text-white mb-2">Event Seating Designer</h2>
-          <div className="flex gap-2">
+      <div className="w-96 bg-white border-r border-slate-200 flex flex-col shadow-lg">
+        {/* Header */}
+        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-teal-50">
+          <h2 className="text-xl font-bold text-slate-800 mb-3">Event Seating Designer</h2>
+          <div className="flex gap-2 mb-3">
             <button
               onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
                 isPreviewMode 
-                  ? 'bg-emerald-600 text-white' 
-                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
+                  : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
               }`}
             >
-              <Eye size={16} />
-              {isPreviewMode ? 'Edit Mode' : 'Preview'}
+              <Eye size={18} />
+              {isPreviewMode ? 'Design Mode' : 'Preview'}
             </button>
             <button
               onClick={() => setShowGrid(!showGrid)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
                 showGrid 
-                  ? 'bg-slate-600 text-white' 
-                  : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                  ? 'bg-slate-700 text-white' 
+                  : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-300'
               }`}
             >
-              <Grid size={16} />
+              <Grid size={18} />
             </button>
             <button
               onClick={() => setShowTemplates(!showTemplates)}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-sm"
+              className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all text-sm font-semibold border border-blue-200"
             >
-              <Copy size={16} />
+              <Copy size={18} />
               Templates
+            </button>
+          </div>
+          
+          {/* Save Button - Always Visible at Top */}
+          <div className="space-y-2">
+            {saveMessage && (
+              <div className={`text-xs p-2 rounded-lg text-center ${
+                saveMessage.includes('Error') 
+                  ? 'bg-red-50 text-red-700 border border-red-200' 
+                  : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+              }`}>
+                {saveMessage}
+              </div>
+            )}
+            <button 
+              onClick={saveSeatingLayout}
+              disabled={isSaving}
+              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl text-base"
+            >
+              <Save size={20} />
+              {isSaving ? 'Saving...' : 'Save Layout'}
             </button>
           </div>
         </div>
@@ -1186,18 +1251,23 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
           <>
             {/* Templates Section */}
             {showTemplates && (
-              <div className="p-4 border-b border-slate-700/50">
-                <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Event Templates</h3>
-                <div className="space-y-2">
+              <div className="p-6 border-b border-slate-200 bg-slate-50">
+                <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+                  <Calendar size={16} />
+                  Quick Start Templates
+                </h3>
+                <div className="space-y-3">
                   {EVENT_TEMPLATES.map((template) => (
                     <button
                       key={template.id}
                       onClick={() => applyEventTemplate(template)}
-                      className="w-full text-left p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors"
+                      className="w-full text-left p-4 bg-white hover:bg-emerald-50 rounded-xl transition-all border border-slate-200 hover:border-emerald-300 hover:shadow-md group"
                     >
-                      <div className="flex items-center gap-2 mb-1">
-                        {template.type === 'seats-only' ? <Theater size={14} /> : <Music size={14} />}
-                        <div className="text-sm font-medium text-slate-200">{template.name}</div>
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className="p-2 bg-emerald-100 rounded-lg group-hover:bg-emerald-200 transition-colors">
+                          {template.type === 'seats-only' ? <Theater size={18} className="text-emerald-700" /> : <Music size={18} className="text-emerald-700" />}
+                        </div>
+                        <div className="text-base font-semibold text-slate-800">{template.name}</div>
                       </div>
                       <div className="text-xs text-slate-400 mb-1">{template.description}</div>
                       <div className="text-xs text-slate-500">
@@ -1213,62 +1283,71 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
             )}
 
             {/* Event Type Selection */}
-            <div className="p-4 border-b border-slate-700/50">
-              <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Event Type</h3>
-              <div className="space-y-2">
+            <div className="p-6 border-b border-slate-200">
+              <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider flex items-center gap-2">
+                <Settings size={16} />
+                EVENT TYPE
+              </h3>
+              <div className="space-y-3">
                 <button
                   onClick={() => handleEventTypeChange('seats-only')}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all border-2 ${
                     eventConfig.type === 'seats-only' 
-                      ? 'bg-emerald-600/30 border border-emerald-500 text-emerald-200' 
-                      : 'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300'
+                      ? 'bg-emerald-50 border-emerald-500 shadow-md' 
+                      : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-sm'
                   }`}
                 >
-                  <Theater size={16} />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">Seats Only</div>
-                    <div className="text-xs opacity-80">Traditional seating with assigned seats</div>
+                  <div className={`p-3 rounded-lg ${eventConfig.type === 'seats-only' ? 'bg-emerald-500' : 'bg-slate-100'}`}>
+                    <Theater size={20} className={eventConfig.type === 'seats-only' ? 'text-white' : 'text-slate-600'} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="text-base font-semibold text-slate-800">Seats Only</div>
+                    <div className="text-sm text-slate-600">Traditional seating with assigned seats</div>
                   </div>
                 </button>
                 
                 <button
                   onClick={() => handleEventTypeChange('registration-only')}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all border-2 ${
                     eventConfig.type === 'registration-only' 
-                      ? 'bg-emerald-600/30 border border-emerald-500 text-emerald-200' 
-                      : 'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300'
+                      ? 'bg-emerald-50 border-emerald-500 shadow-md' 
+                      : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-sm'
                   }`}
                 >
-                  <Music size={16} />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">Registration Only</div>
-                    <div className="text-xs opacity-80">General admission areas for registration</div>
+                  <div className={`p-3 rounded-lg ${eventConfig.type === 'registration-only' ? 'bg-emerald-500' : 'bg-slate-100'}`}>
+                    <Music size={20} className={eventConfig.type === 'registration-only' ? 'text-white' : 'text-slate-600'} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="text-base font-semibold text-slate-800">Registration Only</div>
+                    <div className="text-sm text-slate-600">General admission areas for registration</div>
                   </div>
                 </button>
                 
                 <button
                   onClick={() => handleEventTypeChange('seats-and-registration')}
-                  className={`w-full flex items-center gap-3 p-3 rounded-lg transition-colors ${
+                  className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all border-2 ${
                     eventConfig.type === 'seats-and-registration' 
-                      ? 'bg-emerald-600/30 border border-emerald-500 text-emerald-200' 
-                      : 'bg-slate-700/50 hover:bg-slate-600/50 text-slate-300'
+                      ? 'bg-emerald-50 border-emerald-500 shadow-md' 
+                      : 'bg-white border-slate-200 hover:border-emerald-300 hover:shadow-sm'
                   }`}
                 >
-                  <Users size={16} />
-                  <div className="text-left">
-                    <div className="text-sm font-medium">Seats + Registration</div>
-                    <div className="text-xs opacity-80">Both seating and registration areas</div>
+                  <div className={`p-3 rounded-lg ${eventConfig.type === 'seats-and-registration' ? 'bg-emerald-500' : 'bg-slate-100'}`}>
+                    <Users size={20} className={eventConfig.type === 'seats-and-registration' ? 'text-white' : 'text-slate-600'} />
+                  </div>
+                  <div className="text-left flex-1">
+                    <div className="text-base font-semibold text-slate-800">Seats + Registration</div>
+                    <div className="text-sm text-slate-600">Both seating and registration areas</div>
                   </div>
                 </button>
               </div>
             </div>
 
             {/* Event Configuration */}
-            <div className="p-4 border-b border-slate-700/50">
-              <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Event Settings</h3>
+            <div className="p-6 border-b border-slate-200 bg-slate-50">
+              <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">Event Settings</h3>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-medium text-slate-400 mb-2">Event Name</label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Event Name</label>
                   <input
                     type="text"
                     value={eventConfig.name}
@@ -2152,12 +2231,12 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
         </div>
 
         {/* Action Buttons - Fixed at bottom */}
-        <div className="p-4 border-t border-slate-700/50 space-y-2 flex-shrink-0">
+        <div className="p-4 border-t border-slate-200 bg-white space-y-2 flex-shrink-0">
           {saveMessage && (
             <div className={`text-xs p-2 rounded-lg text-center ${
               saveMessage.includes('Error') 
-                ? 'bg-red-600/20 text-red-400 border border-red-600/30' 
-                : 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
+                ? 'bg-red-50 text-red-700 border border-red-200' 
+                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
             }`}>
               {saveMessage}
             </div>
@@ -2165,23 +2244,23 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
           <button 
             onClick={saveSeatingLayout}
             disabled={isSaving}
-            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white rounded-lg font-semibold transition-colors shadow-md hover:shadow-lg"
           >
-            <Save size={16} />
+            <Save size={20} />
             {isSaving ? 'Saving...' : 'Save Layout'}
           </button>
         </div>
       </div>
 
       {/* Main Canvas Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col bg-slate-100">
         {/* Top Toolbar */}
-        <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 px-6 py-4 flex justify-between items-center">
+        <div className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-semibold text-slate-300">
-              {isPreviewMode ? 'Customer Preview' : 'Design Mode'}
+            <h2 className="text-lg font-semibold text-slate-800">
+              {isPreviewMode ? '👁️ Customer Preview' : '✏️ Design Mode'}
             </h2>
-            <span className="text-sm text-slate-400">
+            <span className="text-sm text-slate-600 bg-slate-100 px-3 py-1 rounded-lg">
               {eventConfig.hasSeating && eventConfig.seatingLayout 
                 ? `${eventConfig.seatingLayout.seats.length || 0} row seats` 
                 : ''
@@ -2195,40 +2274,68 @@ const EventSeatingDesigner: React.FC<{ businessId?: string; onSave?: (seatingLay
                 : ''
               }
             </span>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium uppercase ${
-              eventConfig.type === 'seats-only' ? 'bg-blue-600/20 text-blue-400' :
-              eventConfig.type === 'registration-only' ? 'bg-purple-600/20 text-purple-400' :
-              'bg-emerald-600/20 text-emerald-400'
+            <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
+              eventConfig.type === 'seats-only' ? 'bg-blue-100 text-blue-700' :
+              eventConfig.type === 'registration-only' ? 'bg-purple-100 text-purple-700' :
+              'bg-emerald-100 text-emerald-700'
             }`}>
               {eventConfig.type.replace('-', ' ')}
             </span>
           </div>
 
           <div className="text-center">
-            <h3 className="text-xl font-bold text-white">{eventConfig.name}</h3>
-            <p className="text-sm text-slate-400">Event Layout Designer</p>
+            <h3 className="text-xl font-bold text-slate-800">{eventConfig.name}</h3>
+            <p className="text-sm text-slate-500">Event Layout Designer</p>
+          </div>
+          
+          {/* Zoom Controls */}
+          <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
+            <button 
+              onClick={() => setZoomLevel(prev => Math.max(0.5, prev - 0.1))}
+              className="px-3 py-2 hover:bg-white rounded-lg transition-colors text-slate-700 font-bold"
+              title="Zoom Out"
+            >
+              −
+            </button>
+            <span className="px-3 py-1 text-sm font-semibold text-slate-700 min-w-[60px] text-center">
+              {Math.round(zoomLevel * 100)}%
+            </span>
+            <button 
+              onClick={() => setZoomLevel(prev => Math.min(2, prev + 0.1))}
+              className="px-3 py-2 hover:bg-white rounded-lg transition-colors text-slate-700 font-bold"
+              title="Zoom In"
+            >
+              +
+            </button>
+            <button 
+              onClick={() => setZoomLevel(1)}
+              className="px-3 py-2 hover:bg-white rounded-lg transition-colors text-slate-700 text-xs font-semibold"
+              title="Reset Zoom"
+            >
+              Reset
+            </button>
           </div>
         </div>
 
         {/* Seating Chart Canvas */}
-        <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex items-center justify-center p-4 md:p-8">
-          <div className="w-full max-w-4xl">
-            {/* Stage Visual (matches customer view exactly) */}
-            <div className="w-full max-w-2xl mb-8 md:mb-12 perspective-500 mx-auto">
-              <div className="w-3/4 h-8 md:h-10 bg-gradient-to-b from-slate-300 to-slate-600 mx-auto rounded-t-[50%] shadow-[0_20px_50px_rgba(0,0,0,0.3)] text-center text-slate-900 font-bold tracking-[0.3em] md:tracking-[0.5em] text-xs md:text-sm pt-2 md:pt-2.5 border-t-2 border-slate-400">
-                STAGE
+        <div className="flex-1 relative bg-gradient-to-br from-slate-100 via-white to-slate-50 overflow-auto flex items-center justify-center p-8">
+          <div className="w-full max-w-5xl" style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'center', transition: 'transform 0.2s' }}>
+            {/* Stage Visual */}
+            <div className="w-full max-w-3xl mb-12 mx-auto">
+              <div className="w-3/4 h-12 bg-gradient-to-b from-slate-700 to-slate-900 mx-auto rounded-t-[50%] shadow-2xl text-center text-white font-bold tracking-[0.5em] text-sm pt-3 border-t-4 border-slate-600">
+                S T A G E
               </div>
             </div>
 
             {/* Canvas Container */}
-            <div className="relative w-full max-w-3xl mx-auto aspect-[4/3] bg-slate-800/30 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-sm">
+            <div className="relative w-full max-w-4xl mx-auto aspect-[4/3] bg-white rounded-2xl border-2 border-slate-300 shadow-2xl">
               {/* Grid overlay */}
               {showGrid && !isPreviewMode && (
-                <div className="absolute inset-0 opacity-20 rounded-2xl overflow-hidden">
+                <div className="absolute inset-0 opacity-10 rounded-2xl overflow-hidden">
                   <svg width="100%" height="100%" className="absolute inset-0">
                     <defs>
                       <pattern id="event-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#475569" strokeWidth="1"/>
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#64748b" strokeWidth="1"/>
                       </pattern>
                     </defs>
                     <rect width="100%" height="100%" fill="url(#event-grid)" />

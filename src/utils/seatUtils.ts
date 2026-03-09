@@ -63,6 +63,11 @@ export const getSeatColorClass = (
 
 // Convert flat seats array to rows
 export const seatsToRows = (seats: Seat[]): Row[] => {
+  // Handle undefined or null seats
+  if (!seats || !Array.isArray(seats)) {
+    return [];
+  }
+  
   const rowMap = new Map<string, Seat[]>();
   
   seats.forEach(seat => {

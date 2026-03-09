@@ -9,6 +9,8 @@ interface Event {
   title: string;
   description?: string;
   date: string;
+  startDate?: string;
+  endDate?: string;
   time: string;
   location: string;
   capacity: number;
@@ -110,9 +112,27 @@ const EventPreview: React.FC = () => {
       if (response.ok) {
         // Update event (register count and seat status)
         try {
-          const updatePayload = event.hasSeating
-            ? { seatIds: selectedSeatIds, userId: auth.currentUser.uid }
-            : { guests: numberOfGuests };
+          // Determine if this is an area-based booking (concert areas) or individual seat booking
+          const isAreaBooking = event.hasSeating &&
+            event.seatingLayout?.areas &&
+            event.seatingLayout.areas.length > 0 &&
+            selectedSeatIds.length > 0;
+
+          let updatePayload: any;
+          if (isAreaBooking) {
+            // Area-based: send areaId + guests so backend increments area.booked
+            updatePayload = {
+              areaId: selectedSeatIds[0],
+              guests: numberOfGuests,
+              userId: auth.currentUser.uid
+            };
+          } else if (event.hasSeating) {
+            // Individual seat-based
+            updatePayload = { seatIds: selectedSeatIds, userId: auth.currentUser.uid };
+          } else {
+            // Non-seating (ticket/headcount based)
+            updatePayload = { guests: numberOfGuests };
+          }
 
           const eventResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${event._id}/register`, {
             method: 'POST',
@@ -231,7 +251,24 @@ const EventPreview: React.FC = () => {
                   <Calendar className="text-purple-600" size={20} />
                   <div>
                     <p className="text-sm text-gray-500">Date</p>
-                    <p className="font-semibold text-gray-800">{new Date(event.date).toLocaleDateString()}</p>
+                    <p className="font-semibold text-gray-800">
+                      {event.startDate && event.endDate ? (
+                        (() => {
+                          const start = new Date(event.startDate);
+                          const end = new Date(event.endDate);
+                          const isSameDay = start.toDateString() === end.toDateString();
+
+                          if (isSameDay) {
+                            return start.toLocaleDateString();
+                          } else {
+                            const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+                            return `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - ${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} (${daysDiff} days)`;
+                          }
+                        })()
+                      ) : (
+                        new Date(event.date).toLocaleDateString()
+                      )}
+                    </p>
                   </div>
                 </div>
 
@@ -297,7 +334,9 @@ const EventPreview: React.FC = () => {
                   <div className="flex items-start gap-3">
                     <Ticket className="text-purple-600 mt-1" size={20} />
                     <div>
-                      <p className="text-sm text-gray-500">Selected Seats</p>
+                      <p className="text-sm text-gray-500">
+                        {event.seatingLayout?.areas && event.seatingLayout.areas.length > 0 ? 'Selected Area' : 'Selected Seats'}
+                      </p>
                       <div className="flex flex-wrap gap-2 mt-1">
                         {selectedSeatIds.map((seatId: string) => (
                           <span key={seatId} className="px-3 py-1 bg-purple-600 text-white rounded-full text-sm font-medium">
@@ -375,7 +414,11 @@ const EventPreview: React.FC = () => {
               <div className="bg-purple-50 rounded-lg p-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-600">
-                    {event.hasSeating ? `${selectedSeatIds.length} Seat${selectedSeatIds.length > 1 ? 's' : ''}` : `${numberOfGuests} Ticket${numberOfGuests > 1 ? 's' : ''}`}
+                    {event.hasSeating
+                      ? (event.seatingLayout?.areas && event.seatingLayout.areas.length > 0)
+                        ? `${numberOfGuests} Guest${numberOfGuests > 1 ? 's' : ''} (Area)`
+                        : `${selectedSeatIds.length} Seat${selectedSeatIds.length > 1 ? 's' : ''}`
+                      : `${numberOfGuests} Ticket${numberOfGuests > 1 ? 's' : ''}`}
                   </span>
                   <span className="font-semibold">₹{totalAmount}</span>
                 </div>

@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Navigate } from 'r
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './LandingPage';
+import CheckInPage from './pages/CheckInPage';
+import ARMenuPage from './pages/ARMenuPage';
 import BusinessLandingPage from './BusinessLandingPage';
 import LoginPage from './LoginPage';
 import SignupPage from './SignupPage';
@@ -48,6 +50,7 @@ import InvoiceManagement from './pages/business/InvoiceManagement';
 import POSSettings from './pages/business/POSSettings';
 import DigitalMenuEditor from './pages/business/DigitalMenuEditor';
 import WaitlistManagement from './pages/business/WaitlistManagement';
+import DebugTableUnblock from './pages/DebugTableUnblock';
 import PreOrderManagement from './pages/business/PreOrderManagement';
 import BookingManagement from './pages/business/BookingManagement';
 import FloorPlanManagement from './pages/business/FloorPlanManagement';
@@ -123,91 +126,97 @@ const App: React.FC = () => {
                 <Route path="/maintenance" element={<MaintenancePage />} />
                 <Route path="/" element={<LandingPage />} />
 
-              {/* Business Landing Page (Public) */}
-              <Route path="/business" element={<BusinessLandingPage />} />
+                {/* Business Landing Page (Public) */}
+                <Route path="/business" element={<BusinessLandingPage />} />
 
-              {/* Business Auth Routes (Public) */}
-              <Route path="/business/businessLogin" element={<BusinessLogin />} />
-              <Route path="/business/businessSignup" element={<BusinessSignup />} />
-              <Route path="/business/forgot-password" element={<ForgotPassword />} />
+                {/* Business Auth Routes (Public) */}
+                <Route path="/business/businessLogin" element={<BusinessLogin />} />
+                <Route path="/business/businessSignup" element={<BusinessSignup />} />
+                <Route path="/business/forgot-password" element={<ForgotPassword />} />
 
-              {/* Redirect /business/dashboard to /business/app/dashboard */}
-              <Route path="/business/dashboard" element={<Navigate to="/business/app/dashboard" replace />} />
+                {/* Redirect /business/dashboard to /business/app/dashboard */}
+                <Route path="/business/dashboard" element={<Navigate to="/business/app/dashboard" replace />} />
+                <Route path="/business/onboarding" element={<Navigate to="/business/app/onboarding" replace />} />
+                <Route path="/business/edit/:id" element={<Navigate to="/business/app/edit/:id" replace />} />
+                <Route path="/business/view/:id" element={<Navigate to="/business/app/view/:id" replace />} />
 
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/signup" element={<SignupPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/feedback" element={<UserFeedbackForm />} />
-              <Route path="/test-floor-designer" element={<FloorPlanDesigner />} />
-              <Route path="/test-event-designer" element={<EventSeatingDesigner />} />
-              <Route path="/auth/action" element={<AuthActionHandler />} />
-              <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/signup" element={<SignupPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/feedback" element={<UserFeedbackForm />} />
+                <Route path="/test-floor-designer" element={<FloorPlanDesigner />} />
+                <Route path="/test-event-designer" element={<EventSeatingDesigner />} />
+                <Route path="/debug-unblock" element={<DebugTableUnblock />} />
+                <Route path="/auth/action" element={<AuthActionHandler />} />
+                <Route path="/onboarding" element={<OnboardingPage />} />
+                <Route path="/check-in/:bookingId" element={<CheckInPage />} />
+                <Route path="/ar-experience/:bookingId" element={<ARMenuPage />} />
 
-              {/* Customer Protected Routes (Redirect Owners to Business) */}
-              <Route element={<CustomerRoute />}>
-                <Route path="/dashboard" element={<DashboardPage />} />
-                <Route path="/restaurant/:id" element={<RestaurantDetails />} />
-                <Route path="/restaurant/:id/preview" element={<ReservationPreview />} />
-                <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
-                <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
-                <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
-                <Route path="/events" element={<EventsPage />} />
-                <Route path="/event/:id/register" element={<EventRegistration />} />
-                <Route path="/event/:id/preview" element={<EventPreview />} />
-              </Route>
-
-              <Route path="/admin-login" element={<AdminLoginPage />} />
-              
-              {/* Admin Protected Routes */}
-              <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
-                <Route index element={<Navigate to="/admin/dashboard" replace />} />
-                <Route path="dashboard" element={<AdminDashboard />} />
-                <Route path="users" element={<AdminUsersPage />} />
-                <Route path="notifications" element={<AdminNotificationsPage />} />
-                <Route path="businesses" element={<AdminBusinessesPage />} />
-                <Route path="team" element={<AdminManagementPage />} />
-                <Route path="analytics" element={<AdminAnalyticsPage />} />
-                <Route path="system" element={<AdminSystemHealthPage />} />
-                <Route path="reports" element={<AdminReportsPage />} />
-                <Route path="issues" element={<AdminIssueReportsPage />} />
-                <Route path="settings" element={<AdminSettingsPage />} />
-              </Route>
-
-              <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
-              <Route path="/privacy" element={<PrivacyPolicyPage />} />
-
-              {/* Business Protected Routes */}
-              <Route path="/business/app" element={<ProtectedBusinessRoute />}>
-                <Route element={<BusinessLayout />}>
-                  <Route index element={<BusinessDashboard />} />
-                  <Route path="dashboard" element={<BusinessDashboard />} />
-                  <Route path="notifications" element={<BusinessNotifications />} />
-                  <Route path="onboarding" element={<BusinessOnboarding />} />
-                  <Route path="edit/:id" element={<BusinessOnboarding />} />
-                  <Route path="view/:id" element={<BusinessOnboarding />} />
-                  <Route path="bookings" element={<BookingManagement />} />
-                  <Route path="reservations" element={<BookingManagement />} />
-                  <Route path="floor-plans" element={<FloorPlanManagement />} />
-                  <Route path="event-seating" element={<EventSeatingDesigner />} />
-                  <Route path="settings" element={<BusinessSettings />} />
-                  <Route path="payouts" element={<PayoutDashboard />} />
-                  <Route path="invoices" element={<InvoiceManagement />} />
-                  <Route path="pos-settings" element={<POSSettings />} />
-                  <Route path="manage/:id" element={<ManageRestaurant />} />
-                  <Route path="manage/:id" element={<ManageRestaurant />} />
-                  <Route path="restaurants" element={<OwnerDashboard />} />
-                  <Route path="menu" element={<DigitalMenuEditor />} />
-                  <Route path="waitlist" element={<WaitlistManagement />} />
-                  <Route path="waitlist" element={<WaitlistManagement />} />
-                  <Route path="pre-orders" element={<PreOrderManagement />} />
-                  <Route path="events" element={<EventsManagement />} />
-
-                  {/* Legacy routes for backward compatibility */}
-                  <Route path="legacy-onboarding" element={<RestaurantOnboarding />} />
-                  <Route path="legacy-dashboard" element={<OwnerDashboard />} />
+                {/* Customer Protected Routes (Redirect Owners to Business) */}
+                <Route element={<CustomerRoute />}>
+                  <Route path="/dashboard" element={<DashboardPage />} />
+                  <Route path="/restaurant/:id" element={<RestaurantDetails />} />
+                  <Route path="/restaurant/:id/preview" element={<ReservationPreview />} />
+                  <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
+                  <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
+                  <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
+                  <Route path="/events" element={<EventsPage />} />
+                  <Route path="/event/:id/register" element={<EventRegistration />} />
+                  <Route path="/event/:id/preview" element={<EventPreview />} />
                 </Route>
-              </Route>
-            </Routes>
+
+                <Route path="/admin-login" element={<AdminLoginPage />} />
+
+                {/* Admin Protected Routes */}
+                <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
+                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                  <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="users" element={<AdminUsersPage />} />
+                  <Route path="notifications" element={<AdminNotificationsPage />} />
+                  <Route path="businesses" element={<AdminBusinessesPage />} />
+                  <Route path="team" element={<AdminManagementPage />} />
+                  <Route path="analytics" element={<AdminAnalyticsPage />} />
+                  <Route path="system" element={<AdminSystemHealthPage />} />
+                  <Route path="reports" element={<AdminReportsPage />} />
+                  <Route path="issues" element={<AdminIssueReportsPage />} />
+                  <Route path="settings" element={<AdminSettingsPage />} />
+                </Route>
+
+                <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+
+                {/* Business Protected Routes */}
+                <Route path="/business/app" element={<ProtectedBusinessRoute />}>
+                  <Route element={<BusinessLayout />}>
+                    <Route index element={<BusinessDashboard />} />
+                    <Route path="dashboard" element={<BusinessDashboard />} />
+                    <Route path="notifications" element={<BusinessNotifications />} />
+                    <Route path="onboarding" element={<BusinessOnboarding />} />
+                    <Route path="edit/:id" element={<BusinessOnboarding />} />
+                    <Route path="view/:id" element={<BusinessOnboarding />} />
+                    <Route path="bookings" element={<BookingManagement />} />
+                    <Route path="reservations" element={<BookingManagement />} />
+                    <Route path="floor-plans" element={<FloorPlanManagement />} />
+                    <Route path="event-seating" element={<EventSeatingDesigner />} />
+                    <Route path="settings" element={<BusinessSettings />} />
+                    <Route path="payouts" element={<PayoutDashboard />} />
+                    <Route path="invoices" element={<InvoiceManagement />} />
+                    <Route path="pos-settings" element={<POSSettings />} />
+                    <Route path="manage/:id" element={<ManageRestaurant />} />
+                    <Route path="manage/:id" element={<ManageRestaurant />} />
+                    <Route path="restaurants" element={<OwnerDashboard />} />
+                    <Route path="menu" element={<DigitalMenuEditor />} />
+                    <Route path="waitlist" element={<WaitlistManagement />} />
+                    <Route path="waitlist" element={<WaitlistManagement />} />
+                    <Route path="pre-orders" element={<PreOrderManagement />} />
+                    <Route path="events" element={<EventsManagement />} />
+
+                    {/* Legacy routes for backward compatibility */}
+                    <Route path="legacy-onboarding" element={<RestaurantOnboarding />} />
+                    <Route path="legacy-dashboard" element={<OwnerDashboard />} />
+                  </Route>
+                </Route>
+              </Routes>
             </MaintenanceCheck>
           </NotificationProvider>
         </UserActivityProvider>

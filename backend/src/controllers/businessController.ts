@@ -345,15 +345,31 @@ export const getAllBusinesses = async (req: Request, res: Response): Promise<voi
 // Create a new business
 export const createBusiness = async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('=== CREATE BUSINESS CALLED ===');
+    console.log('Request body keys:', Object.keys(req.body));
+    console.log('Has files:', !!req.files);
+    
     let businessData: Partial<IBusiness>;
 
     // Handle FormData (with file uploads) or JSON data
     if (req.body.data) {
       // FormData with files
       businessData = JSON.parse(req.body.data);
+      console.log('Parsed from FormData');
     } else {
       // Regular JSON data
       businessData = req.body;
+      console.log('Using direct body');
+    }
+
+    console.log('Business name:', businessData.name);
+    console.log('Business type:', businessData.type);
+    console.log('Has seatingLayout:', !!businessData.seatingLayout);
+    console.log('Has startDate:', !!businessData.startDate);
+    console.log('Has endDate:', !!businessData.endDate);
+    
+    if (businessData.seatingLayout) {
+      console.log('SeatingLayout keys:', Object.keys(businessData.seatingLayout));
     }
 
     businessData = {
@@ -376,8 +392,10 @@ export const createBusiness = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    console.log('Creating business document...');
     const business = new Business(businessData);
     await business.save();
+    console.log('Business saved with ID:', business._id);
 
     res.status(201).json({ data: transformBusinessData(business, req) });
   } catch (error: any) {
@@ -385,6 +403,7 @@ export const createBusiness = async (req: Request, res: Response): Promise<void>
 
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      console.error('Validation errors:', validationErrors);
       res.status(400).json({
         message: 'Validation error',
         errors: validationErrors
@@ -476,25 +495,41 @@ export const getBusiness = async (req: Request, res: Response): Promise<void> =>
 export const updateBusiness = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    console.log('=== UPDATE BUSINESS CALLED ===');
+    console.log('Business ID:', id);
+    console.log('Request body keys:', Object.keys(req.body));
+    
     let updateData: any;
 
     // Handle FormData (with file uploads) or JSON data
     if (req.body.data) {
       // FormData with files
       updateData = JSON.parse(req.body.data);
+      console.log('Parsed from FormData');
     } else {
       // Regular JSON data
       updateData = req.body;
+      console.log('Using direct body');
     }
 
-    console.log(`Updating business ${id} with data:`, {
+    console.log('Update data:', {
       name: updateData.name,
       location: updateData.location,
-      hasLocationData: !!updateData.locationData,
       type: updateData.type,
-      timeSlotsLength: updateData.timeSlots?.length,
-      dailySlotsLength: updateData.dailySlots?.length
+      hasSeatingLayout: !!updateData.seatingLayout,
+      hasStartDate: !!updateData.startDate,
+      hasEndDate: !!updateData.endDate,
+      startDate: updateData.startDate,
+      endDate: updateData.endDate
     });
+    
+    if (updateData.seatingLayout) {
+      console.log('SeatingLayout keys:', Object.keys(updateData.seatingLayout));
+      if (updateData.seatingLayout.eventConfig) {
+        console.log('Has eventConfig wrapper');
+        console.log('EventConfig keys:', Object.keys(updateData.seatingLayout.eventConfig));
+      }
+    }
 
     updateData.updatedAt = new Date();
 
@@ -509,15 +544,22 @@ export const updateBusiness = async (req: Request, res: Response): Promise<void>
       }
     }
 
+    console.log('Updating business in database...');
     const business = await Business.findByIdAndUpdate(id, updateData, {
       new: true,
       runValidators: true
     });
 
     if (!business) {
+      console.log('Business not found');
       res.status(404).json({ message: 'Business not found' });
       return;
     }
+
+    console.log('Business updated successfully');
+    console.log('Saved startDate:', business.startDate);
+    console.log('Saved endDate:', business.endDate);
+    console.log('Saved seatingLayout exists:', !!business.seatingLayout);
 
     res.json({ data: transformBusinessData(business, req) });
   } catch (error: any) {
@@ -525,6 +567,7 @@ export const updateBusiness = async (req: Request, res: Response): Promise<void>
 
     if (error.name === 'ValidationError') {
       const validationErrors = Object.values(error.errors).map((err: any) => err.message);
+      console.error('Validation errors:', validationErrors);
       res.status(400).json({
         message: 'Validation error',
         errors: validationErrors

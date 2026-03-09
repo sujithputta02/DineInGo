@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { Owner } from '../models/Owner';
+import { emailService } from '../services/emailService';
 
 // Determine auth provider from request
 const getAuthProvider = (req: Request): string => {
@@ -91,6 +92,13 @@ export const registerOrLinkOwner = async (req: Request, res: Response) => {
                 authProviders: [provider],
                 hasPassword: provider === 'password',
             });
+
+            // Send business welcome email (done asynchronously but we wait for it to ensure it sends)
+            try {
+                await emailService.sendBusinessWelcomeEmail(email, displayName);
+            } catch (emailError) {
+                console.error('Failed to send business welcome email:', emailError);
+            }
 
             return res.status(201).json({
                 success: true,
