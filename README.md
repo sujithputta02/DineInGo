@@ -2,21 +2,51 @@
 
 # 🍽️ DineInGo - Smart Restaurant & Event Booking Platform
 
-> **Revolutionizing the dining experience with intelligent reservations, real-time management, and innovative features for the modern Indian food lover.**
+> **Version 1.0 Beta** | Revolutionizing the dining experience with intelligent reservations, real-time management, and innovative features for the modern Indian food lover.
 
-DineInGo is a comprehensive full-stack restaurant and event booking platform that connects food enthusiasts with their favorite dining destinations while empowering restaurant owners with powerful management tools. Built with cutting-edge technology, it offers seamless table reservations, event bookings, and an engaging user experience.
+DineInGo is a comprehensive full-stack restaurant and event booking platform that connects food enthusiasts with their favorite dining destinations while empowering restaurant owners with powerful management tools. Built with cutting-edge technology and enterprise-grade security, it offers seamless table reservations, event bookings, and an engaging user experience.
 
 ---
 
-## 🌟 What is DineInGo?
+## � What's New inn V1.0 Beta
 
-DineInGo transforms how people discover, book, and experience restaurants and food events. Whether you're a food lover looking for your next dining adventure or a restaurant owner managing reservations, DineInGo provides an intuitive, feature-rich platform that makes every interaction delightful.
+### 🔐 Enterprise-Grade Security
+- **Rate Limiting**: IP-based and user-based rate limiting to prevent abuse
+- **Input Validation**: Comprehensive schema-based validation on all endpoints
+- **Secure Secret Management**: All API keys managed through environment variables
+- **Security Headers**: CSP, HSTS, X-Frame-Options, and more
+- **CORS Protection**: Restricted cross-origin requests
+- See [SECURITY.md](backend/SECURITY.md) for detailed security documentation
 
-### For Food Lovers 🍕
-Discover restaurants, make instant reservations, join exciting food events, and build your culinary journey with personalized recommendations and achievements.
+### 🎪 Enhanced Event System
+- **Event Seating Charts**: Interactive visual seating with draggable seats
+- **Concert Area Support**: Manage standing room and general admission areas
+- **Real-Time Capacity Tracking**: Live "X/Y booked" display for areas
+- **Guest Count Selection**: Choose number of guests per booking
+- **Dynamic Pricing**: Price multiplied by guest count
+- **Event Reviews & Ratings**: Full review system with emoji support and owner replies
 
-### For Restaurant Owners �
-Manage your restaurant operations, handle bookings, engage with customers, and grow your business with comprehensive analytics and tools.
+### 🏢 Advanced Restaurant Features
+- **Multi-Floor Management**: Support for up to 4 floors with independent table layouts
+- **Real-Time Table Status**: Live updates across all connected users
+- **Interactive Floor Plans**: Drag-and-drop table designer
+- **Booking Management**: Confirm, modify, or cancel reservations
+- **Automatic Table Unblocking**: Smart handling of blocked tables on cancellation
+- **Area Capacity Tracking**: Monitor booked vs total capacity
+
+### 👥 Enhanced User Experience
+- **Review System**: Rate restaurants and events with half-star precision (1.0, 1.5, 2.0, etc.)
+- **Emoji Support**: Express yourself with emoji reactions in reviews
+- **Like/Dislike Reviews**: Community engagement on reviews
+- **Business Responses**: Restaurant owners can reply to reviews
+- **Achievement System**: Earn badges for dining activities
+- **Personalized Profiles**: Custom avatars and dietary preferences
+
+### 📱 Real-Time Features
+- **Socket.IO Integration**: Instant updates for bookings, reviews, and capacity
+- **Live Notifications**: Real-time alerts for booking changes
+- **Waitlist System**: Join and track waitlist positions
+- **Event Reminders**: Automatic reminders for upcoming events
 
 ---
 
@@ -28,21 +58,27 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Interactive Maps**: Visualize restaurant locations with integrated mapping
 - **Favorites System**: Save your favorite restaurants for quick access
 - **Personalized Recommendations**: Get restaurant suggestions based on your preferences
+- **Advanced Filters**: Filter by ratings, distance, cuisine type, and more
 
 ### 📅 Seamless Booking Experience
 - **Visual Table Selection**: Choose your exact table with interactive 2D floor plans
 - **Multi-Floor Support**: Navigate through different floors (Ground, 1st, 2nd, 3rd)
-- **Real-Time Status**: See table availability updated in real-time
+- **Real-Time Status**: See table availability updated in real-time via Socket.IO
 - **Flexible Scheduling**: Book for any date and time with dynamic slot management
 - **Guest Management**: Specify party size and special requirements
 - **Instant Confirmation**: Receive booking confirmations via email with detailed invoices
+- **Booking History**: Track all past and upcoming reservations
+- **Cancellation Support**: Easy cancellation with automatic table unblocking
 
 ### 🎉 Event Booking & Management
 - **Food Events**: Discover and register for food festivals, tasting events, and culinary experiences
-- **Interactive Seating**: Choose your seats with visual seating charts
-- **Capacity Tracking**: Real-time attendee count and availability
+- **Interactive Seating**: Choose your seats with visual seating charts (individual seats or concert areas)
+- **Capacity Tracking**: Real-time attendee count and availability with "X/Y booked" display
 - **Waitlist System**: Join waitlists for sold-out events with position tracking
 - **Digital Tickets**: Get QR code tickets for easy event check-in
+- **Event Reviews**: Full review system with ratings, emoji support, and owner replies
+- **Multi-Day Events**: Support for events spanning multiple days
+- **Guest Count Selection**: Book multiple tickets per event
 
 ### 👤 Personalized User Experience
 - **Custom Profiles**: Create your profile with dietary preferences and favorite cuisines
@@ -50,20 +86,26 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Avatar System**: Choose from multiple avatar styles with custom initials
 - **Booking History**: Track all your past and upcoming reservations
 - **Achievement System**: Earn badges and rewards for your dining activities
-- **Review & Rating**: Share your experiences and help others discover great places
+- **Review & Rating**: Share your experiences with half-star precision
+- **Preferences Management**: Save dietary restrictions and cuisine preferences
 
 ### 💬 Social & Engagement Features
 - **Restaurant Reviews**: Rate and review restaurants with emoji support
+- **Event Reviews**: Full review system for food events
 - **Half-Star Ratings**: Precise rating system with 0.5 increments (1.0, 1.5, 2.0, etc.)
 - **Review Management**: Edit or delete your reviews anytime
 - **Photo Sharing**: Add photos to your reviews
 - **Business Responses**: See how restaurants respond to feedback
+- **Like/Dislike System**: Community engagement on reviews
+- **Review Sorting**: Sort by rating, date, or helpfulness
 
 ### 🔔 Real-Time Notifications
 - **Booking Updates**: Get instant notifications for booking confirmations and changes
 - **Event Reminders**: Receive reminders for upcoming events
 - **Promotional Offers**: Stay updated with special deals and promotions
 - **Waitlist Alerts**: Know when a spot opens up in your waitlist
+- **Review Notifications**: Get notified when someone replies to your review
+- **Socket.IO Powered**: Real-time delivery of all notifications
 
 ### 🎨 Innovative Features
 - **AR Menu Preview**: View dishes in augmented reality before ordering
@@ -72,6 +114,7 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Sustainability Badges**: Discover eco-friendly restaurants
 - **Dietary Assistant**: Get personalized recommendations based on dietary restrictions
 - **AI Chatbot**: Get instant help and recommendations
+- **Dark Mode**: Comfortable viewing in low-light environments
 
 ### 🏢 Business Owner Dashboard
 - **Comprehensive Analytics**: Track bookings, revenue, and customer trends
@@ -81,15 +124,19 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Review Management**: Respond to customer reviews with emoji support
 - **Staff Management**: Manage staff schedules and shifts
 - **Promotion Tools**: Create and manage special offers
-- **Real-Time Updates**: See bookings and updates as they happen
+- **Real-Time Updates**: See bookings and updates as they happen via Socket.IO
 - **Customer Insights**: Understand your customers better with detailed analytics
+- **Event Management**: Create and manage food events with seating arrangements
+- **Capacity Monitoring**: Track real-time capacity for areas and events
 
 ### 🎪 Event Hosting Tools
 - **Event Creation**: Set up food events with custom details
-- **Seating Designer**: Create custom seating arrangements
+- **Seating Designer**: Create custom seating arrangements (individual seats or concert areas)
 - **Ticket Management**: Track registrations and capacity
 - **Attendee Management**: Manage event participants
 - **Event Analytics**: Monitor event performance
+- **Multi-Day Support**: Create events spanning multiple days
+- **Area Capacity Tracking**: Monitor booked vs total capacity for each area
 
 ---
 
@@ -104,6 +151,7 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Firebase Authentication** for secure user management
 - **Recharts** for data visualization
 - **Lucide React** for modern icons
+- **PWA Support** for offline functionality
 
 ### Backend
 - **Node.js** with Express.js framework
@@ -114,11 +162,23 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Nodemailer** for email notifications
 - **PDFKit** for invoice generation
 - **Firebase Admin SDK** for authentication
+- **Express Rate Limit** for API rate limiting
+- **Express Validator** for input validation
+- **Helmet** for security headers
+- **Bcryptjs** for password encryption
+
+### Security Features
+- **Rate Limiting**: IP-based (100 req/15min) and user-based limiting
+- **Input Validation**: Schema-based validation on all endpoints
+- **Secret Management**: Centralized environment variable management
+- **Security Headers**: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- **CORS Protection**: Restricted cross-origin requests
+- **Password Encryption**: Bcrypt hashing for all passwords
 
 ### Key Features Implementation
-- **Real-Time Updates**: Socket.IO for live booking status
+- **Real-Time Updates**: Socket.IO for live booking status and notifications
 - **Email System**: Professional HTML emails with Nodemailer
-- **File Uploads**: Multer for image handling
+- **File Uploads**: Multer for image handling with security validation
 - **PDF Generation**: Automated invoice and ticket creation
 - **QR Codes**: Digital tickets with QR code generation
 - **Geolocation**: Location-based restaurant discovery
@@ -138,8 +198,8 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 
 1. **Clone the Repository**
    ```bash
-   git clone <repository-url>
-   cd dineingo
+   git clone https://github.com/sujithputta02/DineInGo.git
+   cd DineInGo
    ```
 
 2. **Install Frontend Dependencies**
@@ -169,19 +229,37 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 
    Create `backend/.env`:
    ```env
+   # Server Configuration
    PORT=5001
-   MONGODB_URI=your_mongodb_connection_string
-   JWT_SECRET=your_secret_key_here
+   NODE_ENV=development
    
-   # Firebase Admin SDK
+   # Database
+   MONGODB_URI=your_mongodb_connection_string
+   
+   # Security Secrets (REQUIRED)
+   JWT_SECRET=your_jwt_secret_key_min_32_characters
+   SESSION_SECRET=your_session_secret_key_min_32_characters
+   ADMIN_CODE=your_admin_code
+   
+   # Firebase Configuration
+   FIREBASE_API_KEY=your_firebase_api_key
+   FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
    FIREBASE_PROJECT_ID=your_project_id
-   FIREBASE_PRIVATE_KEY="your_private_key"
-   FIREBASE_CLIENT_EMAIL=your_service_account_email
    
    # Email Configuration (Optional)
    EMAIL_USER=your_email@gmail.com
    EMAIL_PASS=your_app_specific_password
+   
+   # AI Services (Optional)
+   SARVAM_API_KEY=your_sarvam_api_key
+   OPENROUTER_API_KEY=your_openrouter_api_key
+   
+   # Frontend URLs
+   FRONTEND_URL=http://localhost:5173
+   ADMIN_URL=http://localhost:3000
    ```
+
+   See [backend/.env.example](backend/.env.example) for all available options.
 
 5. **Start Development Servers**
 
@@ -203,10 +281,11 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 6. **Access the Application**
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:5001
+   - Admin Dashboard: http://localhost:3000 (if configured)
 
 ---
 
-## � User Journey
+## 📖 User Journey
 
 ### For Customers
 
@@ -214,27 +293,31 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
    - Create account with email or Google
    - Complete personalized onboarding
    - Set dietary preferences and favorite cuisines
+   - Choose avatar style
 
 2. **Discover Restaurants**
    - Browse restaurants by location, cuisine, or price
    - View detailed restaurant profiles with photos and reviews
    - Check real-time availability
+   - Read reviews with half-star ratings and emoji reactions
 
 3. **Make a Reservation**
    - Select date, time, and number of guests
    - Choose your table from interactive floor plan
    - Add special requests or notes
-   - Receive instant confirmation email
+   - Receive instant confirmation email with invoice
 
 4. **Attend & Review**
    - Get reminder notifications
    - Show digital ticket at venue
-   - Leave review and rating after dining
+   - Leave review with half-star rating and emoji support
+   - Like/dislike other reviews
 
 5. **Explore Events**
    - Browse food events and festivals
    - Register for events with seat selection
    - Join waitlists for popular events
+   - Leave event reviews and ratings
 
 ### For Restaurant Owners
 
@@ -242,21 +325,27 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
    - Create business account
    - Complete restaurant profile
    - Set up operating hours and capacity
-
-2. **Setup Restaurant**
-   - Design floor plan with table layout
-   - Add menu items and categories
    - Configure booking settings
 
+2. **Setup Restaurant**
+   - Design floor plan with table layout (up to 4 floors)
+   - Add menu items and categories
+   - Configure booking settings
+   - Set pricing and availability
+
 3. **Manage Operations**
-   - View and manage incoming bookings
-   - Respond to customer reviews
+   - View and manage incoming bookings in real-time
+   - Confirm, modify, or cancel reservations
+   - Respond to customer reviews with emoji support
    - Track analytics and performance
+   - Monitor real-time table status
 
 4. **Host Events**
-   - Create food events
-   - Design seating arrangements
-   - Manage registrations
+   - Create food events with custom details
+   - Design seating arrangements (individual seats or concert areas)
+   - Manage registrations and capacity
+   - Track event performance
+   - Respond to event reviews
 
 ---
 
@@ -267,36 +356,58 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - Dark mode support for comfortable viewing
 - Mobile-responsive design for all devices
 - Intuitive navigation and user flows
+- Accessibility-focused design
 
 ### Real-Time Experience
-- Live table availability updates
+- Live table availability updates via Socket.IO
 - Instant booking confirmations
 - Real-time notification system
-- Socket-based communication
+- Socket-based communication for all updates
+- Live capacity tracking for events
 
 ### Smart Features
 - AI-powered chatbot assistance
 - Voice search capability
 - AR menu visualization
 - Personalized recommendations
+- Intelligent search and filtering
 
 ### Business Intelligence
 - Comprehensive analytics dashboard
 - Customer behavior insights
 - Revenue tracking
 - Performance metrics
+- Real-time monitoring
+
+### Enterprise Security
+- Rate limiting on all endpoints
+- Input validation and sanitization
+- Secure secret management
+- Security headers (CSP, HSTS, etc.)
+- CORS protection
+- Password encryption with bcrypt
 
 ---
 
-## � Security & Privacy
+## 🔐 Security & Privacy
 
-- Secure authentication with Firebase
-- JWT-based API authentication
-- Password encryption with bcrypt
-- Input validation and sanitization
-- CORS protection
-- Secure file upload handling
+### Security Features
+- **Secure Authentication**: Firebase authentication with JWT tokens
+- **Rate Limiting**: IP-based (100 req/15min) and user-based limiting
+- **Input Validation**: Schema-based validation on all endpoints
+- **Secret Management**: All API keys in environment variables
+- **Security Headers**: CSP, HSTS, X-Frame-Options, X-Content-Type-Options
+- **CORS Protection**: Restricted cross-origin requests
+- **Password Encryption**: Bcrypt hashing with salt rounds
+- **File Upload Security**: Validation and sanitization of uploads
+
+### Privacy
 - Privacy-focused data management
+- User data encryption
+- Secure session handling
+- GDPR-compliant data practices
+
+See [backend/SECURITY.md](backend/SECURITY.md) for comprehensive security documentation.
 
 ---
 
@@ -307,7 +418,61 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 - **Scalable Architecture**: Built to handle growing user base
 - **Email Notifications**: Professional HTML email templates
 - **Digital Tickets**: QR code generation for events
-- **Review System**: Half-star precision rating
+- **Review System**: Half-star precision rating with emoji support
+- **Event Support**: Multi-day events with capacity tracking
+- **Rate Limiting**: 100 req/15min for public endpoints
+- **Input Validation**: Comprehensive schema-based validation
+
+---
+
+## 🧪 Beta Testing
+
+### What to Test
+- Restaurant discovery and search functionality
+- Table booking and reservation management
+- Event registration and seating selection
+- Review system with half-star ratings and emoji support
+- Real-time updates and notifications
+- User profile and preferences
+- Business owner dashboard
+- Event management features
+- Security features (rate limiting, input validation)
+
+### Known Limitations
+- Some advanced analytics features are in development
+- AR menu preview is in beta
+- Voice search requires microphone permissions
+- Some email templates may need customization
+
+### Reporting Issues
+- Report bugs via GitHub Issues
+- Include detailed steps to reproduce
+- Provide screenshots or error logs
+- Mention your browser and OS version
+
+---
+
+## 📝 Version History
+
+### V1.0 Beta (Current)
+- ✅ Core restaurant booking system
+- ✅ Event booking and management
+- ✅ Review system with half-star ratings
+- ✅ Real-time updates via Socket.IO
+- ✅ Enterprise-grade security
+- ✅ Business owner dashboard
+- ✅ Multi-floor support
+- ✅ Event seating charts
+- ✅ Capacity tracking
+- ✅ Email notifications
+
+### Upcoming Features
+- Advanced analytics and reporting
+- Payment integration (Stripe)
+- Mobile app (iOS/Android)
+- Advanced AI recommendations
+- Loyalty program
+- Subscription management
 
 ---
 
@@ -315,28 +480,47 @@ Manage your restaurant operations, handle bookings, engage with customers, and g
 
 We welcome contributions! Whether it's bug fixes, feature additions, or documentation improvements, your help makes DineInGo better.
 
+### Development Guidelines
+- Follow TypeScript best practices
+- Write clean, readable code
+- Add comments for complex logic
+- Test your changes thoroughly
+- Follow the existing code style
+
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) file for details.
 
 ---
 
-## 📧 Support
+## 📧 Support & Feedback
 
 For questions, issues, or feedback:
-- Email: support@dineingo.com
-- GitHub Issues: [Report a bug](https://github.com/yourusername/dineingo/issues)
+- **Email**: support@dineingo.com
+- **GitHub Issues**: [Report a bug](https://github.com/sujithputta02/DineInGo/issues)
+- **Documentation**: [SECURITY.md](backend/SECURITY.md) | [SECURITY_CHECKLIST.md](backend/SECURITY_CHECKLIST.md)
 
 ---
 
 ## 🙏 Acknowledgments
 
-Built with modern technologies and best practices to deliver an exceptional dining experience platform.
+Built with modern technologies and best practices to deliver an exceptional dining experience platform. Special thanks to all beta testers and contributors.
+
+---
+
+## 📚 Documentation
+
+- [Security Documentation](backend/SECURITY.md)
+- [Security Checklist](backend/SECURITY_CHECKLIST.md)
+- [Deployment Guide](SECURITY_DEPLOYMENT_READY.md)
+- [Environment Variables](backend/.env.example)
 
 ---
 
 **Made with ❤️ for food lovers and restaurant owners**
 
-© DineInGo 2025. All rights reserved. | Version 1.0.0 🚀
+© DineInGo 2025. All rights reserved. | **Version 1.0 Beta** 🚀
+
+**Status**: Ready for Beta Testing | **Last Updated**: March 2025
