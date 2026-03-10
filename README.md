@@ -521,6 +521,6 @@ Built with modern technologies and best practices to deliver an exceptional dini
 
 **Made with ❤️ for food lovers and restaurant owners**
 
-© DineInGo 2025. All rights reserved. | **Version 1.0 Beta** 🚀
+© DineInGo 2026. All rights reserved. | **Version 1.0 Beta** 🚀
 
 **Status**: Ready for Beta Testing | **Last Updated**: March 2025
