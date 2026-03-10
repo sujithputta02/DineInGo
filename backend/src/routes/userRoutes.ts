@@ -12,6 +12,9 @@ import {
 } from '../controllers/userController';
 import { getUserReviews } from '../controllers/reviewController';
 import { User } from '../models/User';
+// SECURITY: Import rate limiters
+import { authLimiter, apiLimiter } from '../middleware/rateLimiter';
+import { validateUserRegistration, validateUserLogin, handleValidationErrors } from '../middleware/inputValidation';
 
 const router = express.Router();
 
@@ -43,8 +46,9 @@ router.get('/debug', async (req, res) => {
   }
 });
 
+// SECURITY: Apply rate limiting to authentication endpoints
 // Custom login route for debugging
-router.post('/login', async (req, res) => {
+router.post('/login', authLimiter, async (req, res) => {
   try {
     console.log('Login request received:', req.body);
     const { uid, loginSource = 'email' } = req.body;
@@ -91,11 +95,11 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Basic CRUD operations
-router.post('/', createUser);
-router.get('/:id', getUser);
-router.put('/:id', updateUser);
-router.delete('/:id', deleteUser);
+// SECURITY: Apply rate limiting and validation to user creation
+router.post('/', authLimiter, validateUserRegistration, handleValidationErrors, createUser);
+router.get('/:id', apiLimiter, getUser);
+router.put('/:id', apiLimiter, updateUser);
+router.delete('/:id', apiLimiter, deleteUser);
 
 // Profile update endpoint (used by ProfileSettings component)
 router.post('/update', async (req, res) => {
