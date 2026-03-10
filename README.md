@@ -498,7 +498,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) file for 
 ## 📧 Support & Feedback
 
 For questions, issues, or feedback:
-- **Email**: support@dineingo.com
+- **Email**: sec.dinelngo.team@gmail.com
 - **GitHub Issues**: [Report a bug](https://github.com/sujithputta02/DineInGo/issues)
 - **Documentation**: [SECURITY.md](backend/SECURITY.md) | [SECURITY_CHECKLIST.md](backend/SECURITY_CHECKLIST.md)
 
