@@ -95,41 +95,6 @@ export const validateUserLogin = [
 ];
 
 /**
- * Business/Restaurant Creation Validation
- */
-export const validateBusinessCreation = [
-  body('name')
-    .trim()
-    .isLength({ min: 2, max: 200 })
-    .withMessage('Business name must be 2-200 characters'),
-  body('description')
-    .trim()
-    .isLength({ min: 10, max: 5000 })
-    .withMessage('Description must be 10-5000 characters'),
-  body('email')
-    .isEmail()
-    .normalizeEmail()
-    .withMessage('Invalid email format'),
-  body('phone')
-    .isMobilePhone('any')
-    .withMessage('Invalid phone number'),
-  body('location')
-    .trim()
-    .isLength({ min: 5, max: 500 })
-    .withMessage('Location must be 5-500 characters'),
-  body('cuisine')
-    .optional()
-    .isArray()
-    .withMessage('Cuisine must be an array'),
-  body('capacity')
-    .isInt({ min: 1, max: 10000 })
-    .withMessage('Capacity must be between 1 and 10000'),
-  body('basePrice')
-    .isFloat({ min: 0, max: 1000000 })
-    .withMessage('Price must be between 0 and 1000000'),
-];
-
-/**
  * Review Submission Validation
  */
 export const validateReviewSubmission = [
@@ -247,7 +212,6 @@ export default {
   rejectUnexpectedFields,
   validateUserRegistration,
   validateUserLogin,
-  validateBusinessCreation,
   validateReviewSubmission,
   validateBooking,
   validateEventRegistration,
@@ -386,4 +350,188 @@ export const validateRemoveAdmin = [
     .withMessage('Email must not exceed 255 characters')
     .trim()
     .escape(),
+];
+
+
+/**
+ * BUSINESS INPUT VALIDATION
+ * Comprehensive validation for business operations
+ */
+
+/**
+ * Validate business registration/creation
+ */
+export const validateBusinessCreation = [
+  body('name')
+    .isString()
+    .withMessage('Business name must be a string')
+    .isLength({ min: 2, max: 200 })
+    .withMessage('Business name must be between 2 and 200 characters')
+    .trim()
+    .escape(),
+  body('description')
+    .optional()
+    .isString()
+    .withMessage('Description must be a string')
+    .isLength({ max: 2000 })
+    .withMessage('Description must not exceed 2000 characters')
+    .trim(),
+  body('cuisine')
+    .optional()
+    .isString()
+    .withMessage('Cuisine must be a string')
+    .isLength({ max: 100 })
+    .withMessage('Cuisine must not exceed 100 characters')
+    .trim(),
+  body('address')
+    .isString()
+    .withMessage('Address is required')
+    .isLength({ min: 5, max: 500 })
+    .withMessage('Address must be between 5 and 500 characters')
+    .trim(),
+  body('phone')
+    .optional()
+    .matches(/^[\d\s\-\+\(\)]+$/)
+    .withMessage('Invalid phone number format')
+    .isLength({ max: 20 })
+    .withMessage('Phone number must not exceed 20 characters'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Invalid email format')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters'),
+  body('priceRange')
+    .optional()
+    .isIn(['$', '$$', '$$$', '$$$$'])
+    .withMessage('Price range must be $, $$, $$$, or $$$$'),
+  body('capacity')
+    .optional()
+    .isInt({ min: 1, max: 10000 })
+    .withMessage('Capacity must be between 1 and 10000'),
+];
+
+/**
+ * Validate business update
+ */
+export const validateBusinessUpdate = [
+  body('name')
+    .optional()
+    .isString()
+    .withMessage('Business name must be a string')
+    .isLength({ min: 2, max: 200 })
+    .withMessage('Business name must be between 2 and 200 characters')
+    .trim()
+    .escape(),
+  body('description')
+    .optional()
+    .isString()
+    .withMessage('Description must be a string')
+    .isLength({ max: 2000 })
+    .withMessage('Description must not exceed 2000 characters')
+    .trim(),
+  body('phone')
+    .optional()
+    .matches(/^[\d\s\-\+\(\)]+$/)
+    .withMessage('Invalid phone number format')
+    .isLength({ max: 20 })
+    .withMessage('Phone number must not exceed 20 characters'),
+  body('email')
+    .optional()
+    .isEmail()
+    .withMessage('Invalid email format')
+    .normalizeEmail(),
+];
+
+/**
+ * Validate staff member addition
+ */
+export const validateStaffMember = [
+  body('name')
+    .isString()
+    .withMessage('Staff name is required')
+    .isLength({ min: 2, max: 100 })
+    .withMessage('Staff name must be between 2 and 100 characters')
+    .trim()
+    .escape(),
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters'),
+  body('role')
+    .isString()
+    .withMessage('Role is required')
+    .isIn(['manager', 'waiter', 'chef', 'host', 'admin'])
+    .withMessage('Invalid role'),
+  body('phone')
+    .optional()
+    .matches(/^[\d\s\-\+\(\)]+$/)
+    .withMessage('Invalid phone number format'),
+];
+
+/**
+ * Validate promotion creation
+ */
+export const validatePromotion = [
+  body('title')
+    .isString()
+    .withMessage('Promotion title is required')
+    .isLength({ min: 3, max: 200 })
+    .withMessage('Title must be between 3 and 200 characters')
+    .trim()
+    .escape(),
+  body('description')
+    .isString()
+    .withMessage('Description is required')
+    .isLength({ min: 10, max: 1000 })
+    .withMessage('Description must be between 10 and 1000 characters')
+    .trim(),
+  body('discountPercentage')
+    .optional()
+    .isFloat({ min: 0, max: 100 })
+    .withMessage('Discount percentage must be between 0 and 100'),
+  body('validFrom')
+    .isISO8601()
+    .withMessage('Valid from date must be in ISO 8601 format'),
+  body('validUntil')
+    .isISO8601()
+    .withMessage('Valid until date must be in ISO 8601 format'),
+];
+
+/**
+ * Validate campaign creation
+ */
+export const validateCampaign = [
+  body('name')
+    .isString()
+    .withMessage('Campaign name is required')
+    .isLength({ min: 3, max: 200 })
+    .withMessage('Name must be between 3 and 200 characters')
+    .trim()
+    .escape(),
+  body('message')
+    .isString()
+    .withMessage('Message is required')
+    .isLength({ min: 10, max: 1000 })
+    .withMessage('Message must be between 10 and 1000 characters')
+    .trim(),
+  body('targetAudience')
+    .optional()
+    .isIn(['all', 'regulars', 'new', 'inactive'])
+    .withMessage('Invalid target audience'),
+];
+
+/**
+ * Validate review reply
+ */
+export const validateReviewReply = [
+  body('reply')
+    .isString()
+    .withMessage('Reply is required')
+    .isLength({ min: 1, max: 1000 })
+    .withMessage('Reply must be between 1 and 1000 characters')
+    .trim(),
 ];

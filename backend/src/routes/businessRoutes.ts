@@ -23,26 +23,38 @@ import { getBusinessStaff, addStaff, updateStaff, removeStaff } from '../control
 import { getBusinessShifts, createShift, updateShift, deleteShift } from '../controllers/shiftController';
 import { getBusinessTableStatuses, updateTableStatus, batchUpdateTableStatus } from '../controllers/tableStatusController';
 import { getBusinessCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign } from '../controllers/marketingController';
-import { getBusinessPromotions, createPromotion, updatePromotion, deletePromotion, validatePromotion } from '../controllers/promotionController';
+import { getBusinessPromotions, createPromotion, updatePromotion, deletePromotion } from '../controllers/promotionController';
 import { getBusinessReviews, addReview, replyToReview, deleteReview, getBusinessRatingStats, updateReview, updateReply, deleteReply, likeReview, dislikeReview } from '../controllers/reviewController';
 import { registerOrLinkOwner, getOwnerProfile, linkGoogleAccount, setPassword } from '../controllers/ownerController';
 import { getOwnerPayouts, calculatePayout, requestPayout, getPayoutAnalytics, updatePayoutStatus } from '../controllers/payoutController';
 import { generatePDFInvoice, getBusinessInvoices } from '../controllers/invoiceController';
 import { connectPOS, getPOSIntegration, syncOrders, handlePOSWebhook, disconnectPOS } from '../controllers/posController';
 import { addFavorite, removeFavorite, getFavorites } from '../controllers/favoritesController';
+// SECURITY: Import rate limiters and validation
+import { businessRegistrationLimiter, businessApiLimiter, businessUpdateLimiter, reviewLimiter } from '../middleware/rateLimiter';
+import { logBusinessAction } from '../middleware/businessAuditLog';
+import {
+  validateBusinessCreation,
+  validateBusinessUpdate,
+  validateStaffMember,
+  validatePromotion,
+  validateCampaign,
+  validateReviewReply,
+  handleValidationErrors
+} from '../middleware/inputValidation';
 
 const router = express.Router();
 
 // Owner Authentication & Account Management
-router.post('/register', registerOrLinkOwner);  // Register or link account
-router.get('/owner/profile/:uid', getOwnerProfile);  // Get owner profile
-router.post('/owner/link-google', linkGoogleAccount);  // Link Google account
-router.post('/owner/set-password', setPassword);  // Set password for Google-only accounts
+router.post('/register', businessRegistrationLimiter, logBusinessAction, registerOrLinkOwner);
+router.get('/owner/profile/:uid', businessApiLimiter, getOwnerProfile);
+router.post('/owner/link-google', businessApiLimiter, logBusinessAction, linkGoogleAccount);
+router.post('/owner/set-password', businessApiLimiter, logBusinessAction, setPassword);
 
 // Restaurant Management (Legacy)
-router.get('/restaurants/:uid', getMyRestaurants);
-router.post('/restaurant', createRestaurant);
-router.put('/restaurant/:id', updateRestaurant);
+router.get('/restaurants/:uid', businessApiLimiter, getMyRestaurants);
+router.post('/restaurant', businessRegistrationLimiter, logBusinessAction, createRestaurant);
+router.put('/restaurant/:id', businessUpdateLimiter, logBusinessAction, updateRestaurant);
 
 // Test endpoint for debugging
 router.get('/test', (req: Request, res: Response) => {
@@ -54,76 +66,76 @@ router.get('/test', (req: Request, res: Response) => {
 });
 
 // New Business Management API
-router.get('/', getAllBusinesses); // Add this route to get all active businesses
-router.post('/', upload.fields([
+router.get('/', businessApiLimiter, getAllBusinesses);
+router.post('/', businessRegistrationLimiter, logBusinessAction, upload.fields([
   { name: 'thumbnail', maxCount: 1 },
   { name: 'coverImage', maxCount: 1 }
-]), createBusiness);
-router.get('/owner/:ownerId', getOwnerBusinesses);
-router.get('/dashboard/:ownerId', getBusinessDashboard);
-router.get('/analytics/dashboard/:ownerId', getDashboardAnalytics);
-router.get('/:id', getBusiness);
-router.put('/:id', upload.fields([
+]), validateBusinessCreation, handleValidationErrors, createBusiness);
+router.get('/owner/:ownerId', businessApiLimiter, getOwnerBusinesses);
+router.get('/dashboard/:ownerId', businessApiLimiter, getBusinessDashboard);
+router.get('/analytics/dashboard/:ownerId', businessApiLimiter, getDashboardAnalytics);
+router.get('/:id', businessApiLimiter, getBusiness);
+router.put('/:id', businessUpdateLimiter, logBusinessAction, upload.fields([
   { name: 'thumbnail', maxCount: 1 },
   { name: 'coverImage', maxCount: 1 }
-]), updateBusiness);
-router.delete('/:id', deleteBusiness);
+]), validateBusinessUpdate, handleValidationErrors, updateBusiness);
+router.delete('/:id', businessApiLimiter, logBusinessAction, deleteBusiness);
 
 // Business Workflow
-router.post('/:id/validate', validateBusiness);
-router.post('/:id/deploy', deployBusiness);
-router.patch('/:id/toggle-status', toggleBusinessStatus);
+router.post('/:id/validate', businessApiLimiter, logBusinessAction, validateBusiness);
+router.post('/:id/deploy', businessApiLimiter, logBusinessAction, deployBusiness);
+router.patch('/:id/toggle-status', businessApiLimiter, logBusinessAction, toggleBusinessStatus);
 
 // Analytics
-router.get('/:id/analytics', getBusinessAnalytics);
-router.get('/:id/bookings', getBusinessBookings);
-router.get('/:id/booking-analytics', getBookingAnalytics);
+router.get('/:id/analytics', businessApiLimiter, getBusinessAnalytics);
+router.get('/:id/bookings', businessApiLimiter, getBusinessBookings);
+router.get('/:id/booking-analytics', businessApiLimiter, getBookingAnalytics);
 
 // Advanced Analytics
-router.get('/:id/analytics/heatmap', getHeatmapData);
-router.get('/:id/analytics/forecast', getRevenueForecast);
-router.get('/:id/analytics/loyalty', getCustomerLoyalty);
+router.get('/:id/analytics/heatmap', businessApiLimiter, getHeatmapData);
+router.get('/:id/analytics/forecast', businessApiLimiter, getRevenueForecast);
+router.get('/:id/analytics/loyalty', businessApiLimiter, getCustomerLoyalty);
 
 // Operations & Staff Management
-router.get('/:businessId/staff', getBusinessStaff);
-router.post('/:businessId/staff', addStaff);
-router.put('/staff/:id', updateStaff);
-router.delete('/staff/:id', removeStaff);
+router.get('/:businessId/staff', businessApiLimiter, getBusinessStaff);
+router.post('/:businessId/staff', businessApiLimiter, logBusinessAction, validateStaffMember, handleValidationErrors, addStaff);
+router.put('/staff/:id', businessApiLimiter, logBusinessAction, validateStaffMember, handleValidationErrors, updateStaff);
+router.delete('/staff/:id', businessApiLimiter, logBusinessAction, removeStaff);
 
-router.get('/:businessId/shifts', getBusinessShifts);
-router.post('/:businessId/shifts', createShift);
-router.put('/shifts/:id', updateShift);
-router.delete('/shifts/:id', deleteShift);
+router.get('/:businessId/shifts', businessApiLimiter, getBusinessShifts);
+router.post('/:businessId/shifts', businessApiLimiter, logBusinessAction, createShift);
+router.put('/shifts/:id', businessApiLimiter, logBusinessAction, updateShift);
+router.delete('/shifts/:id', businessApiLimiter, logBusinessAction, deleteShift);
 
-router.get('/:businessId/table-status', getBusinessTableStatuses);
-router.put('/:businessId/table-status/:tableId', updateTableStatus);
-router.post('/:businessId/table-status/batch', batchUpdateTableStatus);
+router.get('/:businessId/table-status', businessApiLimiter, getBusinessTableStatuses);
+router.put('/:businessId/table-status/:tableId', businessApiLimiter, logBusinessAction, updateTableStatus);
+router.post('/:businessId/table-status/batch', businessApiLimiter, logBusinessAction, batchUpdateTableStatus);
 
 // Marketing Engine
-router.get('/:businessId/campaigns', getBusinessCampaigns);
-router.post('/:businessId/campaigns', createCampaign);
-router.put('/campaigns/:id', updateCampaign);
-router.delete('/campaigns/:id', deleteCampaign);
-router.post('/campaigns/:id/send', sendCampaign);
+router.get('/:businessId/campaigns', businessApiLimiter, getBusinessCampaigns);
+router.post('/:businessId/campaigns', businessApiLimiter, logBusinessAction, validateCampaign, handleValidationErrors, createCampaign);
+router.put('/campaigns/:id', businessApiLimiter, logBusinessAction, validateCampaign, handleValidationErrors, updateCampaign);
+router.delete('/campaigns/:id', businessApiLimiter, logBusinessAction, deleteCampaign);
+router.post('/campaigns/:id/send', businessApiLimiter, logBusinessAction, sendCampaign);
 
 // Promotion Manager
-router.get('/:businessId/promotions', getBusinessPromotions);
-router.post('/:businessId/promotions', createPromotion);
-router.put('/promotions/:id', updatePromotion);
-router.delete('/promotions/:id', deletePromotion);
-router.post('/promotions/validate', validatePromotion);
+router.get('/:businessId/promotions', businessApiLimiter, getBusinessPromotions);
+router.post('/:businessId/promotions', businessApiLimiter, logBusinessAction, validatePromotion, handleValidationErrors, createPromotion);
+router.put('/promotions/:id', businessApiLimiter, logBusinessAction, validatePromotion, handleValidationErrors, updatePromotion);
+router.delete('/promotions/:id', businessApiLimiter, logBusinessAction, deletePromotion);
+router.post('/promotions/validate', businessApiLimiter, validatePromotion);
 
 // Review Management
-router.get('/:businessId/reviews', getBusinessReviews);
-router.post('/:businessId/reviews', addReview);
-router.put('/reviews/:id', updateReview);
-router.post('/reviews/:id/reply', replyToReview);
-router.put('/reviews/:id/reply', updateReply);
-router.delete('/reviews/:id/reply', deleteReply);
-router.delete('/reviews/:id', deleteReview);
-router.post('/reviews/:reviewId/like', likeReview);
-router.post('/reviews/:reviewId/dislike', dislikeReview);
-router.get('/:businessId/rating-stats', getBusinessRatingStats);
+router.get('/:businessId/reviews', businessApiLimiter, getBusinessReviews);
+router.post('/:businessId/reviews', reviewLimiter, addReview);
+router.put('/reviews/:id', reviewLimiter, updateReview);
+router.post('/reviews/:id/reply', reviewLimiter, logBusinessAction, validateReviewReply, handleValidationErrors, replyToReview);
+router.put('/reviews/:id/reply', reviewLimiter, logBusinessAction, validateReviewReply, handleValidationErrors, updateReply);
+router.delete('/reviews/:id/reply', reviewLimiter, logBusinessAction, deleteReply);
+router.delete('/reviews/:id', reviewLimiter, deleteReview);
+router.post('/reviews/:reviewId/like', reviewLimiter, likeReview);
+router.post('/reviews/:reviewId/dislike', reviewLimiter, dislikeReview);
+router.get('/:businessId/rating-stats', businessApiLimiter, getBusinessRatingStats);
 
 // Payout Management
 router.get('/payouts/:ownerId', getOwnerPayouts);

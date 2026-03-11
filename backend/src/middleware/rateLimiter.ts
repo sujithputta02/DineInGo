@@ -211,6 +211,70 @@ export const adminApiLimiter = rateLimit({
   }
 });
 
+/**
+ * Business Registration Rate Limiter
+ * 3 requests per hour per IP
+ * Prevents spam business registrations
+ */
+export const businessRegistrationLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: 'Too many business registration attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many business registration attempts. Please try again in 1 hour.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
+/**
+ * Business API Rate Limiter
+ * 100 requests per 15 minutes per IP
+ * Prevents abuse of business operations
+ */
+export const businessApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100,
+  message: 'Too many business API requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many business API requests. Please try again in 15 minutes.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
+/**
+ * Business Update Rate Limiter
+ * 20 requests per hour per user
+ * Prevents excessive business updates
+ */
+export const businessUpdateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 20,
+  keyGenerator: (req: Request) => {
+    // Use owner ID if available, otherwise use IP
+    return (req as any).params?.ownerId || (req as any).body?.ownerId || getClientIp(req);
+  },
+  message: 'Too many business updates, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many business updates. Please try again in 1 hour.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
 export default {
   apiLimiter,
   authLimiter,
@@ -220,5 +284,8 @@ export default {
   bookingLimiter,
   adminOtpLimiter,
   adminLoginLimiter,
-  adminApiLimiter
+  adminApiLimiter,
+  businessRegistrationLimiter,
+  businessApiLimiter,
+  businessUpdateLimiter
 };
