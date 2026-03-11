@@ -272,6 +272,18 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       });
     }
 
+    // Check if account is locked
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    if (admin && admin.lockUntil && admin.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((admin.lockUntil.getTime() - Date.now()) / 60000);
+      return res.status(423).json({
+        success: false,
+        message: `Account locked due to too many failed attempts. Try again in ${minutesLeft} minutes.`,
+        locked: true,
+        lockUntil: admin.lockUntil
+      });
+    }
+
     // Find valid OTP
     const otpRecord = await AdminOTP.findOne({
       email: email.toLowerCase(),
@@ -282,15 +294,39 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
 
     if (!otpRecord) {
       // Increment failed attempts for the admin
-      const admin = await Admin.findOne({ email: email.toLowerCase() });
       if (admin) {
         admin.loginAttempts += 1;
+        
+        // Lock account after 5 failed attempts
+        if (admin.loginAttempts >= 5) {
+          admin.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
+          await admin.save();
+          
+          // Log failed login attempt
+          const { logFailedLogin } = await import('../middleware/adminAuditLog');
+          const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked after 5 failed attempts');
+          
+          return res.status(423).json({
+            success: false,
+            message: 'Account locked due to too many failed attempts. Try again in 15 minutes.',
+            locked: true,
+            lockUntil: admin.lockUntil
+          });
+        }
+        
         await admin.save();
+        
+        // Log failed login attempt
+        const { logFailedLogin } = await import('../middleware/adminAuditLog');
+        const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+        await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/5 attempts)`);
       }
 
       return res.status(401).json({ 
         success: false, 
-        message: 'Invalid or expired OTP' 
+        message: 'Invalid or expired OTP',
+        attemptsRemaining: admin ? 5 - admin.loginAttempts : undefined
       });
     }
 
@@ -299,7 +335,6 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
     await otpRecord.save();
 
     // Update admin login info
-    const admin = await Admin.findOne({ email: email.toLowerCase() });
     if (admin) {
       admin.lastLogin = new Date();
       admin.loginAttempts = 0; // Reset failed attempts
@@ -307,7 +342,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       await admin.save();
     }
 
-    // Generate JWT token
+    // Generate JWT token (4 hours expiration)
     const token = generateAdminToken(admin!.email, admin!.role);
 
     // Send login notification email (non-blocking)
@@ -320,6 +355,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       success: true, 
       message: 'Login successful',
       token,
+      tokenExpiresIn: '4h',
       admin: {
         email: admin?.email,
         role: admin?.role,

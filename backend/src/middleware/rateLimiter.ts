@@ -151,11 +151,74 @@ export const bookingLimiter = rateLimit({
   }
 });
 
+/**
+ * Admin OTP Rate Limiter
+ * 3 requests per hour per IP
+ * Prevents brute force attacks on admin OTP
+ */
+export const adminOtpLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: 3,
+  message: 'Too many admin OTP requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many admin OTP requests. Please try again in 1 hour.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
+/**
+ * Admin Login Rate Limiter
+ * 5 requests per 15 minutes per IP
+ * Prevents brute force attacks on admin login
+ */
+export const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  message: 'Too many admin login attempts, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many admin login attempts. Please try again in 15 minutes.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
+/**
+ * Admin API Rate Limiter
+ * 50 requests per 15 minutes per IP
+ * Prevents DoS attacks on admin endpoints
+ */
+export const adminApiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 50,
+  message: 'Too many admin API requests, please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req: Request, res: Response) => {
+    res.status(429).json({
+      success: false,
+      message: 'Too many admin API requests. Please try again in 15 minutes.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
 export default {
   apiLimiter,
   authLimiter,
   passwordResetLimiter,
   otpLimiter,
   reviewLimiter,
-  bookingLimiter
+  bookingLimiter,
+  adminOtpLimiter,
+  adminLoginLimiter,
+  adminApiLimiter
 };

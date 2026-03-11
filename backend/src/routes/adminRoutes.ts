@@ -34,6 +34,18 @@ import {
 } from '../controllers/platformSettingsController';
 import { AdminOTP } from '../models/Admin';
 import { verifyAdminToken, verifySuperAdmin } from '../middleware/adminAuth';
+import { logAdminAction } from '../middleware/adminAuditLog';
+import { adminOtpLimiter, adminLoginLimiter, adminApiLimiter } from '../middleware/rateLimiter';
+import {
+  validateAdminOtpRequest,
+  validateAdminOtpVerification,
+  validateAdminNotification,
+  validateAdminUserStatusToggle,
+  validateAdminBusinessStatusToggle,
+  validateAddAdmin,
+  validateRemoveAdmin,
+  handleValidationErrors
+} from '../middleware/inputValidation';
 
 const router = express.Router();
 
@@ -60,53 +72,57 @@ initializeSuperAdmin();
 // ============================================
 // PUBLIC ROUTES (No authentication required)
 // ============================================
-router.post('/request-otp', requestAdminOTP);
-router.post('/verify-otp', verifyAdminOTP);
+router.post('/request-otp', adminOtpLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
+router.post('/verify-otp', adminLoginLimiter, validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
 
 // ============================================
 // PROTECTED ROUTES (JWT authentication required)
+// All protected routes use:
+// - adminApiLimiter: Rate limiting
+// - logAdminAction: Audit logging
+// - verifyAdminToken: JWT authentication
 // ============================================
 
 // Dashboard and statistics
-router.get('/stats', verifyAdminToken, getAdminStats);
+router.get('/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getAdminStats);
 
 // User management
-router.get('/users', verifyAdminToken, getAllUsers);
-router.patch('/users/toggle-status', verifyAdminToken, toggleUserStatus);
+router.get('/users', adminApiLimiter, verifyAdminToken, logAdminAction, getAllUsers);
+router.patch('/users/toggle-status', adminApiLimiter, verifyAdminToken, logAdminAction, validateAdminUserStatusToggle, handleValidationErrors, toggleUserStatus);
 
 // Business management
-router.get('/businesses', verifyAdminToken, getAllBusinesses);
-router.patch('/businesses/toggle-status', verifyAdminToken, toggleBusinessStatus);
+router.get('/businesses', adminApiLimiter, verifyAdminToken, logAdminAction, getAllBusinesses);
+router.patch('/businesses/toggle-status', adminApiLimiter, verifyAdminToken, logAdminAction, validateAdminBusinessStatusToggle, handleValidationErrors, toggleBusinessStatus);
 
 // Notifications
-router.post('/notifications', verifyAdminToken, sendNotification);
-router.get('/notification-stats', verifyAdminToken, getNotificationStats);
+router.post('/notifications', adminApiLimiter, verifyAdminToken, logAdminAction, validateAdminNotification, handleValidationErrors, sendNotification);
+router.get('/notification-stats', adminApiLimiter, verifyAdminToken, logAdminAction, getNotificationStats);
 
 // Admin team management (Super admin only)
-router.get('/list', verifyAdminToken, verifySuperAdmin, getAdmins);
-router.post('/add', verifyAdminToken, verifySuperAdmin, addAdmin);
-router.delete('/remove', verifyAdminToken, verifySuperAdmin, removeAdmin);
-router.patch('/toggle-status', verifyAdminToken, verifySuperAdmin, toggleAdminStatus);
-router.patch('/update-max-admins', verifyAdminToken, verifySuperAdmin, updateMaxAdmins);
+router.get('/list', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getAdmins);
+router.post('/add', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, validateAddAdmin, handleValidationErrors, addAdmin);
+router.delete('/remove', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, validateRemoveAdmin, handleValidationErrors, removeAdmin);
+router.patch('/toggle-status', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleAdminStatus);
+router.patch('/update-max-admins', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, updateMaxAdmins);
 
 // System health routes
-router.get('/system-health', verifyAdminToken, getSystemHealth);
-router.get('/database-stats', verifyAdminToken, getDatabaseStats);
-router.get('/api-health', verifyAdminToken, getApiHealth);
-router.get('/service-status', verifyAdminToken, getServiceStatus);
+router.get('/system-health', adminApiLimiter, verifyAdminToken, logAdminAction, getSystemHealth);
+router.get('/database-stats', adminApiLimiter, verifyAdminToken, logAdminAction, getDatabaseStats);
+router.get('/api-health', adminApiLimiter, verifyAdminToken, logAdminAction, getApiHealth);
+router.get('/service-status', adminApiLimiter, verifyAdminToken, logAdminAction, getServiceStatus);
 
 // Maintenance mode routes
-router.post('/maintenance-mode', verifyAdminToken, verifySuperAdmin, toggleMaintenanceMode);
+router.post('/maintenance-mode', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleMaintenanceMode);
 router.get('/maintenance-status', getMaintenanceStatus); // Public route
 
 // Platform settings routes
-router.get('/settings', verifyAdminToken, getSettings);
-router.post('/settings', verifyAdminToken, verifySuperAdmin, updateSettings);
-router.patch('/settings/single', verifyAdminToken, verifySuperAdmin, updateSingleSetting);
-router.post('/settings/reset', verifyAdminToken, verifySuperAdmin, resetSettings);
+router.get('/settings', adminApiLimiter, verifyAdminToken, logAdminAction, getSettings);
+router.post('/settings', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, updateSettings);
+router.patch('/settings/single', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, updateSingleSetting);
+router.post('/settings/reset', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, resetSettings);
 
 // System operations (Super admin only)
-router.post('/restart-services', verifyAdminToken, verifySuperAdmin, restartServices);
-router.post('/clear-cache', verifyAdminToken, verifySuperAdmin, clearCache);
+router.post('/restart-services', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, restartServices);
+router.post('/clear-cache', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, clearCache);
 
 export default router;

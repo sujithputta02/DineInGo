@@ -256,3 +256,134 @@ export default {
   validateObjectId,
   validatePagination
 };
+
+
+/**
+ * ADMIN INPUT VALIDATION
+ * Strict validation for admin operations
+ */
+
+/**
+ * Validate admin OTP request
+ */
+export const validateAdminOtpRequest = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters')
+    .trim()
+    .escape(),
+];
+
+/**
+ * Validate admin OTP verification
+ */
+export const validateAdminOtpVerification = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters')
+    .trim()
+    .escape(),
+  body('otp')
+    .isString()
+    .withMessage('OTP must be a string')
+    .isLength({ min: 6, max: 6 })
+    .withMessage('OTP must be exactly 6 digits')
+    .matches(/^\d{6}$/)
+    .withMessage('OTP must contain only digits')
+    .trim(),
+];
+
+/**
+ * Validate admin notification
+ */
+export const validateAdminNotification = [
+  body('title')
+    .isString()
+    .withMessage('Title must be a string')
+    .isLength({ min: 1, max: 200 })
+    .withMessage('Title must be between 1 and 200 characters')
+    .trim()
+    .escape(),
+  body('message')
+    .isString()
+    .withMessage('Message must be a string')
+    .isLength({ min: 1, max: 1000 })
+    .withMessage('Message must be between 1 and 1000 characters')
+    .trim()
+    .escape(),
+  body('type')
+    .optional()
+    .isIn(['info', 'warning', 'error', 'success'])
+    .withMessage('Type must be one of: info, warning, error, success'),
+  body('targetType')
+    .optional()
+    .isIn(['all', 'users', 'businesses'])
+    .withMessage('Target type must be one of: all, users, businesses'),
+];
+
+/**
+ * Validate admin user status toggle
+ */
+export const validateAdminUserStatusToggle = [
+  body('userId')
+    .isString()
+    .withMessage('User ID must be a string')
+    .isLength({ min: 1, max: 128 })
+    .withMessage('User ID must be between 1 and 128 characters')
+    .trim(),
+  body('isActive')
+    .isBoolean()
+    .withMessage('isActive must be a boolean'),
+];
+
+/**
+ * Validate admin business status toggle
+ */
+export const validateAdminBusinessStatusToggle = [
+  body('businessId')
+    .isString()
+    .withMessage('Business ID must be a string')
+    .isLength({ min: 1, max: 128 })
+    .withMessage('Business ID must be between 1 and 128 characters')
+    .trim(),
+  body('isActive')
+    .isBoolean()
+    .withMessage('isActive must be a boolean'),
+];
+
+/**
+ * Validate add admin
+ */
+export const validateAddAdmin = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters')
+    .trim()
+    .escape(),
+  body('role')
+    .isIn(['admin', 'super_admin'])
+    .withMessage('Role must be either admin or super_admin'),
+];
+
+/**
+ * Validate remove admin
+ */
+export const validateRemoveAdmin = [
+  body('email')
+    .isEmail()
+    .withMessage('Valid email is required')
+    .normalizeEmail()
+    .isLength({ max: 255 })
+    .withMessage('Email must not exceed 255 characters')
+    .trim()
+    .escape(),
+];

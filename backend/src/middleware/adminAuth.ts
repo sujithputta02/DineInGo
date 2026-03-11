@@ -1,7 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { secretManager } from '../utils/secretManager';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+// Get JWT secret from SecretManager (no fallback - fail if not set)
+const getJWTSecret = (): string => {
+  try {
+    return secretManager.getSecret('JWT_SECRET');
+  } catch (error) {
+    console.error('CRITICAL: JWT_SECRET not configured. Admin authentication will fail.');
+    throw new Error('JWT_SECRET not configured');
+  }
+};
 
 export interface AdminTokenPayload {
   email: string;
@@ -34,7 +43,8 @@ export const verifyAdminToken = (req: Request, res: Response, next: NextFunction
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    // Verify token
+    // Verify token with secure JWT secret
+    const JWT_SECRET = getJWTSecret();
     const decoded = jwt.verify(token, JWT_SECRET) as AdminTokenPayload;
 
     // Check if token has admin role
@@ -98,6 +108,7 @@ export const generateAdminToken = (email: string, role: 'admin' | 'super_admin')
     role
   };
 
-  // Token expires in 24 hours
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+  // Token expires in 4 hours (reduced from 24h for security)
+  const JWT_SECRET = getJWTSecret();
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '4h' });
 };

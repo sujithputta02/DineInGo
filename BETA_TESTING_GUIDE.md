@@ -482,7 +482,7 @@ We'll recognize top contributors with:
 
 Your participation in this beta test is invaluable. Together, we're building the future of dining experiences.
 
-**Questions?** Contact us at beta@dineingo.com
+**Questions?** Contact us at sec.dinelngo.team@gmail.com
 
 **Happy Testing!** 🍽️
 
