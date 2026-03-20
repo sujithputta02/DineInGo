@@ -43,7 +43,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { storeUserData } from "../dbUtils";
-import { bookingsApi, userPreferenceApi } from "../services/api";
+import { bookingsApi, userPreferenceApi, normalizeImageUrl } from "../services/api";
 import { toast } from "react-toastify";
 import { Location as GeoLocation, Event as AppEvent } from "../types";
 import { mockRestaurants, mockEvents } from "../utils/mockData";
@@ -930,6 +930,7 @@ export default function DashboardPage() {
             const businessRestaurants = (businessData.data || []).map(
               (b: any) => ({
                 ...b,
+                thumbnail: normalizeImageUrl(b.thumbnail),
                 id: b.id || b._id, // Ensure id is set
               }),
             );
@@ -945,6 +946,7 @@ if (restaurantsResponse && restaurantsResponse.ok) {
   const resData = await restaurantsResponse.json();
   const apiRestaurants = (resData.data || []).map((r: any) => ({
     ...r,
+    image: normalizeImageUrl(r.image || r.thumbnail),
     id: r._id || r.id, // Ensure id is set
   }));
   allRestaurants = [...allRestaurants, ...apiRestaurants];

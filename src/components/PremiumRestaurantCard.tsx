@@ -2,6 +2,7 @@ import React from "react";
 import { motion } from "framer-motion";
 import { Star, Heart, MapPin, Users, ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { normalizeImageUrl } from "../services/api";
 
 interface Restaurant {
   id: string;
@@ -68,7 +69,7 @@ export const PremiumRestaurantCard: React.FC<PremiumRestaurantCardProps> = ({
       <div className="relative h-64 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 transition-opacity group-hover:opacity-60" />
         <img
-          src={restaurant.image}
+          src={normalizeImageUrl(restaurant.image)}
           alt={restaurant.name}
           className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
         />
