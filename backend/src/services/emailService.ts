@@ -16,30 +16,30 @@ export const createTransporter = () => {
   const gmailUser = process.env.EMAIL_USER;
   const gmailPass = process.env.EMAIL_PASS;
 
-  // Primary: Gmail SMTP (Verified Working)
-  if (gmailUser && gmailPass) {
-    // Clean up password (remove spaces often found in Google App Passwords)
-    const cleanPass = gmailPass.trim().replace(/\s/g, '');
-    
-    console.log('Initializing Gmail SMTP transporter...');
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser.trim(),
-        pass: cleanPass,
-      },
-    });
-  }
-
-  // Fallback: Brevo SMTP
+  // Primary: Brevo SMTP (More reliable for cloud hosting like Render/Koyeb)
   if (brevoKey && brevoUser) {
-    console.warn('Falling back to Brevo SMTP for email delivery');
+    console.log('Using Brevo SMTP as primary email provider');
     return nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
       port: 587,
       auth: {
         user: brevoUser,
         pass: brevoKey,
+      },
+    });
+  }
+
+  // Fallback: Gmail SMTP
+  if (gmailUser && gmailPass) {
+    // Clean up password (remove spaces often found in Google App Passwords)
+    const cleanPass = gmailPass.trim().replace(/\s/g, '');
+    
+    console.warn('Falling back to Gmail SMTP for email delivery');
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser.trim(),
+        pass: cleanPass,
       },
     });
   }
