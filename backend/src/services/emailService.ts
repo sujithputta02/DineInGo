@@ -15,10 +15,10 @@ let transporterInstance: any = null;
 export const createTransporter = () => {
   if (transporterInstance) return transporterInstance;
 
-  const brevoKey = process.env.BREVO_API_KEY;
-  const brevoUser = process.env.BREVO_SMTP_USER;
-  const gmailUser = process.env.EMAIL_USER;
-  const gmailPass = process.env.EMAIL_PASS;
+  const brevoKey = process.env.BREVO_API_KEY?.trim();
+  const brevoUser = process.env.BREVO_SMTP_USER?.trim();
+  const gmailUser = process.env.EMAIL_USER?.trim();
+  const gmailPass = process.env.EMAIL_PASS?.trim();
 
   // Primary: Brevo SMTP (More reliable for cloud hosting like Render/Koyeb)
   if (brevoKey && brevoUser) {
