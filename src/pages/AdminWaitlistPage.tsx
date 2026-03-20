@@ -24,6 +24,12 @@ interface WaitlistStats {
   businesses: number;
   pending: number;
   contacted: number;
+  emailDelivery: {
+    sent: number;
+    softBounces: number;
+    hardBounces: number;
+    failures: number;
+  };
 }
 
 interface Signup {
@@ -32,12 +38,16 @@ interface Signup {
   userType: 'user' | 'business';
   status: 'pending' | 'contacted' | 'converted';
   referralCode?: string;
+  lastEmailStatus?: string;
+  lastEmailError?: string;
+  lastAttemptAt?: string;
   createdAt: string;
 }
 
 const AdminWaitlistPage: React.FC = () => {
   const [stats, setStats] = useState<WaitlistStats | null>(null);
   const [recentSignups, setRecentSignups] = useState<Signup[]>([]);
+  const [recentFailures, setRecentFailures] = useState<Signup[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   
@@ -57,7 +67,8 @@ const AdminWaitlistPage: React.FC = () => {
       const res = await adminApi.getWaitlistStats();
       if (res.success) {
         setStats(res.stats);
-        setRecentSignups(res.recentSignups);
+        setRecentSignups(res.recentSignups || []);
+        setRecentFailures(res.recentFailures || []);
       }
     } catch (error) {
       console.error('Error fetching waitlist data:', error);
@@ -131,7 +142,6 @@ const AdminWaitlistPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
         <StatCard 
           icon={<Users className="w-6 h-6 text-blue-600" />}
@@ -162,6 +172,43 @@ const AdminWaitlistPage: React.FC = () => {
           label="Contacted"
           value={stats?.contacted || 0}
           color="cyan"
+        />
+      </div>
+
+      {/* Email Delivery Health */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="md:col-span-4">
+          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+            <TrendingUp className="w-4 h-4" />
+            Email Delivery Health
+          </h3>
+        </div>
+        <StatCard 
+          icon={<CheckCircle2 className="w-6 h-6 text-emerald-600" />}
+          label="Successfully Sent"
+          value={stats?.emailDelivery?.sent || 0}
+          color="emerald"
+        />
+        <StatCard 
+          icon={<Clock className="w-6 h-6 text-amber-600" />}
+          label="Soft Bounces"
+          value={stats?.emailDelivery?.softBounces || 0}
+          color="amber"
+          hint="Temporary issues (e.g. Inbox Full)"
+        />
+        <StatCard 
+          icon={<AlertCircle className="w-6 h-6 text-orange-600" />}
+          label="Hard Bounces"
+          value={stats?.emailDelivery?.hardBounces || 0}
+          color="orange"
+          hint="Permanent: Invalid Email"
+        />
+        <StatCard 
+          icon={<AlertCircle className="w-6 h-6 text-red-600" />}
+          label="Fatal Failures"
+          value={stats?.emailDelivery?.failures || 0}
+          color="red"
+          hint="System or SMTP connection errors"
         />
       </div>
 
@@ -349,7 +396,7 @@ const AdminWaitlistPage: React.FC = () => {
               <div className="flex items-center justify-between pt-4 border-top border-gray-50">
                 <div className="flex items-center gap-2 text-xs text-gray-500">
                   <AlertCircle className="w-3 h-3" />
-                  Sent in batches of 10 for reliability.
+                  Sent in batches of 5 for reliability.
                 </div>
                 <button
                   type="submit"
@@ -373,60 +420,99 @@ const AdminWaitlistPage: React.FC = () => {
           </motion.div>
         </div>
 
-        {/* Recent Signups */}
-        <div className="lg:col-span-1">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden h-full flex flex-col">
-            <div className="p-6 border-b border-gray-50">
-              <h2 className="text-lg font-bold flex items-center gap-2 text-gray-800">
-                <Clock className="w-5 h-5 text-emerald-500" />
+        {/* Sidebar Lists */}
+        <div className="lg:col-span-1 space-y-8">
+          {/* Recent Signups */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col max-h-[450px]">
+            <div className="p-4 border-b border-gray-50 flex items-center justify-between">
+              <h2 className="text-sm font-bold flex items-center gap-2 text-gray-800 uppercase tracking-tight">
+                <Clock className="w-4 h-4 text-emerald-500" />
                 Recent Signups
               </h2>
+              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">LIVE</span>
             </div>
-            <div className="flex-1 overflow-y-auto max-h-[600px] p-4 space-y-3">
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
               {recentSignups.map((signup) => (
                 <div 
                   key={signup._id}
-                  className="p-4 rounded-xl border border-gray-50 bg-gray-50/50 hover:bg-gray-50 transition-colors group"
+                  className="p-3 rounded-xl border border-gray-50 bg-gray-50/30 hover:bg-gray-50 transition-colors group"
                 >
                   <div className="flex items-start justify-between">
                     <div className="space-y-1">
-                      <p className="text-sm font-semibold text-gray-900 truncate max-w-[150px]">
+                      <p className="text-xs font-semibold text-gray-900 truncate max-w-[140px]">
                         {signup.email}
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
                           signup.userType === 'user' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
                         }`}>
                           {signup.userType}
                         </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${
-                          signup.status === 'pending' ? 'bg-orange-100 text-orange-700' : 
-                          signup.status === 'contacted' ? 'bg-green-100 text-green-700' : 'bg-emerald-100 text-emerald-700'
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          signup.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
                         }`}>
                           {signup.status}
                         </span>
                       </div>
                     </div>
-                    <p className="text-[10px] text-gray-400 font-medium">
-                      {new Date(signup.createdAt).toLocaleDateString()}
+                    <p className="text-[9px] text-gray-400 font-medium whitespace-nowrap">
+                      {signup.createdAt ? new Date(signup.createdAt).toLocaleDateString() : '—'}
                     </p>
                   </div>
                 </div>
               ))}
               {recentSignups.length === 0 && (
-                <div className="text-center py-12 text-gray-400">
-                  <Users className="w-12 h-12 mx-auto opacity-20 mb-2" />
-                  <p className="text-sm">No recent signups found</p>
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-xs">No recent signups</p>
                 </div>
               )}
             </div>
-            <div className="p-4 border-t border-gray-50 bg-gray-50/30">
-              <button 
-                onClick={() => fetchData()}
-                className="w-full py-2 text-xs font-bold text-gray-500 hover:text-emerald-600 transition-colors"
-              >
-                View Full Waitlist
-              </button>
+          </div>
+
+          {/* Delivery Issues (Not Reached) */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden flex flex-col max-h-[450px]">
+            <div className="p-4 border-b border-gray-50 bg-red-50/30 flex items-center justify-between">
+              <h2 className="text-sm font-bold flex items-center gap-2 text-red-700 uppercase tracking-tight">
+                <AlertCircle className="w-4 h-4" />
+                Delivery Issues
+              </h2>
+              <span className="text-[10px] font-black text-red-600 bg-red-100 px-2 py-0.5 rounded-full">NOT REACHED</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4 space-y-3">
+              {recentFailures.map((failure) => (
+                <div 
+                  key={failure._id}
+                  className="p-3 rounded-xl border border-red-50 bg-white hover:bg-red-50/30 transition-colors group"
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <p className="text-xs font-semibold text-gray-900 truncate max-w-[140px]">
+                        {failure.email}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
+                          failure.lastEmailStatus === 'hard_bounce' ? 'bg-red-100 text-red-700' : 'bg-orange-100 text-orange-700'
+                        }`}>
+                          {failure.lastEmailStatus?.replace('_', ' ') || 'failed'}
+                        </span>
+                      </div>
+                      {failure.lastEmailError && (
+                        <p className="text-[8px] text-red-400 font-medium italic mt-1 line-clamp-1">
+                          {failure.lastEmailError}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-[9px] text-gray-400 font-medium whitespace-nowrap">
+                      {failure.lastAttemptAt ? new Date(failure.lastAttemptAt).toLocaleDateString() : '—'}
+                    </p>
+                  </div>
+                </div>
+              ))}
+              {recentFailures.length === 0 && (
+                <div className="text-center py-8 text-gray-400">
+                  <p className="text-xs">No pending failures</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -440,20 +526,22 @@ interface StatCardProps {
   label: string;
   value: number;
   color: string;
+  hint?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color }) => {
+const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, hint }) => {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
       className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center text-center space-y-3"
     >
-      <div className={`p-3 rounded-xl bg-${color}-50`}>
+      <div className={`p-3 rounded-xl bg-gray-50 group-hover:bg-${color}-50 transition-colors`}>
         {icon}
       </div>
       <div>
         <p className="text-2xl font-black text-gray-900">{value.toLocaleString()}</p>
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{label}</p>
+        {hint && <p className="text-[9px] text-gray-400 mt-1 italic">{hint}</p>}
       </div>
     </motion.div>
   );
