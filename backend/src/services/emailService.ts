@@ -25,7 +25,7 @@ export const createTransporter = () => {
     console.log('Using Brevo SMTP as primary email provider');
     transporterInstance = nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
-      port: 587,
+      port: 2525, // Using 2525 as 587 is often blocked by cloud providers like Render/Koyeb
       auth: {
         user: brevoUser,
         pass: brevoKey,
@@ -33,7 +33,9 @@ export const createTransporter = () => {
       // Optimization: Pooled connections
       pool: true,
       maxConnections: 5,
-      maxMessages: 100
+      maxMessages: 100,
+      connectionTimeout: 10000, // 10 seconds timeout
+      greetingTimeout: 10000
     });
     return transporterInstance;
   }
