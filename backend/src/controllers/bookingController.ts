@@ -435,76 +435,81 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
     // Check if this is an event booking
     const isEventBooking = !!(booking.eventId || req.body.eventId);
 
-    if (isEventBooking) {
-      // Send event-specific confirmation email with event pass
+    // Start background task for email, PDF, and Wallet generation to avoid blocking the response
+    const processBookingBackgroundTasks = async () => {
       try {
-        const { sendEventConfirmationEmail } = require('../services/eventEmailService');
-        const emailData = {
-          ...booking.toObject(),
-          ...req.body,
-          email: booking.customerEmail || req.body.email || (booking as any).email,
-          fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
-          guests: booking.seats || req.body.guests || (booking as any).guests
-        };
-        // Send event-specific confirmation email (non-blocking)
-        sendEventConfirmationEmail(emailData).catch((emailError: any) => 
-          console.error('Error sending event confirmation email:', emailError)
-        );
-      } catch (emailError) {
-        console.error('Error sending event confirmation email:', emailError);
-        // Don't fail the booking creation if email fails
-      }
-    } else {
-      // Send restaurant reservation confirmation email with invoice and wallet passes
-      try {
-        // Generate Invoice PDF
-        const pdfBuffer = await generateInvoicePdfBuffer(booking);
+        if (isEventBooking) {
+          // Send event-specific confirmation email with event pass
+          try {
+            const { sendEventConfirmationEmail } = require('../services/eventEmailService');
+            const emailData = {
+              ...booking.toObject(),
+              ...req.body,
+              email: booking.customerEmail || req.body.email || (booking as any).email,
+              fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
+              guests: booking.seats || req.body.guests || (booking as any).guests
+            };
+            await sendEventConfirmationEmail(emailData);
+          } catch (emailError) {
+            console.error('Error sending event confirmation email in background:', emailError);
+          }
+        } else {
+          // Send restaurant reservation confirmation email with invoice and wallet passes
+          try {
+            // Generate Invoice PDF
+            const pdfBuffer = await generateInvoicePdfBuffer(booking);
 
-        // Generate Wallet Passes
-        let walletAttachments: any[] = [];
-        try {
-          const { generateBothWalletPasses } = require('../utils/walletPassGenerator');
-          const passes = await generateBothWalletPasses(booking);
-          walletAttachments = [
-            {
-              filename: passes.apple.filename,
-              content: passes.apple.content,
-              contentType: passes.apple.contentType
-            },
-            {
-              filename: passes.google.filename,
-              content: passes.google.content,
-              contentType: passes.google.contentType
+            // Generate Wallet Passes
+            let walletAttachments: any[] = [];
+            try {
+              const { generateBothWalletPasses } = require('../utils/walletPassGenerator');
+              const passes = await generateBothWalletPasses(booking);
+              walletAttachments = [
+                {
+                  filename: passes.apple.filename,
+                  content: passes.apple.content,
+                  contentType: passes.apple.contentType
+                },
+                {
+                  filename: passes.google.filename,
+                  content: passes.google.content,
+                  contentType: passes.google.contentType
+                }
+              ];
+            } catch (walletError) {
+              console.error('Error generating wallet passes for confirmation:', walletError);
             }
-          ];
-        } catch (walletError) {
-          console.error('Error generating wallet passes for confirmation:', walletError);
-        }
 
-        // Send confirmation email with all attachments (non-blocking)
-        emailService.sendReservationConfirmationEmail({
-          ...req.body,
-          ...booking.toObject(),
-          email: booking.customerEmail || req.body.email || (booking as any).email,
-          fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
-          guests: booking.seats || req.body.guests || (booking as any).guests,
-          restaurantName: booking.restaurantName || req.body.restaurantName,
-          address: (booking.restaurantId as any)?.address || req.body.address,
-          attachments: [
-            {
-              filename: 'DineInGo_Invoice.pdf',
-              content: pdfBuffer,
-              contentType: 'application/pdf'
-            },
-            ...walletAttachments
-          ]
-        });
-        console.log('Combined restaurant confirmation email sent successfully');
-      } catch (emailError) {
-        console.error('Error sending combined confirmation email:', emailError);
-        // Don't fail the booking creation if email fails
+            // Send confirmation email with all attachments
+            await emailService.sendReservationConfirmationEmail({
+              ...req.body,
+              ...booking.toObject(),
+              email: booking.customerEmail || req.body.email || (booking as any).email,
+              fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
+              guests: booking.seats || req.body.guests || (booking as any).guests,
+              restaurantName: booking.restaurantName || req.body.restaurantName,
+              address: (booking.restaurantId as any)?.address || req.body.address,
+              attachments: [
+                {
+                  filename: 'DineInGo_Invoice.pdf',
+                  content: pdfBuffer,
+                  contentType: 'application/pdf'
+                },
+                ...walletAttachments
+              ]
+            });
+            console.log('✓ Combined restaurant confirmation email sent successfully in background');
+          } catch (emailError) {
+            console.error('Error in background reservation email processing:', emailError);
+          }
+        }
+      } catch (bgError) {
+        console.error('Major error in background booking tasks:', bgError);
       }
-    }
+    };
+
+    // Trigger background processing
+    processBookingBackgroundTasks();
 
     res.status(201).json(booking);
   } catch (error: any) {

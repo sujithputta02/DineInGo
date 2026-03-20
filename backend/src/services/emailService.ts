@@ -419,7 +419,7 @@ export const emailService = {
 
 
       const mailOptions = {
-        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to: email,
         subject: `Reservation Confirmed - ${bookingName}`,
         html: htmlBody,
@@ -492,7 +492,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to,
         subject: `${otp} is your ${title} code`,
         html,
