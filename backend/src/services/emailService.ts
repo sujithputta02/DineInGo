@@ -1066,19 +1066,25 @@ export const emailService = {
   },
 
   /**
-   * Send a broadcast email to multiple recipients
+   * Send a broadcast email to multiple recipients with detailed result tracking
    */
-  async sendBroadcastEmail(recipients: string[], subject: string, html: string, type: 'user' | 'business' = 'user'): Promise<{ success: number; failed: number }> {
-    let successCount = 0;
-    let failedCount = 0;
+  async sendBroadcastEmail(
+    recipients: string[], 
+    subject: string, 
+    html: string, 
+    type: 'user' | 'business' = 'user'
+  ): Promise<Array<{ email: string, status: 'sent' | 'soft_bounce' | 'hard_bounce' | 'failed', error?: string }>> {
+    const allResults: Array<{ email: string, status: 'sent' | 'soft_bounce' | 'hard_bounce' | 'failed', error?: string }> = [];
 
     const transporter = createTransporter();
-    if (!transporter) return { success: 0, failed: recipients.length };
+    if (!transporter) {
+      return recipients.map(email => ({ email, status: 'failed', error: 'Transporter creation failed' }));
+    }
 
     const batchSize = 5;
     for (let i = 0; i < recipients.length; i += batchSize) {
       const batch = recipients.slice(i, i + batchSize);
-      const results = await Promise.all(
+      const batchResults = await Promise.all(
         batch.map(async (to) => {
           try {
             // Generate personalized template for each recipient
@@ -1099,19 +1105,36 @@ export const emailService = {
               }];
             }
 
-            await transporter.sendMail(mailOptions);
-            return true;
-          } catch (err) {
+            const info = await transporter.sendMail(mailOptions);
+            return { email: to, status: 'sent' as const };
+          } catch (err: any) {
             console.error(`Failed to send broadcast to ${to}:`, err);
-            return false;
+            
+            let status: 'soft_bounce' | 'hard_bounce' | 'failed' = 'failed';
+            const errorMessage = err.message || 'Unknown error';
+
+            // Detect bounce types from SMTP codes (if available)
+            if (err.responseCode) {
+              if (err.responseCode >= 400 && err.responseCode < 500) {
+                status = 'soft_bounce';
+              } else if (err.responseCode >= 500) {
+                status = 'hard_bounce';
+              }
+            } else if (errorMessage.toLowerCase().includes('mailbox full') || errorMessage.toLowerCase().includes('rate limit')) {
+              status = 'soft_bounce';
+            } else if (errorMessage.toLowerCase().includes('not found') || errorMessage.toLowerCase().includes('invalid recipient')) {
+              status = 'hard_bounce';
+            }
+
+            return { email: to, status, error: errorMessage };
           }
         })
       );
 
-      results.forEach(res => res ? successCount++ : failedCount++);
+      allResults.push(...batchResults);
     }
 
-    return { success: successCount, failed: failedCount };
+    return allResults;
   },
 
   /**

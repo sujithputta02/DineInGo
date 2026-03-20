@@ -5,6 +5,15 @@ export interface IEarlyAccess extends Document {
     userType: 'user' | 'business';
     status: 'pending' | 'contacted' | 'converted';
     referralCode?: string;
+    lastEmailStatus?: 'not_sent' | 'sent' | 'soft_bounce' | 'hard_bounce' | 'failed';
+    lastEmailError?: string;
+    lastAttemptAt?: Date;
+    emailHistory?: Array<{
+        subject: string;
+        status: string;
+        timestamp: Date;
+        error?: string;
+    }>;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -31,7 +40,20 @@ const earlyAccessSchema = new Schema<IEarlyAccess>({
         type: String,
         trim: true,
         index: true
-    }
+    },
+    lastEmailStatus: {
+        type: String,
+        enum: ['not_sent', 'sent', 'soft_bounce', 'hard_bounce', 'failed'],
+        default: 'not_sent'
+    },
+    lastEmailError: String,
+    lastAttemptAt: Date,
+    emailHistory: [{
+        subject: String,
+        status: String,
+        timestamp: { type: Date, default: Date.now },
+        error: String
+    }]
 }, {
     timestamps: true
 });

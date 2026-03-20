@@ -1226,17 +1226,38 @@ export const getSecurityLogs = async (req: Request, res: Response) => {
  */
 export const getWaitlistStats = async (req: Request, res: Response) => {
   try {
-    const [total, users, businesses, pending, contacted] = await Promise.all([
+    const [
+      total, 
+      users, 
+      businesses, 
+      pending, 
+      contacted,
+      sentCount,
+      softBounceCount,
+      hardBounceCount,
+      failedCount
+    ] = await Promise.all([
       EarlyAccess.countDocuments({}),
       EarlyAccess.countDocuments({ userType: 'user' }),
       EarlyAccess.countDocuments({ userType: 'business' }),
       EarlyAccess.countDocuments({ status: 'pending' }),
-      EarlyAccess.countDocuments({ status: 'contacted' })
+      EarlyAccess.countDocuments({ status: 'contacted' }),
+      EarlyAccess.countDocuments({ lastEmailStatus: 'sent' }),
+      EarlyAccess.countDocuments({ lastEmailStatus: 'soft_bounce' }),
+      EarlyAccess.countDocuments({ lastEmailStatus: 'hard_bounce' }),
+      EarlyAccess.countDocuments({ lastEmailStatus: 'failed' })
     ]);
-
+    
     // Get last 10 signups
     const recentSignups = await EarlyAccess.find({})
       .sort({ createdAt: -1 })
+      .limit(10);
+
+    // Get last 10 email attempt results (excluding "sent" for noise reduction)
+    const recentFailures = await EarlyAccess.find({ 
+      lastEmailStatus: { $in: ['soft_bounce', 'hard_bounce', 'failed'] } 
+    })
+      .sort({ lastAttemptAt: -1 })
       .limit(10);
 
     res.json({
@@ -1246,9 +1267,16 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
         users,
         businesses,
         pending,
-        contacted
+        contacted,
+        emailDelivery: {
+          sent: sentCount,
+          softBounces: softBounceCount,
+          hardBounces: hardBounceCount,
+          failures: failedCount
+        }
       },
-      recentSignups
+      recentSignups,
+      recentFailures
     });
   } catch (error) {
     console.error('Error fetching waitlist stats:', error);
@@ -1294,31 +1322,73 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
     // Send broadcast asynchronously
     const runBroadcast = async () => {
       try {
+        let results: Array<{ email: string, status: string, error?: string }> = [];
+
         if (targetType === 'all') {
           // Send to users
           const users = await EarlyAccess.find({ userType: 'user' }).select('email');
           const userEmails = users.map(u => u.email);
           if (userEmails.length > 0) {
-            await emailService.sendBroadcastEmail(userEmails, subject, html, 'user');
+            const userResults = await emailService.sendBroadcastEmail(userEmails, subject, html, 'user');
+            results.push(...userResults);
           }
 
           // Send to businesses
           const businesses = await EarlyAccess.find({ userType: 'business' }).select('email');
           const businessEmails = businesses.map(b => b.email);
           if (businessEmails.length > 0) {
-            await emailService.sendBroadcastEmail(businessEmails, subject, html, 'business');
+            const businessResults = await emailService.sendBroadcastEmail(businessEmails, subject, html, 'business');
+            results.push(...businessResults);
           }
         } else {
-          await emailService.sendBroadcastEmail(emailList, subject, html, targetType as 'user' | 'business');
+          results = await emailService.sendBroadcastEmail(emailList, subject, html, targetType as 'user' | 'business');
         }
 
-        // Update status for contacted users
-        await EarlyAccess.updateMany(
-          { email: { $in: emailList }, status: 'pending' },
-          { status: 'contacted' }
-        );
+        // Process results and update each document individually for precise tracking
+        const updatePromises = results.map(async (res) => {
+          const updateData: any = {
+            lastEmailStatus: res.status,
+            lastAttemptAt: new Date(),
+            $push: {
+              emailHistory: {
+                subject,
+                status: res.status,
+                timestamp: new Date(),
+                error: res.error
+              }
+            }
+          };
+
+          if (res.error) {
+            updateData.lastEmailError = res.error;
+          }
+
+          // Also update general status if sent successfully
+          if (res.status === 'sent') {
+            updateData.status = 'contacted';
+          }
+
+          return EarlyAccess.updateOne({ email: res.email }, updateData);
+        });
+
+        await Promise.all(updatePromises);
         
-        console.log(`Broadcast completed for ${emailList.length} recipients`);
+        const successCount = results.filter(r => r.status === 'sent').length;
+        const bounceCount = results.filter(r => r.status === 'soft_bounce' || r.status === 'hard_bounce').length;
+        const failedCount = results.filter(r => r.status === 'failed').length;
+
+        console.log(`Broadcast completed. Results: ${successCount} sent, ${bounceCount} bounced, ${failedCount} failed`);
+        
+        // Log final resolution in security logs
+        await SecurityLog.create({
+          portal: 'admin',
+          eventType: 'mass_email_broadcast',
+          severity: 'low',
+          details: `Broadcast completed. Success: ${successCount}, Bounces: ${bounceCount}, Failures: ${failedCount}`,
+          ip: 'internal',
+          userId: 'system'
+        });
+
       } catch (err) {
         console.error('Error during async broadcast:', err);
       }
@@ -1328,7 +1398,7 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
 
     res.json({
       success: true,
-      message: `Broadcast initiated for ${emailList.length} recipients. ${targetType === 'all' ? 'Users and Businesses will receive specialized templates.' : ''}`,
+      message: `Broadcast initiated for ${emailList.length} recipients. You can monitor the progress in the Waitlist section.`,
       recipientCount: emailList.length
     });
 
