@@ -11,6 +11,7 @@ import StarRating from '../components/StarRating';
 import { DinoStepper } from '../components/DinoStepper';
 import EmojiPicker from '../components/EmojiPicker';
 import { isRestaurantOpen } from '../utils/openStatus';
+import { normalizeImageUrl } from '../services/api';
 
 
 const RestaurantDetails = () => {
@@ -404,7 +405,7 @@ const RestaurantDetails = () => {
         <div className="relative h-[250px] md:h-[350px] lg:h-[400px]">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img
-            src={restaurant.image}
+            src={normalizeImageUrl(restaurant.image)}
             alt={restaurant.name}
             className="w-full h-full object-cover"
           />
@@ -813,7 +814,7 @@ const RestaurantDetails = () => {
         <div className="relative h-[400px]">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img
-            src={event.imageUrl}
+            src={normalizeImageUrl(event.imageUrl)}
             alt={event.title}
             className="w-full h-full object-cover"
           />

@@ -4047,7 +4047,7 @@ return (
                   typeof userData.photoURL === "string" &&
                   userData.photoURL.trim() !== "" ? (
                   <img
-                    src={userData.photoURL as string}
+                    src={normalizeImageUrl(userData.photoURL as string)}
                     alt="Profile"
                     className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
                     onError={(e) => {
@@ -4365,7 +4365,7 @@ return (
                   typeof userData.photoURL === "string" &&
                   userData.photoURL.trim() !== "" ? (
                   <img
-                    src={userData.photoURL as string}
+                    src={normalizeImageUrl(userData.photoURL as string)}
                     alt="profile"
                     className="w-full h-full object-cover"
                   />

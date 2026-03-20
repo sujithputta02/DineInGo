@@ -5,6 +5,7 @@ import { getRestaurantById, getMockRestaurantById } from "../services/restaurant
 import { getMockEventById } from "../services/event-service";
 import { Restaurant, Event } from "../types";
 import { DinoStepper } from "../components/DinoStepper";
+import { normalizeImageUrl } from "../services/api";
 
 // Different high-quality restaurant preview images focusing on food and atmosphere
 const restaurantPreviewImages: { [key: string]: string[] } = {
@@ -287,7 +288,7 @@ const ReservationPreview: React.FC = () => {
           {type === 'event' && event && (
             <div className="col-span-4 row-span-2 h-full">
               <img
-                src={event.imageUrl}
+                src={normalizeImageUrl(event.imageUrl)}
                 alt={event.title}
                 className="w-full h-full object-cover"
               />
@@ -610,7 +611,7 @@ const ReservationPreview: React.FC = () => {
                         <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-500/10">
                           {item ? (
                             <img
-                              src={item.image}
+                              src={normalizeImageUrl(item.image)}
                               alt={item.name}
                               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                               onError={(e) => {

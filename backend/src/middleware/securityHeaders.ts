@@ -53,6 +53,11 @@ export const securityHeaders = helmet({
   referrerPolicy: {
     policy: 'strict-origin-when-cross-origin',
   },
+  
+  // Allow cross-origin resource loading (required for images on Vercel)
+  crossOriginResourcePolicy: { 
+    policy: 'cross-origin' 
+  },
 } as any);
 
 /**

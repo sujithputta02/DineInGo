@@ -4,6 +4,7 @@ import { ChevronLeft, Plus, Minus, ShoppingCart, Calendar, Clock, Users } from '
 import { getRestaurantById } from '../services/restaurantService';
 import type { MenuItem } from '../types';
 import { DinoStepper } from '../components/DinoStepper';
+import { normalizeImageUrl } from '../services/api';
 
 export default function FoodMenu() {
   const { id } = useParams();
@@ -166,7 +167,7 @@ export default function FoodMenu() {
               }`}>
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <img
-                    src={item.image}
+                    src={normalizeImageUrl(item.image)}
                     alt={item.name}
                     className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
                     onError={(e) => {
