@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import { createTransporter, emailService } from './emailService';
 import QRCode from 'qrcode';
 import path from 'path';
+import fs from 'fs';
 
 // Dynamically import pdfkit if available
 let PDFDocument: any;
@@ -380,7 +381,7 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
         const htmlBody = generateEventConfirmationHTML(booking);
 
         // Send email with PDF and logo attachments
-        await transporter.sendMail({
+        const mailOptions: any = {
           from: emailService.getSender("DineInGo Events"),
           to: email,
           subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString()}`,
@@ -390,14 +391,19 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
               filename: `DineInGo_EventPass_${(booking.eventName || 'Event').replace(/[^a-z0-9]/gi, '_')}.pdf`,
               content: passPDF,
               contentType: 'application/pdf',
-            },
-            {
-              filename: 'logo.png',
-              path: logoPath,
-              cid: cidLogo
             }
           ],
-        });
+        };
+
+        if (fs.existsSync(logoPath)) {
+          mailOptions.attachments.push({
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          });
+        }
+
+        await transporter.sendMail(mailOptions);
         console.log('Event confirmation email sent successfully to:', email);
       } catch (err) {
         console.error('Error in async event confirmation email send:', err);
@@ -526,17 +532,23 @@ export const sendCancellationEmail = async (booking: EventBooking, isEvent: bool
         const bookingName = booking.eventName || booking.restaurantName || 'your booking';
 
         // Send email with logo attachment
-        await transporter.sendMail({
+        const mailOptions: any = {
           from: emailService.getSender(),
           to: email,
           subject: `Cancellation Confirmed - ${bookingName}`,
           html: htmlBody,
-          attachments: [{
+          attachments: []
+        };
+
+        if (fs.existsSync(logoPath)) {
+          mailOptions.attachments.push({
             filename: 'logo.png',
             path: logoPath,
             cid: cidLogo
-          }]
-        });
+          });
+        }
+
+        await transporter.sendMail(mailOptions);
         console.log('Cancellation email sent successfully to:', email);
       } catch (err) {
         console.error('Error in async cancellation email send:', err);

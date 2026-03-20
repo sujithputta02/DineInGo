@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import path from 'path';
+import fs from 'fs';
 
 interface ReviewEmailData {
   to: string;
@@ -438,11 +439,11 @@ export const emailService = {
         html: htmlBody,
         text: `Your reservation at ${bookingName} has been confirmed for ${data.date} at ${data.time} for ${data.guests} guests.`,
         attachments: [
-          {
+          ...(fs.existsSync(logoPath) ? [{
             filename: 'logo.png',
             path: logoPath,
             cid: cidLogo
-          },
+          }] : []),
           ...(data.attachments || [])
         ]
       };
@@ -1083,17 +1084,22 @@ export const emailService = {
             // Generate personalized template for each recipient
             const personalizedHtml = this.generateWaitlistTemplate(html, type, to);
             
-            await transporter.sendMail({
+            const mailOptions: any = {
               from: this.getSender("DineInGo Official"),
               to,
               subject,
-              html: personalizedHtml,
-              attachments: [{
+              html: personalizedHtml
+            };
+
+            if (fs.existsSync(logoPath)) {
+              mailOptions.attachments = [{
                 filename: 'logo.png',
                 path: logoPath,
                 cid: cidLogo
-              }]
-            });
+              }];
+            }
+
+            await transporter.sendMail(mailOptions);
             return true;
           } catch (err) {
             console.error(`Failed to send broadcast to ${to}:`, err);
@@ -1118,7 +1124,7 @@ export const emailService = {
       const transporter = createTransporter();
       if (!transporter) return false;
 
-      await transporter.sendMail({
+      const mailOptions: any = {
         from: this.getSender("DineInGo Security"),
         to: alertEmail,
         subject: `🚨 DineInGo Security Alert: ${subject}`,
@@ -1130,7 +1136,9 @@ export const emailService = {
             <p style="color:#888;">This is an automated alert from DineInGo Security Monitor.<br/>Time: ${new Date().toISOString()}</p>
           </div>
         `
-      });
+      };
+
+      await transporter.sendMail(mailOptions);
 
       console.log('Security alert sent successfully');
       return true;
