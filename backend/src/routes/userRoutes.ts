@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import {
   createUser,
   getUser,
@@ -21,14 +21,14 @@ import { recordFailedAttempt, resetFailedAttempts } from '../services/securityMo
 const router = express.Router();
 
 // Health check endpoint
-router.get('/health', (req, res) => {
+router.get('/health', (req: Request, res: Response) => {
   res.status(200).json({ status: 'ok', message: 'User API is running' });
 });
 
 // 🔒 Debug endpoints restricted to development only
 if (process.env.NODE_ENV !== 'production') {
   router.get('/debug/:uid', debugUserActivities);
-  router.get('/debug', async (req, res) => {
+  router.get('/debug', async (req: Request, res: Response) => {
     try {
       const users = await User.find({}, 'uid email displayName activities');
       res.json({ totalUsers: users.length, serverTime: new Date().toISOString() });
@@ -39,7 +39,7 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // SECURITY: Apply rate limiting + account lockout to authentication endpoints
-router.post('/login', authLimiter, accountLockoutCheck('user'), async (req, res) => {
+router.post('/login', authLimiter, accountLockoutCheck('user'), async (req: Request, res: Response) => {
   try {
     const { uid, email, loginSource = 'email' } = req.body;
 
@@ -88,7 +88,7 @@ router.put('/:id', apiLimiter, updateUser);
 router.delete('/:id', apiLimiter, deleteUser);
 
 // Profile update endpoint (used by ProfileSettings component)
-router.post('/update', async (req, res) => {
+router.post('/update', async (req: Request, res: Response) => {
   try {
     console.log('Profile update request received:', req.body);
     const { userId, updates } = req.body;

@@ -123,7 +123,7 @@ export async function generateAppleWalletPass(booking: BookingData): Promise<{ f
     const buffers: Buffer[] = [];
     const archive = archiver.default('zip', { zlib: { level: 9 } });
 
-    archive.on('data', (data) => buffers.push(data));
+    archive.on('data', (data: Buffer) => buffers.push(data));
     archive.on('end', () => {
       resolve({
         filename: `DineInGo-Booking-${bookingId}.pkpass`,
@@ -131,7 +131,7 @@ export async function generateAppleWalletPass(booking: BookingData): Promise<{ f
         contentType: 'application/vnd.apple.pkpass'
       });
     });
-    archive.on('error', (err) => reject(err));
+    archive.on('error', (err: Error) => reject(err));
 
     // Add pass.json
     archive.append(passContent, { name: 'pass.json' });

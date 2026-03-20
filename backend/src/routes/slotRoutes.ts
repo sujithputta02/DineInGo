@@ -1,9 +1,9 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { SlotService } from '../services/SlotService';
 
 const router = express.Router();
 
-router.post('/slots/:slotId/hold', async (req, res) => {
+router.post('/slots/:slotId/hold', async (req: Request, res: Response) => {
     try {
         const { slotId } = req.params;
         const { userId, qty } = req.body;
@@ -41,7 +41,7 @@ router.post('/slots/:slotId/hold', async (req, res) => {
     }
 });
 
-router.post('/holds/:holdId/confirm', async (req, res) => {
+router.post('/holds/:holdId/confirm', async (req: Request, res: Response) => {
     try {
         const { holdId } = req.params;
         const { paymentDetails, idempotencyKey } = req.body;
@@ -61,7 +61,7 @@ router.post('/holds/:holdId/confirm', async (req, res) => {
     }
 });
 
-router.post('/holds/:holdId/cancel', async (req, res) => {
+router.post('/holds/:holdId/cancel', async (req: Request, res: Response) => {
     try {
         const { holdId } = req.params;
         await SlotService.releaseHold(holdId);
@@ -71,7 +71,7 @@ router.post('/holds/:holdId/cancel', async (req, res) => {
     }
 });
 
-router.get('/slots/:slotId', async (req, res) => {
+router.get('/slots/:slotId', async (req: Request, res: Response) => {
     try {
         const { slotId } = req.params;
         const slot = await SlotService.getSlotStatus(slotId);
@@ -89,7 +89,7 @@ router.get('/slots/:slotId', async (req, res) => {
     }
 });
 
-router.post('/slots/:slotId/waitlist', async (req, res) => {
+router.post('/slots/:slotId/waitlist', async (req: Request, res: Response) => {
     try {
         const { slotId } = req.params;
         const { userId, qty } = req.body;
