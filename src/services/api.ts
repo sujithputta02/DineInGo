@@ -1,6 +1,7 @@
 import { auth } from '../firebase';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+import { API_CONFIG } from '../config/api';
+const API_URL = API_CONFIG.BASE_URL;
 const MAX_RETRIES = 3;
 const RETRY_DELAY = 1000; // 1 second
 

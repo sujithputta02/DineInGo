@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 
@@ -12,7 +13,7 @@ const MaintenanceCheck: React.FC<MaintenanceCheckProps> = ({ children }) => {
   const [checking, setChecking] = useState(true);
   const [isInMaintenance, setIsInMaintenance] = useState(false);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = API_CONFIG.BASE_URL;
 
   // Routes that should be accessible during maintenance
   const allowedRoutes = [

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_CONFIG } from '../../config/api';
 import { useNavigate } from 'react-router-dom';
 import { createSession } from '../../utils/sessionGuard';
 import { motion } from 'framer-motion';
@@ -9,7 +10,7 @@ import axios from 'axios';
 import DineInGoLogo from '../../components/DineInGoLogo';
 
 // Assuming global API URL, replace with env var in real usage
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = API_CONFIG.BASE_URL;
 
 const BusinessAuth: React.FC = () => {
     const navigate = useNavigate();

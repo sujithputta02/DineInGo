@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../../config/api';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { Plus, MapPin, Star, Utensils, DollarSign } from 'lucide-react';
@@ -6,7 +7,7 @@ import { toast } from 'react-toastify';
 import { motion } from 'framer-motion';
 
 // Replace with env var in real usage
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = API_CONFIG.BASE_URL;
 
 interface Restaurant {
     _id: string;

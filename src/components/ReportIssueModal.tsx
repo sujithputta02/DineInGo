@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { API_CONFIG } from '../config/api';
 import { X, AlertCircle, Bug, Zap, Shield, CreditCard, Calendar, HelpCircle } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -33,7 +34,7 @@ const ReportIssueModal: React.FC<ReportIssueModalProps> = ({
     reporterName: userName || '',
   });
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = API_CONFIG.BASE_URL;
 
   const issueTypes = [
     { value: 'bug', label: 'Bug / Error', icon: Bug, color: 'text-red-600' },

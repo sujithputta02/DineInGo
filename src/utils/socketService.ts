@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { API_CONFIG } from '../config/api';
 
 class SocketService {
   private socket: Socket | null = null;
@@ -25,7 +26,7 @@ class SocketService {
     this.isConnecting = true;
     this.connectionAttempts++;
 
-    this.socket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001', {
+    this.socket = io(API_CONFIG.BASE_URL, {
       transports: ['polling', 'websocket'], // Start with polling to avoid WebSocket errors
       reconnection: true,
       reconnectionAttempts: 3,
@@ -47,7 +48,8 @@ class SocketService {
         this.isConnecting = false;
         // Only log if it's the first few attempts
         if (this.connectionAttempts <= 2) {
-}
+          // Log suppressed
+        }
       });
 
       this.socket.on('disconnect', (reason) => {
@@ -141,4 +143,4 @@ class SocketService {
   }
 }
 
-export default new SocketService(); 
+export default new SocketService();

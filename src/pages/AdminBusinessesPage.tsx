@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { motion } from 'framer-motion';
 import {
   Building2,
@@ -49,7 +50,7 @@ const AdminBusinessesPage: React.FC = () => {
 
   useEffect(() => {
     // Initialize Socket.IO connection
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001');
+    const newSocket = io(API_CONFIG.BASE_URL);
 
     // Load initial data
     loadBusinesses();

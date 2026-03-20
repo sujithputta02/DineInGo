@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { Wrench, Clock, RefreshCw } from 'lucide-react';
 import axios from 'axios';
 
@@ -6,12 +7,17 @@ const MaintenancePage: React.FC = () => {
   const [maintenanceInfo, setMaintenanceInfo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = API_CONFIG.BASE_URL;
 
   useEffect(() => {
     const fetchMaintenanceStatus = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/v1/admin/maintenance-status`);
+        interface MaintenanceResponse {
+          success: boolean;
+          maintenanceMessage?: string;
+          estimatedEndTime?: string;
+        }
+        const response = await axios.get<MaintenanceResponse>(`${API_URL}/api/v1/admin/maintenance-status`);
         if (response.data.success) {
           setMaintenanceInfo(response.data);
         }

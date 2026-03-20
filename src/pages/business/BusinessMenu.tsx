@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, Save, X } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
+import { API_CONFIG } from '../../config/api';
 
 interface MenuItem {
     name: string;
@@ -19,7 +20,7 @@ interface MenuProps {
     onUpdate: () => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = API_CONFIG.BASE_URL;
 
 const BusinessMenu: React.FC<MenuProps> = ({ restaurantId, currentMenu, onUpdate }) => {
     const [isAdding, setIsAdding] = useState(false);

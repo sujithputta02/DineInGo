@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { API_CONFIG } from '../config/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Trash2, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,7 +31,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
   const auth = useAuth();
   const { visibleEntities } = useEntity();
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = API_CONFIG.BASE_URL;
 
   // Scroll to bottom when messages change
   useEffect(() => {

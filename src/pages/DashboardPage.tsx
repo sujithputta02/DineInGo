@@ -44,6 +44,7 @@ import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { storeUserData } from "../dbUtils";
 import { bookingsApi, userPreferenceApi, normalizeImageUrl } from "../services/api";
+import { API_CONFIG } from "../config/api";
 import { toast } from "react-toastify";
 import { Location as GeoLocation, Event as AppEvent } from "../types";
 import { mockRestaurants, mockEvents } from "../utils/mockData";
@@ -901,8 +902,7 @@ export default function DashboardPage() {
 
         try {
           const timestamp = Date.now(); // Cache busting
-          const apiUrl =
-            import.meta.env.VITE_API_URL || "http://localhost:5001";
+          const apiUrl = API_CONFIG.BASE_URL;
 
 
           const [restaurantsResponse, businessesResponse] = await Promise.all([
@@ -974,7 +974,7 @@ if (userPreferences) {
 try {
   // Fetch events from unified endpoint (includes both Event collection and Business collection)
   const eventsResponse = await fetch(
-    `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/v1/events`,
+    `${API_CONFIG.BASE_URL}/api/v1/events`,
   ).catch(() => null);
 
   let allEvents: DashboardEvent[] = [];
@@ -1009,7 +1009,7 @@ try {
           }),
       time: event.time,
       location: event.location,
-      imageUrl: event.image || event.imageUrl,
+      imageUrl: normalizeImageUrl(event.image || event.imageUrl),
       price: event.price,
       category: event.category,
       organizer: event.organizer,

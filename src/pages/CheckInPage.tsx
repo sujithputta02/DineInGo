@@ -16,6 +16,7 @@ import {
 import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
+import { API_CONFIG } from '../config/api';
 
 const CheckInPage: React.FC = () => {
     const { bookingId } = useParams<{ bookingId: string }>();
@@ -29,7 +30,7 @@ const CheckInPage: React.FC = () => {
     useEffect(() => {
         const performCheckIn = async () => {
             try {
-                const response = await axios.post<any>(`${process.env.REACT_APP_API_URL || 'http://localhost:5001/api'}/bookings/${bookingId}/check-in`);
+                const response = await axios.post<any>(`${API_CONFIG.BASE_URL}/api/bookings/${bookingId}/check-in`);
 
                 if (response.data.success) {
                     const bookingData = response.data.booking;

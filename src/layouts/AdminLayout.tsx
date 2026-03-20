@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { Link, Outlet, useNavigate, useLocation, useParams } from 'react-router-dom';
 import {
   LayoutDashboard,
@@ -33,7 +34,7 @@ const AdminLayout: React.FC = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [openIssuesCount, setOpenIssuesCount] = useState(0);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = API_CONFIG.BASE_URL;
 
   useEffect(() => {
     // Fetch open issues count

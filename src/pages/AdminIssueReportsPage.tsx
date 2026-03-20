@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { useNavigate } from 'react-router-dom';
 import {
   Bug,
@@ -29,7 +30,7 @@ const AdminIssueReportsPage: React.FC = () => {
     priority: '',
   });
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+  const API_URL = API_CONFIG.BASE_URL;
 
   useEffect(() => {
     fetchIssueReports();

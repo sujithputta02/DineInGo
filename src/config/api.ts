@@ -1,7 +1,11 @@
 // API Configuration
 export const API_CONFIG = {
   // Backend API base URL
-  BASE_URL: import.meta.env.VITE_API_URL || 'http://localhost:5001',
+  // Backend API base URL with production-aware fallback
+  BASE_URL: import.meta.env.VITE_API_URL || 
+    (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app') 
+      ? 'https://dineingo-backend.onrender.com' 
+      : 'http://localhost:5001'),
   
   // API endpoints
   ENDPOINTS: {

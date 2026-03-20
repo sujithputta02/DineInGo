@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { API_CONFIG } from '../../config/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { createSession } from '../../utils/sessionGuard';
 import axios from 'axios';
@@ -7,7 +8,7 @@ import { ArrowLeft, Menu as MenuIcon, Map, Settings, Info } from 'lucide-react';
 import BusinessMenu from './BusinessMenu';
 import BusinessFloorPlan from './BusinessFloorPlan';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = API_CONFIG.BASE_URL;
 
 const ManageRestaurant: React.FC = () => {
     const { id } = useParams();

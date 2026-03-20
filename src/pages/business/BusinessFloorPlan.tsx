@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { API_CONFIG } from '../../config/api';
 import { Upload, Save, AlertCircle } from 'lucide-react';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -8,7 +9,7 @@ interface FloorPlanProps {
     onUpdate: () => void;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_URL = API_CONFIG.BASE_URL;
 
 const BusinessFloorPlan: React.FC<FloorPlanProps> = ({ restaurantId, onUpdate }) => {
     // Placeholder logic for now since full editor is complex

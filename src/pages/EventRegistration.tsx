@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { API_CONFIG } from '../config/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Heart, CheckCircle, MessageSquare, Star, Send, ThumbsUp, ThumbsDown } from 'lucide-react';
@@ -93,7 +94,7 @@ const EventRegistration: React.FC = () => {
     checkIfFavorite();
 
     // Initialize Socket.IO connection
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001');
+    const newSocket = io(API_CONFIG.BASE_URL);
     setSocket(newSocket);
 
     // Join event room for real-time updates
@@ -301,7 +302,7 @@ const EventRegistration: React.FC = () => {
 
   const fetchEvent = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}`);
 
       if (!response.ok) {
         if (response.status === 400 || response.status === 404) {
@@ -322,11 +323,11 @@ const EventRegistration: React.FC = () => {
       if (data.seatingLayout?.areas?.length > 0 || data.seatingLayout?.eventConfig?.concertAreas?.length > 0) {
         try {
           await fetch(
-            `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}/recalculate-areas`,
+            `${API_CONFIG.BASE_URL}/api/v1/events/${id}/recalculate-areas`,
             { method: 'POST' }
           );
           // Re-fetch with fresh counts
-          const fresh = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}`);
+          const fresh = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}`);
           if (fresh.ok) {
             const freshData = await fresh.json();
             setEvent(freshData);
@@ -354,7 +355,7 @@ const EventRegistration: React.FC = () => {
   const fetchReviews = async () => {
     try {
       setReviewsLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}/reviews`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}/reviews`);
       const data = await response.json();
       setReviews(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -372,7 +373,7 @@ const EventRegistration: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/reviews/${reviewId}/like`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/reviews/${reviewId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -403,7 +404,7 @@ const EventRegistration: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/reviews/${reviewId}/dislike`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/reviews/${reviewId}/dislike`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -449,7 +450,7 @@ const EventRegistration: React.FC = () => {
 
     try {
       setIsSubmittingReview(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}/reviews`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

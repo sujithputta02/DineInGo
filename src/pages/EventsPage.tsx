@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { useNavigate } from 'react-router-dom';
 import { Calendar, Clock, Users, MapPin, Loader } from 'lucide-react';
 import { toast } from 'react-toastify';
@@ -37,7 +38,7 @@ const EventsPage: React.FC = () => {
 
   const fetchEvents = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch events');

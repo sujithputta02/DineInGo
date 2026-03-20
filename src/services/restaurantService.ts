@@ -2,6 +2,7 @@ import { db } from '../firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import type { Restaurant as RestaurantType } from '../types';
 import Restaurant from '../models/Restaurant';
+import { API_CONFIG } from '../config/api';
 
 export const createRestaurant = async (restaurantData: any) => {
   try {
@@ -50,7 +51,7 @@ export const getRestaurantById = async (id: string) => {
         // If it's a MongoDB ObjectId, try business API first
         if (isObjectId) {
           console.log(`Fetching business restaurant with ObjectId: ${id}`);
-          response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/business/${id}?_t=${timestamp}`, {
+          response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/business/${id}?_t=${timestamp}`, {
             method: 'GET',
             mode: 'cors',
             cache: 'no-cache',
@@ -140,7 +141,7 @@ export const getRestaurantById = async (id: string) => {
         
         // Fallback to legacy restaurant API
         console.log(`Trying legacy restaurant API for ID: ${id}`);
-        response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/restaurants/${id}?_t=${timestamp}`, {
+        response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/restaurants/${id}?_t=${timestamp}`, {
           method: 'GET',
           mode: 'cors',
           cache: 'no-cache',

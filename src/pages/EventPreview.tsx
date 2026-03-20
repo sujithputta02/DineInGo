@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Ticket, CreditCard } from 'lucide-react';
@@ -58,7 +59,7 @@ const EventPreview: React.FC = () => {
 
   const fetchEvent = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}`);
       if (!response.ok) throw new Error('Failed to fetch event');
       const data = await response.json();
       setEvent(data);
@@ -103,7 +104,7 @@ const EventPreview: React.FC = () => {
 
       console.log('Sending booking data:', bookingData);
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/bookings`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -138,7 +139,7 @@ const EventPreview: React.FC = () => {
             updatePayload = { guests: numberOfGuests };
           }
 
-          const eventResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${event._id}/register`, {
+          const eventResponse = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${event._id}/register`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

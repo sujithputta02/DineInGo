@@ -33,6 +33,7 @@ import {
 } from 'recharts';
 import io from 'socket.io-client';
 import { adminApi } from '../utils/adminApi';
+import { API_CONFIG } from '../config/api';
 
 interface AdminStats {
   totalUsers: number;
@@ -102,7 +103,7 @@ const AdminDashboard: React.FC = () => {
     }
 
     // Initialize Socket.IO connection
-    const newSocket = io(import.meta.env.VITE_API_URL || 'http://localhost:5001');
+    const newSocket = io(API_CONFIG.BASE_URL);
     setSocket(newSocket);
 
     // Load initial data

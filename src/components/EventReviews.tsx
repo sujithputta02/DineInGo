@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 import { Star, Send, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
@@ -45,7 +46,7 @@ const EventReviews: React.FC<EventReviewsProps> = ({ eventId, hasAttended = fals
 
   const fetchReviews = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${eventId}/reviews`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${eventId}/reviews`);
       const data = await response.json();
       setReviews(data);
     } catch (error) {
@@ -57,7 +58,7 @@ const EventReviews: React.FC<EventReviewsProps> = ({ eventId, hasAttended = fals
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${eventId}/reviews/stats`);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${eventId}/reviews/stats`);
       const data = await response.json();
       setStats(data);
     } catch (error) {
@@ -84,7 +85,7 @@ const EventReviews: React.FC<EventReviewsProps> = ({ eventId, hasAttended = fals
     setSubmitting(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${eventId}/reviews`, {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${eventId}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import DineInGoLogo from '../components/DineInGoLogo';
 import { createSession, getSessionToken } from '../utils/sessionGuard';
+import { API_CONFIG } from '../config/api';
 
 const AdminLoginPage: React.FC = () => {
   const [step, setStep] = useState<'email' | 'otp'>('email');
@@ -38,7 +39,7 @@ const AdminLoginPage: React.FC = () => {
     setError(null);
     setSuccess(null);
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/admin/request-otp`, {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
@@ -64,7 +65,7 @@ const AdminLoginPage: React.FC = () => {
     setError(null);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/admin/verify-otp`, {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
@@ -100,7 +101,7 @@ const AdminLoginPage: React.FC = () => {
     setError(null);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/admin/request-otp`, {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
