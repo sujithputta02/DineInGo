@@ -1,5 +1,5 @@
 import nodemailer from 'nodemailer';
-import { createTransporter } from './emailService';
+import { createTransporter, emailService } from './emailService';
 import QRCode from 'qrcode';
 import path from 'path';
 
@@ -381,7 +381,7 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
 
         // Send email with PDF and logo attachments
         await transporter.sendMail({
-          from: `"DineInGo Events" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+          from: emailService.getSender("DineInGo Events"),
           to: email,
           subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString()}`,
           html: htmlBody,
@@ -527,7 +527,7 @@ export const sendCancellationEmail = async (booking: EventBooking, isEvent: bool
 
         // Send email with logo attachment
         await transporter.sendMail({
-          from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+          from: emailService.getSender(),
           to: email,
           subject: `Cancellation Confirmed - ${bookingName}`,
           html: htmlBody,
