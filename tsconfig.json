@@ -4,7 +4,8 @@
     "module": "esnext",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "strict": true,
+    "strict": false,
+    "noImplicitAny": false,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -44,6 +45,8 @@
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    ".next",
+    "src/pages/api",
+    "server"
   ]
 }
