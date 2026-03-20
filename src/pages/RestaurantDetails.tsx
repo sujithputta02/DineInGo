@@ -30,6 +30,10 @@ const RestaurantDetails = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("dineInGoDarkMode");
+    return saved === "true" ? true : false;
+  });
 
   // New review form state
   const [newRating, setNewRating] = useState(0);
@@ -354,10 +358,10 @@ const RestaurantDetails = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading details...</p>
+          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading details...</p>
         </div>
       </div>
     );
@@ -365,9 +369,9 @@ const RestaurantDetails = () => {
 
   if (error || (!restaurant && !event)) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="text-center">
-          <h2 className="text-2xl font-semibold text-gray-900">{type === 'restaurant' ? 'Restaurant' : 'Event'} not found</h2>
+          <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{type === 'restaurant' ? 'Restaurant' : 'Event'} not found</h2>
           <button
             onClick={() => navigate('/dashboard')}
             className="mt-4 inline-flex items-center gap-2 text-emerald-500 hover:text-emerald-600"
@@ -385,13 +389,15 @@ const RestaurantDetails = () => {
   // Render restaurant details
   if (restaurant) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
         {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="absolute top-3 md:top-4 left-3 md:left-4 z-30 p-2 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+          className={`absolute top-3 md:top-4 left-3 md:left-4 z-30 p-2 rounded-full shadow-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center ${
+            isDarkMode ? 'bg-gray-800/90 hover:bg-gray-800 text-white' : 'bg-white/90 hover:bg-white text-gray-700'
+          }`}
         >
-          <ArrowLeft size={20} className="text-gray-700" />
+          <ArrowLeft size={20} />
         </button>
 
         {/* Hero Section with Restaurant Image */}
@@ -406,37 +412,41 @@ const RestaurantDetails = () => {
             <div className="flex items-center gap-2 md:gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"
+                className={`p-2 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center ${
+                  isDarkMode ? 'hover:bg-gray-800' : 'hover:bg-gray-100'
+                }`}
               >
                 <ChevronLeft className="w-5 md:w-6 h-5 md:h-6" />
               </button>
-              <h1 className="text-base md:text-xl lg:text-2xl font-semibold">{restaurant.name}</h1>
+              <h1 className="text-base md:text-xl lg:text-2xl font-black tracking-tight">{restaurant.name}</h1>
             </div>
-            <p className="text-sm md:text-base lg:text-lg mb-2 mt-1 md:mt-2">{restaurant.cuisine?.join(', ')}</p>
+            <p className="text-sm md:text-base lg:text-lg mb-2 mt-1 md:mt-2 font-medium opacity-90">{restaurant.cuisine?.join(', ')}</p>
             <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 lg:gap-6 text-xs md:text-sm">
               <div className="flex items-center gap-2">
-                <Clock size={14} className="md:w-4 md:h-4" />
-                <span>{restaurant && isRestaurantOpen(restaurant) ? 'Open Now' : 'Closed'}</span>
+                <Clock size={14} className="md:w-4 md:h-4 text-emerald-400" />
+                <span className="font-semibold">{restaurant && isRestaurantOpen(restaurant) ? 'Open Now' : 'Closed'}</span>
               </div>
               <div className="flex items-center gap-2">
-                <MapPin size={14} className="md:w-4 md:h-4" />
+                <MapPin size={14} className="md:w-4 md:h-4 text-emerald-400" />
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-emerald-500 transition-colors line-clamp-1"
+                  className="hover:text-emerald-400 transition-colors line-clamp-1 font-semibold"
                 >
                   <span>{restaurant.address}</span>
                 </a>
               </div>
-              <div className="flex items-center gap-2 bg-black/30 px-2 md:px-3 py-1 rounded-full">
+              <div className={`flex items-center gap-2 px-2 md:px-3 py-1 rounded-full backdrop-blur-md ${
+                isDarkMode ? 'bg-white/10' : 'bg-black/30'
+              }`}>
                 {averageRating !== null ? (
                   <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-xl">
-                    <span className="text-emerald-400 text-base md:text-lg">★</span>
-                    <span className="text-base md:text-lg font-bold text-gray-900 dark:text-white">{averageRating}</span>
+                    <span className="text-yellow-400 font-bold">★</span>
+                    <span className="font-black text-white">{averageRating}</span>
                   </div>
                 ) : (
-                  <span className="text-xs font-semibold text-emerald-400">Not yet rated</span>
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Not yet rated</span>
                 )}
               </div>
             </div>
@@ -447,20 +457,22 @@ const RestaurantDetails = () => {
         <div className="max-w-7xl mx-auto px-3 md:px-4 py-6 md:py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Booking Section */}
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
-              <h2 className="text-2xl font-semibold mb-6">Make a Reservation</h2>
+            <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl p-6 sm:p-8 shadow-xl border mb-8 transition-all`}>
+              <h2 className={`text-2xl font-black mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}>Make a Reservation</h2>
 
               {/* Dino Progress Tracker */}
               <DinoStepper currentStep={0} />
 
               {/* Guest and Date Selection */}
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 mt-8">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Number of Guests</label>
+                  <label className={`block text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Number of Guests</label>
                   <select
                     value={selectedGuests}
                     onChange={(e) => setSelectedGuests(Number(e.target.value))}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className={`w-full p-4 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-bold ${
+                      isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                    } border-2`}
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
                       <option key={num} value={num}>{num} {num === 1 ? 'Guest' : 'Guests'}</option>
@@ -468,24 +480,16 @@ const RestaurantDetails = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Select Date</label>
+                  <label className={`block text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select Date</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className={`w-full p-4 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-bold ${
+                      isDarkMode ? 'bg-gray-700 border-gray-600 text-white' : 'bg-gray-50 border-gray-200 text-gray-900'
+                    } border-2`}
                     min={new Date().toISOString().split('T')[0]}
                     max={(() => { const d = new Date(); d.setDate(d.getDate() + 29); return d.toISOString().split('T')[0]; })()}
-                    disabled={false}
-                    onInput={e => {
-                      // Prevent manual typing of blocked dates
-                      const input = e.target as HTMLInputElement;
-                      if (blockedDates.includes(input.value)) {
-                        input.setCustomValidity('This date is fully booked.');
-                      } else {
-                        input.setCustomValidity('');
-                      }
-                    }}
                     style={blockedDates.includes(selectedDate) ? { borderColor: 'red' } : {}}
                     list="blocked-dates"
                   />
@@ -495,32 +499,34 @@ const RestaurantDetails = () => {
                     ))}
                   </datalist>
                   {blockedDates.includes(selectedDate) && (
-                    <div className="text-red-500 text-xs mt-1">This date is fully booked. Please select another date.</div>
+                    <div className="text-red-500 text-[10px] font-bold uppercase mt-2 tracking-wider">This date is fully booked.</div>
                   )}
                 </div>
               </div>
 
               {/* Time Slots */}
               {restaurant?.timeSlots && restaurant.timeSlots.length > 0 ? (
-                <div className="space-y-6">
+                <div className="space-y-8 mt-8">
                   {lunchSlots.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">Lunch</h3>
-                      <div className="grid grid-cols-3 gap-3">
+                      <h3 className={`text-sm font-black uppercase tracking-[0.2em] mb-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Lunch Expedition</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {lunchSlots.map((slot, index) => (
                           <button
                             key={index}
                             onClick={() => handleTimeSlotClick(slot.time)}
-                            className="p-3 text-center border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex flex-col items-center justify-center gap-1"
+                            className={`p-4 text-center rounded-2xl transition-all duration-300 flex flex-col items-center justify-center gap-1 border-2 ${
+                              isDarkMode 
+                                ? 'bg-gray-700/50 border-gray-600 text-white hover:border-emerald-500 hover:bg-emerald-500/10' 
+                                : 'bg-white border-gray-100 text-gray-900 hover:border-emerald-500 hover:bg-emerald-50 hover:shadow-lg'
+                            }`}
                             disabled={isPastSlot(slot) || blockedSlots.includes(slot.time)}
-                            style={isPastSlot(slot) || blockedSlots.includes(slot.time) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            style={isPastSlot(slot) || blockedSlots.includes(slot.time) ? { opacity: 0.3, cursor: 'not-allowed' } : {}}
                           >
-                            <span className="font-medium">{slot.time}</span>
+                            <span className="font-black text-lg">{slot.time}</span>
                             {slot.startTime && slot.endTime && (
-                              <span className="text-xs text-gray-500">{slot.startTime} - {slot.endTime}</span>
+                              <span className={`text-[10px] font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{slot.startTime} - {slot.endTime}</span>
                             )}
-                            {blockedSlots.includes(slot.time) && <span className="text-xs text-red-500">Blocked</span>}
-                            {isPastSlot(slot) && <span className="text-xs text-gray-400">Past</span>}
                           </button>
                         ))}
                       </div>
@@ -529,22 +535,24 @@ const RestaurantDetails = () => {
 
                   {dinnerSlots.length > 0 && (
                     <div>
-                      <h3 className="text-lg font-semibold mb-4">Dinner</h3>
-                      <div className="grid grid-cols-3 gap-3">
+                      <h3 className={`text-sm font-black uppercase tracking-[0.2em] mb-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>Dinner Hunt</h3>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {dinnerSlots.map((slot, index) => (
                           <button
                             key={index}
                             onClick={() => handleTimeSlotClick(slot.time)}
-                            className="p-3 text-center border border-gray-200 rounded-xl hover:border-emerald-500 hover:bg-emerald-50 transition-colors flex flex-col items-center justify-center gap-1"
+                            className={`p-4 text-center rounded-2xl transition-all duration-300 flex flex-col items-center justify-center gap-1 border-2 ${
+                              isDarkMode 
+                                ? 'bg-gray-700/50 border-gray-600 text-white hover:border-purple-500 hover:bg-purple-500/10' 
+                                : 'bg-white border-gray-100 text-gray-900 hover:border-purple-500 hover:bg-purple-50 hover:shadow-lg'
+                            }`}
                             disabled={isPastSlot(slot) || blockedSlots.includes(slot.time)}
-                            style={isPastSlot(slot) || blockedSlots.includes(slot.time) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+                            style={isPastSlot(slot) || blockedSlots.includes(slot.time) ? { opacity: 0.3, cursor: 'not-allowed' } : {}}
                           >
-                            <span className="font-medium">{slot.time}</span>
+                            <span className="font-black text-lg">{slot.time}</span>
                             {slot.startTime && slot.endTime && (
-                              <span className="text-xs text-gray-500">{slot.startTime} - {slot.endTime}</span>
+                              <span className={`text-[10px] font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{slot.startTime} - {slot.endTime}</span>
                             )}
-                            {blockedSlots.includes(slot.time) && <span className="text-xs text-red-500">Blocked</span>}
-                            {isPastSlot(slot) && <span className="text-xs text-gray-400">Past</span>}
                           </button>
                         ))}
                       </div>
@@ -552,10 +560,10 @@ const RestaurantDetails = () => {
                   )}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <div className="bg-gray-50 rounded-lg p-6">
-                    <h3 className="text-lg font-semibold text-gray-800 mb-2">Time Slots Not Available</h3>
-                    <p className="text-gray-600">The restaurant owner hasn't set up time slots yet. Please contact the restaurant directly to make a reservation.</p>
+                <div className="text-center py-10">
+                  <div className={`${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-3xl p-8 border-2 border-dashed ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+                    <h3 className={`text-xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Time Slots Not Available</h3>
+                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} font-medium`}>The restaurant owner hasn't set up time slots yet. Please contact the restaurant directly to make a reservation.</p>
                   </div>
                 </div>
               )}
@@ -563,22 +571,32 @@ const RestaurantDetails = () => {
 
             {/* Promotions Section */}
             {promotions && Array.isArray(promotions) && promotions.length > 0 && (
-              <div className="mb-8">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Tag className="text-emerald-500" size={24} />
-                  Active Offers & Happy Hours
+              <div className="mb-12">
+                <h3 className={`text-2xl font-black mb-6 flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <div className="w-10 h-10 rounded-xl bg-yellow-400/10 flex items-center justify-center text-yellow-500">
+                    <Tag size={20} />
+                  </div>
+                  Dino Deals & Offers
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {promotions.map((promo: any) => (
-                    <div key={promo._id} className="bg-emerald-50 border border-emerald-100 rounded-2xl p-4 flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center text-emerald-600 shadow-sm shrink-0">
-                        <Percent size={24} />
-                      </div>
-                      <div>
-                        <div className="font-bold text-emerald-900">{promo.title}</div>
-                        <p className="text-sm text-emerald-700 mb-2">{promo.description}</p>
-                        <div className="inline-block bg-emerald-600 text-white text-xs font-bold px-2 py-1 rounded">
-                          CODE: {promo.code}
+                    <div key={promo._id} className={`group relative overflow-hidden rounded-3xl p-6 transition-all duration-500 border-2 ${
+                      isDarkMode ? 'bg-zinc-800 border-zinc-700' : 'bg-emerald-50 border-emerald-100'
+                    }`}>
+                      <div className="relative z-10 flex items-start gap-4">
+                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:rotate-6 ${
+                          isDarkMode ? 'bg-zinc-700 text-emerald-400' : 'bg-white text-emerald-600'
+                        }`}>
+                          <Percent size={28} />
+                        </div>
+                        <div>
+                          <div className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-emerald-900'} mb-1`}>{promo.title}</div>
+                          <p className={`text-sm font-medium mb-4 ${isDarkMode ? 'text-gray-400' : 'text-emerald-700 opacity-80'}`}>{promo.description}</p>
+                          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest ${
+                            isDarkMode ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-emerald-600 text-white'
+                          }`}>
+                            CODE: {promo.code}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -588,81 +606,78 @@ const RestaurantDetails = () => {
             )}
 
             {/* Reviews Section */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-semibold flex items-center gap-2">
-                  <MessageSquare className="text-emerald-500" size={24} />
-                  Customer Reviews
+            <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl p-6 sm:p-8 shadow-xl border mb-8 transition-all`}>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+                <h2 className={`text-2xl font-black flex items-center gap-3 ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}>
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                    <MessageSquare size={20} />
+                  </div>
+                  Excavation Feedback
                 </h2>
-                <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl">
+                <div className={`flex items-center gap-4 px-5 py-3 rounded-2xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-emerald-50'}`}>
                   {averageRating ? (
-                    <>
-                      <StarRating rating={averageRating} size={20} />
-                      <span className="text-xl font-bold text-emerald-900">{averageRating}</span>
-                    </>
+                    <div className="flex items-center gap-3">
+                      <StarRating rating={averageRating} size={18} />
+                      <span className={`text-2xl font-black ${isDarkMode ? 'text-white' : 'text-emerald-900'}`}>{averageRating}</span>
+                    </div>
                   ) : null}
-                  <span className="text-emerald-600 text-sm">({reviews?.length || 0} reviews)</span>
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-emerald-600'}`}>({reviews?.length || 0} reviews)</span>
                 </div>
               </div>
 
               {/* Review Submission Form */}
-              <div className="mb-10 bg-gray-50 rounded-2xl p-6 border border-gray-100">
-                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Send className="text-emerald-500" size={18} />
-                  Share Your Experience
+              <div className={`mb-10 rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
+                <h3 className={`text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                  Leave Your Mark
                 </h3>
-                <form onSubmit={handleReviewSubmit} className="space-y-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-sm font-medium text-gray-700 mr-2">Your Rating:</span>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <div key={star} className="relative inline-block">
-                        {/* Left half of star (0.5 rating) */}
-                        <button
-                          type="button"
-                          onClick={() => setNewRating(star - 0.5)}
-                          onMouseEnter={() => setHoverRating(star - 0.5)}
-                          onMouseLeave={() => setHoverRating(0)}
-                          className="absolute left-0 top-0 w-1/2 h-full z-10"
-                          style={{ cursor: 'pointer' }}
-                        />
-                        {/* Right half of star (full rating) */}
-                        <button
-                          type="button"
-                          onClick={() => setNewRating(star)}
-                          onMouseEnter={() => setHoverRating(star)}
-                          onMouseLeave={() => setHoverRating(0)}
-                          className="absolute right-0 top-0 w-1/2 h-full z-10"
-                          style={{ cursor: 'pointer' }}
-                        />
-                        {/* Star display */}
-                        <div className="relative pointer-events-none">
-                          {(hoverRating || newRating) >= star ? (
-                            <Star size={28} className="text-yellow-400 fill-yellow-400" />
-                          ) : (hoverRating || newRating) >= star - 0.5 ? (
-                            <div className="relative">
-                              <Star size={28} className="text-gray-300" />
-                              <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
-                                <Star size={28} className="text-yellow-400 fill-yellow-400" />
+                <form onSubmit={handleReviewSubmit} className="space-y-6">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Rating:</span>
+                    <div className="flex items-center gap-1.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <div key={star} className="relative cursor-pointer group">
+                          <button
+                            type="button"
+                            onClick={() => setNewRating(star - 0.5)}
+                            onMouseEnter={() => setHoverRating(star - 0.5)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="absolute left-0 top-0 w-1/2 h-full z-10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setNewRating(star)}
+                            onMouseEnter={() => setHoverRating(star)}
+                            onMouseLeave={() => setHoverRating(0)}
+                            className="absolute right-0 top-0 w-1/2 h-full z-10"
+                          />
+                          <div className="transition-transform group-hover:scale-110 active:scale-95">
+                            {(hoverRating || newRating) >= star ? (
+                              <Star size={28} className="text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]" />
+                            ) : (hoverRating || newRating) >= star - 0.5 ? (
+                              <div className="relative">
+                                <Star size={28} className="text-gray-300" />
+                                <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+                                  <Star size={28} className="text-yellow-400 fill-yellow-400" />
+                                </div>
                               </div>
-                            </div>
-                          ) : (
-                            <Star size={28} className="text-gray-300" />
-                          )}
+                            ) : (
+                              <Star size={28} className={`${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                    <span className="ml-2 text-sm font-semibold text-gray-600">
-                      {newRating > 0 ? newRating.toFixed(1) : '0.0'}
-                    </span>
+                      ))}
+                    </div>
                   </div>
                   <div className="relative">
                     <textarea
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Tell us about your visit, the food, and the service..."
-                      className="w-full p-4 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
+                      placeholder="What were the highlights of your culinary expedition?"
+                      className={`w-full p-5 pr-14 border-2 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[120px] text-base font-medium transition-all ${
+                        isDarkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-100 text-gray-900'
+                      }`}
                     />
-                    <div className="absolute bottom-2 right-2">
+                    <div className="absolute bottom-3 right-3 scale-110">
                       <EmojiPicker
                         onEmojiSelect={(emoji) => setNewComment(prev => prev + emoji)}
                       />
@@ -671,48 +686,51 @@ const RestaurantDetails = () => {
                   <button
                     type="submit"
                     disabled={isSubmittingReview}
-                    className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl hover:bg-emerald-600 transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
+                    className="group relative bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm py-4 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-95 disabled:opacity-50 overflow-hidden"
                   >
-                    {isSubmittingReview ? (
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    ) : null}
-                    Submit Review
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <span className="relative flex items-center justify-center gap-3">
+                      {isSubmittingReview ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
+                      Post Review
+                    </span>
                   </button>
                 </form>
               </div>
 
               {reviewsLoading ? (
-                <div className="flex justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+                <div className="flex justify-center py-16">
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500"></div>
                 </div>
               ) : (!reviews || !Array.isArray(reviews) || reviews.length === 0) ? (
-                <div className="text-center py-12 bg-gray-50 rounded-xl">
-                  <p className="text-gray-500">No reviews yet. Be the first to visit!</p>
+                <div className={`text-center py-16 rounded-3xl border-2 border-dashed ${isDarkMode ? 'bg-gray-700/20 border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
+                  <p className={`text-lg font-bold opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No reviews yet. Be the first to visit!</p>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-8">
                   {reviews.map((review) => (
-                    <div key={review._id} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
+                    <div key={review._id} className={`p-6 rounded-3xl border-2 transition-all ${isDarkMode ? 'bg-gray-700/20 border-gray-700 hover:border-emerald-500/20' : 'bg-white border-gray-50 hover:border-emerald-100'}`}>
+                      <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-4">
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg ${
+                            isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500 text-white'
+                          }`}>
                             {review.userName?.charAt(0) || 'U'}
                           </div>
                           <div>
-                            <div className="font-semibold text-gray-900">{review.userName || 'Anonymous'}</div>
-                            <div className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</div>
+                            <div className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{review.userName || 'Anonymous'}</div>
+                            <div className={`text-[10px] font-bold uppercase tracking-widest opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Authenticated Explorer • {new Date(review.createdAt).toLocaleDateString()}</div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-1">
+                        <div className="scale-90">
                           <StarRating rating={review.rating} size={14} />
                         </div>
                       </div>
-                      <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
+                      <p className={`text-base font-medium leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.comment}</p>
                       {review.reply && (
-                        <div className="mt-4 bg-gray-50 rounded-xl p-4 border-l-4 border-emerald-500">
-                          <div className="text-xs font-bold text-emerald-700 mb-1">Owner Response</div>
-                          <p className="text-gray-600 text-sm">
-                            {typeof review.reply === 'object' ? review.reply.text : review.reply}
+                        <div className={`mt-6 rounded-2xl p-5 border-l-4 border-emerald-500 ${isDarkMode ? 'bg-gray-700/40 text-gray-400' : 'bg-emerald-50/50 text-emerald-800'}`}>
+                          <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-60">Owner Response</div>
+                          <p className="text-sm font-medium italic">
+                            "{typeof review.reply === 'object' ? review.reply.text : review.reply}"
                           </p>
                         </div>
                       )}
@@ -725,41 +743,50 @@ const RestaurantDetails = () => {
 
           {/* Restaurant Info Section */}
           <div className="col-span-1">
-            <div className="bg-white rounded-2xl p-6 shadow-sm sticky top-8">
-              <h2 className="text-2xl font-semibold mb-6">About {restaurant.name}</h2>
-              <p className="text-gray-600 mb-6">
-                {restaurant.name} is located in {restaurant.location.city}, offering {restaurant.cuisine?.join(', ')} cuisine.
-                {restaurant && isRestaurantOpen(restaurant) ? " We're currently open and ready to serve you!" : " We're currently closed."}
+            <div className={`sticky top-8 rounded-[2.5rem] p-8 shadow-2xl border-2 transition-all duration-500 ${
+              isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'
+            }`}>
+              <h2 className={`text-3xl font-black mb-6 tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>The Site</h2>
+              <p className={`text-base font-medium leading-relaxed mb-8 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                {restaurant.name} is a premier dining site in {restaurant.location.city}, offering {restaurant.cuisine?.join(', ')} cuisine.
+                {restaurant && isRestaurantOpen(restaurant) ? " We're currently active and ready for excavation!" : " This site is currently dormant."}
               </p>
 
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <MapPin className="text-emerald-500" size={20} />
-                  <span className="text-gray-600">{restaurant.address}</span>
+              <div className="space-y-6">
+                <div className="flex items-center gap-4 group/item">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
+                    <MapPin size={22} />
+                  </div>
+                  <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{restaurant.address}</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Phone className="text-emerald-500" size={20} />
-                  <span className="text-gray-600">{restaurant.phoneNumber}</span>
+                <div className="flex items-center gap-4 group/item">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
+                    <Phone size={22} />
+                  </div>
+                  <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{restaurant.phoneNumber}</span>
                 </div>
               </div>
 
-              {/* Add the map component */}
-              <div className="mt-6">
+              {/* Keep the map component */}
+              <div className="mt-10 rounded-3xl overflow-hidden border-2 border-gray-100 dark:border-gray-700 shadow-inner group/map grayscale hover:grayscale-0 transition-all duration-700">
                 <RestaurantMap
                   address={restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`}
                   name={restaurant.name}
                 />
               </div>
 
-              <div className="mt-8">
+              <div className="mt-10">
                 <button
                   onClick={toggleFavorite}
-                  className={`w-full flex items-center justify-center gap-2 p-3 border-2 rounded-xl transition-colors ${isFavorite
-                    ? 'bg-red-50 border-red-500 text-red-500'
-                    : 'border-emerald-500 text-emerald-500 hover:bg-emerald-50'
+                  className={`w-full group flex items-center justify-center gap-3 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all duration-500 border-2 active:scale-95 ${
+                    isFavorite
+                      ? 'bg-rose-500 border-rose-400 text-white shadow-xl shadow-rose-500/20'
+                      : isDarkMode
+                        ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                        : 'border-emerald-500 text-emerald-500 hover:bg-emerald-50 shadow-lg shadow-emerald-500/5'
                     }`}
                 >
-                  <Heart fill={isFavorite ? "currentColor" : "none"} />
+                  <Heart fill={isFavorite ? "currentColor" : "none"} className={`w-5 h-5 ${isFavorite ? 'animate-bounce' : ''}`} />
                   <span>{isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}</span>
                 </button>
               </div>

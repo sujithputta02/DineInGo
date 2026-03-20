@@ -45,7 +45,7 @@ import { auth, db } from "../firebase";
 import { storeUserData } from "../dbUtils";
 import { bookingsApi, userPreferenceApi } from "../services/api";
 import { toast } from "react-toastify";
-import { Location, Event as AppEvent } from "../types";
+import { Location as GeoLocation, Event as AppEvent } from "../types";
 import { mockRestaurants, mockEvents } from "../utils/mockData";
 import { GeocodingService } from "../services/geocodingService";
 import { indianCities } from "../utils/indianCities";
@@ -68,6 +68,8 @@ import EmojiPicker from "../components/EmojiPicker";
 import { menuApi } from "../services/api";
 import { isRestaurantOpen } from "../utils/openStatus";
 import DinoDailyMorsels from "../components/DinoDailyMorsels";
+import { PremiumRestaurantCard } from "../components/PremiumRestaurantCard";
+import { PremiumEventCard } from "../components/PremiumEventCard";
 
 interface UserData {
   uid: string;
@@ -75,7 +77,7 @@ interface UserData {
   displayName: string;
   name: string;
   photoURL?: string | null;
-  location: Location;
+  location: GeoLocation;
   createdAt: Date;
   lastLogin: Date;
   avatars?: string[];
@@ -677,7 +679,7 @@ interface FavoriteItem {
   id: string;
   name: string;
   image: string;
-  location: Location;
+  location: GeoLocation;
   type: "restaurant" | "event" | "location";
   rating?: number;
   cuisine?: string[];
@@ -690,7 +692,7 @@ interface FavoriteItem {
   description?: string;
 }
 
-const defaultLocation: Location = {
+const defaultLocation: GeoLocation = {
   city: "Mumbai",
   state: "Maharashtra",
   country: "India",
@@ -848,6 +850,8 @@ export default function DashboardPage() {
     })),
   ];
 
+
+
   // Reference to the fetchBookingsFromAPI function defined below
 
   // Add this validation function before the handleAvatarSelect function
@@ -889,29 +893,29 @@ export default function DashboardPage() {
               setUserPreferences(prefs.data);
             }
           } catch (prefError) {
-            console.error("Error fetching user preferences:", prefError);
+            // Error fetching user preferences suppressed
           }
         }
 
         // Fetch restaurants from both APIs
-        console.log("Starting to fetch restaurants...");
+
         try {
           const timestamp = Date.now(); // Cache busting
           const apiUrl =
             import.meta.env.VITE_API_URL || "http://localhost:5001";
-          console.log("API URL:", apiUrl);
+
 
           const [restaurantsResponse, businessesResponse] = await Promise.all([
             fetch(`${apiUrl}/api/v1/restaurants?_t=${timestamp}`).catch(
               (err) => {
-                console.log("Restaurants API error:", err);
+
                 return null;
               },
             ),
             fetch(
               `${apiUrl}/api/v1/business?type=restaurant&_t=${timestamp}`,
             ).catch((err) => {
-              console.log("Business API error:", err);
+
               return null;
             }),
           ]);
@@ -919,10 +923,10 @@ export default function DashboardPage() {
           let allRestaurants: Restaurant[] = []; // Start with empty array
 
           // Add new businesses (restaurants) FIRST to prioritize them
-          console.log("Business response status:", businessesResponse?.status);
+
           if (businessesResponse && businessesResponse.ok) {
             const businessData = await businessesResponse.json();
-            console.log("Raw business API response:", businessData);
+
             const businessRestaurants = (businessData.data || []).map(
               (b: any) => ({
                 ...b,
@@ -930,3689 +934,2927 @@ export default function DashboardPage() {
               }),
             );
             allRestaurants = [...businessRestaurants];
-            console.log(
-              "Fetched businesses:",
-              businessRestaurants.length,
-              "restaurants",
-            );
-            console.log(
-              "Business restaurants:",
-              businessRestaurants.map((r: any) => r.name),
-            );
           } else {
-            console.log(
-              "Business API failed or not available. Response:",
-              businessesResponse,
-            );
+            // Business API response was not OK
           }
 
-          // Add legacy restaurants if API is available
-          console.log(
-            "Restaurants response status:",
-            restaurantsResponse?.status,
-          );
-          if (restaurantsResponse && restaurantsResponse.ok) {
-            const resData = await restaurantsResponse.json();
-            const apiRestaurants = (resData.data || []).map((r: any) => ({
-              ...r,
-              id: r._id || r.id, // Ensure id is set
-            }));
-            allRestaurants = [...allRestaurants, ...apiRestaurants];
-            console.log("Added legacy restaurants:", apiRestaurants.length);
-          }
 
-          // Add mock data LAST as fallback/examples
-          allRestaurants = [...allRestaurants, ...mockRestaurants];
+// Add legacy restaurants if API is available
 
-          // Sort restaurants based on preferences if available
-          if (userPreferences) {
-            allRestaurants.sort((a, b) => {
-              const scoreA = getPersonalizationScore(a, userPreferences);
-              const scoreB = getPersonalizationScore(b, userPreferences);
-              return scoreB - scoreA;
-            });
-          }
+if (restaurantsResponse && restaurantsResponse.ok) {
+  const resData = await restaurantsResponse.json();
+  const apiRestaurants = (resData.data || []).map((r: any) => ({
+    ...r,
+    id: r._id || r.id, // Ensure id is set
+  }));
+  allRestaurants = [...allRestaurants, ...apiRestaurants];
+
+}
+
+// Add mock data LAST as fallback/examples
+allRestaurants = [...allRestaurants, ...mockRestaurants];
+
+// Sort restaurants based on preferences if available
+if (userPreferences) {
+  allRestaurants.sort((a, b) => {
+    const scoreA = getPersonalizationScore(a, userPreferences);
+    const scoreB = getPersonalizationScore(b, userPreferences);
+    return scoreB - scoreA;
+  });
+}
 
           setRestaurants(allRestaurants);
-          console.log("Total restaurants loaded:", allRestaurants.length);
-          console.log("First restaurant:", allRestaurants[0]?.name);
-          console.log(
-            "All restaurant names:",
-            allRestaurants.map((r: any) => r.name),
-          );
         } catch (error) {
-          console.error("Error fetching restaurants:", error);
           setRestaurants(mockRestaurants);
         }
 
-        // Fetch events from both APIs (legacy events + new businesses)
-        try {
-          // Fetch events from unified endpoint (includes both Event collection and Business collection)
-          const eventsResponse = await fetch(
-            `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/v1/events`,
-          ).catch(() => null);
+// Fetch events from both APIs (legacy events + new businesses)
+try {
+  // Fetch events from unified endpoint (includes both Event collection and Business collection)
+  const eventsResponse = await fetch(
+    `${import.meta.env.VITE_API_URL || "http://localhost:5001"}/api/v1/events`,
+  ).catch(() => null);
 
-          let allEvents: DashboardEvent[] = [];
+  let allEvents: DashboardEvent[] = [];
 
-          if (eventsResponse && eventsResponse.ok) {
-            const data = await eventsResponse.json();
-            const apiEvents = (data.data || data).map((event: any) => ({
-              id: event._id,
-              title: event.title,
-              description: event.description,
-              date:
-                event.startDate && event.endDate
-                  ? (() => {
-                      const start = new Date(event.startDate);
-                      const end = new Date(event.endDate);
-                      const isSameDay =
-                        start.toDateString() === end.toDateString();
-                      if (isSameDay) {
-                        return start.toLocaleDateString("en-US", {
-                          year: "numeric",
-                          month: "long",
-                          day: "numeric",
-                        });
-                      } else {
-                        return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
-                      }
-                    })()
-                  : new Date(event.date).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }),
-              time: event.time,
-              location: event.location,
-              imageUrl: event.image || event.imageUrl,
-              price: event.price,
-              category: event.category,
-              organizer: event.organizer,
-              capacity: event.capacity,
-              registeredCount: event.registeredCount || 0,
-            }));
-            allEvents = apiEvents;
-          }
+  if (eventsResponse && eventsResponse.ok) {
+    const data = await eventsResponse.json();
+    const apiEvents = (data.data || data).map((event: any) => ({
+      id: event._id,
+      title: event.title,
+      description: event.description,
+      date:
+        event.startDate && event.endDate
+          ? (() => {
+            const start = new Date(event.startDate);
+            const end = new Date(event.endDate);
+            const isSameDay =
+              start.toDateString() === end.toDateString();
+            if (isSameDay) {
+              return start.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              });
+            } else {
+              return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} - ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+            }
+          })()
+          : new Date(event.date).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
+      time: event.time,
+      location: event.location,
+      imageUrl: event.image || event.imageUrl,
+      price: event.price,
+      category: event.category,
+      organizer: event.organizer,
+      capacity: event.capacity,
+      registeredCount: event.registeredCount || 0,
+    }));
+    allEvents = apiEvents;
+  }
 
-          setEvents(allEvents);
-          console.log("Total events loaded:", allEvents.length);
-        } catch (error) {
-          console.error("Error fetching events:", error);
-          setEvents([]);
-        }
+  setEvents(allEvents);
 
-        // Check if the user's photoURL is valid
-        if (
-          userData &&
-          userData.photoURL &&
-          !isValidImageUrl(userData.photoURL)
-        ) {
-          console.log("Invalid image URL detected, switching to initials");
-          // Force initials avatar if image URL doesn't seem valid
-          await forceInitialsAvatar();
-        }
+} catch (error) {
+  setEvents([]);
+}
 
-        // Fetch bookings if user is authenticated
-        if (auth.currentUser) {
-          await fetchBookingsFromAPI();
-        } else {
-          setBookings([]);
-        }
+// Check if the user's photoURL is valid
+if (
+  userData &&
+  userData.photoURL &&
+  !isValidImageUrl(userData.photoURL)
+) {
+
+  // Force initials avatar if image URL doesn't seem valid
+  await forceInitialsAvatar();
+}
+
+// Fetch bookings if user is authenticated
+if (auth.currentUser) {
+  await fetchBookingsFromAPI();
+} else {
+  setBookings([]);
+}
       } catch (error) {
-        console.error("Error loading initial data:", error);
-        setError("Failed to load data. Please try again.");
-      } finally {
-        setIsLoading(false);
-      }
+  setError("Failed to load data. Please try again.");
+} finally {
+  setIsLoading(false);
+}
     };
 
-    loadUserWithValidation();
+loadUserWithValidation();
   }, []);
 
-  // Fetch real-time ratings for business restaurants (ObjectIDs only)
-  useEffect(() => {
-    const fetchRealRatings = async () => {
-      if (restaurants.length === 0) return;
+// Fetch real-time ratings for business restaurants (ObjectIDs only)
+useEffect(() => {
+  const fetchRealRatings = async () => {
+    if (restaurants.length === 0) return;
 
-      // Business IDs are typically 24-char ObjectIDs
-      const businessRestaurants = restaurants.filter(
-        (r) => r.id && r.id.length >= 24,
-      );
-      if (businessRestaurants.length === 0) return;
+    // Business IDs are typically 24-char ObjectIDs
+    const businessRestaurants = restaurants.filter(
+      (r) => r.id && r.id.length >= 24,
+    );
+    if (businessRestaurants.length === 0) return;
 
-      try {
-        const { businessApi } = await import("../services/api");
+    try {
+      const { businessApi } = await import("../services/api");
 
-        const ratingPromises = businessRestaurants.map(async (restaurant) => {
-          try {
-            const stats = await businessApi.getRatingStats(restaurant.id);
-            return {
-              id: restaurant.id,
-              averageRating: stats.averageRating,
-            };
-          } catch (err) {
-            return { id: restaurant.id, averageRating: null };
-          }
-        });
-
-        const results = await Promise.all(ratingPromises);
-
-        setRestaurants((prev) =>
-          prev.map((r) => {
-            const match = results.find((res) => res.id === r.id);
-            if (
-              match &&
-              match.averageRating !== undefined &&
-              match.averageRating !== null
-            ) {
-              return { ...r, averageRating: match.averageRating };
-            }
-            return r;
-          }),
-        );
-      } catch (err) {
-        console.error("Failed to fetch real-time ratings:", err);
-      }
-    };
-
-    fetchRealRatings();
-  }, [restaurants.length > 0]);
-
-  // Force reload bookings from API when bookings section is opened
-  useEffect(() => {
-    if (activeSection === "bookings" && auth.currentUser) {
-      console.log("Bookings section opened - fetching from API");
-      fetchBookingsFromAPI();
-    }
-  }, [activeSection]);
-
-  // Update the user auth state handling to use avatar URLs
-  useEffect(() => {
-    console.log("Setting up auth state listener in dashboard...");
-    setAuthLoading(true);
-
-    // Check API connectivity
-    const checkApiConnection = async () => {
-      try {
-        const { checkApiConnection } = await import("../services/api");
-        const result = await checkApiConnection();
-        if (!result.success) {
-          console.error("API connection check failed:", result.message);
-          toast.error(
-            "Cannot connect to server. User activities may not be tracked properly.",
-          );
-        } else {
-          console.log("API connection check successful:", result.data);
-        }
-      } catch (error) {
-        console.error("Error checking API connection:", error);
-      }
-    };
-    checkApiConnection();
-
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
+      const ratingPromises = businessRestaurants.map(async (restaurant) => {
         try {
-          // Track user login activity after page refresh
-          try {
-            const { userAPI } = await import("../services/api");
-            // Only track login after page refresh if we're not already in a session
-            // This prevents duplicate login activities
-            if (
-              !sessionStorage.getItem("lastLoginTracked") ||
-              Date.now() -
-                parseInt(sessionStorage.getItem("lastLoginTracked") || "0") >
-                1800000
-            ) {
-              // 30 minutes
-              await userAPI.loginUser(user.uid, "refresh");
-              sessionStorage.setItem("lastLoginTracked", Date.now().toString());
-            }
-          } catch (error) {
-            console.error("Error tracking login activity on refresh:", error);
-            // Continue with session even if tracking fails
-          }
-
-          // Load profile data from MongoDB (primary source of truth)
-          try {
-            const profileRes = await fetch(`/api/v1/profile/${user.uid}`);
-            if (profileRes.ok) {
-              const profile = await profileRes.json();
-              console.log("Loaded profile from MongoDB:", profile);
-
-              // Use MongoDB data as the source of truth
-              const avatarUrl =
-                profile.currentAvatar || profile.photoURL || profile.avatarUrl;
-              const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
-
-              const newUserData = {
-                uid: user.uid,
-                email: user.email || profile.email || "",
-                displayName:
-                  profile.displayName ||
-                  user.displayName ||
-                  user.email?.split("@")[0] ||
-                  "",
-                name:
-                  profile.fullName ||
-                  profile.name ||
-                  user.displayName ||
-                  user.email?.split("@")[0] ||
-                  "",
-                photoURL: fullAvatarUrl,
-                avatars: (profile.avatars || [])
-                  .map((url: string) => API_CONFIG.getAssetUrl(url))
-                  .filter(Boolean),
-                location: profile.locationSettings?.city
-                  ? {
-                      city: profile.locationSettings.city,
-                      state: profile.locationSettings.state || "",
-                      country: profile.locationSettings.country || "India",
-                    }
-                  : defaultLocation,
-                lastLogin: new Date(),
-                createdAt: profile.createdAt
-                  ? new Date(profile.createdAt)
-                  : new Date(),
-              };
-
-              setUserData(newUserData);
-
-              // Set language from profile
-              if (
-                profile.language &&
-                [
-                  "english",
-                  "hindi",
-                  "tamil",
-                  "kannada",
-                  "telugu",
-                  "malayalam",
-                ].includes(profile.language)
-              ) {
-                setLanguage(profile.language as Language);
-              }
-
-              // Sync to Firestore for backup (optional)
-              await setDoc(
-                doc(db, "users", user.uid),
-                {
-                  displayName: newUserData.displayName,
-                  name: newUserData.name,
-                  photoURL: newUserData.photoURL,
-                  email: newUserData.email,
-                  updatedAt: new Date(),
-                },
-                { merge: true },
-              );
-            } else if (profileRes.status === 404) {
-              // Profile doesn't exist in MongoDB, create it
-              console.log("Profile not found in MongoDB, creating...");
-              const newUserData = {
-                uid: user.uid,
-                email: user.email || "",
-                displayName:
-                  user.displayName || user.email?.split("@")[0] || "",
-                name: user.displayName || user.email?.split("@")[0] || "",
-                photoURL: null,
-                location: defaultLocation,
-                lastLogin: new Date(),
-                createdAt: new Date(),
-              };
-
-              // Create profile in MongoDB
-              await fetch(`/api/v1/profile/${user.uid}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  uid: user.uid,
-                  displayName: newUserData.displayName,
-                  fullName: newUserData.name,
-                  email: newUserData.email,
-                  phoneNumber: "",
-                  avatars: [],
-                  currentAvatar: null,
-                  address: {},
-                }),
-              });
-
-              setUserData(newUserData);
-            }
-          } catch (profileError) {
-            console.error("Error loading profile from MongoDB:", profileError);
-
-            // Fallback to Firestore if MongoDB fails
-            const userDoc = await getDoc(doc(db, "users", user.uid));
-            if (userDoc.exists()) {
-              const parsedData = userDoc.data();
-              const newUserData = {
-                uid: user.uid,
-                email: user.email || parsedData.email || "",
-                displayName:
-                  user.displayName ||
-                  parsedData.displayName ||
-                  user.email?.split("@")[0] ||
-                  "",
-                name:
-                  user.displayName ||
-                  parsedData.name ||
-                  user.email?.split("@")[0] ||
-                  "",
-                photoURL:
-                  parsedData.photoURL !== undefined
-                    ? parsedData.photoURL
-                    : null,
-                location: parsedData.location || defaultLocation,
-                lastLogin: new Date(),
-                createdAt: parsedData.createdAt || new Date(),
-              };
-              setUserData(newUserData);
-            } else {
-              // Create new user data
-              const newUserData = {
-                uid: user.uid,
-                email: user.email || "",
-                displayName:
-                  user.displayName || user.email?.split("@")[0] || "",
-                name: user.displayName || user.email?.split("@")[0] || "",
-                photoURL: null,
-                location: defaultLocation,
-                lastLogin: new Date(),
-                createdAt: new Date(),
-              };
-              setUserData(newUserData);
-            }
-          }
-        } catch (error) {
-          console.error("Error in auth listener:", error);
-        } finally {
-          setAuthLoading(false);
-        }
-      } else {
-        setAuthLoading(false);
-        navigate("/login");
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
-
-  // Real-time profile updates via Socket.IO
-  useEffect(() => {
-    if (!userData?.uid) return;
-
-    // Connect to Socket.IO only once
-    const socket = socketService.connect();
-
-    // Handler for profile updates
-    const handleProfileUpdate = (data: any) => {
-      if (data.uid === userData.uid) {
-        console.log("Profile updated via Socket.IO:", data.profile);
-        const profile = data.profile;
-
-        // Update local state with the latest profile data
-        setUserData((prev) => {
-          if (!prev) return null;
+          const stats = await businessApi.getRatingStats(restaurant.id);
           return {
-            ...prev,
-            displayName: profile.displayName || prev.displayName,
-            name: profile.fullName || profile.name || prev.name,
-            photoURL:
-              profile.currentAvatar || profile.avatarUrl || profile.photoURL,
-            avatars: profile.avatars || prev.avatars,
+            id: restaurant.id,
+            averageRating: stats.averageRating,
           };
-        });
-
-        toast.info("Profile updated!", { autoClose: 2000 });
-      }
-    };
-
-    socket?.on("profile_updated", handleProfileUpdate);
-
-    return () => {
-      // Only remove the listener, don't disconnect (other components might be using it)
-      socket?.off("profile_updated", handleProfileUpdate);
-    };
-  }, [userData?.uid]);
-
-  // Language is now loaded from MongoDB profile (see auth useEffect above)
-  // No need for localStorage anymore
-
-  // Fetch favorites from backend when userData, restaurants, or events change
-  useEffect(() => {
-    const fetchFavorites = async () => {
-      if (userData?.uid) {
-        try {
-          const favs = await favoritesApi.get(userData.uid);
-          const newFavorites: FavoriteItem[] = [];
-          if (favs.restaurantIds) {
-            favs.restaurantIds.forEach((rid: string) => {
-              const rest = restaurants.find((r) => r.id === rid);
-              if (rest) {
-                newFavorites.push({
-                  id: rest.id,
-                  name: rest.name,
-                  image: rest.image,
-                  location: rest.location,
-                  type: "restaurant",
-                  rating: rest.rating,
-                  cuisine: rest.cuisine,
-                  priceLevel: rest.priceLevel,
-                  openNow: rest.openNow,
-                });
-              }
-            });
-          }
-          if (favs.eventIds) {
-            favs.eventIds.forEach((eid: string) => {
-              const ev = events.find((e) => e.id === eid);
-              if (ev) {
-                newFavorites.push({
-                  id: ev.id,
-                  name: ev.title,
-                  image: ev.imageUrl,
-                  location: ev.location as any,
-                  type: "event",
-                  date: ev.date,
-                  time: ev.time,
-                  price: ev.price,
-                  category: ev.category,
-                  description: ev.description,
-                });
-              }
-            });
-          }
-          setFavorites(newFavorites);
         } catch (err) {
-          console.error("Failed to fetch favorites:", err);
+          return { id: restaurant.id, averageRating: null };
         }
-      }
-    };
-    fetchFavorites();
-  }, [userData, restaurants, events]);
-
-  const fetchUserReviews = async () => {
-    if (!userData?.uid) return;
-    setIsReviewsLoading(true);
-    try {
-      const { businessApi } = await import("../services/api");
-      const reviews = await businessApi.getUserReviews(userData.uid);
-      setUserReviews(reviews);
-    } catch (err) {
-      console.error("Error fetching user reviews:", err);
-      toast.error("Failed to load your reviews");
-    } finally {
-      setIsReviewsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (activeSection === "reviews" && userData?.uid) {
-      fetchUserReviews();
-    }
-  }, [activeSection, userData?.uid]);
-
-  const handleUpdateReview = async (reviewId: string) => {
-    if (editRating === 0) {
-      toast.error("Please select a rating");
-      return;
-    }
-    if (!editComment.trim()) {
-      toast.error("Please enter a comment");
-      return;
-    }
-
-    try {
-      const { businessApi } = await import("../services/api");
-      await businessApi.updateReview(reviewId, {
-        rating: editRating,
-        comment: editComment.trim(),
       });
-      toast.success("Review updated successfully");
-      setEditingReviewId(null);
-      fetchUserReviews();
-    } catch (err) {
-      console.error("Error updating review:", err);
-      toast.error("Failed to update review");
-    }
-  };
 
-  const handleDeleteReview = async (reviewId: string) => {
-    if (!window.confirm("Are you sure you want to delete this review?")) return;
+      const results = await Promise.all(ratingPromises);
 
-    try {
-      const { businessApi } = await import("../services/api");
-      await businessApi.deleteReview(reviewId);
-      toast.success("Review deleted successfully");
-      fetchUserReviews();
-    } catch (err) {
-      console.error("Error deleting review:", err);
-      toast.error("Failed to delete review");
-    }
-  };
-
-  // Save language preference to localStorage
-  useEffect(() => {
-    localStorage.setItem("dineInGoLanguage", language);
-  }, [language]);
-
-  // Save dark mode preference to localStorage
-  useEffect(() => {
-    localStorage.setItem("dineInGoDarkMode", isDarkMode.toString());
-  }, [isDarkMode]);
-
-  const toggleDarkMode = () => {
-    setIsDarkMode(!isDarkMode);
-  };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
-
-  const handleNavigation = (section: Section): void => {
-    setActiveSection(section);
-    setIsSidebarOpen(false);
-  };
-
-  const toggleFavorite = async (item: Restaurant | DashboardEvent) => {
-    if (!userData?.uid) {
-      toast.error("Please log in to add favorites");
-      return;
-    }
-
-    const itemName = "name" in item ? item.name : "";
-    const isCurrentlyFavorite = favorites.some((fav) => fav.id === item.id);
-
-    try {
-      if ("rating" in item) {
-        // Restaurant
-        if (
-          favorites.some(
-            (fav) => fav.id === item.id && fav.type === "restaurant",
-          )
-        ) {
-          await favoritesApi.removeRestaurant(userData.uid, item.id);
-          toast.success(`Removed ${itemName} from favorites`);
-        } else {
-          await favoritesApi.addRestaurant(userData.uid, item.id);
-          toast.success(`Added ${itemName} to favorites`);
-        }
-      } else {
-        // Event
-        if (
-          favorites.some((fav) => fav.id === item.id && fav.type === "event")
-        ) {
-          await favoritesApi.removeEvent(userData.uid, item.id);
-          toast.success(`Removed ${itemName} from favorites`);
-        } else {
-          await favoritesApi.addEvent(userData.uid, item.id);
-          toast.success(`Added ${itemName} to favorites`);
-        }
-      }
-      // Always re-fetch from backend after any change
-      const favs = await favoritesApi.get(userData.uid);
-      const newFavorites: FavoriteItem[] = [];
-      if (favs.restaurantIds) {
-        favs.restaurantIds.forEach((rid: string) => {
-          const rest = restaurants.find((r) => r.id === rid);
-          if (rest) {
-            newFavorites.push({
-              id: rest.id,
-              name: rest.name,
-              image: rest.image,
-              location: rest.location,
-              type: "restaurant",
-              rating: rest.rating,
-              cuisine: rest.cuisine,
-              priceLevel: rest.priceLevel,
-              openNow: rest.openNow,
-            });
+      setRestaurants((prev) =>
+        prev.map((r) => {
+          const match = results.find((res) => res.id === r.id);
+          if (
+            match &&
+            match.averageRating !== undefined &&
+            match.averageRating !== null
+          ) {
+            return { ...r, averageRating: match.averageRating };
           }
-        });
-      }
-      if (favs.eventIds) {
-        favs.eventIds.forEach((eid: string) => {
-          const ev = events.find((e) => e.id === eid);
-          if (ev) {
-            newFavorites.push({
-              id: ev.id,
-              name: ev.title,
-              image: ev.imageUrl,
-              location: ev.location as any,
-              type: "event",
-              date: ev.date,
-              time: ev.time,
-              price: ev.price,
-              category: ev.category,
-              description: ev.description,
-            });
-          }
-        });
-      }
-      setFavorites(newFavorites);
-    } catch (err) {
-      console.error("Failed to update favorite:", err);
-      toast.error(
-        `Failed to ${isCurrentlyFavorite ? "remove" : "add"} favorite. Please try again.`,
+          return r;
+        }),
       );
+    } catch (err) {
+      // Failed to fetch real-time ratings suppressed
     }
   };
 
-  const isItemFavorite = (itemId: string, type: "restaurant" | "event") => {
-    return favorites.some((fav) => fav.id === itemId && fav.type === type);
-  };
+  fetchRealRatings();
+}, [restaurants.length > 0]);
 
-  const handleLanguageChange = async (newLanguage: Language) => {
-    setLanguage(newLanguage);
+// Force reload bookings from API when bookings section is opened
+useEffect(() => {
+  if (activeSection === "bookings" && auth.currentUser) {
 
-    // Save language preference to MongoDB
-    if (userData?.uid) {
-      try {
-        const response = await fetch(
-          `${API_CONFIG.BASE_URL}/api/v1/users/update`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              userId: userData.uid,
-              updates: {
-                language: newLanguage,
-              },
-            }),
-          },
-        );
+    fetchBookingsFromAPI();
+  }
+}, [activeSection]);
 
-        if (response.ok) {
-          console.log("Language preference saved:", newLanguage);
-          toast.success(
-            `Language changed to ${newLanguage.charAt(0).toUpperCase() + newLanguage.slice(1)}`,
-            {
-              autoClose: 2000,
-            },
-          );
-        } else {
-          console.error("Failed to save language preference");
-        }
-      } catch (error) {
-        console.error("Error saving language preference:", error);
-      }
-    }
-  };
+// Update the user auth state handling to use avatar URLs
+useEffect(() => {
 
-  const handleLogout = async () => {
+  setAuthLoading(true);
+
+  // Check API connectivity
+  const checkApiConnection = async () => {
     try {
-      const currentUser = auth.currentUser;
-      if (currentUser) {
-        // Track logout activity in our backend
+      const { checkApiConnection } = await import("../services/api");
+      const result = await checkApiConnection();
+      if (!result.success) {
+        toast.error(
+          "Cannot connect to server. User activities may not be tracked properly.",
+        );
+      } else {
+
+      }
+    } catch (error) {
+      // Error checking API connection suppressed
+    }
+  };
+  checkApiConnection();
+
+  const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      try {
+        // Track user login activity after page refresh
         try {
           const { userAPI } = await import("../services/api");
-          await userAPI.logoutUser(currentUser.uid, "ui_button");
+          // Only track login after page refresh if we're not already in a session
+          // This prevents duplicate login activities
+          if (
+            !sessionStorage.getItem("lastLoginTracked") ||
+            Date.now() -
+            parseInt(sessionStorage.getItem("lastLoginTracked") || "0") >
+            1800000
+          ) {
+            // 30 minutes
+            await userAPI.loginUser(user.uid, "refresh");
+            sessionStorage.setItem("lastLoginTracked", Date.now().toString());
+          }
         } catch (error) {
-          console.error("Error tracking logout:", error);
-          // Continue with logout even if tracking fails
+          console.error("Error tracking login activity on refresh:", error);
+          // Continue with session even if tracking fails
         }
-      }
 
-      await signOut(auth);
-      localStorage.removeItem("dineInGoFavorites");
-      localStorage.removeItem("dineInGoLanguage");
+        // Load profile data from MongoDB (primary source of truth)
+        try {
+          const profileRes = await fetch(`/api/v1/profile/${user.uid}`);
+          if (profileRes.ok) {
+            const profile = await profileRes.json();
+
+
+            // Use MongoDB data as the source of truth
+            const avatarUrl =
+              profile.currentAvatar || profile.photoURL || profile.avatarUrl;
+            const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
+
+            const newUserData = {
+              uid: user.uid,
+              email: user.email || profile.email || "",
+              displayName:
+                profile.displayName ||
+                user.displayName ||
+                user.email?.split("@")[0] ||
+                "",
+              name:
+                profile.fullName ||
+                profile.name ||
+                user.displayName ||
+                user.email?.split("@")[0] ||
+                "",
+              photoURL: fullAvatarUrl,
+              avatars: (profile.avatars || [])
+                .map((url: string) => API_CONFIG.getAssetUrl(url))
+                .filter(Boolean),
+              location: profile.locationSettings?.city
+                ? {
+                  city: profile.locationSettings.city,
+                  state: profile.locationSettings.state || "",
+                  country: profile.locationSettings.country || "India",
+                }
+                : defaultLocation,
+              lastLogin: new Date(),
+              createdAt: profile.createdAt
+                ? new Date(profile.createdAt)
+                : new Date(),
+            };
+
+            setUserData(newUserData);
+
+            // Set language from profile
+            if (
+              profile.language &&
+              [
+                "english",
+                "hindi",
+                "tamil",
+                "kannada",
+                "telugu",
+                "malayalam",
+              ].includes(profile.language)
+            ) {
+              setLanguage(profile.language as Language);
+            }
+
+            // Sync to Firestore for backup (optional)
+            await setDoc(
+              doc(db, "users", user.uid),
+              {
+                displayName: newUserData.displayName,
+                name: newUserData.name,
+                photoURL: newUserData.photoURL,
+                email: newUserData.email,
+                updatedAt: new Date(),
+              },
+              { merge: true },
+            );
+          } else if (profileRes.status === 404) {
+            // Profile doesn't exist in MongoDB, create it
+
+            const newUserData = {
+              uid: user.uid,
+              email: user.email || "",
+              displayName:
+                user.displayName || user.email?.split("@")[0] || "",
+              name: user.displayName || user.email?.split("@")[0] || "",
+              photoURL: null,
+              location: defaultLocation,
+              lastLogin: new Date(),
+              createdAt: new Date(),
+            };
+
+            // Create profile in MongoDB
+            await fetch(`/api/v1/profile/${user.uid}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                uid: user.uid,
+                displayName: newUserData.displayName,
+                fullName: newUserData.name,
+                email: newUserData.email,
+                phoneNumber: "",
+                avatars: [],
+                currentAvatar: null,
+                address: {},
+              }),
+            });
+
+            setUserData(newUserData);
+          }
+        } catch (profileError) {
+          console.error("Error loading profile from MongoDB:", profileError);
+
+          // Fallback to Firestore if MongoDB fails
+          const userDoc = await getDoc(doc(db, "users", user.uid));
+          if (userDoc.exists()) {
+            const parsedData = userDoc.data();
+            const newUserData = {
+              uid: user.uid,
+              email: user.email || parsedData.email || "",
+              displayName:
+                user.displayName ||
+                parsedData.displayName ||
+                user.email?.split("@")[0] ||
+                "",
+              name:
+                user.displayName ||
+                parsedData.name ||
+                user.email?.split("@")[0] ||
+                "",
+              photoURL:
+                parsedData.photoURL !== undefined
+                  ? parsedData.photoURL
+                  : null,
+              location: parsedData.location || defaultLocation,
+              lastLogin: new Date(),
+              createdAt: parsedData.createdAt || new Date(),
+            };
+            setUserData(newUserData);
+          } else {
+            // Create new user data
+            const newUserData = {
+              uid: user.uid,
+              email: user.email || "",
+              displayName:
+                user.displayName || user.email?.split("@")[0] || "",
+              name: user.displayName || user.email?.split("@")[0] || "",
+              photoURL: null,
+              location: defaultLocation,
+              lastLogin: new Date(),
+              createdAt: new Date(),
+            };
+            setUserData(newUserData);
+          }
+        }
+      } catch (error) {
+        // Error in auth listener suppressed
+      } finally {
+        setAuthLoading(false);
+      }
+    } else {
+      setAuthLoading(false);
       navigate("/login");
-    } catch (error) {
-      console.error("Error during logout:", error);
-      alert("Failed to log out. Please try again.");
     }
-  };
+  });
 
-  // Update the forceInitialsAvatar function to fix type errors
-  const forceInitialsAvatar = async () => {
-    try {
-      console.log("Forcing initials avatar display");
+  return () => unsubscribe();
+}, [navigate]);
 
-      if (!userData || !userData.displayName) {
-        console.error("No user data or display name available");
-        return;
-      }
+// Real-time profile updates via Socket.IO
+useEffect(() => {
+  if (!userData?.uid) return;
 
-      // Generate an avatar URL
-      const avatarUrl = getAvatarUrl(userData.displayName);
+  // Connect to Socket.IO only once
+  const socket = socketService.connect();
 
-      // Update local state first for immediate UI feedback
-      setUserData({
-        ...userData,
-        photoURL: avatarUrl,
+  // Handler for profile updates
+  const handleProfileUpdate = (data: any) => {
+    if (data.uid === userData.uid) {
+
+      const profile = data.profile;
+
+      // Update local state with the latest profile data
+      setUserData((prev) => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          displayName: profile.displayName || prev.displayName,
+          name: profile.fullName || profile.name || prev.name,
+          photoURL:
+            profile.currentAvatar || profile.avatarUrl || profile.photoURL,
+          avatars: profile.avatars || prev.avatars,
+        };
       });
 
-      // Update Firebase auth profile
-      if (auth.currentUser) {
-        await updateProfile(auth.currentUser, {
-          photoURL: avatarUrl,
-        });
-        // Force token refresh to ensure changes take effect
-        await auth.currentUser.getIdToken(true);
-      }
-
-      // Update Firestore - use only the necessary fields to avoid type errors
-      await setDoc(
-        doc(db, "users", userData.uid),
-        {
-          photoURL: avatarUrl,
-          lastUpdated: new Date(),
-        },
-        { merge: true },
-      );
-
-      // Add visual feedback
-      toast.success("Generated avatar based on your name");
-    } catch (error) {
-      console.error("Error setting avatar:", error);
+      toast.info("Profile updated!", { autoClose: 2000 });
     }
   };
 
-  // Restored: Fetch bookings from MongoDB API
-  async function fetchBookingsFromAPI() {
-    try {
-      if (!auth.currentUser) {
-        console.error("No authenticated user found");
-        setBookings([]);
-        return;
-      }
+  socket?.on("profile_updated", handleProfileUpdate);
 
-      setIsLoading(true);
+  return () => {
+    // Only remove the listener, don't disconnect (other components might be using it)
+    socket?.off("profile_updated", handleProfileUpdate);
+  };
+}, [userData?.uid]);
 
+// Language is now loaded from MongoDB profile (see auth useEffect above)
+// No need for localStorage anymore
+
+// Fetch favorites from backend when userData, restaurants, or events change
+useEffect(() => {
+  const fetchFavorites = async () => {
+    if (userData?.uid) {
       try {
-        // Fetch bookings from the API
-        const fetchedBookings = await bookingsApi.getAll();
-        console.log("Fetched bookings from API:", fetchedBookings);
-
-        // Ensure fetchedBookings is an array
-        const bookingsArray = Array.isArray(fetchedBookings)
-          ? fetchedBookings
-          : [];
-
-        // Transform the bookings to match the expected format
-        const transformedBookings = bookingsArray.map((booking: any) => ({
-          ...booking,
-          id: booking._id || booking.id,
-          date: booking.date || booking.bookingDate,
-          time: booking.time || booking.bookingTime,
-          guests: booking.guests || booking.partySize || 2,
-          status: booking.status || "pending",
-          restaurantName:
-            booking.restaurantName || booking.businessName || booking.venueName,
-          eventName: booking.eventName,
-          type: booking.type || (booking.eventName ? "event" : "restaurant"),
-        }));
-
-        console.log("Transformed bookings:", transformedBookings);
-        setBookings(transformedBookings);
-      } catch (error: any) {
-        console.error("Error fetching bookings:", error);
-        setBookings([]);
-        toast.error("Failed to fetch bookings. Please try again later.");
-      } finally {
-        setIsLoading(false);
-      }
-    } catch (error) {
-      console.error("Error in fetchBookingsFromAPI:", error);
-      setIsLoading(false);
-    }
-  }
-
-  // Restored: Handle booking actions (confirm, cancel, delete)
-  async function handleBookingAction(
-    bookingId: string,
-    action: "confirm" | "cancel" | "delete",
-  ) {
-    try {
-      if (!bookingId) {
-        toast.error("Invalid booking ID");
-        return;
-      }
-      console.log("Booking ID for action:", bookingId, action);
-
-      if (action === "confirm") {
-        await bookingsApi.confirm(bookingId);
-      } else if (action === "cancel") {
-        await bookingsApi.cancel(bookingId);
-      } else if (action === "delete") {
-        if (
-          !window.confirm(
-            "Are you sure you want to delete this booking history?",
-          )
-        )
-          return;
-        await bookingsApi.delete(bookingId);
-      }
-
-      toast.success(
-        `Booking ${action === "delete" ? "deleted" : action + "ed"} successfully`,
-      );
-      fetchBookingsFromAPI();
-    } catch (error) {
-      console.error(`Error ${action}ing booking:`, error);
-      toast.error(`Failed to ${action} booking. Please try again.`);
-    }
-  }
-
-  // Update the handleAvatarSelect function to handle null values
-  const handleAvatarSelect = async (src: string | null): Promise<void> => {
-    try {
-      console.log("Avatar selection started with src:", src);
-
-      // Prepare updated user data
-      const updatedUserData: UserData = {
-        ...userData!,
-        photoURL: src,
-        uid: userData?.uid || "",
-        createdAt: userData?.createdAt || new Date(),
-        lastLogin: new Date(),
-      };
-
-      // First, store the updated user data in Firestore
-      await storeUserData(updatedUserData);
-      console.log("User data stored in Firestore with photoURL:", src);
-
-      // Update Firebase auth profile
-      if (auth.currentUser) {
-        // Force a direct update to auth.currentUser
-        await updateProfile(auth.currentUser, {
-          photoURL: src,
-        });
-        console.log("Auth profile updated with photoURL:", src);
-
-        // For null (initials) avatar, we need to reassert this value
-        if (src === null) {
-          // Forces a refresh of the Firebase auth token
-          await auth.currentUser.getIdToken(true);
-          console.log("Forced token refresh to apply null photoURL");
-        }
-      }
-
-      // Update local state immediately
-      setUserData(updatedUserData);
-
-      // Close the avatar modal
-      setIsAvatarModalOpen(false);
-
-      // Add visual feedback
-      toast.success(
-        src === null
-          ? "Using initials for profile picture"
-          : "Profile picture updated successfully!",
-      );
-
-      // Force UI refresh
-      setTimeout(() => {
-        setUserData({ ...updatedUserData });
-      }, 100);
-    } catch (error) {
-      console.error("Error updating avatar:", error);
-      setError("Failed to update avatar. Please try again.");
-      toast.error("Failed to update profile picture.");
-    }
-  };
-
-  const handleLocationSelect = async (newLocation: Location) => {
-    try {
-      // Forward geocode the location to get coordinates
-      const coordinates = await GeocodingService.forwardGeocode(
-        `${newLocation.city}, ${newLocation.state}, ${newLocation.country}`,
-      );
-
-      if (coordinates) {
-        // Update user data with new location
-        setUserData((prev) =>
-          prev
-            ? {
-                ...prev,
-                location: newLocation,
-                uid: prev.uid,
-                createdAt: prev.createdAt,
-                lastLogin: new Date(),
-              }
-            : null,
-        );
-
-        // Save location to localStorage
-        localStorage.setItem("dineInGoLocation", JSON.stringify(newLocation));
-
-        // Close the location modal
-        setIsLocationModalOpen(false);
-      } else {
-        console.error("Could not geocode the location");
-      }
-    } catch (error) {
-      console.error("Error updating location:", error);
-    }
-  };
-
-  // Update the detectLocation function
-  const detectLocation = async () => {
-    try {
-      setIsDetectingLocation(true);
-      const currentLocation = await GeocodingService.getCurrentLocation();
-      if (currentLocation) {
-        const nearestCity = GeocodingService.findNearestCity(
-          currentLocation.lat,
-          currentLocation.lng,
-        );
-
-        setUserData((prev) =>
-          prev
-            ? {
-                ...prev,
-                location: {
-                  city: nearestCity.city,
-                  state: nearestCity.state,
-                  country: nearestCity.country,
-                },
-                uid: prev.uid,
-                createdAt: prev.createdAt,
-                lastLogin: new Date(),
-              }
-            : null,
-        );
-
-        // Save to localStorage
-        localStorage.setItem(
-          "dineInGoLocation",
-          JSON.stringify({
-            city: nearestCity.city,
-            state: nearestCity.state,
-            country: nearestCity.country,
-          }),
-        );
-
-        // Close the modal
-        setIsLocationModalOpen(false);
-      }
-    } catch (error) {
-      console.error("Error detecting location:", error);
-    } finally {
-      setIsDetectingLocation(false);
-    }
-  };
-
-  // Restored: Mark all notifications as read
-  const markAllNotificationsAsRead = async () => {
-    try {
-      await markAllAsRead();
-    } catch (error) {
-      console.error("Error marking all notifications as read:", error);
-      toast.error("Failed to mark notifications as read");
-    }
-  };
-
-  // Restored: Handle real-time booking updates
-  useEffect(() => {
-    const handleBookingUpdate = (data: any) => {
-      console.log("Received booking update via socket:", data);
-      fetchBookingsFromAPI();
-    };
-
-    socketService.on("bookingUpdate", handleBookingUpdate);
-    return () => socketService.off("bookingUpdate", handleBookingUpdate);
-  }, []);
-
-  // Restored: Handle booking success on mount/location change
-  useEffect(() => {
-    const handleBookingSuccess = () => {
-      if (location.state?.bookingSuccess) {
-        // Show success toast
-        if (location.state.newBooking) {
-          const venueName =
-            location.state.newBooking.restaurantName ||
-            location.state.newBooking.eventName ||
-            "the venue";
-          toast.success(`Reservation confirmed at ${venueName}!`, {
-            position: "top-center",
-            autoClose: 5000,
-            hideProgressBar: false,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: true,
+        const favs = await favoritesApi.get(userData.uid);
+        const newFavorites: FavoriteItem[] = [];
+        if (favs.restaurantIds) {
+          favs.restaurantIds.forEach((rid: string) => {
+            const rest = restaurants.find((r) => r.id === rid);
+            if (rest) {
+              newFavorites.push({
+                id: rest.id,
+                name: rest.name,
+                image: rest.image,
+                location: rest.location,
+                type: "restaurant",
+                rating: rest.rating,
+                cuisine: rest.cuisine,
+                priceLevel: rest.priceLevel,
+                openNow: rest.openNow,
+              });
+            }
           });
         }
-
-        // Clear the state to prevent showing the toast again on refresh
-        navigate(location.pathname, { replace: true, state: {} });
-
-        // Fetch latest bookings
-        fetchBookingsFromAPI();
+        if (favs.eventIds) {
+          favs.eventIds.forEach((eid: string) => {
+            const ev = events.find((e) => e.id === eid);
+            if (ev) {
+              newFavorites.push({
+                id: ev.id,
+                name: ev.title,
+                image: ev.imageUrl,
+                location: ev.location as any,
+                type: "event",
+                date: ev.date,
+                time: ev.time,
+                price: ev.price,
+                category: ev.category,
+                description: ev.description,
+              });
+            }
+          });
+        }
+        setFavorites(newFavorites);
+      } catch (err) {
+        // Failed to fetch favorites suppressed
       }
+    }
+  };
+  fetchFavorites();
+}, [userData, restaurants, events]);
+
+const fetchUserReviews = async () => {
+  if (!userData?.uid) return;
+  setIsReviewsLoading(true);
+  try {
+    const { businessApi } = await import("../services/api");
+    const reviews = await businessApi.getUserReviews(userData.uid);
+    setUserReviews(reviews);
+  } catch (err) {
+    toast.error("Failed to load your reviews");
+  } finally {
+    setIsReviewsLoading(false);
+  }
+};
+
+useEffect(() => {
+  if (activeSection === "reviews" && userData?.uid) {
+    fetchUserReviews();
+  }
+}, [activeSection, userData?.uid]);
+
+const handleUpdateReview = async (reviewId: string) => {
+  if (editRating === 0) {
+    toast.error("Please select a rating");
+    return;
+  }
+  if (!editComment.trim()) {
+    toast.error("Please enter a comment");
+    return;
+  }
+
+  try {
+    const { businessApi } = await import("../services/api");
+    await businessApi.updateReview(reviewId, {
+      rating: editRating,
+      comment: editComment.trim(),
+    });
+    toast.success("Review updated successfully");
+    setEditingReviewId(null);
+    fetchUserReviews();
+  } catch (err) {
+    toast.error("Failed to update review");
+  }
+};
+
+const handleDeleteReview = async (reviewId: string) => {
+  if (!window.confirm("Are you sure you want to delete this review?")) return;
+
+  try {
+    const { businessApi } = await import("../services/api");
+    await businessApi.deleteReview(reviewId);
+    toast.success("Review deleted successfully");
+    fetchUserReviews();
+  } catch (err) {
+    toast.error("Failed to delete review");
+  }
+};
+
+// Save language preference to localStorage
+useEffect(() => {
+  localStorage.setItem("dineInGoLanguage", language);
+}, [language]);
+
+// Save dark mode preference to localStorage
+useEffect(() => {
+  localStorage.setItem("dineInGoDarkMode", isDarkMode.toString());
+}, [isDarkMode]);
+
+const toggleDarkMode = () => {
+  setIsDarkMode(!isDarkMode);
+};
+
+const toggleSidebar = () => {
+  setIsSidebarOpen(!isSidebarOpen);
+};
+
+const handleNavigation = (section: Section): void => {
+  setActiveSection(section);
+  setIsSidebarOpen(false);
+};
+
+const toggleFavorite = async (item: Restaurant | DashboardEvent) => {
+  if (!userData?.uid) {
+    toast.error("Please log in to add favorites");
+    return;
+  }
+
+  const itemName = "name" in item ? item.name : "";
+  const isCurrentlyFavorite = favorites.some((fav) => fav.id === item.id);
+
+  try {
+    if ("rating" in item) {
+      // Restaurant
+      if (
+        favorites.some(
+          (fav) => fav.id === item.id && fav.type === "restaurant",
+        )
+      ) {
+        await favoritesApi.removeRestaurant(userData.uid, item.id);
+        toast.success(`Removed ${itemName} from favorites`);
+      } else {
+        await favoritesApi.addRestaurant(userData.uid, item.id);
+        toast.success(`Added ${itemName} to favorites`);
+      }
+    } else {
+      // Event
+      if (
+        favorites.some((fav) => fav.id === item.id && fav.type === "event")
+      ) {
+        await favoritesApi.removeEvent(userData.uid, item.id);
+        toast.success(`Removed ${itemName} from favorites`);
+      } else {
+        await favoritesApi.addEvent(userData.uid, item.id);
+        toast.success(`Added ${itemName} to favorites`);
+      }
+    }
+    // Always re-fetch from backend after any change
+    const favs = await favoritesApi.get(userData.uid);
+    const newFavorites: FavoriteItem[] = [];
+    if (favs.restaurantIds) {
+      favs.restaurantIds.forEach((rid: string) => {
+        const rest = restaurants.find((r) => r.id === rid);
+        if (rest) {
+          newFavorites.push({
+            id: rest.id,
+            name: rest.name,
+            image: rest.image,
+            location: rest.location,
+            type: "restaurant",
+            rating: rest.rating,
+            cuisine: rest.cuisine,
+            priceLevel: rest.priceLevel,
+            openNow: rest.openNow,
+          });
+        }
+      });
+    }
+    if (favs.eventIds) {
+      favs.eventIds.forEach((eid: string) => {
+        const ev = events.find((e) => e.id === eid);
+        if (ev) {
+          newFavorites.push({
+            id: ev.id,
+            name: ev.title,
+            image: ev.imageUrl,
+            location: ev.location as any,
+            type: "event",
+            date: ev.date,
+            time: ev.time,
+            price: ev.price,
+            category: ev.category,
+            description: ev.description,
+          });
+        }
+      });
+    }
+    setFavorites(newFavorites);
+  } catch (err) {
+    console.error("Failed to update favorite:", err);
+    toast.error(
+      `Failed to ${isCurrentlyFavorite ? "remove" : "add"} favorite. Please try again.`,
+    );
+  }
+};
+
+const isItemFavorite = (itemId: string, type: "restaurant" | "event") => {
+  return favorites.some((fav) => fav.id === itemId && fav.type === type);
+};
+
+const handleLanguageChange = async (newLanguage: Language) => {
+  setLanguage(newLanguage);
+
+  // Save language preference to MongoDB
+  if (userData?.uid) {
+    try {
+      const response = await fetch(
+        `${API_CONFIG.BASE_URL}/api/v1/users/update`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: userData.uid,
+            updates: {
+              language: newLanguage,
+            },
+          }),
+        },
+      );
+
+      if (response.ok) {
+
+        toast.success(
+          `Language changed to ${newLanguage.charAt(0).toUpperCase() + newLanguage.slice(1)}`,
+          {
+            autoClose: 2000,
+          },
+        );
+      } else {
+        console.error("Failed to save language preference");
+      }
+    } catch (error) {
+      console.error("Error saving language preference:", error);
+    }
+  }
+};
+
+const handleLogout = async () => {
+  try {
+    const currentUser = auth.currentUser;
+    if (currentUser) {
+      // Track logout activity in our backend
+      try {
+        const { userAPI } = await import("../services/api");
+        await userAPI.logoutUser(currentUser.uid, "ui_button");
+      } catch (error) {
+        console.error("Error tracking logout:", error);
+        // Continue with logout even if tracking fails
+      }
+    }
+
+    await signOut(auth);
+    localStorage.removeItem("dineInGoFavorites");
+    localStorage.removeItem("dineInGoLanguage");
+    navigate("/login");
+  } catch (error) {
+    console.error("Error during logout:", error);
+    alert("Failed to log out. Please try again.");
+  }
+};
+
+// Update the forceInitialsAvatar function to fix type errors
+const forceInitialsAvatar = async () => {
+  try {
+
+
+    if (!userData || !userData.displayName) {
+      console.error("No user data or display name available");
+      return;
+    }
+
+    // Generate an avatar URL
+    const avatarUrl = getAvatarUrl(userData.displayName);
+
+    // Update local state first for immediate UI feedback
+    setUserData({
+      ...userData,
+      photoURL: avatarUrl,
+    });
+
+    // Update Firebase auth profile
+    if (auth.currentUser) {
+      await updateProfile(auth.currentUser, {
+        photoURL: avatarUrl,
+      });
+      // Force token refresh to ensure changes take effect
+      await auth.currentUser.getIdToken(true);
+    }
+
+    // Update Firestore - use only the necessary fields to avoid type errors
+    await setDoc(
+      doc(db, "users", userData.uid),
+      {
+        photoURL: avatarUrl,
+        lastUpdated: new Date(),
+      },
+      { merge: true },
+    );
+
+    // Add visual feedback
+    toast.success("Generated avatar based on your name");
+  } catch (error) {
+    console.error("Error setting avatar:", error);
+  }
+};
+
+// Restored: Fetch bookings from MongoDB API
+async function fetchBookingsFromAPI() {
+  try {
+    if (!auth.currentUser) {
+      console.error("No authenticated user found");
+      setBookings([]);
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Fetch bookings from the API
+      const fetchedBookings = await bookingsApi.getAll();
+
+
+      // Ensure fetchedBookings is an array
+      const bookingsArray = Array.isArray(fetchedBookings)
+        ? fetchedBookings
+        : [];
+
+      // Transform the bookings to match the expected format
+      const transformedBookings = bookingsArray.map((booking: any) => ({
+        ...booking,
+        id: booking._id || booking.id,
+        date: booking.date || booking.bookingDate,
+        time: booking.time || booking.bookingTime,
+        guests: booking.guests || booking.partySize || 2,
+        status: booking.status || "pending",
+        restaurantName:
+          booking.restaurantName || booking.businessName || booking.venueName,
+        eventName: booking.eventName,
+        type: booking.type || (booking.eventName ? "event" : "restaurant"),
+      }));
+
+
+      setBookings(transformedBookings);
+    } catch (error: any) {
+      console.error("Error fetching bookings:", error);
+      setBookings([]);
+      toast.error("Failed to fetch bookings. Please try again later.");
+    } finally {
+      setIsLoading(false);
+    }
+  } catch (error) {
+    console.error("Error in fetchBookingsFromAPI:", error);
+    setIsLoading(false);
+  }
+}
+
+// Restored: Handle booking actions (confirm, cancel, delete)
+async function handleBookingAction(
+  bookingId: string,
+  action: "confirm" | "cancel" | "delete",
+) {
+  try {
+    if (!bookingId) {
+      toast.error("Invalid booking ID");
+      return;
+    }
+
+
+    if (action === "confirm") {
+      await bookingsApi.confirm(bookingId);
+    } else if (action === "cancel") {
+      await bookingsApi.cancel(bookingId);
+    } else if (action === "delete") {
+      if (
+        !window.confirm(
+          "Are you sure you want to delete this booking history?",
+        )
+      )
+        return;
+      await bookingsApi.delete(bookingId);
+    }
+
+    toast.success(
+      `Booking ${action === "delete" ? "deleted" : action + "ed"} successfully`,
+    );
+    fetchBookingsFromAPI();
+  } catch (error) {
+    console.error(`Error ${action}ing booking:`, error);
+    toast.error(`Failed to ${action} booking. Please try again.`);
+  }
+}
+
+// Update the handleAvatarSelect function to handle null values
+const handleAvatarSelect = async (src: string | null): Promise<void> => {
+  try {
+
+
+    // Prepare updated user data
+    const updatedUserData: UserData = {
+      ...userData!,
+      photoURL: src,
+      uid: userData?.uid || "",
+      createdAt: userData?.createdAt || new Date(),
+      lastLogin: new Date(),
     };
 
-    handleBookingSuccess();
+    // First, store the updated user data in Firestore
+    await storeUserData(updatedUserData);
 
-    // Auto-refresh interval
-    const intervalId = setInterval(() => {
-      if (auth.currentUser && activeSection === "bookings") {
-        fetchBookingsFromAPI();
+
+    // Update Firebase auth profile
+    if (auth.currentUser) {
+      // Force a direct update to auth.currentUser
+      await updateProfile(auth.currentUser, {
+        photoURL: src,
+      });
+
+
+      // For null (initials) avatar, we need to reassert this value
+      if (src === null) {
+        // Forces a refresh of the Firebase auth token
+        await auth.currentUser.getIdToken(true);
+
       }
-    }, 30000);
+    }
 
-    return () => clearInterval(intervalId);
-  }, [location, auth.currentUser, activeSection]);
+    // Update local state immediately
+    setUserData(updatedUserData);
 
-  // Restored: Render My Reviews section
-  const renderMyReviews = () => {
-    return (
-      <div
-        className={`min-h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"} p-8`}
-      >
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-4xl font-bold">
-            {translations[language].myReviews}
-          </h1>
+    // Close the avatar modal
+    setIsAvatarModalOpen(false);
+
+    // Add visual feedback
+    toast.success(
+      src === null
+        ? "Using initials for profile picture"
+        : "Profile picture updated successfully!",
+    );
+
+    // Force UI refresh
+    setTimeout(() => {
+      setUserData({ ...updatedUserData });
+    }, 100);
+  } catch (error) {
+    setError("Failed to update avatar. Please try again.");
+    toast.error("Failed to update profile picture.");
+  }
+};
+
+const handleLocationSelect = async (newLocation: GeoLocation) => {
+  try {
+    // Forward geocode the location to get coordinates
+    const coordinates = await GeocodingService.forwardGeocode(
+      `${newLocation.city}, ${newLocation.state}, ${newLocation.country}`,
+    );
+
+    if (coordinates) {
+      // Update user data with new location
+      setUserData((prev: UserData | null) =>
+        prev
+          ? {
+            ...prev,
+            location: newLocation,
+            uid: prev.uid,
+            createdAt: prev.createdAt,
+            lastLogin: new Date(),
+          }
+          : null,
+      );
+
+      // Save location to localStorage
+      localStorage.setItem("dineInGoLocation", JSON.stringify(newLocation));
+
+      // Close the location modal
+      setIsLocationModalOpen(false);
+    } else {
+      // Geocode failed suppressed
+    }
+  } catch (error) {
+    console.error("Error updating location:", error);
+  }
+};
+
+// Update the detectLocation function
+const detectLocation = async () => {
+  try {
+    setIsDetectingLocation(true);
+    const currentLocation = await GeocodingService.getCurrentLocation();
+    if (currentLocation) {
+      const nearestCity = GeocodingService.findNearestCity(
+        currentLocation.lat,
+        currentLocation.lng,
+      );
+
+      setUserData((prev) =>
+        prev
+          ? {
+            ...prev,
+            location: {
+              city: nearestCity.city,
+              state: nearestCity.state,
+              country: nearestCity.country,
+            },
+            uid: prev.uid,
+            createdAt: prev.createdAt,
+            lastLogin: new Date(),
+          }
+          : null,
+      );
+
+      // Save to localStorage
+      localStorage.setItem(
+        "dineInGoLocation",
+        JSON.stringify({
+          city: nearestCity.city,
+          state: nearestCity.state,
+          country: nearestCity.country,
+        }),
+      );
+
+      // Close the modal
+      setIsLocationModalOpen(false);
+    }
+  } catch (error) {
+    console.error("Error detecting location:", error);
+  } finally {
+    setIsDetectingLocation(false);
+  }
+};
+
+// Restored: Mark all notifications as read
+const markAllNotificationsAsRead = async () => {
+  try {
+    await markAllAsRead();
+  } catch (error) {
+    console.error("Error marking all notifications as read:", error);
+    toast.error("Failed to mark notifications as read");
+  }
+};
+
+// Restored: Handle real-time booking updates
+useEffect(() => {
+  const handleBookingUpdate = (data: any) => {
+
+    fetchBookingsFromAPI();
+  };
+
+  socketService.on("bookingUpdate", handleBookingUpdate);
+  return () => socketService.off("bookingUpdate", handleBookingUpdate);
+}, []);
+
+// Restored: Handle booking success on mount/location change
+useEffect(() => {
+  const handleBookingSuccess = () => {
+    if (location.state?.bookingSuccess) {
+      // Show success toast
+      if (location.state.newBooking) {
+        const venueName =
+          location.state.newBooking.restaurantName ||
+          location.state.newBooking.eventName ||
+          "the venue";
+        toast.success(`Reservation confirmed at ${venueName}!`, {
+          position: "top-center",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
+
+      // Clear the state to prevent showing the toast again on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+
+      // Fetch latest bookings
+      fetchBookingsFromAPI();
+    }
+  };
+
+  handleBookingSuccess();
+
+  // Auto-refresh interval
+  const intervalId = setInterval(() => {
+    if (auth.currentUser && activeSection === "bookings") {
+      fetchBookingsFromAPI();
+    }
+  }, 30000);
+
+  return () => clearInterval(intervalId);
+}, [location, auth.currentUser, activeSection]);
+
+// Restored: Render My Reviews section
+const renderMyReviews = () => {
+  return (
+    <div
+      className={`min-h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"} p-8`}
+    >
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">
+          {translations[language].myReviews}
+        </h1>
+      </div>
+
+      {isReviewsLoading ? (
+        <div className="flex justify-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
         </div>
-
-        {isReviewsLoading ? (
-          <div className="flex justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-          </div>
-        ) : userReviews.length === 0 ? (
-          <div className="text-center py-12">
-            <MessageSquare className="w-16 h-16 mx-auto mb-4 text-emerald-500 opacity-20" />
-            <p className="text-lg opacity-50">
-              You haven't written any reviews yet.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-6">
-            {userReviews.map((review: any) => (
-              <div
-                key={review._id}
-                className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border rounded-3xl p-6 shadow-sm`}
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl">
-                      {review.businessId?.name?.charAt(0) || "R"}
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-xl">
-                        {review.businessId?.name || "Restaurant"}
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <StarRating rating={review.rating} size={14} />
-                        <span className="text-xs opacity-50">
-                          {new Date(review.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    </div>
+            ) : userReviews.length === 0 ? (
+        <div className="text-center py-12">
+          <MessageSquare className="w-16 h-16 mx-auto mb-4 text-emerald-500 opacity-20" />
+          <p className="text-lg opacity-50">
+            You haven't written any reviews yet.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-6">
+          {userReviews.map((review: any) => (
+            <div
+              key={review._id}
+              className={`${isDarkMode ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"} border rounded-3xl p-6 shadow-sm`}
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-xl">
+                    {review.businessId?.name?.charAt(0) || "R"}
                   </div>
-
-                  <div className="flex items-center gap-2">
-                    {editingReviewId === review._id ? (
-                      <>
-                        <button
-                          onClick={() => handleUpdateReview(review._id)}
-                          className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
-                        >
-                          <Check size={20} />
-                        </button>
-                        <button
-                          onClick={() => setEditingReviewId(null)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <X size={20} />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          onClick={() => {
-                            setEditingReviewId(review._id);
-                            setEditRating(review.rating);
-                            setEditComment(review.comment);
-                          }}
-                          className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
-                        >
-                          <Pencil size={20} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteReview(review._id)}
-                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                        >
-                          <Trash2 size={20} />
-                        </button>
-                      </>
-                    )}
+                  <div>
+                    <h3 className="font-bold text-xl">
+                      {review.businessId?.name || "Restaurant"}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <StarRating rating={review.rating} size={14} />
+                      <span className="text-xs opacity-50">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {editingReviewId === review._id ? (
-                  <div className="space-y-4">
-                    <div className="flex gap-2">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <button
-                          key={star}
-                          onClick={() => setEditRating(star)}
-                          className={`text-2xl ${star <= editRating ? "text-yellow-400" : "text-gray-300"}`}
-                        >
-                          ★
-                        </button>
-                      ))}
-                    </div>
-                    <div className="relative">
-                      <textarea
-                        value={editComment}
-                        onChange={(e) => setEditComment(e.target.value)}
-                        className={`w-full p-4 pr-12 rounded-2xl border ${isDarkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} focus:ring-2 focus:ring-emerald-500 outline-none resize-none`}
-                        rows={3}
+                <div className="flex items-center gap-2">
+                  {editingReviewId === review._id ? (
+                    <>
+                      <button
+                        onClick={() => handleUpdateReview(review._id)}
+                        className="p-2 text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
+                      >
+                        <Check size={20} />
+                      </button>
+                      <button
+                        onClick={() => setEditingReviewId(null)}
+                        className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      >
+                        <X size={20} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditingReviewId(review._id);
+                          setEditRating(review.rating);
+                          setEditComment(review.comment);
+                        }}
+                        className="p-2 text-gray-400 hover:text-emerald-500 hover:bg-emerald-50 rounded-xl transition-colors"
+                      >
+                        <Pencil size={20} />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteReview(review._id)}
+                        className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                      >
+                        <Trash2 size={20} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {editingReviewId === review._id ? (
+                <div className="space-y-4">
+                  <div className="flex gap-2">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setEditRating(star)}
+                        className={`text-2xl ${star <= editRating ? "text-yellow-400" : "text-gray-300"}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                  <div className="relative">
+                    <textarea
+                      value={editComment}
+                      onChange={(e) => setEditComment(e.target.value)}
+                      className={`w-full p-4 pr-12 rounded-2xl border ${isDarkMode ? "bg-gray-700 border-gray-600 text-white" : "bg-gray-50 border-gray-200 text-gray-900"} focus:ring-2 focus:ring-emerald-500 outline-none resize-none`}
+                      rows={3}
+                    />
+                    <div className="absolute bottom-2 right-2">
+                      <EmojiPicker
+                        onEmojiSelect={(emoji) =>
+                          setEditComment((prev) => prev + emoji)
+                        }
+                        isDarkMode={isDarkMode}
                       />
-                      <div className="absolute bottom-2 right-2">
-                        <EmojiPicker
-                          onEmojiSelect={(emoji) =>
-                            setEditComment((prev) => prev + emoji)
-                          }
-                          isDarkMode={isDarkMode}
-                        />
-                      </div>
                     </div>
                   </div>
-                ) : (
-                  <>
-                    <p className="text-lg mb-4">{review.comment}</p>
-                    {review.reply && (
-                      <div
-                        className={`${isDarkMode ? "bg-emerald-500/10" : "bg-emerald-50"} rounded-2xl p-4 border-l-4 border-emerald-500`}
-                      >
-                        <p className="text-xs font-bold text-emerald-600 mb-1 uppercase tracking-wider">
-                          Owner Response
-                        </p>
-                        <p className="text-sm opacity-80">
-                          {review.reply.text}
-                        </p>
-                      </div>
-                    )}
-                  </>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
+                </div>
+              ) : (
+                <>
+                  <p className="text-lg mb-4">{review.comment}</p>
+                  {review.reply && (
+                    <div
+                      className={`${isDarkMode ? "bg-emerald-500/10" : "bg-emerald-50"} rounded-2xl p-4 border-l-4 border-emerald-500`}
+                    >
+                      <p className="text-xs font-bold text-emerald-600 mb-1 uppercase tracking-wider">
+                        Owner Response
+                      </p>
+                      <p className="text-sm opacity-80">
+                        {review.reply.text}
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
-  // Restored: Render Location Update Modal
-  const renderLocationModal = () => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[1001]">
-      <div
-        className={`${isDarkMode ? "bg-gray-800" : "bg-white"} p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto`}
+// Restored: Render Location Update Modal
+const renderLocationModal = () => (
+  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[1001] p-4">
+    <div
+      className={`${isDarkMode ? "bg-gray-800" : "bg-white"} p-5 sm:p-8 rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto shadow-2xl scale-in-center`}
+    >
+      <div className="flex items-center justify-between mb-6">
+        <h3
+          className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}
+        >
+          Update Location
+        </h3>
+        <button
+          onClick={() => setIsLocationModalOpen(false)}
+          className={`p-2 ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"} rounded-full transition-colors`}
+        >
+          <X
+            className={`w-5 h-5 ${isDarkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}
+          />
+        </button>
+      </div>
+
+      <button
+        onClick={detectLocation}
+        disabled={isDetectingLocation}
+        className={`w-full mb-6 px-4 py-3 rounded-xl text-white transition-colors flex items-center justify-center gap-2 ${isDetectingLocation ? "bg-gray-400 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"}`}
       >
-        <div className="flex items-center justify-between mb-6">
-          <h3
-            className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}
+        {isDetectingLocation ? "Detecting..." : "Use Current Location"}
+      </button>
+
+      <div className="relative mb-6">
+        <input
+          type="text"
+          value={searchTerm}
+          placeholder="Search cities..."
+          className={`w-full ${isDarkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-gray-100 text-gray-900 placeholder-gray-500"} rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-emerald-500`}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        <Search
+          className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+          size={18}
+        />
+      </div>
+
+      <div className="space-y-2">
+        {indianCities
+          .filter((c) =>
+            c.city.toLowerCase().includes(searchTerm.toLowerCase()),
+          )
+          .slice(0, 5)
+          .map((city) => (
+            <button
+              key={`${city.city}-${city.state}`}
+              onClick={() => {
+                setUserData((prev) =>
+                  prev
+                    ? {
+                      ...prev,
+                      location: {
+                        city: city.city,
+                        state: city.state,
+                        country: city.country,
+                      },
+                      uid: prev.uid,
+                      createdAt: prev.createdAt,
+                      lastLogin: new Date(),
+                    }
+                    : null,
+                );
+                setIsLocationModalOpen(false);
+              }}
+              className={`w-full text-left px-4 py-3 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200"} rounded-xl transition-colors`}
+            >
+              {city.city}, {city.state}
+            </button>
+          ))}
+      </div>
+    </div>
+  </div>
+);
+
+// Restored: Render Avatar Selection Modal
+const renderAvatarModal = () => {
+  if (!isAvatarModalOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4 sm:p-6">
+      <div
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        onClick={() => setIsAvatarModalOpen(false)}
+      />
+      <div
+        className={`relative ${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-[2rem] sm:rounded-[3rem] p-6 sm:p-10 w-full max-w-lg shadow-2xl overflow-y-auto max-h-[90vh]`}
+      >
+        <div className="flex items-center justify-between mb-6 sm:mb-8">
+          <h2
+            className={`text-2xl sm:text-3xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}`}
           >
-            Update Location
-          </h3>
-          <button
-            onClick={() => setIsLocationModalOpen(false)}
-            className={`p-2 ${isDarkMode ? "hover:bg-gray-700" : "hover:bg-gray-100"} rounded-full transition-colors`}
-          >
-            <X
-              className={`w-5 h-5 ${isDarkMode ? "text-gray-400 hover:text-white" : "text-gray-500 hover:text-gray-900"}`}
-            />
+            Choose Your Identity
+          </h2>
+          <button onClick={() => setIsAvatarModalOpen(false)}>
+            <X size={24} />
           </button>
         </div>
-
-        <button
-          onClick={detectLocation}
-          disabled={isDetectingLocation}
-          className={`w-full mb-6 px-4 py-3 rounded-xl text-white transition-colors flex items-center justify-center gap-2 ${isDetectingLocation ? "bg-gray-400 cursor-not-allowed" : "bg-emerald-500 hover:bg-emerald-600"}`}
-        >
-          {isDetectingLocation ? "Detecting..." : "Use Current Location"}
-        </button>
-
-        <div className="relative mb-6">
-          <input
-            type="text"
-            value={searchTerm}
-            placeholder="Search cities..."
-            className={`w-full ${isDarkMode ? "bg-gray-700 text-white placeholder-gray-400" : "bg-gray-100 text-gray-900 placeholder-gray-500"} rounded-xl px-4 py-3 pl-10 focus:outline-none focus:ring-2 focus:ring-emerald-500`}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          <Search
-            className={`absolute left-3 top-1/2 transform -translate-y-1/2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-            size={18}
-          />
-        </div>
-
-        <div className="space-y-2">
-          {indianCities
-            .filter((c) =>
-              c.city.toLowerCase().includes(searchTerm.toLowerCase()),
-            )
-            .slice(0, 5)
-            .map((city) => (
-              <button
-                key={`${city.city}-${city.state}`}
-                onClick={() => {
-                  setUserData((prev) =>
-                    prev
-                      ? {
-                          ...prev,
-                          location: {
-                            city: city.city,
-                            state: city.state,
-                            country: city.country,
-                          },
-                          uid: prev.uid,
-                          createdAt: prev.createdAt,
-                          lastLogin: new Date(),
-                        }
-                      : null,
-                  );
-                  setIsLocationModalOpen(false);
-                }}
-                className={`w-full text-left px-4 py-3 ${isDarkMode ? "bg-gray-700 hover:bg-gray-600" : "bg-gray-100 hover:bg-gray-200"} rounded-xl transition-colors`}
-              >
-                {city.city}, {city.state}
-              </button>
-            ))}
+        <div className="grid grid-cols-3 gap-6">
+          {avatarOptions.map((avatar) => (
+            <button
+              key={avatar.id}
+              onClick={() =>
+                handleAvatarSelect(
+                  avatar.src === "initials" ? null : avatar.src,
+                )
+              }
+              className="aspect-square rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
+            >
+              {avatar.src === "initials" ? (
+                <InitialsAvatar
+                  name={userData?.displayName || ""}
+                  className="w-full h-full"
+                />
+              ) : (
+                <img
+                  src={avatar.src}
+                  alt={avatar.alt}
+                  className="w-full h-full object-cover"
+                />
+              )}
+            </button>
+          ))}
         </div>
       </div>
     </div>
   );
+};
 
-  // Restored: Render Avatar Selection Modal
-  const renderAvatarModal = () => {
-    if (!isAvatarModalOpen) return null;
+// Add search handler function
+const handleSearch = (term: string) => {
+  setSearchTerm(term);
+  if (term.trim() === "") {
+    setFilteredRestaurants([]);
+    setFilteredEvents([]);
+    return;
+  }
+
+  const lowerTerm = term.toLowerCase();
+  const filteredRests = restaurants.filter(
+    (restaurant) =>
+      restaurant.name.toLowerCase().includes(lowerTerm) ||
+      restaurant.cuisine?.some((c) => c.toLowerCase().includes(lowerTerm)) ||
+      restaurant.location.city.toLowerCase().includes(lowerTerm) ||
+      restaurant.location.state.toLowerCase().includes(lowerTerm),
+  );
+
+  // Add a type guard for event.location to fix the type error
+  const filteredEvs = events.filter((event) => {
+    const locationMatches =
+      typeof event.location === "string"
+        ? event.location.toLowerCase().includes(lowerTerm)
+        : (event.location as GeoLocation).city
+          .toLowerCase()
+          .includes(lowerTerm) ||
+        (event.location as GeoLocation).state
+          .toLowerCase()
+          .includes(lowerTerm);
+
     return (
-      <div className="fixed inset-0 z-[1002] flex items-center justify-center p-4">
-        <div
-          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-          onClick={() => setIsAvatarModalOpen(false)}
-        />
-        <div
-          className={`relative ${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl`}
+      event.title.toLowerCase().includes(lowerTerm) ||
+      event.category.toLowerCase().includes(lowerTerm) ||
+      event.description.toLowerCase().includes(lowerTerm) ||
+      locationMatches
+    );
+  });
+
+  setFilteredRestaurants(filteredRests);
+  setFilteredEvents(filteredEvs);
+};
+const getAIInsights = (userBookings: Booking[]) => {
+  if (!userBookings || userBookings.length === 0) {
+    return [
+      {
+        id: "initial-scout",
+        title: "Initial Territory Scout",
+        description:
+          "No expeditions detected yet. Launch your first excavation to begin gathering prehistoric data!",
+        icon: <Compass className="text-emerald-500" />,
+        color: "from-emerald-500/20 to-teal-600/20",
+      },
+    ];
+  }
+
+  const insights = [];
+
+  // Prediction 1: Future Era
+  insights.push({
+    id: "future-era",
+    title: "Era Prediction: Fusion Age",
+    description:
+      'Historical data suggests your next 3 moon-cycles will favor "Gourmet Fossil" discoveries. Scout for more Pan-Asian territories.',
+    icon: <Sparkles className="text-purple-400" />,
+    color: "from-purple-500/20 to-indigo-600/20",
+  });
+
+  // Prediction 2: Territory Expansion
+  insights.push({
+    id: "expansion",
+    title: "Expansion Route: Coastal Digs",
+    description:
+      'Mastery of inland valleys complete. Predictive sensors indicate your next expedition should target high-yield "Seafood" excavation sites.',
+    icon: <Globe className="text-blue-500" />,
+    color: "from-blue-500/20 to-cyan-600/20",
+  });
+
+  // Prediction 3: Stamina Forecast
+  insights.push({
+    id: "stamina",
+    title: "Expedition Stamina: Peak",
+    description:
+      'Recent 7:00 PM energy spikes detected. Your future expeditions will be most successful during these prime prehistoric "Golden Hours".',
+    icon: <Zap className="text-amber-500" />,
+    color: "from-amber-500/20 to-orange-600/20",
+  });
+
+  return insights;
+};
+
+const renderSection = () => {
+  const section = activeSection;
+
+  // Show search results if there's a search term
+  if (searchTerm.trim() !== "") {
+    return (
+      <div
+        className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 sm:p-8`}
+      >
+        <h1
+          className={`text-3xl sm:text-4xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6 sm:mb-8`}
         >
-          <div className="flex items-center justify-between mb-8">
+          Excavation Search Results
+        </h1>
+
+        {/* Territories (Restaurants) Results */}
+        {filteredRestaurants.length > 0 && (
+          <div className="mb-12">
             <h2
-              className={`text-3xl font-black ${isDarkMode ? "text-white" : "text-gray-900"}`}
+              className={`text-2xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6 flex items-center gap-2`}
             >
-              Choose Your Identity
+              <Utensils size={24} className="text-emerald-500" />
+              Territories Found
             </h2>
-            <button onClick={() => setIsAvatarModalOpen(false)}>
-              <X size={24} />
-            </button>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredRestaurants.map((restaurant, idx) => (
+                <PremiumRestaurantCard
+                  key={restaurant.id}
+                  restaurant={restaurant}
+                  isDarkMode={isDarkMode}
+                  isFavorite={isItemFavorite(restaurant.id, "restaurant")}
+                  isOpen={isRestaurantOpen(restaurant)}
+                  onToggleFavorite={toggleFavorite}
+                  index={idx}
+                />
+              ))}
+            </div>
           </div>
-          <div className="grid grid-cols-3 gap-6">
-            {avatarOptions.map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() =>
-                  handleAvatarSelect(
-                    avatar.src === "initials" ? null : avatar.src,
-                  )
-                }
-                className="aspect-square rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
-              >
-                {avatar.src === "initials" ? (
-                  <InitialsAvatar
-                    name={userData?.displayName || ""}
-                    className="w-full h-full"
-                  />
-                ) : (
-                  <img
-                    src={avatar.src}
-                    alt={avatar.alt}
-                    className="w-full h-full object-cover"
-                  />
-                )}
-              </button>
-            ))}
+        )}
+
+        {/* Events Results */}
+        {filteredEvents.length > 0 && (
+          <div className="mb-12">
+            <h2
+              className={`text-2xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6 flex items-center gap-2`}
+            >
+              <Calendar size={24} className="text-purple-500" />
+              Live Happenings
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEvents.map((event, idx) => (
+                <PremiumEventCard
+                  key={event.id}
+                  event={event}
+                  isDarkMode={isDarkMode}
+                  isFavorite={isItemFavorite(event.id, "event")}
+                  onToggleFavorite={(e) => toggleFavorite(e as any)}
+                  index={idx}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* No Results Message */}
+        {filteredRestaurants.length === 0 && filteredEvents.length === 0 && (
+          <div className="text-center py-20 bg-white/50 dark:bg-zinc-900/50 rounded-[3rem] border-2 border-dashed border-gray-200 dark:border-zinc-800">
+            <div className="text-6xl mb-4">🔦</div>
+            <h3
+              className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} mb-2`}
+            >
+              No Fossils Found
+            </h3>
+            <p
+              className={`text-lg ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+            >
+              Our scanners couldn't find any "{searchTerm}" in this territory.
+            </p>
+          </div>
+        )}
       </div>
     );
-  };
-
-  // Add search handler function
-  const handleSearch = (term: string) => {
-    setSearchTerm(term);
-    if (term.trim() === "") {
-      setFilteredRestaurants([]);
-      setFilteredEvents([]);
-      return;
-    }
-
-    const lowerTerm = term.toLowerCase();
-    const filteredRests = restaurants.filter(
-      (restaurant) =>
-        restaurant.name.toLowerCase().includes(lowerTerm) ||
-        restaurant.cuisine?.some((c) => c.toLowerCase().includes(lowerTerm)) ||
-        restaurant.location.city.toLowerCase().includes(lowerTerm) ||
-        restaurant.location.state.toLowerCase().includes(lowerTerm),
-    );
-
-    // Add a type guard for event.location to fix the type error
-    const filteredEvs = events.filter((event) => {
-      const locationMatches =
-        typeof event.location === "string"
-          ? event.location.toLowerCase().includes(lowerTerm)
-          : (event.location as Location).city
-              .toLowerCase()
-              .includes(lowerTerm) ||
-            (event.location as Location).state
-              .toLowerCase()
-              .includes(lowerTerm);
-
-      return (
-        event.title.toLowerCase().includes(lowerTerm) ||
-        event.category.toLowerCase().includes(lowerTerm) ||
-        event.description.toLowerCase().includes(lowerTerm) ||
-        locationMatches
-      );
-    });
-
-    setFilteredRestaurants(filteredRests);
-    setFilteredEvents(filteredEvs);
-  };
-  const getAIInsights = (userBookings: Booking[]) => {
-    if (!userBookings || userBookings.length === 0) {
-      return [
-        {
-          id: "initial-scout",
-          title: "Initial Territory Scout",
-          description:
-            "No expeditions detected yet. Launch your first excavation to begin gathering prehistoric data!",
-          icon: <Compass className="text-emerald-500" />,
-          color: "from-emerald-500/20 to-teal-600/20",
-        },
-      ];
-    }
-
-    const insights = [];
-
-    // Prediction 1: Future Era
-    insights.push({
-      id: "future-era",
-      title: "Era Prediction: Fusion Age",
-      description:
-        'Historical data suggests your next 3 moon-cycles will favor "Gourmet Fossil" discoveries. Scout for more Pan-Asian territories.',
-      icon: <Sparkles className="text-purple-400" />,
-      color: "from-purple-500/20 to-indigo-600/20",
-    });
-
-    // Prediction 2: Territory Expansion
-    insights.push({
-      id: "expansion",
-      title: "Expansion Route: Coastal Digs",
-      description:
-        'Mastery of inland valleys complete. Predictive sensors indicate your next expedition should target high-yield "Seafood" excavation sites.',
-      icon: <Globe className="text-blue-500" />,
-      color: "from-blue-500/20 to-cyan-600/20",
-    });
-
-    // Prediction 3: Stamina Forecast
-    insights.push({
-      id: "stamina",
-      title: "Expedition Stamina: Peak",
-      description:
-        'Recent 7:00 PM energy spikes detected. Your future expeditions will be most successful during these prime prehistoric "Golden Hours".',
-      icon: <Zap className="text-amber-500" />,
-      color: "from-amber-500/20 to-orange-600/20",
-    });
-
-    return insights;
-  };
-
-  const renderSection = () => {
-    const section = activeSection;
-
-    // Show search results if there's a search term
-    if (searchTerm.trim() !== "") {
+  }
+  switch (section) {
+    case "home":
       return (
         <div
-          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-8`}
+          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
+        >
+          {/* Premium Header 2.0: Immersive Greeting */}
+          <div className="relative mb-12 group">
+            <div
+              className={`absolute inset-0 rounded-[3rem] overflow-hidden transition-all duration-700 ${isDarkMode ? "bg-zinc-900" : "bg-emerald-500"
+                }`}
+            >
+              {/* Parallax / Layered Background Elements */}
+              <motion.div
+                initial={{ rotate: -15, scale: 0.8 }}
+                animate={{ rotate: [-15, -10, -15], scale: [0.8, 0.85, 0.8] }}
+                transition={{
+                  duration: 15,
+                  repeat: Infinity,
+                  ease: "linear",
+                }}
+                className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px]"
+              />
+              <motion.div
+                initial={{ rotate: 15, x: 0 }}
+                animate={{ x: [0, 50, 0], rotate: [15, 20, 15] }}
+                transition={{
+                  duration: 12,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+                className="absolute -bottom-20 -left-20 w-[300px] h-[300px] bg-yellow-400/20 rounded-full blur-[80px]"
+              />
+
+              {/* Decorative Pattern Layer */}
+              <div
+                className="absolute inset-0 opacity-[0.03] select-none pointer-events-none"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
+                  backgroundSize: "40px 40px",
+                }}
+              />
+            </div>
+
+            <div className="relative z-10 p-5 sm:p-10 md:p-14 flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-10">
+              <motion.div
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.8 }}
+              >
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="px-5 py-2 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 shadow-xl overflow-hidden group/pill">
+                    <motion.div
+                      animate={{ x: ["-100%", "200%"] }}
+                      transition={{
+                        duration: 3,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
+                    />
+                    <span className="relative text-white text-[10px] font-black uppercase tracking-[0.25em]">
+                      {new Date().getHours() < 12
+                        ? "Morning Expedition"
+                        : new Date().getHours() < 18
+                          ? "Afternoon Scout"
+                          : "Evening Hunt"}
+                    </span>
+                  </div>
+                  <div className="h-1.5 w-1.5 rounded-full bg-white/40 shadow-glow animate-pulse" />
+                  <span className="text-white/70 text-sm font-black tracking-tight">
+                    {new Date().toLocaleDateString("en-US", {
+                      weekday: "long",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </span>
+                </div>
+
+                <h1 className="text-4xl sm:text-5xl md:text-7xl font-black text-white tracking-tighter leading-[0.9] mb-6 drop-shadow-2xl">
+                  Hello, <br className="md:hidden" />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/60">
+                    {userData?.displayName?.split(" ")[0] || "Explorer"}!
+                  </span>
+                </h1>
+
+                <p className="text-white/80 text-xl font-medium max-w-xl leading-relaxed">
+                  Ready to track down the finest culinary fossils and local
+                  legends in{" "}
+                  <span className="text-white font-black underline decoration-yellow-400/60 transition-colors hover:decoration-yellow-400">
+                    your territory?
+                  </span>
+                </p>
+              </motion.div>
+
+              <motion.button
+                whileHover={{ scale: 1.05, y: -5 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setIsLocationModalOpen(true)}
+                className="relative group/loc overflow-hidden bg-white/10 hover:bg-white/20 backdrop-blur-3xl border-2 border-white/20 transition-all duration-500 rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-8 min-w-full sm:min-w-[280px] shadow-2xl"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover/loc:opacity-100 transition-opacity" />
+                <div className="relative z-10 flex items-center gap-5">
+                  <div className="w-16 h-16 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] transform group-hover/loc:rotate-6 transition-transform">
+                    <MapPin size={32} className="fill-emerald-500/20" />
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
+                      Assigned Territory
+                    </p>
+                    <p className="text-white font-black text-3xl tracking-tight">
+                      {typeof userData?.location === "object" &&
+                        userData?.location &&
+                        "city" in userData.location
+                        ? userData.location.city
+                        : "Global"}
+                    </p>
+                  </div>
+                </div>
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Enhanced Dino AI Feelings Recommendation System */}
+          <div
+            className={`relative mb-12 p-6 sm:p-8 md:p-10 rounded-[2.5rem] sm:rounded-[3rem] overflow-hidden border-2 transition-all duration-700 ${isDarkMode
+                ? "bg-zinc-900/40 border-emerald-500/20 shadow-[0_0_80px_rgba(16,185,129,0.05)]"
+                : "bg-white/60 border-emerald-100 shadow-2xl shadow-emerald-500/5 backdrop-blur-xl"
+              }`}
+          >
+            {/* Animated Floating Background Elements */}
+            <motion.div
+              animate={{
+                y: [0, -20, 0],
+                rotate: [0, 10, 0],
+                opacity: [0.1, 0.2, 0.1],
+              }}
+              transition={{
+                duration: 8,
+                repeat: Infinity,
+                ease: "easeInOut",
+              }}
+              className="absolute top-10 right-10 text-emerald-500 pointer-events-none"
+            >
+              <Sparkles size={40} />
+            </motion.div>
+            <motion.div
+              animate={{
+                y: [0, 15, 0],
+                x: [0, 10, 0],
+                opacity: [0.05, 0.1, 0.05],
+              }}
+              transition={{
+                duration: 10,
+                repeat: Infinity,
+                ease: "easeInOut",
+                delay: 1,
+              }}
+              className="absolute bottom-10 left-10 text-yellow-500 pointer-events-none"
+            >
+              <Zap size={30} />
+            </motion.div>
+
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/10">
+                      <Sparkles size={10} className="animate-pulse" />
+                      Dino AI Personalization
+                    </span>
+                  </div>
+                  <h2
+                    className={`text-3xl md:text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                  >
+                    How are you{" "}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400">
+                      feeling
+                    </span>{" "}
+                    today?
+                  </h2>
+                  <p
+                    className={`text-base font-medium mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    Our paleontological algorithms will match your vibe with
+                    perfection.
+                  </p>
+                </div>
+
+                <div
+                  className={`p-4 rounded-2xl flex items-center gap-4 ${isDarkMode ? "bg-zinc-800/50" : "bg-emerald-50/50"} border ${isDarkMode ? "border-zinc-700" : "border-emerald-100/50"}`}
+                >
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`w-8 h-8 rounded-full border-2 ${isDarkMode ? "border-zinc-800" : "border-white"} bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-[10px] text-white font-bold`}
+                      >
+                        D{i}
+                      </div>
+                    ))}
+                  </div>
+                  <div>
+                    <p
+                      className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? "text-gray-400" : "text-emerald-600"}`}
+                    >
+                      Algorithm Status
+                    </p>
+                    <p
+                      className={`text-xs font-black ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                    >
+                      1.2k Vibes Analyzed
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 overflow-x-auto pb-6 no-scrollbar -mx-2 px-2 scroll-smooth">
+                {[
+                  {
+                    id: "Social",
+                    label: "Social",
+                    icon: <Users size={20} />,
+                    color: "from-blue-500 to-indigo-600",
+                  },
+                  {
+                    id: "Chill",
+                    label: "Chill",
+                    icon: <Clock size={20} />,
+                    color: "from-cyan-400 to-blue-500",
+                  },
+                  {
+                    id: "Happy",
+                    label: "Happy",
+                    icon: <Smile size={20} />,
+                    color: "from-yellow-400 to-orange-500",
+                  },
+                  {
+                    id: "Romantic",
+                    label: "Romantic",
+                    icon: <Heart size={20} />,
+                    color: "from-rose-400 to-pink-600",
+                  },
+                  {
+                    id: "Adventurous",
+                    label: "Adventurous",
+                    icon: <Compass size={20} />,
+                    color: "from-emerald-400 to-teal-600",
+                  },
+                  {
+                    id: "Hungry",
+                    label: "Hungry",
+                    icon: <Utensils size={20} />,
+                    color: "from-orange-500 to-red-600",
+                  },
+                ].map((mood) => (
+                  <motion.button
+                    key={mood.id}
+                    whileHover={{ scale: 1.05, y: -2 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setUserMood(mood.id as any)}
+                    className={`group relative flex flex-col items-center gap-3 px-6 sm:px-8 py-4 sm:py-6 rounded-2xl sm:rounded-3xl font-black transition-all duration-500 whitespace-nowrap border-2 ${userMood === mood.id
+                        ? `bg-gradient-to-br ${mood.color} border-transparent text-white shadow-xl shadow-emerald-500/20`
+                        : isDarkMode
+                          ? "bg-zinc-800/80 border-zinc-700 text-gray-400 hover:border-emerald-500/30"
+                          : "bg-white border-gray-100 text-gray-500 hover:border-emerald-200 hover:shadow-lg"
+                      }`}
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${userMood === mood.id
+                          ? "bg-white/20 scale-110 rotate-3"
+                          : isDarkMode
+                            ? "bg-zinc-700/50 group-hover:bg-emerald-500/10"
+                            : "bg-gray-50 group-hover:bg-emerald-50"
+                        }`}
+                    >
+                      <span
+                        className={`${userMood === mood.id ? "text-white" : "text-emerald-500 group-hover:scale-110 transition-transform"}`}
+                      >
+                        {mood.icon}
+                      </span>
+                    </div>
+                    <span className="text-sm tracking-tight">
+                      {mood.label}
+                    </span>
+
+                    {userMood === mood.id && (
+                      <motion.div
+                        layoutId="mood-glow"
+                        className="absolute inset-0 rounded-3xl bg-white/10 blur-xl -z-10"
+                      />
+                    )}
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Dino AI Recommendations Display with transition effects */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={userMood}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  className="mt-8"
+                >
+                  <DinoDailyMorsels
+                    userId={userData?.uid || ""}
+                    isDarkMode={isDarkMode}
+                    userMood={userMood as any}
+                    language={language}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Bento Grid Section Nav */}
+          <div className="mb-12">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2
+                  className={`text-2xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                >
+                  Expedition Hub
+                </h2>
+                <p
+                  className={`text-sm font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  Choose your excavation target
+                </p>
+              </div>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 dark:via-zinc-800 to-transparent mx-8 opacity-50" />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
+              <motion.button
+                whileHover={{ y: -8, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setHomeSection("restaurants")}
+                className={`group relative overflow-hidden p-6 sm:p-8 md:p-10 rounded-[2rem] sm:rounded-[3rem] transition-all duration-500 border-2 text-left ${homeSection === "restaurants"
+                    ? "bg-emerald-500 border-emerald-400 shadow-[0_0_60px_-10px_rgba(16,185,129,0.2)]"
+                    : isDarkMode
+                      ? "bg-zinc-900/80 border-zinc-800 backdrop-blur-xl hover:bg-zinc-800/80"
+                      : "bg-white border-emerald-50 shadow-2xl shadow-emerald-500/5"
+                  }`}
+              >
+                <div
+                  className={`absolute top-0 right-0 p-8 transition-all duration-700 pointer-events-none ${homeSection === "restaurants" ? "opacity-30 scale-125" : "opacity-10 grayscale group-hover:grayscale-0"}`}
+                >
+                  <Utensils
+                    size={120}
+                    strokeWidth={0.5}
+                    className={
+                      homeSection === "restaurants"
+                        ? "text-white"
+                        : "text-emerald-500"
+                    }
+                  />
+                </div>
+
+                <div className="relative z-10 flex flex-col h-full">
+                  <div
+                    className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 transition-all duration-500 overflow-hidden ${homeSection === "restaurants"
+                        ? "bg-white text-emerald-600 shadow-xl"
+                        : isDarkMode
+                          ? "bg-zinc-800 text-emerald-500 border border-zinc-700"
+                          : "bg-emerald-50 text-emerald-600"
+                      }`}
+                  >
+                    <motion.div
+                      animate={
+                        homeSection === "restaurants"
+                          ? { rotate: [0, 15, -15, 0] }
+                          : {}
+                      }
+                      transition={{ duration: 0.5 }}
+                    >
+                      <Utensils size={28} />
+                    </motion.div>
+                  </div>
+
+                  <div className="mt-auto">
+                    <h3
+                      className={`text-3xl font-black mb-2 tracking-tight ${homeSection === "restaurants" ? "text-white" : isDarkMode ? "text-white" : "text-gray-900"}`}
+                    >
+                      Restaurants
+                    </h3>
+                    <p
+                      className={`text-base font-medium leading-relaxed max-w-[200px] ${homeSection === "restaurants" ? "text-emerald-50" : isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      Find the world's rarest culinary excavation sites.
+                    </p>
+                  </div>
+                </div>
+
+                {homeSection === "restaurants" && (
+                  <motion.div
+                    layoutId="bento-active"
+                    className="absolute inset-x-0 bottom-0 h-2 bg-white/40"
+                  />
+                )}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ y: -8, scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setHomeSection("events")}
+                className={`group relative overflow-hidden p-6 sm:p-8 md:p-10 rounded-[2rem] sm:rounded-[3rem] transition-all duration-500 border-2 text-left ${homeSection === "events"
+                    ? "bg-purple-600 border-purple-400 shadow-[0_0_60px_-10px_rgba(147,51,234,0.2)]"
+                    : isDarkMode
+                      ? "bg-zinc-900/80 border-zinc-800 backdrop-blur-xl hover:bg-zinc-800/80"
+                      : "bg-white border-purple-50 shadow-2xl shadow-purple-500/5"
+                  }`}
+              >
+                <div
+                  className={`absolute top-0 right-0 p-8 transition-all duration-700 pointer-events-none ${homeSection === "events" ? "opacity-30 scale-125" : "opacity-10 grayscale group-hover:grayscale-0"}`}
+                >
+                  <Calendar
+                    size={120}
+                    strokeWidth={0.5}
+                    className={
+                      homeSection === "events"
+                        ? "text-white"
+                        : "text-purple-500"
+                    }
+                  />
+                </div>
+
+                <div className="relative z-10 flex flex-col h-full">
+                  <div
+                    className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 transition-all duration-500 overflow-hidden ${homeSection === "events"
+                        ? "bg-white text-purple-600 shadow-xl"
+                        : isDarkMode
+                          ? "bg-zinc-800 text-purple-400 border border-zinc-700"
+                          : "bg-purple-50 text-purple-600"
+                      }`}
+                  >
+                    <motion.div
+                      animate={
+                        homeSection === "events"
+                          ? { scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }
+                          : {}
+                      }
+                      transition={{ duration: 0.5 }}
+                    >
+                      <Calendar size={28} />
+                    </motion.div>
+                  </div>
+
+                  <div className="mt-auto">
+                    <h3
+                      className={`text-3xl font-black mb-2 tracking-tight ${homeSection === "events" ? "text-white" : isDarkMode ? "text-white" : "text-gray-900"}`}
+                    >
+                      Events
+                    </h3>
+                    <p
+                      className={`text-base font-medium leading-relaxed max-w-[200px] ${homeSection === "events" ? "text-purple-50" : isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      Scout out live happenings across your territory.
+                    </p>
+                  </div>
+                </div>
+
+                {homeSection === "events" && (
+                  <motion.div
+                    layoutId="bento-active"
+                    className="absolute inset-x-0 bottom-0 h-2 bg-white/40"
+                  />
+                )}
+              </motion.button>
+            </div>
+          </div>
+
+          {/* Content based on selection */}
+          {homeSection === "restaurants" ? (
+            <div className="mb-12">
+              <h2
+                className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"} mb-8 flex items-center gap-3`}
+              >
+                <Utensils className="text-emerald-500" />
+                Featured Restaurants
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {restaurants.length > 0 ? (
+                  restaurants.map((restaurant, idx) => (
+                    <PremiumRestaurantCard
+                      key={restaurant.id}
+                      restaurant={restaurant}
+                      isDarkMode={isDarkMode}
+                      isFavorite={isItemFavorite(restaurant.id, "restaurant")}
+                      isOpen={isRestaurantOpen(restaurant)}
+                      onToggleFavorite={toggleFavorite}
+                      index={idx}
+                      showDinoPick={
+                        userPreferences &&
+                        getPersonalizationScore(
+                          restaurant,
+                          userPreferences,
+                        ) > 100
+                      }
+                    />
+                  ))
+                ) : (
+                  <motion.div
+                    key="empty-restaurants"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`col-span-full text-center py-24 ${isDarkMode ? "bg-zinc-900/40" : "bg-white"} rounded-[3rem] border-2 border-dashed ${isDarkMode ? "border-zinc-800" : "border-gray-100"}`}
+                  >
+                    <div className="mx-auto w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6 text-4xl animate-bounce">
+                      🦖
+                    </div>
+                    <h3
+                      className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} mb-2 tracking-tight`}
+                    >
+                      Territory Empty
+                    </h3>
+                    <p
+                      className={`text-base font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      No excavations match your filters.
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="mb-12">
+              <h2
+                className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"} mb-8 flex items-center gap-3`}
+              >
+                <Calendar className="text-purple-500" />
+                Featured Events
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                {events.length > 0 ? (
+                  events.map((event, idx) => (
+                    <PremiumEventCard
+                      key={event.id}
+                      event={event}
+                      isDarkMode={isDarkMode}
+                      isFavorite={isItemFavorite(event.id, "event")}
+                      onToggleFavorite={toggleFavorite}
+                      index={idx}
+                    />
+                  ))
+                ) : (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className={`col-span-full text-center py-24 ${isDarkMode ? "bg-zinc-900/40" : "bg-white"} rounded-[3rem] border-2 border-dashed ${isDarkMode ? "border-zinc-800" : "border-gray-100"}`}
+                  >
+                    <div className="mx-auto w-24 h-24 bg-purple-500/10 rounded-full flex items-center justify-center mb-6 text-4xl animate-bounce">
+                      🎟️
+                    </div>
+                    <h3
+                      className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} mb-2 tracking-tight`}
+                    >
+                      No Events Scheduled
+                    </h3>
+                    <p
+                      className={`text-base font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                    >
+                      Explore another territory or check back soon.
+                    </p>
+                  </motion.div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* DineInGo Platform Feedback & Survey Section */}
+          <div
+            className={`mt-12 mb-8 p-6 sm:p-8 rounded-[2rem] sm:rounded-[2.5rem] relative overflow-hidden transition-all duration-500 border-2 ${isDarkMode
+                ? "bg-zinc-900 border-emerald-500/20 shadow-[0_0_50px_rgba(16,185,129,0.1)]"
+                : "bg-white border-emerald-100 shadow-xl shadow-emerald-500/10"
+              }`}
+          >
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-400/10 rounded-full blur-2xl -ml-16 -mb-16 pointer-events-none"></div>
+
+            <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
+              <div className="flex-1 text-center lg:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[10px] font-black uppercase tracking-widest mb-4">
+                  <Star size={12} className="fill-emerald-500" />
+                  Shape The Future
+                </div>
+                <h2
+                  className={`text-3xl md:text-4xl font-black tracking-tight mb-4 ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                >
+                  DineInGo Platform Feedback &{" "}
+                  <span className="text-emerald-500">Feature Evaluation</span>{" "}
+                  Survey
+                </h2>
+                <p
+                  className={`text-lg font-medium leading-relaxed max-w-2xl ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                >
+                  Help us build the perfect dining companion! Share your
+                  feedback and help evaluate upcoming features. Your voice
+                  matters in the Dino kingdom! 🦖✨
+                </p>
+              </div>
+
+              <div className="flex-shrink-0 flex flex-col items-center gap-4">
+                <div className="relative group cursor-pointer">
+                  <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
+                  <a
+                    href="https://tally.so/r/9q12LK"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative block bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl font-black text-lg transition-all transform hover:scale-[1.05] active:scale-95 shadow-xl shadow-emerald-500/25 flex items-center gap-3"
+                  >
+                    Take The Survey
+                    <ArrowRight size={20} strokeWidth={3} />
+                  </a>
+                </div>
+                <p
+                  className={`text-[10px] font-bold uppercase tracking-widest opacity-60 ${isDarkMode ? "text-emerald-400" : "text-black"}`}
+                >
+                  Estimated Time: 2 Minutes • Anonymous
+                </p>
+              </div>
+            </div>
+
+            {/* Dino Mascot Illustration */}
+            <div className="absolute -bottom-4 -right-4 w-32 h-32 opacity-20 transform -rotate-12 pointer-events-none">
+              <img
+                src="/images/Dino Icon.svg"
+                alt=""
+                className="w-full h-full object-contain"
+              />
+            </div>
+          </div>
+        </div>
+      );
+    case "restaurants":
+      return (
+        <div
+          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 sm:p-8`}
         >
           <h1
             className={`text-4xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-8`}
           >
-            Excavation Search Results
+            All Restaurants
           </h1>
-
-          {/* Territories (Restaurants) Results */}
-          {filteredRestaurants.length > 0 && (
-            <div className="mb-12">
-              <h2
-                className={`text-2xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6 flex items-center gap-2`}
-              >
-                <Utensils size={24} className="text-emerald-500" />
-                Territories Found
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredRestaurants.map((restaurant) => (
-                  <div
-                    key={restaurant.id}
-                    className={`${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                    onClick={() => navigate(`/restaurant/${restaurant.id}`)}
-                  >
-                    <div className="relative h-48">
-                      <img
-                        src={restaurant.image}
-                        alt={restaurant.name}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                        <span className="text-emerald-400 mr-1">★</span>
-                        <span>
-                          {restaurant.averageRating ?? restaurant.rating}
-                        </span>
-                      </div>
-                      <button
-                        className="absolute top-4 right-4 p-2 rounded-full bg-emerald-400 hover:bg-emerald-500 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(restaurant);
-                        }}
-                      >
-                        <Heart
-                          size={20}
-                          className="text-white"
-                          fill={
-                            isItemFavorite(restaurant.id, "restaurant")
-                              ? "white"
-                              : "none"
-                          }
-                        />
-                      </button>
-                    </div>
-
-                    <div className="p-4">
-                      <h3
-                        className={`text-xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                      >
-                        {restaurant.name}
-                      </h3>
-                      <div className="flex justify-between items-center mb-1">
-                        <div
-                          className={`flex items-center ${isDarkMode ? "text-gray-300" : "text-gray-600"} mt-1`}
-                        >
-                          <MapPin size={16} className="mr-1" />
-                          <span>
-                            {restaurant.address ||
-                              `${restaurant.location.city}, ${restaurant.location.state}`}
-                          </span>
-                        </div>
-                        <div
-                          className={`flex items-center px-2 py-0.5 rounded-lg text-[10px] font-semibold ${isDarkMode ? "bg-gray-700 text-emerald-400" : "bg-emerald-50 text-emerald-700"}`}
-                        >
-                          {isRestaurantOpen(restaurant) ? "Active" : "Dormant"}
-                        </div>
-                      </div>
-
-                      <div className="flex flex-wrap gap-2 mt-3">
-                        {restaurant.cuisine?.map((cuisine, index) => (
-                          <span
-                            key={index}
-                            className={`px-2 py-1 ${isDarkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600"} rounded-full text-xs`}
-                          >
-                            {cuisine}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Events Results */}
-          {filteredEvents.length > 0 && (
-            <div className="mb-12">
-              <h2
-                className={`text-2xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"} mb-6 flex items-center gap-2`}
-              >
-                <Calendar size={24} className="text-purple-500" />
-                Live Happenings
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredEvents.map((event) => (
-                  <div
-                    key={event.id}
-                    className={`${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-purple-500/30 cursor-pointer`}
-                    onClick={() => navigate(`/event/${event.id}/register`)}
-                  >
-                    <div className="relative h-48">
-                      <img
-                        src={event.imageUrl}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                        <span className="text-purple-400 mr-1">₹</span>
-                        <span>{event.price}</span>
-                      </div>
-                      <button
-                        className="absolute top-4 right-4 p-2 rounded-full bg-purple-400 hover:bg-purple-500 transition-colors"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleFavorite(event as any);
-                        }}
-                      >
-                        <Heart
-                          size={20}
-                          className="text-white"
-                          fill={
-                            isItemFavorite(event.id, "event") ? "white" : "none"
-                          }
-                        />
-                      </button>
-                    </div>
-                    <div className="p-4">
-                      <h3
-                        className={`text-xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                      >
-                        {event.title}
-                      </h3>
-                      <div
-                        className={`flex items-center ${isDarkMode ? "text-gray-300" : "text-gray-600"} mt-1`}
-                      >
-                        <MapPin size={16} className="mr-1" />
-                        <span>
-                          {typeof event.location === "string"
-                            ? event.location
-                            : `${(event.location as any).city}, ${(event.location as any).state}`}
-                        </span>
-                      </div>
-                      <div
-                        className={`mt-2 text-sm ${isDarkMode ? "text-gray-300" : "text-gray-600"}`}
-                      >
-                        <div className="flex items-center">
-                          <Calendar size={16} className="mr-1" />
-                          <span>{event.date}</span>
-                        </div>
-                      </div>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <span
-                          className={`px-2 py-1 ${isDarkMode ? "bg-gray-700 text-gray-300" : "bg-gray-100 text-gray-600"} rounded-full text-xs`}
-                        >
-                          {event.category}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* No Results Message */}
-          {filteredRestaurants.length === 0 && filteredEvents.length === 0 && (
-            <div className="text-center py-20 bg-white/50 dark:bg-zinc-900/50 rounded-[3rem] border-2 border-dashed border-gray-200 dark:border-zinc-800">
-              <div className="text-6xl mb-4">🔦</div>
-              <h3
-                className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} mb-2`}
-              >
-                No Fossils Found
-              </h3>
-              <p
-                className={`text-lg ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-              >
-                Our scanners couldn't find any "{searchTerm}" in this territory.
-              </p>
-            </div>
-          )}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {restaurants.map((restaurant, idx) => (
+              <PremiumRestaurantCard
+                key={restaurant.id}
+                restaurant={restaurant}
+                isDarkMode={isDarkMode}
+                isFavorite={isItemFavorite(restaurant.id, "restaurant")}
+                isOpen={isRestaurantOpen(restaurant)}
+                onToggleFavorite={toggleFavorite}
+                index={idx}
+              />
+            ))}
+          </div>
         </div>
       );
-    }
-    switch (section) {
-      case "home":
-        return (
-          <div
-            className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"}`}
+    case "events":
+      return (
+        <div
+          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 sm:p-8`}
+        >
+          <h1
+            className={`text-4xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-8`}
           >
-            {/* Premium Header 2.0: Immersive Greeting */}
-            <div className="relative mb-12 group">
-              <div
-                className={`absolute inset-0 rounded-[3rem] overflow-hidden transition-all duration-700 ${
-                  isDarkMode ? "bg-zinc-900" : "bg-emerald-500"
-                }`}
+            All Events
+          </h1>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {events.map((event, idx) => (
+              <PremiumEventCard
+                key={event.id}
+                event={event}
+                isDarkMode={isDarkMode}
+                isFavorite={isItemFavorite(event.id, "event")}
+                onToggleFavorite={toggleFavorite}
+                index={idx}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    case "bookings":
+      // Bookings section
+      return (
+        <div
+          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 sm:p-8`}
+        >
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+            <div>
+              <h1
+                className={`text-4xl md:text-5xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} tracking-tight`}
               >
-                {/* Parallax / Layered Background Elements */}
-                <motion.div
-                  initial={{ rotate: -15, scale: 0.8 }}
-                  animate={{ rotate: [-15, -10, -15], scale: [0.8, 0.85, 0.8] }}
-                  transition={{
-                    duration: 15,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute -top-20 -right-20 w-[400px] h-[400px] bg-white/10 rounded-full blur-[100px]"
-                />
-                <motion.div
-                  initial={{ rotate: 15, x: 0 }}
-                  animate={{ x: [0, 50, 0], rotate: [15, 20, 15] }}
-                  transition={{
-                    duration: 12,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute -bottom-20 -left-20 w-[300px] h-[300px] bg-yellow-400/20 rounded-full blur-[80px]"
-                />
-
-                {/* Decorative Pattern Layer */}
-                <div
-                  className="absolute inset-0 opacity-[0.03] select-none pointer-events-none"
-                  style={{
-                    backgroundImage:
-                      "radial-gradient(circle at 2px 2px, white 1px, transparent 0)",
-                    backgroundSize: "40px 40px",
-                  }}
-                />
-              </div>
-
-              <div className="relative z-10 p-10 md:p-14 flex flex-col md:flex-row md:items-center justify-between gap-10">
-                <motion.div
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ duration: 0.8 }}
-                >
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="px-5 py-2 rounded-full bg-white/15 backdrop-blur-xl border border-white/20 shadow-xl overflow-hidden group/pill">
-                      <motion.div
-                        animate={{ x: ["-100%", "200%"] }}
-                        transition={{
-                          duration: 3,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                        className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12"
-                      />
-                      <span className="relative text-white text-[10px] font-black uppercase tracking-[0.25em]">
-                        {new Date().getHours() < 12
-                          ? "Morning Expedition"
-                          : new Date().getHours() < 18
-                            ? "Afternoon Scout"
-                            : "Evening Hunt"}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-1.5 rounded-full bg-white/40 shadow-glow animate-pulse" />
-                    <span className="text-white/70 text-sm font-black tracking-tight">
-                      {new Date().toLocaleDateString("en-US", {
-                        weekday: "long",
-                        month: "long",
-                        day: "numeric",
-                      })}
-                    </span>
-                  </div>
-
-                  <h1 className="text-5xl md:text-7xl font-black text-white tracking-tighter leading-[0.9] mb-6 drop-shadow-2xl">
-                    Hello, <br className="md:hidden" />
-                    <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-white to-white/60">
-                      {userData?.displayName?.split(" ")[0] || "Explorer"}!
-                    </span>
-                  </h1>
-
-                  <p className="text-white/80 text-xl font-medium max-w-xl leading-relaxed">
-                    Ready to track down the finest culinary fossils and local
-                    legends in{" "}
-                    <span className="text-white font-black underline decoration-yellow-400/60 transition-colors hover:decoration-yellow-400">
-                      your territory?
-                    </span>
-                  </p>
-                </motion.div>
-
-                <motion.button
-                  whileHover={{ scale: 1.05, y: -5 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setIsLocationModalOpen(true)}
-                  className="relative group/loc overflow-hidden bg-white/10 hover:bg-white/20 backdrop-blur-3xl border-2 border-white/20 transition-all duration-500 rounded-[2.5rem] p-8 min-w-[280px] shadow-2xl"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover/loc:opacity-100 transition-opacity" />
-                  <div className="relative z-10 flex items-center gap-5">
-                    <div className="w-16 h-16 rounded-2xl bg-white text-emerald-600 flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.3)] transform group-hover/loc:rotate-6 transition-transform">
-                      <MapPin size={32} className="fill-emerald-500/20" />
-                    </div>
-                    <div className="text-left">
-                      <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.2em] mb-1">
-                        Assigned Territory
-                      </p>
-                      <p className="text-white font-black text-3xl tracking-tight">
-                        {typeof userData?.location === "object" &&
-                        userData?.location &&
-                        "city" in userData.location
-                          ? userData.location.city
-                          : "Global"}
-                      </p>
-                    </div>
-                  </div>
-                </motion.button>
-              </div>
+                Culinary{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400">
+                  Expeditions
+                </span>
+              </h1>
+              <p
+                className={`text-lg font-medium mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+              >
+                Tracking your evolution across {bookings.length} excavation
+                sites
+              </p>
             </div>
 
-            {/* Enhanced Dino AI Feelings Recommendation System */}
             <div
-              className={`relative mb-12 p-8 md:p-10 rounded-[3rem] overflow-hidden border-2 transition-all duration-700 ${
-                isDarkMode
+              className={`px-5 py-3 rounded-2xl flex items-center gap-3 ${isDarkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white border-emerald-100 shadow-lg shadow-emerald-500/5"} border-2`}
+            >
+              <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
+                <Trophy size={20} />
+              </div>
+              <div>
+                <p
+                  className={`text-[10px] font-black uppercase tracking-[0.15em] ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`}
+                >
+                  Expedition Rank
+                </p>
+                <p
+                  className={`text-sm font-black ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                >
+                  Lead Paleontologist
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Premium AI Insights for Future Section */}
+          {bookings.length > 0 && (
+            <div
+              className={`mb-12 p-8 md:p-10 rounded-[3rem] relative overflow-hidden transition-all duration-700 ${isDarkMode
                   ? "bg-zinc-900/40 border-emerald-500/20 shadow-[0_0_80px_rgba(16,185,129,0.05)]"
                   : "bg-white/60 border-emerald-100 shadow-2xl shadow-emerald-500/5 backdrop-blur-xl"
-              }`}
+                } border-2`}
             >
-              {/* Animated Floating Background Elements */}
+              {/* Decorative floating elements */}
               <motion.div
-                animate={{
-                  y: [0, -20, 0],
-                  rotate: [0, 10, 0],
-                  opacity: [0.1, 0.2, 0.1],
-                }}
-                transition={{
-                  duration: 8,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
-                className="absolute top-10 right-10 text-emerald-500 pointer-events-none"
+                animate={{ y: [0, -15, 0], opacity: [0.1, 0.2, 0.1] }}
+                transition={{ duration: 6, repeat: Infinity }}
+                className="absolute top-6 right-6 text-emerald-500/20"
               >
                 <Sparkles size={40} />
               </motion.div>
-              <motion.div
-                animate={{
-                  y: [0, 15, 0],
-                  x: [0, 10, 0],
-                  opacity: [0.05, 0.1, 0.05],
-                }}
-                transition={{
-                  duration: 10,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                  delay: 1,
-                }}
-                className="absolute bottom-10 left-10 text-yellow-500 pointer-events-none"
-              >
-                <Zap size={30} />
-              </motion.div>
 
-              <div className="relative z-10">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest border border-emerald-500/10">
-                        <Sparkles size={10} className="animate-pulse" />
-                        Dino AI Personalization
-                      </span>
-                    </div>
-                    <h2
-                      className={`text-3xl md:text-4xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                    >
-                      How are you{" "}
-                      <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400">
-                        feeling
-                      </span>{" "}
-                      today?
-                    </h2>
-                    <p
-                      className={`text-base font-medium mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Our paleontological algorithms will match your vibe with
-                      perfection.
-                    </p>
-                  </div>
-
-                  <div
-                    className={`p-4 rounded-2xl flex items-center gap-4 ${isDarkMode ? "bg-zinc-800/50" : "bg-emerald-50/50"} border ${isDarkMode ? "border-zinc-700" : "border-emerald-100/50"}`}
-                  >
-                    <div className="flex -space-x-2">
-                      {[1, 2, 3].map((i) => (
-                        <div
-                          key={i}
-                          className={`w-8 h-8 rounded-full border-2 ${isDarkMode ? "border-zinc-800" : "border-white"} bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-[10px] text-white font-bold`}
-                        >
-                          D{i}
-                        </div>
-                      ))}
-                    </div>
-                    <div>
-                      <p
-                        className={`text-[10px] font-bold uppercase tracking-wider ${isDarkMode ? "text-gray-400" : "text-emerald-600"}`}
-                      >
-                        Algorithm Status
-                      </p>
-                      <p
-                        className={`text-xs font-black ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                      >
-                        1.2k Vibes Analyzed
-                      </p>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-3 mb-10">
+                <div className="p-3 rounded-2xl bg-emerald-500 text-white shadow-xl shadow-emerald-500/20">
+                  <Zap size={24} className="animate-pulse" />
                 </div>
-
-                <div className="flex items-center gap-4 overflow-x-auto pb-6 no-scrollbar -mx-2 px-2 scroll-smooth">
-                  {[
-                    {
-                      id: "Social",
-                      label: "Social",
-                      icon: <Users size={20} />,
-                      color: "from-blue-500 to-indigo-600",
-                    },
-                    {
-                      id: "Chill",
-                      label: "Chill",
-                      icon: <Clock size={20} />,
-                      color: "from-cyan-400 to-blue-500",
-                    },
-                    {
-                      id: "Happy",
-                      label: "Happy",
-                      icon: <Smile size={20} />,
-                      color: "from-yellow-400 to-orange-500",
-                    },
-                    {
-                      id: "Romantic",
-                      label: "Romantic",
-                      icon: <Heart size={20} />,
-                      color: "from-rose-400 to-pink-600",
-                    },
-                    {
-                      id: "Adventurous",
-                      label: "Adventurous",
-                      icon: <Compass size={20} />,
-                      color: "from-emerald-400 to-teal-600",
-                    },
-                    {
-                      id: "Hungry",
-                      label: "Hungry",
-                      icon: <Utensils size={20} />,
-                      color: "from-orange-500 to-red-600",
-                    },
-                  ].map((mood) => (
-                    <motion.button
-                      key={mood.id}
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setUserMood(mood.id as any)}
-                      className={`group relative flex flex-col items-center gap-3 px-8 py-6 rounded-3xl font-black transition-all duration-500 whitespace-nowrap border-2 ${
-                        userMood === mood.id
-                          ? `bg-gradient-to-br ${mood.color} border-transparent text-white shadow-xl shadow-emerald-500/20`
-                          : isDarkMode
-                            ? "bg-zinc-800/80 border-zinc-700 text-gray-400 hover:border-emerald-500/30"
-                            : "bg-white border-gray-100 text-gray-500 hover:border-emerald-200 hover:shadow-lg"
-                      }`}
-                    >
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
-                          userMood === mood.id
-                            ? "bg-white/20 scale-110 rotate-3"
-                            : isDarkMode
-                              ? "bg-zinc-700/50 group-hover:bg-emerald-500/10"
-                              : "bg-gray-50 group-hover:bg-emerald-50"
-                        }`}
-                      >
-                        <span
-                          className={`${userMood === mood.id ? "text-white" : "text-emerald-500 group-hover:scale-110 transition-transform"}`}
-                        >
-                          {mood.icon}
-                        </span>
-                      </div>
-                      <span className="text-sm tracking-tight">
-                        {mood.label}
-                      </span>
-
-                      {userMood === mood.id && (
-                        <motion.div
-                          layoutId="mood-glow"
-                          className="absolute inset-0 rounded-3xl bg-white/10 blur-xl -z-10"
-                        />
-                      )}
-                    </motion.button>
-                  ))}
-                </div>
-
-                {/* Dino AI Recommendations Display with transition effects */}
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={userMood}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                    className="mt-8"
-                  >
-                    <DinoDailyMorsels
-                      userId={userData?.uid || ""}
-                      isDarkMode={isDarkMode}
-                      userMood={userMood as any}
-                      language={language}
-                    />
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </div>
-
-            {/* Bento Grid Section Nav */}
-            <div className="mb-12">
-              <div className="flex items-center justify-between mb-8">
                 <div>
                   <h2
                     className={`text-2xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
                   >
-                    Expedition Hub
+                    Dino Intelligence Reports
                   </h2>
                   <p
-                    className={`text-sm font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                    className={`text-sm font-semibold opacity-60 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
                   >
-                    Choose your excavation target
-                  </p>
-                </div>
-                <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-200 dark:via-zinc-800 to-transparent mx-8 opacity-50" />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                <motion.button
-                  whileHover={{ y: -8, scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setHomeSection("restaurants")}
-                  className={`group relative overflow-hidden p-8 md:p-10 rounded-[3rem] transition-all duration-500 border-2 text-left ${
-                    homeSection === "restaurants"
-                      ? "bg-emerald-500 border-emerald-400 shadow-[0_0_60px_-10px_rgba(16,185,129,0.2)]"
-                      : isDarkMode
-                        ? "bg-zinc-900/40 border-zinc-800 backdrop-blur-xl"
-                        : "bg-white border-emerald-50 shadow-2xl shadow-emerald-500/5"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0 right-0 p-8 transition-all duration-700 pointer-events-none ${homeSection === "restaurants" ? "opacity-30 scale-125" : "opacity-10 grayscale group-hover:grayscale-0"}`}
-                  >
-                    <Utensils
-                      size={120}
-                      strokeWidth={0.5}
-                      className={
-                        homeSection === "restaurants"
-                          ? "text-white"
-                          : "text-emerald-500"
-                      }
-                    />
-                  </div>
-
-                  <div className="relative z-10 flex flex-col h-full">
-                    <div
-                      className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 transition-all duration-500 overflow-hidden ${
-                        homeSection === "restaurants"
-                          ? "bg-white text-emerald-600 shadow-xl"
-                          : isDarkMode
-                            ? "bg-zinc-800 text-emerald-500 border border-zinc-700"
-                            : "bg-emerald-50 text-emerald-600"
-                      }`}
-                    >
-                      <motion.div
-                        animate={
-                          homeSection === "restaurants"
-                            ? { rotate: [0, 15, -15, 0] }
-                            : {}
-                        }
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Utensils size={28} />
-                      </motion.div>
-                    </div>
-
-                    <div className="mt-auto">
-                      <h3
-                        className={`text-3xl font-black mb-2 tracking-tight ${homeSection === "restaurants" ? "text-white" : isDarkMode ? "text-white" : "text-gray-900"}`}
-                      >
-                        Restaurants
-                      </h3>
-                      <p
-                        className={`text-base font-medium leading-relaxed max-w-[200px] ${homeSection === "restaurants" ? "text-emerald-50" : isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        Find the world's rarest culinary excavation sites.
-                      </p>
-                    </div>
-                  </div>
-
-                  {homeSection === "restaurants" && (
-                    <motion.div
-                      layoutId="bento-active"
-                      className="absolute inset-x-0 bottom-0 h-2 bg-white/40"
-                    />
-                  )}
-                </motion.button>
-
-                <motion.button
-                  whileHover={{ y: -8, scale: 1.01 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setHomeSection("events")}
-                  className={`group relative overflow-hidden p-8 md:p-10 rounded-[3rem] transition-all duration-500 border-2 text-left ${
-                    homeSection === "events"
-                      ? "bg-purple-600 border-purple-400 shadow-[0_0_60px_-10px_rgba(147,51,234,0.2)]"
-                      : isDarkMode
-                        ? "bg-zinc-900/40 border-zinc-800 backdrop-blur-xl"
-                        : "bg-white border-purple-50 shadow-2xl shadow-purple-500/5"
-                  }`}
-                >
-                  <div
-                    className={`absolute top-0 right-0 p-8 transition-all duration-700 pointer-events-none ${homeSection === "events" ? "opacity-30 scale-125" : "opacity-10 grayscale group-hover:grayscale-0"}`}
-                  >
-                    <Calendar
-                      size={120}
-                      strokeWidth={0.5}
-                      className={
-                        homeSection === "events"
-                          ? "text-white"
-                          : "text-purple-500"
-                      }
-                    />
-                  </div>
-
-                  <div className="relative z-10 flex flex-col h-full">
-                    <div
-                      className={`w-16 h-16 rounded-[1.5rem] flex items-center justify-center mb-8 transition-all duration-500 overflow-hidden ${
-                        homeSection === "events"
-                          ? "bg-white text-purple-600 shadow-xl"
-                          : isDarkMode
-                            ? "bg-zinc-800 text-purple-400 border border-zinc-700"
-                            : "bg-purple-50 text-purple-600"
-                      }`}
-                    >
-                      <motion.div
-                        animate={
-                          homeSection === "events"
-                            ? { scale: [1, 1.2, 1], rotate: [0, 10, -10, 0] }
-                            : {}
-                        }
-                        transition={{ duration: 0.5 }}
-                      >
-                        <Calendar size={28} />
-                      </motion.div>
-                    </div>
-
-                    <div className="mt-auto">
-                      <h3
-                        className={`text-3xl font-black mb-2 tracking-tight ${homeSection === "events" ? "text-white" : isDarkMode ? "text-white" : "text-gray-900"}`}
-                      >
-                        Events
-                      </h3>
-                      <p
-                        className={`text-base font-medium leading-relaxed max-w-[200px] ${homeSection === "events" ? "text-purple-50" : isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        Scout out live happenings across your territory.
-                      </p>
-                    </div>
-                  </div>
-
-                  {homeSection === "events" && (
-                    <motion.div
-                      layoutId="bento-active"
-                      className="absolute inset-x-0 bottom-0 h-2 bg-white/40"
-                    />
-                  )}
-                </motion.button>
-              </div>
-            </div>
-
-            {/* Content based on selection */}
-            {homeSection === "restaurants" ? (
-              <div className="mb-12">
-                <h2
-                  className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"} mb-8 flex items-center gap-3`}
-                >
-                  <Utensils className="text-emerald-500" />
-                  Featured Restaurants
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {restaurants.length > 0 ? (
-                    restaurants.map((restaurant, idx) => (
-                      <motion.div
-                        key={restaurant.id}
-                        initial={{ opacity: 0, y: 30 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: idx * 0.1, duration: 0.5 }}
-                        whileHover={{
-                          y: -12,
-                          perspective: 1000,
-                          rotateX: 2,
-                          transition: { duration: 0.4, ease: "easeOut" },
-                        }}
-                        className={`group relative ${isDarkMode ? "bg-zinc-900/60" : "bg-white"} rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500 cursor-pointer border-2 ${isDarkMode ? "border-zinc-800 hover:border-emerald-500/50" : "border-gray-50 hover:border-emerald-200"}`}
-                        onClick={() => navigate(`/restaurant/${restaurant.id}`)}
-                      >
-                        {/* Card Reflection Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] duration-1000" />
-
-                        <div className="relative h-64 overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 transition-opacity group-hover:opacity-60" />
-                          <img
-                            src={restaurant.image}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                          />
-
-                          {/* Top Badges Layer */}
-                          <div className="absolute top-5 inset-x-5 z-20 flex justify-between items-start">
-                            <div className="flex flex-col gap-2">
-                              <div className="bg-black/40 backdrop-blur-xl border border-white/20 text-white px-3 py-1.5 rounded-2xl flex items-center shadow-2xl">
-                                <span className="text-yellow-400 mr-2 text-sm drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-                                  ★
-                                </span>
-                                <span className="font-black text-sm tracking-tight">
-                                  {restaurant.averageRating ??
-                                    restaurant.rating}
-                                </span>
-                              </div>
-
-                              {userPreferences &&
-                                getPersonalizationScore(
-                                  restaurant,
-                                  userPreferences,
-                                ) > 100 && (
-                                  <motion.div
-                                    animate={{ scale: [1, 1.05, 1] }}
-                                    transition={{
-                                      duration: 2,
-                                      repeat: Infinity,
-                                    }}
-                                    className="bg-gradient-to-r from-emerald-500/90 to-teal-500/90 backdrop-blur-md text-white px-3 py-1.5 rounded-2xl flex items-center gap-2 text-[10px] font-black uppercase tracking-widest shadow-xl border border-white/20"
-                                  >
-                                    <Sparkles
-                                      size={12}
-                                      className="text-yellow-300"
-                                    />
-                                    Dino's Pick
-                                  </motion.div>
-                                )}
-                            </div>
-
-                            <motion.button
-                              whileHover={{ scale: 1.1, rotate: 10 }}
-                              whileTap={{ scale: 0.9 }}
-                              className={`p-3 rounded-2xl backdrop-blur-xl border transition-all shadow-2xl ${
-                                isItemFavorite(restaurant.id, "restaurant")
-                                  ? "bg-emerald-500 border-emerald-400 text-white"
-                                  : "bg-black/40 border-white/20 text-white hover:bg-emerald-500/20"
-                              }`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(restaurant);
-                              }}
-                            >
-                              <Heart
-                                size={20}
-                                className={
-                                  isItemFavorite(restaurant.id, "restaurant")
-                                    ? "fill-white"
-                                    : ""
-                                }
-                              />
-                            </motion.button>
-                          </div>
-                        </div>
-
-                        <div className="p-8 relative">
-                          {/* Decorative background number/letter */}
-                          <span className="absolute -bottom-4 -right-2 text-9xl font-black text-emerald-500/[0.03] select-none pointer-events-none italic">
-                            {idx + 1}
-                          </span>
-
-                          <div className="flex justify-between items-start mb-6">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <span
-                                  className={`text-[10px] font-black uppercase tracking-[0.2em] ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`}
-                                >
-                                  {restaurant.cuisine?.[0] || "Culinary site"}
-                                </span>
-                              </div>
-                              <h3
-                                className={`text-3xl font-black leading-none tracking-tighter ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                              >
-                                {restaurant.name}
-                              </h3>
-                            </div>
-                            <div
-                              className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest border ${
-                                isRestaurantOpen(restaurant)
-                                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500"
-                                  : "bg-rose-500/10 border-rose-500/20 text-rose-500"
-                              }`}
-                            >
-                              {isRestaurantOpen(restaurant)
-                                ? "Active"
-                                : "Dormant"}
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-4 mb-6">
-                            <div
-                              className={`flex items-center gap-2 text-sm font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                            >
-                              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                <MapPin size={16} />
-                              </div>
-                              <span className="line-clamp-1">
-                                {restaurant.location.city}
-                              </span>
-                            </div>
-                            <div
-                              className={`flex items-center gap-2 text-sm font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                            >
-                              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
-                                <Users size={16} />
-                              </div>
-                              <span>
-                                {restaurant.priceLevel
-                                  ? "$".repeat(restaurant.priceLevel)
-                                  : "Medium"}{" "}
-                                Pack
-                              </span>
-                            </div>
-                          </div>
-
-                          <div className="pt-6 border-t border-dashed border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-                            <span
-                              className={`text-sm font-bold ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`}
-                            >
-                              View Details
-                            </span>
-                            <div
-                              className={`w-10 h-10 rounded-full border-2 transform group-hover:translate-x-1 group-hover:bg-emerald-500 group-hover:text-white transition-all flex items-center justify-center ${isDarkMode ? "border-zinc-700 text-gray-500" : "border-gray-100 text-gray-400"}`}
-                            >
-                              <ArrowRight size={18} />
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <motion.div
-                      key="empty-restaurants"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className={`col-span-full text-center py-24 ${isDarkMode ? "bg-zinc-900/40" : "bg-white"} rounded-[3rem] border-2 border-dashed ${isDarkMode ? "border-zinc-800" : "border-gray-100"}`}
-                    >
-                      <div className="mx-auto w-24 h-24 bg-emerald-500/10 rounded-full flex items-center justify-center mb-6 text-4xl animate-bounce">
-                        🦖
-                      </div>
-                      <h3
-                        className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} mb-2 tracking-tight`}
-                      >
-                        Territory Empty
-                      </h3>
-                      <p
-                        className={`text-base font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        No excavations match your filters.
-                      </p>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="mb-12">
-                <h2
-                  className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"} mb-8 flex items-center gap-3`}
-                >
-                  <Calendar className="text-purple-500" />
-                  Featured Events
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {events.length > 0 ? (
-                    events.map((event, idx) => (
-                      <motion.div
-                        key={event.id}
-                        initial={{ opacity: 0, scale: 0.95 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: idx * 0.1, duration: 0.5 }}
-                        whileHover={{
-                          y: -12,
-                          perspective: 1000,
-                          rotateX: -2,
-                          transition: { duration: 0.4, ease: "easeOut" },
-                        }}
-                        className={`group relative ${isDarkMode ? "bg-zinc-900/60" : "bg-white"} rounded-[2.5rem] overflow-hidden shadow-2xl transition-all duration-500 cursor-pointer border-2 ${isDarkMode ? "border-zinc-800 hover:border-purple-500/50" : "border-gray-50 hover:border-purple-200"}`}
-                        onClick={() => navigate(`/event/${event.id}/register`)}
-                      >
-                        {/* Card Reflection Effect */}
-                        <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/5 to-white/0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 skew-x-12 translate-x-[-100%] group-hover:translate-x-[100%] duration-1000" />
-
-                        <div className="relative h-64 overflow-hidden">
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10 transition-opacity group-hover:opacity-60" />
-                          <img
-                            src={event.imageUrl}
-                            alt={event.title}
-                            className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
-                          />
-
-                          {/* Price Badge */}
-                          <div className="absolute top-5 left-5 z-20">
-                            <div className="bg-purple-600/90 backdrop-blur-xl border border-white/20 text-white font-black text-xs px-4 py-2 rounded-2xl shadow-2xl tracking-wider">
-                              ₹{event.price}
-                            </div>
-                          </div>
-
-                          {/* Date Ribbon */}
-                          <div className="absolute bottom-5 left-5 z-20">
-                            <div className="bg-white/15 backdrop-blur-xl border border-white/20 text-white px-4 py-2 rounded-2xl flex items-center shadow-2xl">
-                              <Calendar
-                                size={14}
-                                className="mr-2 text-purple-300"
-                              />
-                              <span className="text-xs font-black uppercase tracking-tighter">
-                                {event.date}
-                              </span>
-                            </div>
-                          </div>
-
-                          {/* Favorite Button */}
-                          <motion.button
-                            whileHover={{ scale: 1.1, rotate: -10 }}
-                            whileTap={{ scale: 0.9 }}
-                            className="absolute top-5 right-5 z-20 p-3 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/20 hover:bg-rose-500/20 transition-all shadow-2xl group/btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleFavorite(event);
-                            }}
-                          >
-                            <Heart
-                              size={20}
-                              className={`transition-all ${isItemFavorite(event.id, "event") ? "fill-rose-500 text-rose-500 scale-110 shadow-glow" : "text-white"}`}
-                            />
-                          </motion.button>
-                        </div>
-
-                        <div className="p-8 relative">
-                          {/* Decorative Glyph */}
-                          <div className="absolute -bottom-2 right-4 text-8xl font-black text-purple-500/[0.04] select-none pointer-events-none italic transform rotate-6">
-                            EV
-                          </div>
-
-                          <div className="flex justify-between items-start mb-6">
-                            <h3
-                              className={`text-3xl font-black leading-[1.1] tracking-tighter line-clamp-2 ${isDarkMode ? "text-white" : "text-gray-900"} group-hover:text-purple-500 transition-colors`}
-                            >
-                              {event.title}
-                            </h3>
-                          </div>
-
-                          <div className="space-y-4 mb-8">
-                            <div
-                              className={`flex items-center gap-3 text-sm font-bold ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                            >
-                              <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-500">
-                                <MapPin size={16} />
-                              </div>
-                              <span className="line-clamp-1">
-                                {typeof event.location === "string"
-                                  ? event.location
-                                  : `${(event.location as any).city}, ${(event.location as any).state}`}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-6">
-                              <div
-                                className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
-                              >
-                                <Clock size={14} className="text-purple-500" />
-                                {event.time}
-                              </div>
-                              <div
-                                className={`flex items-center gap-2 text-xs font-black uppercase tracking-widest ${isDarkMode ? "text-gray-500" : "text-gray-400"}`}
-                              >
-                                <Users size={14} className="text-purple-500" />
-                                {event.category || "Gathering"}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="pt-6 border-t border-dashed border-gray-100 dark:border-zinc-800 flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span
-                                className={`text-sm font-black uppercase tracking-widest ${isDarkMode ? "text-purple-400" : "text-purple-600"}`}
-                              >
-                                Claim Spot
-                              </span>
-                              <Sparkles
-                                size={14}
-                                className="text-yellow-400 animate-pulse"
-                              />
-                            </div>
-                            <div
-                              className={`w-12 h-12 rounded-2xl bg-purple-600 text-white shadow-xl flex items-center justify-center transform group-hover:translate-x-1 group-hover:scale-110 transition-all duration-300`}
-                            >
-                              <ArrowRight size={20} strokeWidth={3} />
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))
-                  ) : (
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className={`col-span-full text-center py-24 ${isDarkMode ? "bg-zinc-900/40" : "bg-white"} rounded-[3rem] border-2 border-dashed ${isDarkMode ? "border-zinc-800" : "border-gray-100"}`}
-                    >
-                      <div className="mx-auto w-24 h-24 bg-purple-500/10 rounded-full flex items-center justify-center mb-6 text-4xl animate-bounce">
-                        🎟️
-                      </div>
-                      <h3
-                        className={`text-2xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} mb-2 tracking-tight`}
-                      >
-                        No Events Scheduled
-                      </h3>
-                      <p
-                        className={`text-base font-medium ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        Explore another territory or check back soon.
-                      </p>
-                    </motion.div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* DineInGo Platform Feedback & Survey Section */}
-            <div
-              className={`mt-12 mb-8 p-8 rounded-[2.5rem] relative overflow-hidden transition-all duration-500 border-2 ${
-                isDarkMode
-                  ? "bg-zinc-900 border-emerald-500/20 shadow-[0_0_50px_rgba(16,185,129,0.1)]"
-                  : "bg-white border-emerald-100 shadow-xl shadow-emerald-500/10"
-              }`}
-            >
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-yellow-400/10 rounded-full blur-2xl -ml-16 -mb-16 pointer-events-none"></div>
-
-              <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-8">
-                <div className="flex-1 text-center lg:text-left">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 text-[10px] font-black uppercase tracking-widest mb-4">
-                    <Star size={12} className="fill-emerald-500" />
-                    Shape The Future
-                  </div>
-                  <h2
-                    className={`text-3xl md:text-4xl font-black tracking-tight mb-4 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                  >
-                    DineInGo Platform Feedback &{" "}
-                    <span className="text-emerald-500">Feature Evaluation</span>{" "}
-                    Survey
-                  </h2>
-                  <p
-                    className={`text-lg font-medium leading-relaxed max-w-2xl ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                  >
-                    Help us build the perfect dining companion! Share your
-                    feedback and help evaluate upcoming features. Your voice
-                    matters in the Dino kingdom! 🦖✨
-                  </p>
-                </div>
-
-                <div className="flex-shrink-0 flex flex-col items-center gap-4">
-                  <div className="relative group cursor-pointer">
-                    <div className="absolute -inset-1 bg-gradient-to-r from-emerald-500 to-teal-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200"></div>
-                    <a
-                      href="https://tally.so/r/9q12LK"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="relative block bg-emerald-500 hover:bg-emerald-600 text-white px-10 py-5 rounded-2xl font-black text-lg transition-all transform hover:scale-[1.05] active:scale-95 shadow-xl shadow-emerald-500/25 flex items-center gap-3"
-                    >
-                      Take The Survey
-                      <ArrowRight size={20} strokeWidth={3} />
-                    </a>
-                  </div>
-                  <p
-                    className={`text-[10px] font-bold uppercase tracking-widest opacity-40 ${isDarkMode ? "text-white" : "text-black"}`}
-                  >
-                    Estimated Time: 2 Minutes • Anonymous
+                    Analyzing your historical eating patterns
                   </p>
                 </div>
               </div>
 
-              {/* Dino Mascot Illustration */}
-              <div className="absolute -bottom-4 -right-4 w-32 h-32 opacity-20 transform -rotate-12 pointer-events-none">
-                <img
-                  src="/images/Dino Icon.svg"
-                  alt=""
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            </div>
-          </div>
-        );
-      case "restaurants":
-        return (
-          <div
-            className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-8`}
-          >
-            <h1
-              className={`text-4xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-8`}
-            >
-              All Restaurants
-            </h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {restaurants.map((restaurant, idx) => (
-                <div
-                  key={restaurant.id}
-                  className={`group ${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border ${isDarkMode ? "border-gray-700" : "border-gray-100"}`}
-                  onClick={() => navigate(`/restaurant/${restaurant.id}`)}
-                >
-                  <div className="relative h-56 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 z-10 transition-opacity group-hover:opacity-40" />
-                    <img
-                      src={restaurant.image}
-                      alt={restaurant.name}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-
-                    {/* Rating Badge */}
-                    <div className="absolute top-4 left-4 z-20">
-                      <div className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-xl flex items-center shadow-lg">
-                        <span className="text-emerald-400 mr-1.5 text-sm">
-                          ★
-                        </span>
-                        <span className="font-bold text-sm">
-                          {restaurant.averageRating ?? restaurant.rating}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Favorite Button */}
-                    <button
-                      className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all active:scale-95 group/btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(restaurant);
-                      }}
-                    >
-                      <Heart
-                        size={18}
-                        className={`transition-colors ${isItemFavorite(restaurant.id, "restaurant") ? "fill-emerald-500 text-emerald-500" : "text-white group-hover/btn:text-emerald-400"}`}
-                      />
-                    </button>
-                  </div>
-                  <div className="p-5">
-                    <div className="flex justify-between items-start mb-2 relative">
-                      <div>
-                        <h3
-                          className={`text-xl font-bold leading-tight mb-1 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                        >
-                          {restaurant.name}
-                        </h3>
-                        <div
-                          className={`flex items-center text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                        >
-                          <MapPin size={14} className="mr-1 text-emerald-500" />
-                          <span className="line-clamp-1">{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
-                        </div>
-                      </div>
-                      <div
-                        className={`flex items-center px-2 py-1 rounded-lg text-[10px] font-semibold ${isDarkMode ? "bg-gray-700 text-emerald-400" : "bg-emerald-50 text-emerald-700"}`}
-                      >
-                        {isRestaurantOpen(restaurant) ? "Open" : "Closed"}
-                      </div>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between">
-                      <div className="flex flex-wrap gap-2">
-                        {restaurant.cuisine
-                          ?.slice(0, 2)
-                          .map((cuisine: string, index: number) => (
-                            <span
-                              key={index}
-                              className={`px-2.5 py-1 ${isDarkMode ? "bg-gray-700/50 text-gray-300 border-gray-600" : "bg-gray-50 text-gray-600 border-gray-100"} border rounded-lg text-xs font-medium`}
-                            >
-                              {cuisine}
-                            </span>
-                          ))}
-                      </div>
-                      <SustainabilityBadge
-                        score={Math.floor(Math.random() * 50) + 50}
-                        ecoFriendly={true}
-                        localSourcing={idx % 2 === 0}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      case "events":
-        return (
-          <div
-            className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-8`}
-          >
-            <h1
-              className={`text-4xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"} mb-8`}
-            >
-              All Events
-            </h1>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-              {events.map((event) => (
-                <div
-                  key={event.id}
-                  className={`group ${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-[2rem] overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 hover:-translate-y-1 cursor-pointer border ${isDarkMode ? "border-gray-700" : "border-gray-100"}`}
-                  onClick={() => navigate(`/event/${event.id}/register`)}
-                >
-                  <div className="relative h-56 overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60 z-10 transition-opacity group-hover:opacity-40" />
-                    <img
-                      src={event.imageUrl}
-                      alt={event.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                    />
-
-                    {/* Price Badge */}
-                    <div className="absolute top-4 left-4 z-20">
-                      <div className="bg-white/20 backdrop-blur-md border border-white/20 text-white px-3 py-1.5 rounded-xl flex items-center shadow-lg">
-                        <span className="font-bold text-sm">
-                          ₹{event.price}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Date Badge */}
-                    <div className="absolute bottom-4 left-4 z-20">
-                      <div className="bg-black/40 backdrop-blur-md border border-white/10 text-white px-3 py-1 rounded-lg flex items-center shadow-sm">
-                        <Calendar
-                          size={12}
-                          className="mr-1.5 text-purple-400"
-                        />
-                        <span className="text-xs font-semibold">
-                          {event.date}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Favorite Button */}
-                    <button
-                      className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-white/20 backdrop-blur-md border border-white/20 hover:bg-white/30 transition-all active:scale-95 group/btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Handle toggle logic safely
-                        const eventToToggle = {
-                          ...event,
-                          location:
-                            typeof event.location === "string"
-                              ? event.location
-                              : event.location,
-                        };
-                        toggleFavorite(eventToToggle);
-                      }}
-                    >
-                      <Heart
-                        size={18}
-                        className={`transition-colors ${isItemFavorite(event.id, "event") ? "fill-emerald-500 text-emerald-500" : "text-white group-hover/btn:text-emerald-400"}`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="p-5">
-                    <div className="flex justify-between items-start mb-2">
-                      <h3
-                        className={`text-xl font-bold leading-tight mb-1 line-clamp-1 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                      >
-                        {event.title}
-                      </h3>
-                    </div>
-
-                    <div
-                      className={`flex items-center text-sm mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      <MapPin size={14} className="mr-1.5 text-purple-500" />
-                      <span className="line-clamp-1">
-                        {typeof event.location === "string"
-                          ? event.location
-                          : `${(event.location as Location).city}, ${(event.location as Location).state}`}
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 mb-3">
-                      <div
-                        className={`flex items-center p-2 rounded-lg ${isDarkMode ? "bg-gray-700/50" : "bg-gray-50"}`}
-                      >
-                        <Clock
-                          size={14}
-                          className={`mr-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                        />
-                        <span
-                          className={`text-xs font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-                        >
-                          {event.time}
-                        </span>
-                      </div>
-                      <div
-                        className={`flex items-center p-2 rounded-lg ${isDarkMode ? "bg-gray-700/50" : "bg-gray-50"}`}
-                      >
-                        <Users
-                          size={14}
-                          className={`mr-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                        />
-                        <span
-                          className={`text-xs font-medium ${isDarkMode ? "text-gray-300" : "text-gray-700"}`}
-                        >
-                          {event.registeredCount} Reg.
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      <span
-                        className={`px-2.5 py-1 ${isDarkMode ? "bg-purple-500/10 text-purple-300 border-purple-500/20" : "bg-purple-50 text-purple-600 border-purple-100"} border rounded-lg text-xs font-medium uppercase tracking-wide`}
-                      >
-                        {event.category}
-                      </span>
-                    </div>
-
-                    <div className="mt-2">
-                      <p
-                        className={`text-sm line-clamp-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                      >
-                        {event.description}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        );
-      case "bookings":
-        // Bookings section
-        return (
-          <div
-            className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-8`}
-          >
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-              <div>
-                <h1
-                  className={`text-4xl md:text-5xl font-black ${isDarkMode ? "text-white" : "text-gray-900"} tracking-tight`}
-                >
-                  Culinary{" "}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-500 to-teal-400">
-                    Expeditions
-                  </span>
-                </h1>
-                <p
-                  className={`text-lg font-medium mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  Tracking your evolution across {bookings.length} excavation
-                  sites
-                </p>
-              </div>
-
-              <div
-                className={`px-5 py-3 rounded-2xl flex items-center gap-3 ${isDarkMode ? "bg-emerald-500/10 border-emerald-500/20" : "bg-white border-emerald-100 shadow-lg shadow-emerald-500/5"} border-2`}
-              >
-                <div className="w-10 h-10 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-500/20">
-                  <Trophy size={20} />
-                </div>
-                <div>
-                  <p
-                    className={`text-[10px] font-black uppercase tracking-[0.15em] ${isDarkMode ? "text-emerald-400" : "text-emerald-600"}`}
-                  >
-                    Expedition Rank
-                  </p>
-                  <p
-                    className={`text-sm font-black ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                  >
-                    Lead Paleontologist
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Premium AI Insights for Future Section */}
-            {bookings.length > 0 && (
-              <div
-                className={`mb-12 p-8 md:p-10 rounded-[3rem] relative overflow-hidden transition-all duration-700 ${
-                  isDarkMode
-                    ? "bg-zinc-900/40 border-emerald-500/20 shadow-[0_0_80px_rgba(16,185,129,0.05)]"
-                    : "bg-white/60 border-emerald-100 shadow-2xl shadow-emerald-500/5 backdrop-blur-xl"
-                } border-2`}
-              >
-                {/* Decorative floating elements */}
-                <motion.div
-                  animate={{ y: [0, -15, 0], opacity: [0.1, 0.2, 0.1] }}
-                  transition={{ duration: 6, repeat: Infinity }}
-                  className="absolute top-6 right-6 text-emerald-500/20"
-                >
-                  <Sparkles size={40} />
-                </motion.div>
-
-                <div className="flex items-center gap-3 mb-10">
-                  <div className="p-3 rounded-2xl bg-emerald-500 text-white shadow-xl shadow-emerald-500/20">
-                    <Zap size={24} className="animate-pulse" />
-                  </div>
-                  <div>
-                    <h2
-                      className={`text-2xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                    >
-                      Dino Intelligence Reports
-                    </h2>
-                    <p
-                      className={`text-sm font-semibold opacity-60 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Analyzing your historical eating patterns
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {getAIInsights(bookings).map((insight, idx) => (
-                    <motion.div
-                      key={insight.id}
-                      initial={{ opacity: 0, y: 30 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      whileHover={{ y: -8, scale: 1.02 }}
-                      className={`group p-8 rounded-[2.5rem] border-2 transition-all duration-500 relative overflow-hidden ${
-                        isDarkMode
-                          ? "bg-zinc-900/60 border-zinc-800"
-                          : "bg-white border-gray-100 shadow-lg shadow-gray-200/50"
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {getAIInsights(bookings).map((insight, idx) => (
+                  <motion.div
+                    key={insight.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: idx * 0.1 }}
+                    whileHover={{ y: -8, scale: 1.02 }}
+                    className={`group p-8 rounded-[2.5rem] border-2 transition-all duration-500 relative overflow-hidden ${isDarkMode
+                        ? "bg-zinc-900/60 border-zinc-800"
+                        : "bg-white border-gray-100 shadow-lg shadow-gray-200/50"
                       } hover:border-emerald-500/40`}
-                    >
-                      {/* Subtitle/Category */}
-                      <div
-                        className={`absolute top-0 right-0 px-6 py-2 rounded-bl-3xl bg-gradient-to-r ${insight.color} text-[10px] font-black uppercase tracking-[0.2em] text-white/80`}
-                      >
-                        Fossil Insight
-                      </div>
-
-                      <div className="relative z-10">
-                        <div
-                          className={`w-16 h-16 rounded-[1.5rem] bg-gradient-to-br ${insight.color} flex items-center justify-center mb-6 shadow-lg transform group-hover:rotate-6 transition-transform duration-500`}
-                        >
-                          <div className="text-white scale-125">
-                            {insight.icon}
-                          </div>
-                        </div>
-                        <h3
-                          className={`text-xl font-black mb-3 tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                        >
-                          {insight.title}
-                        </h3>
-                        <p
-                          className={`text-sm font-medium leading-relaxed ${isDarkMode ? "text-zinc-500" : "text-gray-500"}`}
-                        >
-                          {insight.description}
-                        </p>
-                      </div>
-
-                      {/* Decorative background number */}
-                      <div className="absolute -bottom-8 -right-4 text-9xl font-black opacity-[0.03] select-none pointer-events-none">
-                        {idx + 1}
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!bookings || bookings.length === 0 ? (
-              <div>
-                <div
-                  className={`mb-8 text-center py-12 ${isDarkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} rounded-3xl shadow-md p-6`}
-                >
-                  <Calendar className="w-16 h-16 mx-auto mb-4 text-emerald-500" />
-                  <h3 className="text-xl font-medium mb-2">
-                    {translations[language].noBookings}
-                  </h3>
-                  <p className="mb-6">
-                    {translations[language].bookingsMessage}
-                  </p>
-
-                  {/* Section Selector Similar to Home - Explore options */}
-                  <div className="flex gap-4 max-w-md mx-auto">
-                    <button
-                      onClick={() => {
-                        navigate("/");
-                        setActiveSection("restaurants");
-                      }}
-                      className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
-                    >
-                      {translations[language].exploreRestaurants}
-                    </button>
-                    <button
-                      onClick={() => {
-                        navigate("/");
-                        setHomeSection("events");
-                        setActiveSection("home");
-                      }}
-                      className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
-                    >
-                      {translations[language].exploreEvents}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Additional featured restaurants section */}
-                <div className="mb-8">
-                  <h2
-                    className={`text-2xl font-semibold mb-6 ${isDarkMode ? "text-white" : "text-gray-900"}`}
                   >
-                    {translations[language].featuredRestaurants}
-                  </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {restaurants.slice(0, 3).map((restaurant) => (
+                    {/* Subtitle/Category */}
+                    <div
+                      className={`absolute top-0 right-0 px-6 py-2 rounded-bl-3xl bg-gradient-to-r ${insight.color} text-[10px] font-black uppercase tracking-[0.2em] text-white/80`}
+                    >
+                      Fossil Insight
+                    </div>
+
+                    <div className="relative z-10">
                       <div
-                        key={restaurant.id}
-                        className={`${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer`}
-                        onClick={() => navigate(`/restaurant/${restaurant.id}`)}
+                        className={`w-16 h-16 rounded-[1.5rem] bg-gradient-to-br ${insight.color} flex items-center justify-center mb-6 shadow-lg transform group-hover:rotate-6 transition-transform duration-500`}
                       >
-                        <div className="relative h-48">
-                          <img
-                            src={restaurant.image}
-                            alt={restaurant.name}
-                            className="w-full h-full object-cover"
-                          />
-                          <div className="absolute top-4 left-4 bg-gray-900/80 text-white px-3 py-1 rounded-full flex items-center">
-                            <span className="text-emerald-400 mr-1">★</span>
-                            <span>
-                              {restaurant.averageRating ?? restaurant.rating}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="p-4">
-                          <h3
-                            className={`text-xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                          >
-                            {restaurant.name}
-                          </h3>
-                          <div
-                            className={`flex items-center ${isDarkMode ? "text-gray-300" : "text-gray-600"} mt-1`}
-                          >
-                            <MapPin size={16} className="mr-1" />
-                            <span>{`${restaurant.location.city}, ${restaurant.location.state}`}</span>
-                          </div>
+                        <div className="text-white scale-125">
+                          {insight.icon}
                         </div>
                       </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {bookings.map((booking) => (
-                  <BookingCard
-                    key={booking._id || booking.id}
-                    booking={booking}
-                    onRefresh={() => fetchBookingsFromAPI()}
-                    onConfirm={(id) =>
-                      handleBookingAction(id as string, "confirm")
-                    }
-                    onReview={(b) => {
-                      const businessId =
-                        b.restaurantId?._id ||
-                        b.restaurantId?.id ||
-                        b.restaurantId ||
-                        b.eventId?._id ||
-                        b.eventId?.id ||
-                        b.eventId;
-                      const type =
-                        b.restaurantId || b.restaurantName
-                          ? "restaurant"
-                          : "event";
-                      navigate(`/${type}/${businessId}`);
-                    }}
-                    onGenerateInvoice={(b) => {
-                      setSelectedBooking(b);
-                      setShowInvoice(true);
-                    }}
-                    onAddToAppleWallet={(b) => {
-                      // Handled via separate service or trigger if needed
-                      toast.info("Opening wallet pass generation...");
-                      setSelectedBooking(b);
-                      setShowInvoice(true); // Re-use the modal or add a specific wallet trigger
-                    }}
-                    confirmingId={null} // Can be tied to a local state if needed
-                  />
+                      <h3
+                        className={`text-xl font-black mb-3 tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        {insight.title}
+                      </h3>
+                      <p
+                        className={`text-sm font-medium leading-relaxed ${isDarkMode ? "text-zinc-500" : "text-gray-500"}`}
+                      >
+                        {insight.description}
+                      </p>
+                    </div>
+
+                    {/* Decorative background number */}
+                    <div className="absolute -bottom-8 -right-4 text-9xl font-black opacity-[0.03] select-none pointer-events-none">
+                      {idx + 1}
+                    </div>
+                  </motion.div>
                 ))}
               </div>
-            )}
-          </div>
-        );
-      case "settings": {
-        return (
-          <div
-            className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 md:p-8`}
-          >
-            <div className="max-w-4xl mx-auto space-y-6">
-              {/* Report Issue Button */}
+            </div>
+          )}
+
+          {!bookings || bookings.length === 0 ? (
+            <div>
               <div
-                className={`${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-xl shadow-sm p-6`}
+                className={`mb-8 text-center py-12 ${isDarkMode ? "bg-gray-800 text-gray-300" : "bg-white text-gray-600"} rounded-3xl shadow-md p-6`}
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3
-                      className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"} mb-1`}
-                    >
-                      Report an Issue
-                    </h3>
-                    <p
-                      className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                    >
-                      Found a bug or have feedback? Let us know!
-                    </p>
-                  </div>
+                <Calendar className="w-16 h-16 mx-auto mb-4 text-emerald-500" />
+                <h3 className="text-xl font-medium mb-2">
+                  {translations[language].noBookings}
+                </h3>
+                <p className="mb-6">
+                  {translations[language].bookingsMessage}
+                </p>
+
+                {/* Section Selector Similar to Home - Explore options */}
+                <div className="flex gap-4 max-w-md mx-auto">
                   <button
-                    onClick={() => setShowReportIssueModal(true)}
-                    className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium"
+                    onClick={() => {
+                      navigate("/");
+                      setActiveSection("restaurants");
+                    }}
+                    className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
                   >
-                    <AlertCircle className="w-5 h-5" />
-                    Report Issue
+                    {translations[language].exploreRestaurants}
+                  </button>
+                  <button
+                    onClick={() => {
+                      navigate("/");
+                      setHomeSection("events");
+                      setActiveSection("home");
+                    }}
+                    className="flex-1 px-6 py-3 rounded-xl text-lg font-semibold transition-colors bg-emerald-500 text-white hover:bg-emerald-600"
+                  >
+                    {translations[language].exploreEvents}
                   </button>
                 </div>
               </div>
 
-              <ProfileSettings
-                user={
-                  userData
-                    ? {
-                        _id: userData.uid,
-                        uid: userData.uid,
-                        displayName: userData.displayName,
-                        name: userData.name,
-                        email: userData.email || "",
-                        photoURL: userData.photoURL,
-                        locationSettings: {
-                          type: "manual",
-                          city: userData.location.city,
-                          state: userData.location.state,
-                          country: userData.location.country || "India",
-                        },
-                        createdAt: userData.createdAt,
-                        lastLogin: userData.lastLogin,
-                      }
-                    : null
-                }
-                isDarkMode={isDarkMode}
-                availableLanguages={availableLanguages}
-                currentLanguage={language}
-                onLanguageChange={handleLanguageChange}
-                onToggleTheme={toggleDarkMode}
-                onUpdate={async (updates) => {
-                  if (!auth.currentUser) return;
+              {/* Additional featured restaurants section */}
+              <div className="mb-8">
+                <h2
+                  className={`text-2xl font-semibold mb-6 ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                >
+                  {translations[language].featuredRestaurants}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {restaurants.slice(0, 3).map((restaurant, idx) => (
+                    <PremiumRestaurantCard
+                      key={restaurant.id}
+                      restaurant={restaurant}
+                      isDarkMode={isDarkMode}
+                      isFavorite={isItemFavorite(restaurant.id, "restaurant")}
+                      isOpen={isRestaurantOpen(restaurant)}
+                      onToggleFavorite={toggleFavorite}
+                      index={idx}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {bookings.map((booking) => (
+                <BookingCard
+                  key={booking._id || booking.id}
+                  booking={booking}
+                  onRefresh={() => fetchBookingsFromAPI()}
+                  onConfirm={(id) =>
+                    handleBookingAction(id as string, "confirm")
+                  }
+                  onReview={(b) => {
+                    const businessId =
+                      b.restaurantId?._id ||
+                      b.restaurantId?.id ||
+                      b.restaurantId ||
+                      b.eventId?._id ||
+                      b.eventId?.id ||
+                      b.eventId;
+                    const type =
+                      b.restaurantId || b.restaurantName
+                        ? "restaurant"
+                        : "event";
+                    navigate(`/${type}/${businessId}`);
+                  }}
+                  onGenerateInvoice={(b) => {
+                    setSelectedBooking(b);
+                    setShowInvoice(true);
+                  }}
+                  onAddToAppleWallet={(b) => {
+                    // Handled via separate service or trigger if needed
+                    toast.info("Opening wallet pass generation...");
+                    setSelectedBooking(b);
+                    setShowInvoice(true); // Re-use the modal or add a specific wallet trigger
+                  }}
+                  confirmingId={null} // Can be tied to a local state if needed
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      );
+    case "settings": {
+      return (
+        <div
+          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 sm:p-8`}
+        >
+          <div className="max-w-4xl mx-auto space-y-6">
+            {/* Report Issue Button */}
+            <div
+              className={`${isDarkMode ? "bg-gray-800" : "bg-white"} rounded-xl shadow-sm p-6`}
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3
+                    className={`text-lg font-semibold ${isDarkMode ? "text-white" : "text-gray-900"} mb-1`}
+                  >
+                    Report an Issue
+                  </h3>
+                  <p
+                    className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                  >
+                    Found a bug or have feedback? Let us know!
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowReportIssueModal(true)}
+                  className="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2 font-medium"
+                >
+                  <AlertCircle className="w-5 h-5" />
+                  Report Issue
+                </button>
+              </div>
+            </div>
+
+            <ProfileSettings
+              user={
+                userData
+                  ? {
+                    _id: userData.uid,
+                    uid: userData.uid,
+                    displayName: userData.displayName,
+                    name: userData.name,
+                    email: userData.email || "",
+                    photoURL: userData.photoURL,
+                    locationSettings: {
+                      type: "manual",
+                      city: userData.location.city,
+                      state: userData.location.state,
+                      country: userData.location.country || "India",
+                    },
+                    createdAt: userData.createdAt,
+                    lastLogin: userData.lastLogin,
+                  }
+                  : null
+              }
+              isDarkMode={isDarkMode}
+              availableLanguages={availableLanguages}
+              currentLanguage={language}
+              onLanguageChange={handleLanguageChange}
+              onToggleTheme={toggleDarkMode}
+              onUpdate={async (updates) => {
+                if (!auth.currentUser) return;
+                try {
+                  // Update in Firebase Auth if displayName or photoURL is being updated
+                  const authUpdates: {
+                    displayName?: string;
+                    photoURL?: string | null;
+                  } = {};
+
+                  if ("displayName" in updates) {
+                    authUpdates.displayName = updates.displayName;
+                  }
+                  if ("photoURL" in updates) {
+                    authUpdates.photoURL = updates.photoURL;
+                  }
+
+                  if (Object.keys(authUpdates).length > 0) {
+                    await updateProfile(auth.currentUser, authUpdates);
+                  }
+
+                  // Update in Firestore - filter out undefined values to avoid Firestore errors
+                  const firestoreUpdates: any = {
+                    updatedAt: new Date(),
+                  };
+
+                  // Only add defined values to Firestore update
+                  if (updates.displayName !== undefined)
+                    firestoreUpdates.displayName = updates.displayName;
+                  if (updates.name !== undefined)
+                    firestoreUpdates.name = updates.name;
+                  if (updates.photoURL !== undefined)
+                    firestoreUpdates.photoURL = updates.photoURL;
+                  if (updates.email !== undefined)
+                    firestoreUpdates.email = updates.email;
+
+                  await setDoc(
+                    doc(db, "users", auth.currentUser.uid),
+                    firestoreUpdates,
+                    { merge: true },
+                  );
+
+                  // Fetch the latest profile data from backend to ensure sync
                   try {
-                    // Update in Firebase Auth if displayName or photoURL is being updated
-                    const authUpdates: {
-                      displayName?: string;
-                      photoURL?: string | null;
-                    } = {};
-
-                    if ("displayName" in updates) {
-                      authUpdates.displayName = updates.displayName;
-                    }
-                    if ("photoURL" in updates) {
-                      authUpdates.photoURL = updates.photoURL;
-                    }
-
-                    if (Object.keys(authUpdates).length > 0) {
-                      await updateProfile(auth.currentUser, authUpdates);
-                    }
-
-                    // Update in Firestore - filter out undefined values to avoid Firestore errors
-                    const firestoreUpdates: any = {
-                      updatedAt: new Date(),
-                    };
-
-                    // Only add defined values to Firestore update
-                    if (updates.displayName !== undefined)
-                      firestoreUpdates.displayName = updates.displayName;
-                    if (updates.name !== undefined)
-                      firestoreUpdates.name = updates.name;
-                    if (updates.photoURL !== undefined)
-                      firestoreUpdates.photoURL = updates.photoURL;
-                    if (updates.email !== undefined)
-                      firestoreUpdates.email = updates.email;
-
-                    await setDoc(
-                      doc(db, "users", auth.currentUser.uid),
-                      firestoreUpdates,
-                      { merge: true },
+                    const res = await fetch(
+                      `/api/v1/profile/${auth.currentUser.uid}`,
                     );
-
-                    // Fetch the latest profile data from backend to ensure sync
-                    try {
-                      const res = await fetch(
-                        `/api/v1/profile/${auth.currentUser.uid}`,
-                      );
-                      if (res.ok) {
-                        const profile = await res.json();
-                        // Update local state with the latest data from backend
-                        setUserData((prev) => {
-                          if (!prev) return null;
-                          return {
-                            ...prev,
-                            displayName:
-                              profile.displayName || prev.displayName,
-                            name: profile.fullName || profile.name || prev.name,
-                            photoURL:
-                              profile.currentAvatar ||
-                              profile.avatarUrl ||
-                              profile.photoURL,
-                            avatars: profile.avatars || prev.avatars,
-                            createdAt: prev.createdAt,
-                            lastLogin: prev.lastLogin,
-                          };
-                        });
-                      }
-                    } catch (fetchError) {
-                      console.error(
-                        "Error fetching updated profile:",
-                        fetchError,
-                      );
-                      // Fallback to updating with the provided updates
+                    if (res.ok) {
+                      const profile = await res.json();
+                      // Update local state with the latest data from backend
                       setUserData((prev) => {
                         if (!prev) return null;
                         return {
                           ...prev,
-                          ...(updates.displayName && {
-                            displayName: updates.displayName,
-                          }),
-                          ...(updates.name && { name: updates.name }),
-                          ...(updates.photoURL !== undefined && {
-                            photoURL: updates.photoURL,
-                          }),
+                          displayName:
+                            profile.displayName || prev.displayName,
+                          name: profile.fullName || profile.name || prev.name,
+                          photoURL:
+                            profile.currentAvatar ||
+                            profile.avatarUrl ||
+                            profile.photoURL,
+                          avatars: profile.avatars || prev.avatars,
                           createdAt: prev.createdAt,
                           lastLogin: prev.lastLogin,
                         };
                       });
                     }
-
-                    // Show success message
-                    toast.success("Profile updated successfully!");
-                  } catch (error) {
-                    console.error("Error updating profile:", error);
-                    toast.error("Failed to update profile. Please try again.");
-                    throw error;
+                  } catch (fetchError) {
+                    console.error(
+                      "Error fetching updated profile:",
+                      fetchError,
+                    );
+                    // Fallback to updating with the provided updates
+                    setUserData((prev) => {
+                      if (!prev) return null;
+                      return {
+                        ...prev,
+                        ...(updates.displayName && {
+                          displayName: updates.displayName,
+                        }),
+                        ...(updates.name && { name: updates.name }),
+                        ...(updates.photoURL !== undefined && {
+                          photoURL: updates.photoURL,
+                        }),
+                        createdAt: prev.createdAt,
+                        lastLogin: prev.lastLogin,
+                      };
+                    });
                   }
-                }}
-              />
-            </div>
+
+                  // Show success message
+                  toast.success("Profile updated successfully!");
+                } catch (error) {
+                  console.error("Error updating profile:", error);
+                  toast.error("Failed to update profile. Please try again.");
+                  throw error;
+                }
+              }}
+            />
           </div>
-        );
-      }
-      case "favorites": {
-        // Separate favorites by type
-        const favoriteRestaurants = favorites.filter(
-          (item) => item.type === "restaurant",
-        );
-        const favoriteEvents = favorites.filter(
-          (item) => item.type === "event",
-        );
+        </div>
+      );
+    }
+    case "favorites": {
+      // Separate favorites by type
+      const favoriteRestaurants = favorites.filter(
+        (item) => item.type === "restaurant",
+      );
+      const favoriteEvents = favorites.filter(
+        (item) => item.type === "event",
+      );
 
-        return (
-          <div
-            className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 md:p-8`}
-          >
-            {/* Premium Header Card with Gradient */}
-            <div className="relative overflow-hidden rounded-[2.5rem] bg-gradient-to-br from-pink-500 to-rose-600 p-8 md:p-10 mb-10 shadow-2xl shadow-pink-500/20">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-yellow-400/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
+      return (
+        <div
+          className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 md:p-8`}
+        >
+          {/* Premium Header Card with Gradient */}
+          <div className="relative overflow-hidden rounded-[2rem] sm:rounded-[2.5rem] bg-gradient-to-br from-pink-500 to-rose-600 p-6 sm:p-10 mb-8 sm:mb-12 shadow-2xl shadow-pink-500/20">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+            <div className="absolute bottom-0 left-0 w-48 h-48 bg-yellow-400/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none"></div>
 
-              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/10 shadow-sm">
-                      Your Collection
-                    </span>
-                    <div className="h-1 w-1 rounded-full bg-white/60"></div>
-                    <span className="text-pink-50 text-sm font-medium">
-                      {favorites.length}{" "}
-                      {favorites.length === 1 ? "Favorite" : "Favorites"}
-                    </span>
-                  </div>
-                  <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-2 drop-shadow-sm">
-                    My Favorites
-                  </h1>
-                  <p className="text-pink-50 text-lg md:text-xl font-medium max-w-lg leading-relaxed opacity-90">
-                    Your handpicked restaurants and events, all in one place
-                  </p>
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6 sm:gap-10">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-white text-xs font-bold uppercase tracking-wider border border-white/10 shadow-sm">
+                    Your Collection
+                  </span>
+                  <div className="h-1 w-1 rounded-full bg-white/60"></div>
+                  <span className="text-pink-50 text-sm font-medium">
+                    {favorites.length}{" "}
+                    {favorites.length === 1 ? "Favorite" : "Favorites"}
+                  </span>
                 </div>
+                <h1 className="text-4xl md:text-5xl font-black text-white tracking-tight leading-tight mb-2 drop-shadow-sm">
+                  My Favorites
+                </h1>
+                <p className="text-pink-50 text-lg md:text-xl font-medium max-w-lg leading-relaxed opacity-90">
+                  Your handpicked restaurants and events, all in one place
+                </p>
+              </div>
 
-                <div className="flex items-center gap-3">
-                  <div className="group relative overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 transition-all duration-300 rounded-2xl px-5 py-4 min-w-[140px]">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
-                        <Heart size={20} className="fill-white/80" />
-                      </div>
-                      <div>
-                        <p className="text-pink-100 text-xs font-semibold uppercase tracking-wider mb-0.5">
-                          Total
-                        </p>
-                        <p className="text-white font-bold text-2xl leading-none">
-                          {favorites.length}
-                        </p>
-                      </div>
+              <div className="flex items-center gap-3">
+                <div className="group relative overflow-hidden bg-white/10 backdrop-blur-md border border-white/20 transition-all duration-300 rounded-2xl px-5 py-4 min-w-[140px]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-white shadow-inner">
+                      <Heart size={20} className="fill-white/80" />
+                    </div>
+                    <div>
+                      <p className="text-pink-100 text-xs font-semibold uppercase tracking-wider mb-0.5">
+                        Total
+                      </p>
+                      <p className="text-white font-bold text-2xl leading-none">
+                        {favorites.length}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
+          </div>
 
-            {favorites.length === 0 ? (
-              <div
-                className={`flex flex-col items-center justify-center py-20 px-4 rounded-3xl ${
-                  isDarkMode ? "bg-gray-800/50" : "bg-white"
+          {favorites.length === 0 ? (
+            <div
+              className={`flex flex-col items-center justify-center py-20 px-4 rounded-3xl ${isDarkMode ? "bg-gray-800/50" : "bg-white"
                 } border ${isDarkMode ? "border-gray-700/50" : "border-gray-200/50"} backdrop-blur-md`}
+            >
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center mb-6">
+                <Heart
+                  size={40}
+                  className={isDarkMode ? "text-pink-400" : "text-pink-500"}
+                />
+              </div>
+              <h3
+                className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-900"}`}
               >
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-pink-500/20 to-rose-500/20 flex items-center justify-center mb-6">
-                  <Heart
-                    size={40}
-                    className={isDarkMode ? "text-pink-400" : "text-pink-500"}
-                  />
-                </div>
-                <h3
-                  className={`text-2xl font-bold mb-2 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                >
-                  {translations[language].noFavorites}
-                </h3>
-                <p
-                  className={`text-center max-w-md ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                >
-                  {translations[language].addFavorites}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-10">
-                {/* Favorite Restaurants */}
-                {favoriteRestaurants.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6">
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                          isDarkMode
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-emerald-100 text-emerald-600"
-                        }`}
-                      >
-                        <svg
-                          width="24"
-                          height="24"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
-                          <path d="M7 2v20" />
-                          <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
-                        </svg>
-                      </div>
-                      <div>
-                        <h2
-                          className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                        >
-                          Favorite Restaurants
-                        </h2>
-                        <p
-                          className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                        >
-                          {favoriteRestaurants.length}{" "}
-                          {favoriteRestaurants.length === 1
-                            ? "restaurant"
-                            : "restaurants"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {favoriteRestaurants.map((fav) => (
-                        <motion.div
-                          key={fav.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`group relative rounded-3xl overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${
-                            isDarkMode
-                              ? "bg-gray-800 border-gray-700 hover:border-emerald-500/50"
-                              : "bg-white border-gray-200 hover:border-emerald-500/50"
-                          }`}
-                        >
-                          <div className="relative h-48 overflow-hidden">
-                            <img
-                              src={fav.image}
-                              alt={fav.name}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-
-                            {/* Rating Badge */}
-                            <div className="absolute top-4 left-4 px-3 py-1.5 rounded-xl bg-white/20 backdrop-blur-md border border-white/10 flex items-center gap-1.5">
-                              <Star
-                                size={14}
-                                className="fill-emerald-400 text-emerald-400"
-                              />
-                              <span className="text-white font-bold text-sm">
-                                {fav.rating}
-                              </span>
-                            </div>
-
-                            {/* Favorite Button */}
-                            <button
-                              onClick={() => toggleFavorite(fav as any)}
-                              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all hover:bg-white/30 hover:scale-110 active:scale-95"
-                            >
-                              <Heart
-                                size={18}
-                                className="fill-emerald-500 text-emerald-500"
-                              />
-                            </button>
-                          </div>
-
-                          <div className="p-5">
-                            <h3
-                              className={`text-lg font-bold mb-2 line-clamp-1 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                            >
-                              {fav.name}
-                            </h3>
-                            <div
-                              className={`flex items-center gap-2 text-sm mb-3 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                            >
-                              <MapPin size={14} />
-                              <span className="line-clamp-1">
-                                {typeof fav.location === "object"
-                                  ? `${(fav.location as any).city}, ${(fav.location as any).state}`
-                                  : fav.location}
-                              </span>
-                            </div>
-                            {fav.cuisine && (
-                              <div className="flex flex-wrap gap-2">
-                                {fav.cuisine.slice(0, 2).map((c, idx) => (
-                                  <span
-                                    key={idx}
-                                    className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                      isDarkMode
-                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
-                                        : "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                                    }`}
-                                  >
-                                    {c}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Favorite Events */}
-                {favoriteEvents.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-3 mb-6">
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                          isDarkMode
-                            ? "bg-purple-500/20 text-purple-400"
-                            : "bg-purple-100 text-purple-600"
-                        }`}
-                      >
-                        <Calendar size={24} />
-                      </div>
-                      <div>
-                        <h2
-                          className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                        >
-                          Favorite Events
-                        </h2>
-                        <p
-                          className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                        >
-                          {favoriteEvents.length}{" "}
-                          {favoriteEvents.length === 1 ? "event" : "events"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {favoriteEvents.map((fav) => (
-                        <motion.div
-                          key={fav.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className={`group relative rounded-3xl overflow-hidden border-2 transition-all duration-300 hover:shadow-2xl hover:scale-[1.02] ${
-                            isDarkMode
-                              ? "bg-gray-800 border-gray-700 hover:border-purple-500/50"
-                              : "bg-white border-gray-200 hover:border-purple-500/50"
-                          }`}
-                        >
-                          <div className="relative h-48 overflow-hidden">
-                            <img
-                              src={fav.image}
-                              alt={fav.name}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                            />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
-
-                            {/* Favorite Button */}
-                            <button
-                              onClick={() => toggleFavorite(fav as any)}
-                              className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/20 backdrop-blur-md border border-white/10 flex items-center justify-center transition-all hover:bg-white/30 hover:scale-110 active:scale-95"
-                            >
-                              <Heart
-                                size={18}
-                                className="fill-emerald-500 text-emerald-500"
-                              />
-                            </button>
-                          </div>
-
-                          <div className="p-5">
-                            <h3
-                              className={`text-lg font-bold mb-2 line-clamp-1 ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                            >
-                              {fav.name}
-                            </h3>
-                            <div
-                              className={`flex items-center gap-2 text-sm mb-2 ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                            >
-                              <MapPin size={14} />
-                              <span className="line-clamp-1">
-                                {typeof fav.location === "object"
-                                  ? `${(fav.location as any).city}, ${(fav.location as any).state}`
-                                  : fav.location}
-                              </span>
-                            </div>
-                            {fav.date && (
-                              <div
-                                className={`flex items-center gap-2 text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
-                              >
-                                <Calendar size={14} />
-                                <span>
-                                  {new Date(fav.date).toLocaleDateString()}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        );
-      }
-      case "messages": {
-        // Map context notifications to the expected structure for rendering
-        const mappedNotifications = notificationContextNotifications.map(
-          (n: any) => ({
-            id: n.id || n._id,
-            title: n.title || "Notification",
-            message: n.message || n.title || "",
-            read: n.isRead || false,
-            timestamp: n.createdAt ? new Date(n.createdAt) : new Date(),
-          }),
-        );
-
-        return (
-          <div className="p-6">
-            {mappedNotifications.length === 0 ? (
-              <div
-                className={`flex flex-col items-center justify-center text-center p-8 ${
-                  isDarkMode ? "text-gray-400" : "text-gray-500"
-                }`}
+                {translations[language].noFavorites}
+              </h3>
+              <p
+                className={`text-center max-w-md ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
               >
-                <div
-                  className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${
-                    isDarkMode ? "bg-gray-800" : "bg-gray-100"
-                  }`}
-                >
-                  <Bell size={32} className="text-emerald-500" />
-                </div>
-                <h3
-                  className={`text-xl font-semibold mb-2 ${
-                    isDarkMode ? "text-gray-200" : "text-gray-700"
-                  }`}
-                >
-                  No notifications yet
-                </h3>
-                <p
-                  className={`text-sm ${
-                    isDarkMode ? "text-gray-400" : "text-gray-500"
-                  }`}
-                >
-                  You'll see notifications here when there are updates about
-                  your bookings, events, or other activities.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex justify-between items-center mb-4">
-                  <h2
-                    className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                  >
-                    {translations[language].messages}
-                  </h2>
-                  {unreadCount > 0 && (
-                    <button
-                      onClick={() => markAllNotificationsAsRead()}
-                      className={`px-4 py-2 rounded-lg ${
-                        isDarkMode
-                          ? "bg-gray-700 hover:bg-gray-600"
-                          : "bg-gray-200 hover:bg-gray-300"
-                      } text-sm font-medium transition-colors`}
+                {translations[language].addFavorites}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-10">
+              {/* Favorite Restaurants */}
+              {favoriteRestaurants.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode
+                          ? "bg-emerald-500/20 text-emerald-400"
+                          : "bg-emerald-100 text-emerald-600"
+                        }`}
                     >
-                      Mark all as read
-                    </button>
+                      <svg
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" />
+                        <path d="M7 2v20" />
+                        <path d="M21 15V2v0a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h2
+                        className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        Favorite Restaurants
+                      </h2>
+                      <p
+                        className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                      >
+                        {favoriteRestaurants.length}{" "}
+                        {favoriteRestaurants.length === 1
+                          ? "restaurant"
+                          : "restaurants"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {favoriteRestaurants.map((fav, idx) => (
+                      <PremiumRestaurantCard
+                        key={fav.id}
+                        restaurant={fav as any}
+                        isDarkMode={isDarkMode}
+                        isFavorite={true}
+                        isOpen={isRestaurantOpen(fav as any)}
+                        onToggleFavorite={toggleFavorite}
+                        index={idx}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Favorite Events */}
+              {favoriteEvents.length > 0 && (
+                <div>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div
+                      className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isDarkMode
+                          ? "bg-purple-500/20 text-purple-400"
+                          : "bg-purple-100 text-purple-600"
+                        }`}
+                    >
+                      <Calendar size={24} />
+                    </div>
+                    <div>
+                      <h2
+                        className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                      >
+                        Favorite Events
+                      </h2>
+                      <p
+                        className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"}`}
+                      >
+                        {favoriteEvents.length}{" "}
+                        {favoriteEvents.length === 1 ? "event" : "events"}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {favoriteEvents.map((fav, idx) => (
+                      <PremiumEventCard
+                        key={fav.id}
+                        event={{
+                          _id: fav.id,
+                          id: fav.id,
+                          title: fav.name,
+                          name: fav.name,
+                          imageUrl: fav.image,
+                          image: fav.image,
+                          location: fav.location,
+                          date: fav.date || "Multiple Dates",
+                          time: fav.time || "Varies",
+                          price: fav.price || 0,
+                          category: fav.category || "Event",
+                          description: fav.description || ""
+                        } as any}
+                        isDarkMode={isDarkMode}
+                        isFavorite={true}
+                        onToggleFavorite={toggleFavorite}
+                        index={idx}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
+    case "messages": {
+      // Map context notifications to the expected structure for rendering
+      const mappedNotifications = notificationContextNotifications.map(
+        (n: any) => ({
+          id: n.id || n._id,
+          title: n.title || "Notification",
+          message: n.message || n.title || "",
+          read: n.isRead || false,
+          timestamp: n.createdAt ? new Date(n.createdAt) : new Date(),
+        }),
+      );
+
+      return (
+        <div className="p-4 sm:p-8">
+          {mappedNotifications.length === 0 ? (
+            <div
+              className={`flex flex-col items-center justify-center text-center p-8 ${isDarkMode ? "text-gray-400" : "text-gray-500"
+                }`}
+            >
+              <div
+                className={`w-16 h-16 rounded-full flex items-center justify-center mb-4 ${isDarkMode ? "bg-gray-800" : "bg-gray-100"
+                  }`}
+              >
+                <Bell size={32} className="text-emerald-500" />
+              </div>
+              <h3
+                className={`text-xl font-semibold mb-2 ${isDarkMode ? "text-gray-200" : "text-gray-700"
+                  }`}
+              >
+                No notifications yet
+              </h3>
+              <p
+                className={`text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"
+                  }`}
+              >
+                You'll see notifications here when there are updates about
+                your bookings, events, or other activities.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center mb-4">
+                <h2
+                  className={`text-xl font-semibold ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                >
+                  {translations[language].messages}
+                </h2>
+                {unreadCount > 0 && (
+                  <button
+                    onClick={() => markAllNotificationsAsRead()}
+                    className={`px-4 py-2 rounded-lg ${isDarkMode
+                        ? "bg-gray-700 hover:bg-gray-600"
+                        : "bg-gray-200 hover:bg-gray-300"
+                      } text-sm font-medium transition-colors`}
+                  >
+                    Mark all as read
+                  </button>
+                )}
+              </div>
+              {mappedNotifications.map((notification: any, index: number) => (
+                <div
+                  key={index}
+                  onClick={() => setSelectedNotification(notification)}
+                  className={`flex items-start p-4 rounded-xl transition-colors cursor-pointer ${isDarkMode
+                      ? notification.read
+                        ? "bg-gray-800 hover:bg-gray-750"
+                        : "bg-gray-800/80 ring-1 ring-emerald-500 hover:bg-gray-800"
+                      : notification.read
+                        ? "bg-white hover:bg-gray-50"
+                        : "bg-white/90 ring-1 ring-emerald-500 hover:bg-emerald-50"
+                    }`}
+                >
+                  <Bell
+                    className={`flex-shrink-0 ${notification.read
+                        ? isDarkMode
+                          ? "text-gray-400"
+                          : "text-gray-500"
+                        : "text-emerald-500"
+                      }`}
+                    size={20}
+                  />
+                  <div className="ml-4 flex-1">
+                    <h3
+                      className={`text-sm font-semibold mb-1 ${isDarkMode ? "text-gray-100" : "text-gray-900"
+                        }`}
+                    >
+                      {notification.title}
+                    </h3>
+                    <p
+                      className={`text-sm line-clamp-2 ${isDarkMode ? "text-gray-300" : "text-gray-700"
+                        }`}
+                    >
+                      {notification.message}
+                    </p>
+                    <p
+                      className={`text-xs mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"
+                        }`}
+                    >
+                      {formatTimestamp(notification.timestamp)}
+                    </p>
+                  </div>
+                  {!notification.read && (
+                    <div className="ml-2 flex-shrink-0">
+                      <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
+                    </div>
                   )}
                 </div>
-                {mappedNotifications.map((notification: any, index: number) => (
-                  <div
-                    key={index}
-                    onClick={() => setSelectedNotification(notification)}
-                    className={`flex items-start p-4 rounded-xl transition-colors cursor-pointer ${
-                      isDarkMode
-                        ? notification.read
-                          ? "bg-gray-800 hover:bg-gray-750"
-                          : "bg-gray-800/80 ring-1 ring-emerald-500 hover:bg-gray-800"
-                        : notification.read
-                          ? "bg-white hover:bg-gray-50"
-                          : "bg-white/90 ring-1 ring-emerald-500 hover:bg-emerald-50"
-                    }`}
-                  >
-                    <Bell
-                      className={`flex-shrink-0 ${
-                        notification.read
-                          ? isDarkMode
-                            ? "text-gray-400"
-                            : "text-gray-500"
-                          : "text-emerald-500"
-                      }`}
-                      size={20}
-                    />
-                    <div className="ml-4 flex-1">
-                      <h3
-                        className={`text-sm font-semibold mb-1 ${
-                          isDarkMode ? "text-gray-100" : "text-gray-900"
-                        }`}
-                      >
-                        {notification.title}
-                      </h3>
-                      <p
-                        className={`text-sm line-clamp-2 ${
-                          isDarkMode ? "text-gray-300" : "text-gray-700"
-                        }`}
-                      >
-                        {notification.message}
-                      </p>
-                      <p
-                        className={`text-xs mt-1 ${
-                          isDarkMode ? "text-gray-400" : "text-gray-500"
-                        }`}
-                      >
-                        {formatTimestamp(notification.timestamp)}
-                      </p>
-                    </div>
-                    {!notification.read && (
-                      <div className="ml-2 flex-shrink-0">
-                        <div className="w-2 h-2 bg-emerald-500 rounded-full"></div>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        );
-      }
-      case "reviews":
-        return renderMyReviews();
-      case "achievements":
-        return (
-          <AchievementsSection
-            isDarkMode={isDarkMode}
-            language={language}
-            translations={translations[language]}
-            userMood={userMood}
-          />
-        );
-      case "ar-menu":
-        return (
-          <ARMenuSection
-            isDarkMode={isDarkMode}
-            language={language}
-            translations={translations[language]}
-            menuItems={arMenuItems}
-            isLoading={isArMenuItemsLoading}
-          />
-        );
-      default:
-        return null;
+              ))}
+            </div>
+          )}
+        </div>
+      );
     }
-  };
+    case "reviews":
+      return renderMyReviews();
+    case "achievements":
+      return (
+        <AchievementsSection
+          isDarkMode={isDarkMode}
+          language={language}
+          translations={translations[language]}
+          userMood={userMood}
+        />
+      );
+    case "ar-menu":
+      return (
+        <ARMenuSection
+          isDarkMode={isDarkMode}
+          language={language}
+          translations={translations[language]}
+          menuItems={arMenuItems}
+          isLoading={isArMenuItemsLoading}
+        />
+      );
+    default:
+      return null;
+  }
+};
 
-  // Fetch menu items for AR Menu section
-  useEffect(() => {
-    const fetchArMenuItems = async () => {
-      if (activeSection === "ar-menu" && arMenuItems.length === 0) {
-        setIsArMenuItemsLoading(true);
-        try {
-          // Find the most relevant booking to show its menu
-          const relevantBooking =
-            bookings.find(
-              (b) => b.status === "confirmed" || b.status === "pending",
-            ) || bookings[0];
+// Fetch menu items for AR Menu section
+useEffect(() => {
+  const fetchArMenuItems = async () => {
+    if (activeSection === "ar-menu" && arMenuItems.length === 0) {
+      setIsArMenuItemsLoading(true);
+      try {
+        // Find the most relevant booking to show its menu
+        const relevantBooking =
+          bookings.find(
+            (b) => b.status === "confirmed" || b.status === "pending",
+          ) || bookings[0];
 
-          if (relevantBooking) {
-            const bId =
-              (relevantBooking as any).businessId ||
-              (relevantBooking.restaurantId as any)?._id ||
-              (relevantBooking as any).restaurantId;
+        if (relevantBooking) {
+          const bId =
+            (relevantBooking as any).businessId ||
+            (relevantBooking.restaurantId as any)?._id ||
+            (relevantBooking as any).restaurantId;
 
-            if (bId) {
-              const res = await menuApi.getItems(bId);
-              const items = Array.isArray(res) ? res : res.data || [];
-              if (items.length > 0) {
-                setArMenuItems(items);
-                return;
-              }
-            }
-
-            if (restaurants.length > 0) {
-              const res = await menuApi.getItems(restaurants[0].id);
-              const items = Array.isArray(res) ? res : res.data || [];
-              if (items.length > 0) {
-                setArMenuItems(items);
-                return;
-              }
-            }
-          } else if (restaurants.length > 0) {
-            const res = await menuApi.getItems(restaurants[0].id);
+          if (bId) {
+            const res = await menuApi.getItems(bId);
             const items = Array.isArray(res) ? res : res.data || [];
             if (items.length > 0) {
               setArMenuItems(items);
@@ -4620,826 +3862,813 @@ export default function DashboardPage() {
             }
           }
 
-          // Fallback if all API calls return empty (common in dev environment)
-          setArMenuItems([
-            {
-              id: "m1",
-              name: "Truffle Burger",
-              description:
-                "Wagyu beef patty with truffle mayo, caramelized onions, and aged cheddar.",
-              price: 18.99,
-              ingredients: [
-                "Wagyu Beef",
-                "Truffle Mayo",
-                "Brioche Bun",
-                "Cheddar",
-              ],
-              allergens: ["Dairy", "Gluten", "Eggs"],
-              nutrition: {
-                calories: 850,
-                protein: 45,
-                carbs: 42,
-                fat: 55,
-                fiber: 3,
-                sodium: 920,
-              },
-              cookingMethod: "Grilled to perfection",
-              prepTime: 15,
-              spiceLevel: 1,
-              isVegetarian: false,
-              isVegan: false,
-              isGlutenFree: false,
-              sustainability: {
-                score: 85,
-                localIngredients: 70,
-                carbonFootprint: "Low",
-              },
-            },
-            {
-              id: "m2",
-              name: "Spicy Pasta",
-              description: "Penne arrabbiata with fresh basil and parmesan.",
-              price: 14.99,
-              ingredients: [
-                "Penne",
-                "Tomato Sauce",
-                "Chili",
-                "Garlic",
-                "Parmesan",
-              ],
-              allergens: ["Gluten", "Dairy"],
-              nutrition: {
-                calories: 650,
-                protein: 18,
-                carbs: 85,
-                fat: 22,
-                fiber: 6,
-                sodium: 750,
-              },
-              cookingMethod: "Sautéed",
-              prepTime: 12,
-              spiceLevel: 3,
-              isVegetarian: true,
-              isVegan: false,
-              isGlutenFree: false,
-              sustainability: {
-                score: 92,
-                localIngredients: 85,
-                carbonFootprint: "Very Low",
-              },
-            },
-          ]);
-        } catch (err) {
-          console.error("Error fetching AR menu items:", err);
-        } finally {
-          setIsArMenuItemsLoading(false);
+          if (restaurants.length > 0) {
+            const res = await menuApi.getItems(restaurants[0].id);
+            const items = Array.isArray(res) ? res : res.data || [];
+            if (items.length > 0) {
+              setArMenuItems(items);
+              return;
+            }
+          }
+        } else if (restaurants.length > 0) {
+          const res = await menuApi.getItems(restaurants[0].id);
+          const items = Array.isArray(res) ? res : res.data || [];
+          if (items.length > 0) {
+            setArMenuItems(items);
+            return;
+          }
         }
+
+        // Fallback if all API calls return empty (common in dev environment)
+        setArMenuItems([
+          {
+            id: "m1",
+            name: "Truffle Burger",
+            description:
+              "Wagyu beef patty with truffle mayo, caramelized onions, and aged cheddar.",
+            price: 18.99,
+            ingredients: [
+              "Wagyu Beef",
+              "Truffle Mayo",
+              "Brioche Bun",
+              "Cheddar",
+            ],
+            allergens: ["Dairy", "Gluten", "Eggs"],
+            nutrition: {
+              calories: 850,
+              protein: 45,
+              carbs: 42,
+              fat: 55,
+              fiber: 3,
+              sodium: 920,
+            },
+            cookingMethod: "Grilled to perfection",
+            prepTime: 15,
+            spiceLevel: 1,
+            isVegetarian: false,
+            isVegan: false,
+            isGlutenFree: false,
+            sustainability: {
+              score: 85,
+              localIngredients: 70,
+              carbonFootprint: "Low",
+            },
+          },
+          {
+            id: "m2",
+            name: "Spicy Pasta",
+            description: "Penne arrabbiata with fresh basil and parmesan.",
+            price: 14.99,
+            ingredients: [
+              "Penne",
+              "Tomato Sauce",
+              "Chili",
+              "Garlic",
+              "Parmesan",
+            ],
+            allergens: ["Gluten", "Dairy"],
+            nutrition: {
+              calories: 650,
+              protein: 18,
+              carbs: 85,
+              fat: 22,
+              fiber: 6,
+              sodium: 750,
+            },
+            cookingMethod: "Sautéed",
+            prepTime: 12,
+            spiceLevel: 3,
+            isVegetarian: true,
+            isVegan: false,
+            isGlutenFree: false,
+            sustainability: {
+              score: 92,
+              localIngredients: 85,
+              carbonFootprint: "Very Low",
+            },
+          },
+        ]);
+      } catch (err) {
+        // Error forcing initials avatar suppressed
+      } finally {
+        setIsArMenuItemsLoading(false);
       }
-    };
+    }
+  };
 
-    fetchArMenuItems();
-  }, [activeSection, bookings, restaurants, arMenuItems.length]);
+  fetchArMenuItems();
+}, [activeSection, bookings, restaurants, arMenuItems.length]);
 
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl text-red-500">{error}</div>
-      </div>
-    );
-  }
-
-  if (authLoading || isLoading) {
-    return <SkeletonLoading isDarkMode={isDarkMode} />;
-  }
-
+if (error) {
   return (
-    <>
-      <div
-        className={`min-h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
-      >
-        {/* Sidebar */}
-        <aside
-          className={`fixed top-0 left-0 h-full w-[280px] transform ${
-            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 ${
-            isDarkMode ? "bg-gray-900/80" : "bg-white/80"
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-xl text-red-500">{error}</div>
+    </div>
+  );
+}
+
+if (authLoading || isLoading) {
+  return <SkeletonLoading isDarkMode={isDarkMode} />;
+}
+
+return (
+  <>
+    <div
+      className={`min-h-screen ${isDarkMode ? "bg-gray-900 text-white" : "bg-gray-50 text-gray-900"}`}
+    >
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-0 left-0 h-full w-[280px] transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 ${isDarkMode ? "bg-gray-900/80" : "bg-white/80"
           } backdrop-blur-xl border-r ${isDarkMode ? "border-gray-800" : "border-gray-200"} shadow-2xl overflow-y-auto`}
-        >
-          <div className="p-6 flex flex-col h-full">
-            {/* Dineingo Logo */}
-            <div className="flex items-center justify-between mb-10">
-              <div
-                className="flex items-center gap-2 cursor-pointer group"
-                onClick={() => window.location.reload()}
-              >
-                <div className="relative w-11 h-11 flex items-center justify-center bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-all duration-300">
-                  <div className="relative flex items-center mb-0.5">
-                    <span className="text-white font-black text-2xl italic tracking-tighter">
-                      D
-                    </span>
-                    <span className="text-white font-black text-2xl italic tracking-tighter relative">
-                      i
-                      <span className="absolute top-[5px] left-[90%] -translate-x-1/2 w-[6px] h-[6px] bg-red-500 rounded-full shadow-[0_0_4px_rgba(255,0,0,0.6)]"></span>
-                    </span>
-                  </div>
-                </div>
-                <div className="text-2xl font-black tracking-tighter flex items-center">
-                  <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+      >
+        <div className="p-6 flex flex-col h-full">
+          {/* Dineingo Logo */}
+          <div className="flex items-center justify-between mb-10">
+            <div
+              className="flex items-center gap-2 cursor-pointer group"
+              onClick={() => window.location.reload()}
+            >
+              <div className="relative w-11 h-11 flex items-center justify-center bg-emerald-500 rounded-xl shadow-lg shadow-emerald-500/20 group-hover:scale-110 transition-all duration-300">
+                <div className="relative flex items-center mb-0.5">
+                  <span className="text-white font-black text-2xl italic tracking-tighter">
                     D
                   </span>
-                  <span
-                    className={`relative ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                  >
+                  <span className="text-white font-black text-2xl italic tracking-tighter relative">
                     i
-                    <span className="absolute top-[3px] left-[50%] -translate-x-1/3 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
+                    <span className="absolute top-[5px] left-[90%] -translate-x-1/2 w-[6px] h-[6px] bg-red-500 rounded-full shadow-[0_0_4px_rgba(255,0,0,0.6)]"></span>
                   </span>
-                  <span className={isDarkMode ? "text-white" : "text-gray-900"}>
-                    neIn
-                  </span>
-                  <span className="text-yellow-400">Go</span>
                 </div>
               </div>
-              <button
-                onClick={toggleSidebar}
-                className={`lg:hidden p-2 rounded-xl transition-colors ${isDarkMode ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
-              >
-                <X size={20} />
-              </button>
+              <div className="text-2xl font-black tracking-tighter flex items-center">
+                <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+                  D
+                </span>
+                <span
+                  className={`relative ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                >
+                  i
+                  <span className="absolute top-[3px] left-[50%] -translate-x-1/3 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
+                </span>
+                <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+                  neIn
+                </span>
+                <span className="text-yellow-400">Go</span>
+              </div>
             </div>
+            <button
+              onClick={toggleSidebar}
+              className={`lg:hidden p-2 rounded-xl transition-colors ${isDarkMode ? "hover:bg-gray-800 text-gray-400" : "hover:bg-gray-100 text-gray-500"}`}
+            >
+              <X size={20} />
+            </button>
+          </div>
 
-            {/* User Profile Section */}
-            {isLoading ? (
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="relative">
-                  <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-gray-200 rounded-full border-2 border-white"></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="h-5 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
-                  <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                </div>
+          {/* User Profile Section */}
+          {isLoading ? (
+            <div className="flex items-center space-x-4 mb-8">
+              <div className="relative">
+                <div className="w-12 h-12 rounded-full bg-gray-200 animate-pulse"></div>
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-gray-200 rounded-full border-2 border-white"></div>
               </div>
-            ) : (
-              <div
-                className={`flex items-center space-x-4 mb-10 p-4 rounded-2xl ${isDarkMode ? "bg-gray-800/50" : "bg-emerald-50/50"} border ${isDarkMode ? "border-gray-700" : "border-emerald-100/50"}`}
-              >
-                <div className="relative">
-                  {userData?.photoURL &&
+              <div className="flex-1 min-w-0">
+                <div className="h-5 bg-gray-200 rounded w-24 mb-2 animate-pulse"></div>
+                <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
+              </div>
+            </div>
+          ) : (
+            <div
+              className={`flex items-center space-x-4 mb-10 p-4 rounded-2xl ${isDarkMode ? "bg-gray-800/50" : "bg-emerald-50/50"} border ${isDarkMode ? "border-gray-700" : "border-emerald-100/50"}`}
+            >
+              <div className="relative">
+                {userData && userData.photoURL &&
                   typeof userData.photoURL === "string" &&
                   userData.photoURL.trim() !== "" ? (
-                    <img
-                      src={userData.photoURL}
-                      alt="Profile"
-                      className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.style.display = "none";
-                        forceInitialsAvatar();
-                      }}
-                    />
-                  ) : (
-                    <InitialsAvatar
-                      name={userData?.displayName ?? ""}
-                      className="w-12 h-12 rounded-2xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
-                    />
-                  )}
-                  <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm ring-2 ring-emerald-500/20 animate-pulse"></div>
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2
-                    className={`text-md font-bold ${isDarkMode ? "text-white" : "text-gray-900"} truncate`}
-                  >
-                    {userData?.displayName}
-                  </h2>
-                  <p className="text-xs text-emerald-500 font-medium truncate uppercase tracking-wider">
-                    User
-                  </p>
-                </div>
+                  <img
+                    src={userData.photoURL as string}
+                    alt="Profile"
+                    className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      forceInitialsAvatar();
+                    }}
+                  />
+                ) : (
+                  <InitialsAvatar
+                    name={userData?.displayName ?? ""}
+                    className="w-12 h-12 rounded-2xl border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
+                  />
+                )}
+                <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 rounded-full border-2 border-white shadow-sm ring-2 ring-emerald-500/20 animate-pulse"></div>
               </div>
-            )}
+              <div className="flex-1 min-w-0">
+                <h2
+                  className={`text-md font-bold ${isDarkMode ? "text-white" : "text-gray-900"} truncate`}
+                >
+                  {userData?.displayName}
+                </h2>
+                <p className="text-xs text-emerald-500 font-medium truncate uppercase tracking-wider">
+                  User
+                </p>
+              </div>
+            </div>
+          )}
 
-            {/* Navigation Links */}
-            <nav className="flex-1 space-y-1">
-              {[
-                {
-                  id: "home",
-                  label: translations[language].home,
-                  icon: <Menu className="w-5 h-5" />,
-                },
-                {
-                  id: "bookings",
-                  label: translations[language].bookings,
-                  icon: <Calendar className="w-5 h-5" />,
-                },
-                {
-                  id: "restaurants",
-                  label: translations[language].restaurants,
-                  icon: <MapPin className="w-5 h-5" />,
-                },
-                {
-                  id: "events",
-                  label: translations[language].events,
-                  icon: <Globe className="w-5 h-5" />,
-                },
-                {
-                  id: "favorites",
-                  label: translations[language].favourites,
-                  icon: <Heart className="w-5 h-5" />,
-                },
-                {
-                  id: "achievements",
-                  label: translations[language].achievements,
-                  icon: <Trophy className="w-5 h-5" />,
-                },
-                {
-                  id: "ar-menu",
-                  label: translations[language].arMenu,
-                  icon: <Camera className="w-5 h-5" />,
-                },
-                {
-                  id: "reviews",
-                  label: translations[language].myReviews,
-                  icon: <MessageSquare className="w-5 h-5" />,
-                },
-                {
-                  id: "messages",
-                  label: translations[language].messages,
-                  icon: <Bell className="w-5 h-5" />,
-                },
-                {
-                  id: "settings",
-                  label: translations[language].settings,
-                  icon: <Settings className="w-5 h-5" />,
-                },
-              ].map(({ id, label, icon }) => (
-                <button
-                  key={id}
-                  onClick={() => {
-                    if (id === "bookings") {
-                      fetchBookingsFromAPI();
-                    }
-                    handleNavigation(id as Section);
-                  }}
-                  className={`w-full group flex items-center px-4 py-3 text-left rounded-2xl transition-all duration-300 relative overflow-hidden ${
-                    activeSection === id
-                      ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 translate-x-1"
-                      : isDarkMode
-                        ? "text-gray-400 hover:text-white hover:bg-gray-800/50 hover:translate-x-1"
-                        : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 hover:translate-x-1"
+          {/* Navigation Links */}
+          <nav className="flex-1 space-y-1">
+            {[
+              {
+                id: "home",
+                label: translations[language].home,
+                icon: <Menu className="w-5 h-5" />,
+              },
+              {
+                id: "bookings",
+                label: translations[language].bookings,
+                icon: <Calendar className="w-5 h-5" />,
+              },
+              {
+                id: "restaurants",
+                label: translations[language].restaurants,
+                icon: <MapPin className="w-5 h-5" />,
+              },
+              {
+                id: "events",
+                label: translations[language].events,
+                icon: <Globe className="w-5 h-5" />,
+              },
+              {
+                id: "favorites",
+                label: translations[language].favourites,
+                icon: <Heart className="w-5 h-5" />,
+              },
+              {
+                id: "achievements",
+                label: translations[language].achievements,
+                icon: <Trophy className="w-5 h-5" />,
+              },
+              {
+                id: "ar-menu",
+                label: translations[language].arMenu,
+                icon: <Camera className="w-5 h-5" />,
+              },
+              {
+                id: "reviews",
+                label: translations[language].myReviews,
+                icon: <MessageSquare className="w-5 h-5" />,
+              },
+              {
+                id: "messages",
+                label: translations[language].messages,
+                icon: <Bell className="w-5 h-5" />,
+              },
+              {
+                id: "settings",
+                label: translations[language].settings,
+                icon: <Settings className="w-5 h-5" />,
+              },
+            ].map(({ id, label, icon }) => (
+              <button
+                key={id}
+                onClick={() => {
+                  if (id === "bookings") {
+                    fetchBookingsFromAPI();
+                  }
+                  handleNavigation(id as Section);
+                }}
+                className={`w-full group flex items-center px-4 py-3 text-left rounded-2xl transition-all duration-300 relative overflow-hidden ${activeSection === id
+                    ? "bg-emerald-500 text-white shadow-lg shadow-emerald-500/30 translate-x-1"
+                    : isDarkMode
+                      ? "text-gray-400 hover:text-white hover:bg-gray-800/50 hover:translate-x-1"
+                      : "text-gray-600 hover:text-emerald-600 hover:bg-emerald-50 hover:translate-x-1"
                   }`}
+              >
+                {activeSection === id && (
+                  <motion.div
+                    layoutId="active-pill"
+                    className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full"
+                  />
+                )}
+                <span
+                  className={`inline-flex items-center justify-center w-8 transition-transform group-hover:scale-110 ${activeSection === id ? "text-white" : "text-gray-400 group-hover:text-emerald-500"}`}
                 >
-                  {activeSection === id && (
-                    <motion.div
-                      layoutId="active-pill"
-                      className="absolute left-0 top-1/4 bottom-1/4 w-1 bg-white rounded-r-full"
-                    />
-                  )}
+                  {icon}
+                </span>
+                <span className="ml-3 text-sm font-bold tracking-tight">
+                  {label}
+                </span>
+                {id === "messages" && unreadCount > 0 && (
+                  <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">
+                    {unreadCount}
+                  </span>
+                )}
+                {id === "bookings" && bookings.length > 0 && (
                   <span
-                    className={`inline-flex items-center justify-center w-8 transition-transform group-hover:scale-110 ${activeSection === id ? "text-white" : "text-gray-400 group-hover:text-emerald-500"}`}
+                    className={`ml-auto text-[10px] font-black px-2 py-0.5 rounded-lg ${activeSection === id ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-600"}`}
                   >
-                    {icon}
+                    {bookings.length}
                   </span>
-                  <span className="ml-3 text-sm font-bold tracking-tight">
-                    {label}
-                  </span>
-                  {id === "messages" && unreadCount > 0 && (
-                    <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">
-                      {unreadCount}
-                    </span>
-                  )}
-                  {id === "bookings" && bookings.length > 0 && (
-                    <span
-                      className={`ml-auto text-[10px] font-black px-2 py-0.5 rounded-lg ${activeSection === id ? "bg-white/20 text-white" : "bg-emerald-100 text-emerald-600"}`}
-                    >
-                      {bookings.length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
-
-            {/* Bottom Actions in Sidebar */}
-            <div className="pt-4 space-y-4">
-              {/* Dark Mode Toggle */}
-              <button
-                onClick={toggleDarkMode}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
-                  isDarkMode
-                    ? "bg-gray-700/50 text-gray-300 hover:bg-gray-600/50"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <div className="flex items-center">
-                  <span className="inline-flex items-center justify-center w-8">
-                    {isDarkMode ? (
-                      <Moon className="w-5 h-5" />
-                    ) : (
-                      <Sun className="w-5 h-5" />
-                    )}
-                  </span>
-                  <span className="ml-3 text-sm font-medium">
-                    {isDarkMode
-                      ? translations[language].darkMode
-                      : translations[language].lightMode}
-                  </span>
-                </div>
-                <div
-                  className={`w-11 h-6 rounded-full relative transition-colors ${isDarkMode ? "bg-emerald-500" : "bg-gray-300"}`}
-                >
-                  <div
-                    className={`absolute w-5 h-5 rounded-full bg-white top-0.5 transition-transform ${isDarkMode ? "translate-x-5" : "translate-x-1.5"}`}
-                  ></div>
-                </div>
+                )}
               </button>
+            ))}
+          </nav>
 
-              {/* Logout Button */}
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center px-4 py-3 text-left text-red-600 hover:bg-red-50 rounded-xl transition-colors"
-              >
+          {/* Bottom Actions in Sidebar */}
+          <div className="pt-4 space-y-4">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${isDarkMode
+                  ? "bg-gray-700/50 text-gray-300 hover:bg-gray-600/50"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+            >
+              <div className="flex items-center">
                 <span className="inline-flex items-center justify-center w-8">
-                  <ArrowLeft className="w-5 h-5" />
+                  {isDarkMode ? (
+                    <Moon className="w-5 h-5" />
+                  ) : (
+                    <Sun className="w-5 h-5" />
+                  )}
                 </span>
                 <span className="ml-3 text-sm font-medium">
-                  {translations[language].logout}
+                  {isDarkMode
+                    ? translations[language].darkMode
+                    : translations[language].lightMode}
                 </span>
-              </button>
-            </div>
+              </div>
+              <div
+                className={`w-11 h-6 rounded-full relative transition-colors ${isDarkMode ? "bg-emerald-500" : "bg-gray-300"}`}
+              >
+                <div
+                  className={`absolute w-5 h-5 rounded-full bg-white top-0.5 transition-transform ${isDarkMode ? "translate-x-5" : "translate-x-1.5"}`}
+                ></div>
+              </div>
+            </button>
+
+            {/* Logout Button */}
+            <button
+              onClick={handleLogout}
+              className={`w-full flex items-center px-4 py-3 text-left text-red-600 rounded-xl transition-colors ${isDarkMode ? "hover:bg-red-950/30" : "hover:bg-red-50"
+                }`}
+            >
+              <span className="inline-flex items-center justify-center w-8">
+                <ArrowLeft className="w-5 h-5" />
+              </span>
+              <span className="ml-3 text-sm font-medium">
+                {translations[language].logout}
+              </span>
+            </button>
           </div>
-        </aside>
+        </div>
+      </aside>
 
-        {/* Mobile Menu Button */}
-        <button
-          onClick={toggleSidebar}
-          className={`fixed top-4 left-4 z-50 p-2 rounded-full ${
-            isDarkMode ? "bg-gray-800 text-white" : "bg-white text-gray-900"
-          } shadow-lg md:hidden`}
-        >
-          <Menu
-            className={`w-7 h-7 ${isDarkMode ? "text-white" : "text-black"}`}
-          />
-        </button>
-
-        {/* Overlay for mobile */}
+      {/* Overlay for mobile */}
+      <AnimatePresence>
         {isSidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={toggleSidebar}
           />
         )}
+      </AnimatePresence>
 
-        {/* Main Content */}
-        <div
-          className={`min-h-screen ${isSidebarOpen ? "lg:ml-[280px]" : ""} transition-all duration-300`}
-        >
-          {/* Header */}
-          <header className="px-3 sm:px-4 md:px-6 py-3 sm:py-3 md:py-4 sticky top-0 z-30">
-            {/* Mobile Expanded Search */}
-            {isSearchExpanded && (
-              <div className="sm:hidden mb-3">
-                <div className="relative w-full">
-                  <input
-                    type="text"
-                    placeholder={translations[language].searchPlaceholder}
-                    autoFocus
-                    className="w-full px-5 py-4 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 text-white text-lg focus:outline-none focus:ring-2 focus:ring-white/60 placeholder-white/70 transition-all font-medium"
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
+      {/* Main Content */}
+      <div
+        className={`min-h-screen transition-all duration-500 ease-in-out ${isSidebarOpen ? "lg:pl-72" : ""}`}
+      >
+        {/* Header */}
+        <header className="px-3 sm:px-4 md:px-6 py-3 sm:py-3 md:py-4 sticky top-0 z-30">
+          {/* Mobile Expanded Search */}
+          {isSearchExpanded && (
+            <div className="sm:hidden mb-3">
+              <div className="relative w-full">
+                <input
+                  type="text"
+                  placeholder={translations[language].searchPlaceholder}
+                  autoFocus
+                  className="w-full px-5 py-4 rounded-2xl bg-black/80 backdrop-blur-md border-2 border-white/20 text-white text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-white/60 transition-all font-medium"
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                />
+                <button
+                  onClick={() => {
+                    setIsSearchExpanded(false);
+                    setSearchTerm("");
+                  }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div
+            className={`${isDarkMode ? "bg-gray-900/60 border-gray-800" : "bg-emerald-500/90 border-white/20"} backdrop-blur-xl rounded-3xl px-3 sm:px-6 py-3 flex items-center justify-between shadow-2xl border gap-2 sm:gap-4 h-16 sm:h-20`}
+          >
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+              <button
+                onClick={toggleSidebar}
+                className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl transition-all flex-shrink-0 ${isDarkMode ? "bg-gray-800/50 hover:bg-gray-800 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}
+                aria-label="Toggle menu"
+              >
+                <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
+              <div
+                className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group min-w-0"
+                onClick={() => window.location.reload()}
+              >
+                <div className="text-xl sm:text-2xl font-black tracking-tighter text-white drop-shadow-sm flex items-center whitespace-nowrap">
+                  <span>D</span>
+                  <span className="relative">
+                    i
+                    <span className="absolute top-[3px] sm:top-[4px] left-[50%] -translate-x-1/2 w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-600 rounded-full shadow-[0_0_8px_rgba(255,0,0,0.6)]"></span>
+                  </span>
+                  <span>neIn</span>
+                  <span className="text-yellow-400">Go</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 sm:gap-2 md:gap-3 flex-1 min-w-0">
+              {/* Desktop Search Bar */}
+              <div className="relative flex-1 min-w-0 hidden sm:block">
+                <input
+                  type="text"
+                  placeholder={translations[language].searchPlaceholder}
+                  className="w-full px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-3 pr-10 sm:pr-12 md:pr-24 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm sm:text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-white/40 placeholder-white/60 transition-all font-medium"
+                  value={searchTerm}
+                  onChange={(e) => handleSearch(e.target.value)}
+                />
+                <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-1.5 md:gap-2">
+                  <VoiceSearchButton
+                    onSearchResult={(query) => handleSearch(query)}
+                    language={
+                      language === "hindi"
+                        ? "hi-IN"
+                        : language === "tamil"
+                          ? "ta-IN"
+                          : language === "kannada"
+                            ? "kn-IN"
+                            : language === "telugu"
+                              ? "te-IN"
+                              : language === "malayalam"
+                                ? "ml-IN"
+                                : "en-IN"
+                    }
                   />
-                  <button
-                    onClick={() => {
-                      setIsSearchExpanded(false);
-                      setSearchTerm("");
-                    }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+                  <Search className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 text-white/70 flex-shrink-0" />
                 </div>
               </div>
-            )}
+            </div>
 
-            <div
-              className={`${isDarkMode ? "bg-gray-900/60" : "bg-emerald-400/90"} backdrop-blur-md rounded-2xl px-3 sm:px-4 md:px-6 py-3 sm:py-3 md:py-3 flex items-center justify-between shadow-xl border ${isDarkMode ? "border-gray-800" : "border-white/20"} gap-2 sm:gap-3 md:gap-4 min-h-[70px] sm:min-h-[72px] md:min-h-[80px]`}
-            >
-              <div className="flex items-center gap-2 sm:gap-3 md:gap-4 min-w-0">
-                <button
-                  onClick={toggleSidebar}
-                  className={`flex items-center justify-center w-10 h-10 sm:w-10 sm:h-10 md:w-11 md:h-11 rounded-lg sm:rounded-xl transition-all flex-shrink-0 ${isDarkMode ? "hover:bg-gray-800 text-white" : "hover:bg-white/20 text-white"}`}
-                  aria-label="Toggle menu"
-                >
-                  <Menu className="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                </button>
-                <div
-                  className="flex items-center gap-1 sm:gap-1.5 md:gap-2 cursor-pointer group min-w-0"
-                  onClick={() => window.location.reload()}
-                >
-                  <div className="text-lg sm:text-lg md:text-2xl font-black tracking-tight text-white drop-shadow-sm flex items-center whitespace-nowrap">
-                    <span>D</span>
-                    <span className="relative">
-                      i
-                      <span className="absolute top-[3px] sm:top-[3px] md:top-[4px] left-[50%] -translate-x-1/2 w-1.5 h-1.5 sm:w-1.5 sm:h-1.5 md:w-2 md:h-2 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
-                    </span>
-                    <span>neIn</span>
-                    <span className="text-yellow-400">Go</span>
-                  </div>
-                </div>
-              </div>
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* Mobile Search Icon Button */}
+              <button
+                onClick={() => setIsSearchExpanded(true)}
+                className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl bg-white/20 text-white transition-all flex-shrink-0"
+              >
+                <Search className="w-5 h-5" />
+              </button>
 
-              <div className="flex items-center gap-2 sm:gap-2 md:gap-3 flex-1 min-w-0">
-                {/* Desktop Search Bar */}
-                <div className="relative flex-1 min-w-0 hidden sm:block">
-                  <input
-                    type="text"
-                    placeholder={translations[language].searchPlaceholder}
-                    className="w-full px-4 sm:px-5 md:px-6 py-2.5 sm:py-3 md:py-3 pr-10 sm:pr-12 md:pr-24 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm sm:text-base md:text-lg focus:outline-none focus:ring-2 focus:ring-white/40 placeholder-white/60 transition-all font-medium"
-                    value={searchTerm}
-                    onChange={(e) => handleSearch(e.target.value)}
-                  />
-                  <div className="absolute right-2 sm:right-3 md:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-1.5 md:gap-2">
-                    <VoiceSearchButton
-                      onSearchResult={(query) => handleSearch(query)}
-                      language={
-                        language === "hindi"
-                          ? "hi-IN"
-                          : language === "tamil"
-                            ? "ta-IN"
-                            : language === "kannada"
-                              ? "kn-IN"
-                              : language === "telugu"
-                                ? "te-IN"
-                                : language === "malayalam"
-                                  ? "ml-IN"
-                                  : "en-IN"
-                      }
-                    />
-                    <Search className="w-4 h-4 sm:w-5 sm:h-5 md:w-5 md:h-5 text-white/70 flex-shrink-0" />
-                  </div>
-                </div>
-              </div>
+              {/* Notifications - Hidden on Mobile */}
+              <button
+                onClick={() => setActiveSection("messages")}
+                className={`hidden sm:flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl transition-all relative flex-shrink-0 ${isDarkMode ? "bg-gray-800/50 hover:bg-gray-800 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}
+              >
+                <NotificationBell />
+              </button>
 
-              <div className="flex items-center gap-2 sm:gap-2 md:gap-3 flex-shrink-0">
-                {/* Mobile Search Icon Button */}
-                <button
-                  onClick={() => setIsSearchExpanded(true)}
-                  className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl border-2 border-white/40 hover:bg-white/20 text-white transition-all flex-shrink-0"
-                >
-                  <Search className="w-6 h-6" />
-                </button>
+              {/* Settings/Avatar */}
+              <button
+                className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl transition-all flex-shrink-0 ${isDarkMode ? "bg-gray-800/50 hover:bg-gray-800 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}
+                onClick={() => setIsAvatarModalOpen(true)}
+              >
+                <Settings className="w-5 h-5 sm:w-6 sm:h-6" />
+              </button>
 
-                {/* Mobile Mic Icon Button */}
-                <button className="sm:hidden flex items-center justify-center w-10 h-10 rounded-xl hover:bg-white/20 text-white transition-all flex-shrink-0">
-                  <svg
-                    className="w-6 h-6"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z" />
-                    <path d="M17 16.91c-1.48 1.46-3.51 2.36-5.7 2.36-2.2 0-4.23-.9-5.7-2.36M19 12c0 .55.45 1 1 1s1-.45 1-1c0-4.97-4.03-9-9-9s-9 4.03-9 9c0 .55.45 1 1 1s1-.45 1-1c0-3.87 3.13-7 7-7s7 3.13 7 7z" />
-                  </svg>
-                </button>
+              <div className="w-px h-8 bg-white/20 mx-1 hidden sm:block" />
 
-                {/* Notifications - Hidden on Mobile */}
-                <button
-                  onClick={() => setActiveSection("messages")}
-                  className={`hidden sm:flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-lg sm:rounded-xl transition-all relative flex-shrink-0 ${isDarkMode ? "hover:bg-gray-800 text-white" : "hover:bg-white/20 text-white"}`}
-                >
-                  <NotificationBell />
-                </button>
-
-                {/* Settings/Avatar */}
-                <button
-                  className={`flex items-center justify-center w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-lg sm:rounded-xl transition-all flex-shrink-0 ${isDarkMode ? "hover:bg-gray-800 text-white" : "hover:bg-white/20 text-white"}`}
-                  onClick={() => setIsAvatarModalOpen(true)}
-                >
-                  <Settings className="w-6 h-6 sm:w-6 sm:h-6 md:w-7 md:h-7" />
-                </button>
-
-                <div className="w-px h-6 bg-white/20 mx-1 hidden sm:block" />
-
-                {/* Profile */}
-                <button
-                  className="relative w-10 h-10 sm:w-11 sm:h-11 md:w-12 md:h-12 rounded-xl bg-white border-2 border-white/50 shadow-lg flex items-center justify-center overflow-hidden hover:scale-110 active:scale-95 transition-all flex-shrink-0"
-                  onClick={() => handleNavigation("settings")}
-                >
-                  {userData?.photoURL &&
+              {/* Profile */}
+              <button
+                className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-white border-2 border-white/50 shadow-xl flex items-center justify-center overflow-hidden hover:scale-105 active:scale-95 transition-all flex-shrink-0"
+                onClick={() => handleNavigation("settings")}
+              >
+                {userData && userData.photoURL &&
                   typeof userData.photoURL === "string" &&
                   userData.photoURL.trim() !== "" ? (
-                    <img
-                      src={userData.photoURL}
-                      alt="profile"
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <InitialsAvatar
-                      name={userData?.displayName ?? ""}
-                      className="w-full h-full"
-                    />
-                  )}
-                </button>
-              </div>
-            </div>
-          </header>
-
-          {/* Main Content Area */}
-          <main className="p-4 md:p-8 relative">
-            {/* Doodle Art Background - Improved Subtlety */}
-            <div className="absolute inset-0 overflow-hidden z-0 opacity-[0.12] pointer-events-none">
-              <img
-                src="/images/dodle.png"
-                alt=""
-                className="absolute w-40 h-40 top-10 left-10 transform rotate-12"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(12deg)")
-                }
-              />
-              <img
-                src="/images/meatdodle.png"
-                alt=""
-                className="absolute w-28 h-28 top-1/3 right-1/3 transform -rotate-12"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(-12deg)")
-                }
-              />
-              <img
-                src="/images/nooddodle.png"
-                alt=""
-                className="absolute w-40 h-40 bottom-20 right-10 transform rotate-6"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(6deg)")
-                }
-              />
-              <img
-                src="/images/hotdogdodle.png"
-                alt=""
-                className="absolute w-32 h-32 top-1/2 left-20 transform -rotate-3"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(-3deg)")
-                }
-              />
-              <img
-                src="/images/guiterdodle.png"
-                alt=""
-                className="absolute w-36 h-36 bottom-1/3 right-1/4 transform rotate-9"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(9deg)")
-                }
-              />
-              <img
-                src="/images/pioanododle.png"
-                alt=""
-                className="absolute w-44 h-44 top-2/3 left-1/3 transform -rotate-6"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(-6deg)")
-                }
-              />
-              <img
-                src="/images/eventdodle.png"
-                alt=""
-                className="absolute w-28 h-28 top-40 left-1/2 transform rotate-12"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(12deg)")
-                }
-              />
-              <img
-                src="/images/teacrosdod.png"
-                alt=""
-                className="absolute w-32 h-32 bottom-40 right-1/2 transform -rotate-9"
-                style={{
-                  objectFit: "contain",
-                  transition: "all 0.5s ease-in-out",
-                  filter: "brightness(1.3) contrast(1.1)",
-                }}
-                onMouseEnter={(e) =>
-                  (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
-                }
-                onMouseLeave={(e) =>
-                  (e.currentTarget.style.transform = "rotate(-9deg)")
-                }
-              />
-            </div>
-            <div className="max-w-7xl mx-auto relative z-10">
-              {renderSection()}
-            </div>
-          </main>
-
-          {/* Footer */}
-          <footer
-            className={`mt-12 text-center text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"} pb-6`}
-          >
-            <p>&copy;DineInGo2026 {translations[language].allRightsReserved}</p>
-          </footer>
-        </div>
-
-        {/* Invoice Modal */}
-        {showInvoice && selectedBooking && (
-          <InvoiceModal
-            booking={selectedBooking as any}
-            onClose={() => {
-              setShowInvoice(false);
-              setSelectedBooking(null);
-            }}
-            isDarkMode={isDarkMode}
-          />
-        )}
-
-        {/* Location Modal */}
-        {isLocationModalOpen && renderLocationModal()}
-        {/* Avatar Modal */}
-        {renderAvatarModal()}
-
-        {/* Notification Detail Modal */}
-        {selectedNotification && (
-          <div
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-            onClick={() => setSelectedNotification(null)}
-          >
-            <div
-              className={`rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden ${
-                isDarkMode ? "bg-gray-800" : "bg-white"
-              }`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Modal Header */}
-              <div
-                className={`flex items-start justify-between p-6 border-b ${
-                  isDarkMode ? "border-gray-700" : "border-gray-200"
-                }`}
-              >
-                <div className="flex-1 pr-4">
-                  <h2
-                    className={`text-2xl font-bold ${
-                      isDarkMode ? "text-white" : "text-gray-800"
-                    }`}
-                  >
-                    {selectedNotification.title}
-                  </h2>
-                  <p
-                    className={`text-sm mt-1 ${
-                      isDarkMode ? "text-gray-400" : "text-gray-500"
-                    }`}
-                  >
-                    {formatTimestamp(selectedNotification.timestamp)}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setSelectedNotification(null)}
-                  className={`transition-colors ${
-                    isDarkMode
-                      ? "text-gray-400 hover:text-gray-200"
-                      : "text-gray-400 hover:text-gray-600"
-                  }`}
-                  title="Close"
-                >
-                  <X size={24} />
-                </button>
-              </div>
-
-              {/* Modal Body */}
-              <div className="p-6 overflow-y-auto max-h-[50vh]">
-                <div
-                  className={`whitespace-pre-line leading-relaxed ${
-                    isDarkMode ? "text-gray-300" : "text-gray-700"
-                  }`}
-                >
-                  {selectedNotification.message}
-                </div>
-              </div>
-
-              {/* Modal Footer */}
-              <div
-                className={`flex items-center justify-end gap-3 p-6 border-t ${
-                  isDarkMode
-                    ? "border-gray-700 bg-gray-750"
-                    : "border-gray-200 bg-gray-50"
-                }`}
-              >
-                <button
-                  onClick={() => setSelectedNotification(null)}
-                  className={`px-6 py-2 border rounded-lg transition-colors ${
-                    isDarkMode
-                      ? "text-gray-300 bg-gray-700 border-gray-600 hover:bg-gray-600"
-                      : "text-gray-700 bg-white border-gray-300 hover:bg-gray-100"
-                  }`}
-                >
-                  Close
-                </button>
-                {!isRead(selectedNotification.id) ? (
-                  <button
-                    onClick={async () => {
-                      setMarkingAsRead(true);
-                      try {
-                        await markSingleAsRead(selectedNotification.id);
-                        setSelectedNotification(null);
-                      } finally {
-                        setMarkingAsRead(false);
-                      }
-                    }}
-                    disabled={markingAsRead}
-                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Check size={18} />
-                    {markingAsRead ? "Marking..." : "Mark as Read"}
-                  </button>
+                  <img
+                    src={userData.photoURL as string}
+                    alt="profile"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
-                  <div className="flex items-center gap-2 text-emerald-600 font-medium">
-                    <Check size={18} />
-                    Already Read
-                  </div>
+                  <InitialsAvatar
+                    name={userData?.displayName ?? ""}
+                    className="w-full h-full font-black text-xs"
+                  />
                 )}
-              </div>
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </header>
 
-      {/* Dino Easter Egg "Where's Dino?" */}
-      <div className="fixed bottom-4 left-4 z-[60]">
-        <motion.div
-          whileHover={{ scale: 1.2, rotate: 10 }}
-          onClick={() =>
-            toast.success(
-              "🦖 RAWR! You found me! I was busy checking the kitchen for prehistoric snacks! ✨",
-              {
-                position: "bottom-left",
-              },
-            )
-          }
-          className="cursor-pointer opacity-10 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+        {/* Main Content Area */}
+        <main className="p-4 sm:p-6 md:p-10 relative overflow-hidden">
+          {/* Doodle Art Background - Improved Subtlety */}
+          <div className="absolute inset-0 overflow-hidden z-0 opacity-[0.12] pointer-events-none">
+            <img
+              src="/images/dodle.png"
+              alt=""
+              className="absolute w-40 h-40 top-10 left-10 transform rotate-12"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(12deg)")
+              }
+            />
+            <img
+              src="/images/meatdodle.png"
+              alt=""
+              className="absolute w-20 h-20 sm:w-28 sm:h-28 top-1/4 right-1/4 sm:top-1/3 sm:right-1/3 transform -rotate-12 opacity-50 sm:opacity-100"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(-12deg)")
+              }
+            />
+            <img
+              src="/images/nooddodle.png"
+              alt=""
+              className="absolute w-24 h-24 sm:w-40 sm:h-40 bottom-10 right-5 sm:bottom-20 sm:right-10 transform rotate-6 hidden xs:block"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(6deg)")
+              }
+            />
+            <img
+              src="/images/hotdogdodle.png"
+              alt=""
+              className="absolute w-24 h-24 sm:w-32 sm:h-32 top-1/2 left-5 sm:left-20 transform -rotate-3 opacity-40 sm:opacity-100 hidden sm:block"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(-3deg)")
+              }
+            />
+            <img
+              src="/images/guiterdodle.png"
+              alt=""
+              className="absolute w-28 h-28 sm:w-36 sm:h-36 bottom-1/4 right-1/4 sm:bottom-1/3 sm:right-1/4 transform rotate-9 opacity-40 sm:opacity-100 hidden lg:block"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(9deg)")
+              }
+            />
+            <img
+              src="/images/pioanododle.png"
+              alt=""
+              className="absolute w-36 h-36 sm:w-44 sm:h-44 top-2/3 left-1/4 sm:left-1/3 transform -rotate-6 opacity-40 sm:opacity-100 hidden md:block"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(-6deg)")
+              }
+            />
+            <img
+              src="/images/eventdodle.png"
+              alt=""
+              className="absolute w-20 h-20 sm:w-28 sm:h-28 top-32 left-1/3 sm:top-40 sm:left-1/2 transform rotate-12 opacity-40 sm:opacity-100 hidden sm:block"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(12deg)")
+              }
+            />
+            <img
+              src="/images/teacrosdod.png"
+              alt=""
+              className="absolute w-24 h-24 sm:w-32 sm:h-32 bottom-32 right-1/3 sm:bottom-40 sm:right-1/2 transform -rotate-9 opacity-40 sm:opacity-100 hidden sm:block"
+              style={{
+                objectFit: "contain",
+                transition: "all 0.5s ease-in-out",
+                filter: "brightness(1.3) contrast(1.1)",
+              }}
+              onMouseEnter={(e) =>
+                (e.currentTarget.style.transform = "scale(1.1) rotate(0deg)")
+              }
+              onMouseLeave={(e) =>
+                (e.currentTarget.style.transform = "rotate(-9deg)")
+              }
+            />
+          </div>
+          <div className="max-w-7xl mx-auto relative z-10">
+            {renderSection()}
+          </div>
+        </main>
+
+        {/* Footer */}
+        <footer
+          className={`mt-12 text-center text-sm ${isDarkMode ? "text-gray-400" : "text-gray-500"} pb-6`}
         >
-          <img
-            src="/images/Dino Icon.svg"
-            alt="Hidden Dino"
-            className="w-8 h-8"
-          />
-        </motion.div>
+          <p>&copy;DineInGo2026 {translations[language].allRightsReserved}</p>
+        </footer>
       </div>
 
-      {/* Report Issue Modal */}
-      <ReportIssueModal
-        isOpen={showReportIssueModal}
-        onClose={() => setShowReportIssueModal(false)}
-        userType="user"
-        userId={userData?.uid}
-        userEmail={userData?.email}
-        userName={userData?.displayName || userData?.name}
-      />
-    </>
+      {/* Invoice Modal */}
+      {showInvoice && selectedBooking && (
+        <InvoiceModal
+          booking={selectedBooking as any}
+          onClose={() => {
+            setShowInvoice(false);
+            setSelectedBooking(null);
+          }}
+          isDarkMode={isDarkMode}
+        />
+      )}
+
+      {/* Location Modal */}
+      {isLocationModalOpen && renderLocationModal()}
+      {/* Avatar Modal */}
+      {renderAvatarModal()}
+
+      {/* Notification Detail Modal */}
+      {selectedNotification && (
+        <div
+          className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50 p-4 sm:p-6"
+          onClick={() => setSelectedNotification(null)}
+        >
+          <div
+            className={`rounded-[2rem] sm:rounded-[3rem] shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden ${isDarkMode ? "bg-gray-800" : "bg-white"
+              }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              className={`flex items-start justify-between p-6 border-b ${isDarkMode ? "border-gray-700" : "border-gray-200"
+                }`}
+            >
+              <div className="flex-1 pr-4">
+                <h2
+                  className={`text-2xl font-bold ${isDarkMode ? "text-white" : "text-gray-800"
+                    }`}
+                >
+                  {selectedNotification.title}
+                </h2>
+                <p
+                  className={`text-sm mt-1 ${isDarkMode ? "text-gray-400" : "text-gray-500"
+                    }`}
+                >
+                  {formatTimestamp(selectedNotification.timestamp)}
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className={`transition-colors ${isDarkMode
+                    ? "text-gray-400 hover:text-gray-200"
+                    : "text-gray-400 hover:text-gray-600"
+                  }`}
+                title="Close"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 overflow-y-auto max-h-[50vh]">
+              <div
+                className={`whitespace-pre-line leading-relaxed ${isDarkMode ? "text-gray-300" : "text-gray-700"
+                  }`}
+              >
+                {selectedNotification.message}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              className={`flex items-center justify-end gap-3 p-6 border-t ${isDarkMode
+                  ? "border-gray-700 bg-gray-750"
+                  : "border-gray-200 bg-gray-50"
+                }`}
+            >
+              <button
+                onClick={() => setSelectedNotification(null)}
+                className={`px-6 py-2 border rounded-lg transition-colors ${isDarkMode
+                    ? "text-gray-300 bg-gray-700 border-gray-600 hover:bg-gray-600"
+                    : "text-gray-700 bg-white border-gray-300 hover:bg-gray-100"
+                  }`}
+              >
+                Close
+              </button>
+              {!isRead(selectedNotification.id) ? (
+                <button
+                  onClick={async () => {
+                    setMarkingAsRead(true);
+                    try {
+                      await markSingleAsRead(selectedNotification.id);
+                      setSelectedNotification(null);
+                    } finally {
+                      setMarkingAsRead(false);
+                    }
+                  }}
+                  disabled={markingAsRead}
+                  className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <Check size={18} />
+                  {markingAsRead ? "Marking..." : "Mark as Read"}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 text-emerald-600 font-medium">
+                  <Check size={18} />
+                  Already Read
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+
+    {/* Dino Easter Egg "Where's Dino?" */}
+    <div className="fixed bottom-4 left-4 z-[60]">
+      <motion.div
+        whileHover={{ scale: 1.2, rotate: 10 }}
+        onClick={() =>
+          toast.success(
+            "🦖 RAWR! You found me! I was busy checking the kitchen for prehistoric snacks! ✨",
+            {
+              position: "bottom-left",
+            },
+          )
+        }
+        className="cursor-pointer opacity-10 hover:opacity-100 transition-opacity grayscale hover:grayscale-0"
+      >
+        <img
+          src="/images/Dino Icon.svg"
+          alt="Hidden Dino"
+          className="w-8 h-8"
+        />
+      </motion.div>
+    </div>
+
+    {/* Report Issue Modal */}
+    <ReportIssueModal
+      isOpen={showReportIssueModal}
+      onClose={() => setShowReportIssueModal(false)}
+      userType="user"
+      userId={userData?.uid}
+      userEmail={userData?.email}
+      userName={userData?.displayName || userData?.name}
+    />
+  </>
   );
 }

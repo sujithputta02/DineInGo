@@ -57,6 +57,10 @@ const ReservationPreview: React.FC = () => {
   const [selectedMenuItems, setSelectedMenuItems] = useState<{ [key: string]: number }>({});
   const [showMenuItems, setShowMenuItems] = useState(false);
   const [dataReady, setDataReady] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("dineInGoDarkMode");
+    return saved === "true" ? true : false;
+  });
 
   const time = searchParams.get('time');
   const date = searchParams.get('date');
@@ -247,7 +251,7 @@ const ReservationPreview: React.FC = () => {
 
   if (loading || (!restaurant && !event)) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className={`flex items-center justify-center min-h-screen ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
       </div>
     );
@@ -256,32 +260,32 @@ const ReservationPreview: React.FC = () => {
   // Check if we have restaurant data for restaurant type
   if (type === 'restaurant' && !restaurant) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className={`flex items-center justify-center min-h-screen ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading restaurant data...</p>
+          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading restaurant data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className={`min-h-screen transition-colors duration-300 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
       {/* Hero Section with Image Gallery */}
-      <div className="relative h-[400px] overflow-hidden">
-        <div className="absolute inset-0 bg-black/40 z-10" />
-        <div className="absolute inset-0 grid grid-cols-3 gap-2">
-          {type === 'restaurant' && restaurant && restaurantPreviewImages[restaurant.name]?.map((image, index) => (
-            <div key={index} className={`relative ${index === 0 ? 'col-span-2 row-span-2' : ''}`}>
+      <div className="relative h-[400px] md:h-[500px] overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
+        <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 gap-2">
+          {type === 'restaurant' && restaurant && restaurantPreviewImages[restaurant.name]?.slice(0, 4).map((image, index) => (
+            <div key={index} className={`relative overflow-hidden ${index === 0 ? 'col-span-2 row-span-2' : 'hidden md:block'}`}>
               <img
                 src={image}
                 alt={`${restaurant.name} ambiance ${index + 1}`}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
               />
             </div>
           ))}
           {type === 'event' && event && (
-            <div className="col-span-3 row-span-3">
+            <div className="col-span-4 row-span-2 h-full">
               <img
                 src={event.imageUrl}
                 alt={event.title}
@@ -290,50 +294,64 @@ const ReservationPreview: React.FC = () => {
             </div>
           )}
         </div>
-        <div className="absolute bottom-8 left-8 z-20 text-white">
-          {type === 'restaurant' && restaurant && (
-            <>
-              <h1 className="text-5xl font-bold mb-2">{restaurant.name}</h1>
-              <p className="text-lg mb-2">{restaurant.cuisine?.join(', ')}</p>
-              <div className="flex items-center gap-2 group cursor-pointer"
-                onClick={() => {
-                  if (restaurant?.address) {
-                    window.open(
-                      `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`
-                      )}`,
-                      '_blank'
-                    );
-                  }
-                }}>
-                <MapPin size={16} className="text-white group-hover:text-emerald-400 transition-colors" />
-                <p className="text-sm opacity-90 group-hover:text-emerald-400 transition-colors">
-                  {restaurant?.address || `${restaurant?.location.city}, ${restaurant?.location.state}`}
-                </p>
-              </div>
-            </>
-          )}
-          {type === 'event' && event && (
-            <>
-              <h1 className="text-5xl font-bold mb-2">{event.title}</h1>
-              <p className="text-lg mb-2">{event.category}</p>
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Calendar size={16} className="text-white" />
-                  <span className="text-sm">{event.date}</span>
+        <div className="absolute bottom-8 left-8 right-8 z-20 text-white flex flex-col md:flex-row md:items-end justify-between gap-6">
+          <div className="max-w-2xl">
+            {type === 'restaurant' && restaurant && (
+              <>
+                <div className="flex items-center gap-3 mb-3">
+                  {restaurant.cuisine?.map((c, i) => (
+                    <span key={i} className="px-3 py-1 bg-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest">{c}</span>
+                  ))}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Users size={16} className="text-white" />
-                  <span className="text-sm">{event.registeredCount}/{event.capacity} Registered</span>
+                <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tight leading-none">{restaurant.name}</h1>
+                <div className="flex items-center gap-3 group cursor-pointer"
+                  onClick={() => {
+                    if (restaurant?.address) {
+                      window.open(
+                        `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                          restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`
+                        )}`,
+                        '_blank'
+                      );
+                    }
+                  }}>
+                  <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center group-hover:bg-emerald-500 transition-colors">
+                    <MapPin size={16} className="text-white" />
+                  </div>
+                  <p className="text-sm font-bold opacity-80 group-hover:text-emerald-400 transition-colors">
+                    {restaurant?.address || `${restaurant?.location.city}, ${restaurant?.location.state}`}
+                  </p>
                 </div>
-              </div>
-            </>
-          )}
+              </>
+            )}
+            {type === 'event' && event && (
+              <>
+                <div className="flex items-center gap-3 mb-3">
+                  <span className="px-3 py-1 bg-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest">{event.category}</span>
+                </div>
+                <h1 className="text-4xl md:text-6xl font-black mb-4 tracking-tight leading-none">{event.title}</h1>
+                <div className="flex flex-wrap items-center gap-6">
+                  <div className="flex items-center gap-3 group">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center">
+                      <Calendar size={16} className="text-white" />
+                    </div>
+                    <span className="text-sm font-bold">{event.date}</span>
+                  </div>
+                  <div className="flex items-center gap-3 group">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 backdrop-blur-md flex items-center justify-center">
+                      <Users size={16} className="text-white" />
+                    </div>
+                    <span className="text-sm font-bold">{event.registeredCount}/{event.capacity} Registered</span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
       {/* Back Navigation */}
-      <div className="absolute top-4 left-4 z-30 flex items-center gap-2">
+      <div className="absolute top-6 left-6 z-30 flex items-center gap-2">
         <button
           onClick={() => {
             const params = new URLSearchParams();
@@ -342,10 +360,12 @@ const ReservationPreview: React.FC = () => {
             if (guests) params.set('guests', guests);
             navigate(`/restaurant/${id}/menu?${params.toString()}`);
           }}
-          className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm hover:bg-white transition-colors"
+          className={`flex items-center gap-3 px-6 py-3 backdrop-blur-xl rounded-[2rem] shadow-2xl transition-all font-black uppercase tracking-widest text-[10px] active:scale-95 border-2 ${
+            isDarkMode ? 'bg-black/60 border-white/10 text-white hover:bg-black/80' : 'bg-white/90 border-transparent text-gray-700 hover:bg-white'
+          }`}
         >
-          <ArrowLeft size={20} className="text-gray-700" />
-          <span className="text-gray-700 font-medium">Back to Menu</span>
+          <ArrowLeft size={18} />
+          <span>Back to Menu</span>
         </button>
       </div>
 
@@ -367,111 +387,171 @@ const ReservationPreview: React.FC = () => {
       )}
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 py-8">
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h2 className="text-2xl font-semibold mb-6">{type === 'restaurant' ? 'Reservation Preview' : 'Event Registration'}</h2>
+      <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className={`rounded-[3rem] shadow-2xl p-8 md:p-12 border-2 transition-all ${
+          isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'
+        }`}>
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
+            <div>
+              <h2 className={`text-3xl md:text-4xl font-black tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                {type === 'restaurant' ? 'Reservation Preview' : 'Event Registration'}
+              </h2>
+              <p className={`text-sm font-bold uppercase tracking-widest opacity-60 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Verify your mission details</p>
+            </div>
+            {/* Dino Progress Tracker */}
+            <div className="w-full md:w-auto">
+              <DinoStepper currentStep={2} />
+            </div>
+          </div>
 
-          {/* Dino Progress Tracker */}
-          <DinoStepper currentStep={2} />
-
-          <p className="text-gray-600 mb-8">Confirm if there are errors in the entered details.</p>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-4">{type === 'restaurant' ? 'Dinner Details' : 'Registration Details'}</h3>
-                <div className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-12">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="space-y-8">
+                <h3 className={`text-lg font-black uppercase tracking-widest pb-4 border-b-2 flex items-center gap-3 ${
+                  isDarkMode ? 'text-white border-gray-800' : 'text-gray-900 border-gray-50'
+                }`}>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Primary Contact
+                </h3>
+                <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Full Name</label>
                     <input
                       type="text"
                       name="fullName"
                       value={formData.fullName}
                       onChange={handleInputChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter your Full Name"
+                      className={`w-full p-4 rounded-2xl font-bold transition-all border-2 outline-none ${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
+                          : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
+                      }`}
+                      placeholder="e.g. Maverick Mitchell"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Email Address</label>
                     <input
                       type="email"
                       name="email"
                       value={formData.email}
                       onChange={handleInputChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter your Email Address"
+                      className={`w-full p-4 rounded-2xl font-bold transition-all border-2 outline-none ${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
+                          : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
+                      }`}
+                      placeholder="e.g. maverick@topgun.com"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Phone Number</label>
                     <input
                       type="tel"
                       name="phoneNumber"
                       value={formData.phoneNumber}
                       onChange={handleInputChange}
-                      className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      placeholder="Enter your Phone Number"
+                      className={`w-full p-4 rounded-2xl font-bold transition-all border-2 outline-none ${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
+                          : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
+                      }`}
+                      placeholder="+91 XXXXX XXXXX"
                       required
                     />
                   </div>
                   {type === 'restaurant' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Select an Occasion (Optional)</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Occasion (Optional)</label>
                       <select
                         name="occasion"
                         value={formData.occasion}
                         onChange={handleInputChange}
-                        className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                        className={`w-full p-4 rounded-2xl font-bold transition-all border-2 outline-none appearance-none ${
+                          isDarkMode 
+                            ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
+                            : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
+                        }`}
                       >
                         <option value="">Select Occasion</option>
-                        <option value="birthday">Birthday</option>
-                        <option value="anniversary">Anniversary</option>
-                        <option value="date">Date Night</option>
-                        <option value="business">Business Meal</option>
-                        <option value="other">Other</option>
+                        <option value="birthday">Birthday Celebration</option>
+                        <option value="anniversary">Anniversary Dinner</option>
+                        <option value="date">Romantic Rendezvous</option>
+                        <option value="business">Corporate Strategic Meeting</option>
+                        <option value="other">Other Special Event</option>
                       </select>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div>
-                <h3 className="text-lg font-semibold mb-4">{type === 'restaurant' ? 'Reservation Details' : 'Event Details'}</h3>
-                <div className="bg-gray-50 p-4 rounded-xl mb-6">
-                  <p className="text-gray-600">Date: {date}</p>
-                  <p className="text-gray-600">Time: {time}</p>
-                  {type === 'restaurant' && <p className="text-gray-600">Number of Guests: {guests}</p>}
+              <div className="space-y-8">
+                <h3 className={`text-lg font-black uppercase tracking-widest pb-4 border-b-2 flex items-center gap-3 ${
+                  isDarkMode ? 'text-white border-gray-800' : 'text-gray-900 border-gray-50'
+                }`}>
+                  <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                  Manifest Details
+                </h3>
+                <div className={`grid grid-cols-2 gap-4 p-6 rounded-[2rem] border-2 transition-all ${
+                  isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-100'
+                }`}>
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Date</p>
+                    <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{date}</p>
+                  </div>
+                  <div>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Time Slot</p>
+                    <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{time}</p>
+                  </div>
+                  {type === 'restaurant' && (
+                    <div className="col-span-2">
+                      <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Guests Count</p>
+                      <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{guests} Personnel</p>
+                    </div>
+                  )}
                   {type === 'event' && event && (
                     <>
-                      <p className="text-gray-600">Category: {event.category}</p>
-                      <p className="text-gray-600">Organizer: {event.organizer}</p>
-                      <p className="text-gray-600">Price: ₹{event.price}</p>
+                      <div className="col-span-2 mt-2 pt-2 border-t border-gray-500/10">
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Organizer</p>
+                        <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{event.organizer}</p>
+                      </div>
                     </>
                   )}
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Add a Special Request (Optional)</label>
+                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Special Mission Intel (Optional)</label>
                   <textarea
                     name="specialRequest"
                     value={formData.specialRequest}
                     onChange={handleInputChange}
-                    className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 h-32"
-                    placeholder="Enter your special request"
+                    className={`w-full p-4 rounded-2xl font-bold transition-all border-2 outline-none h-40 resize-none ${
+                      isDarkMode 
+                        ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
+                        : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
+                    }`}
+                    placeholder="Enter special requirements or dietary restrictions..."
                   />
                 </div>
 
                 <div className="mt-4">
-                  <label className="flex items-center cursor-pointer">
-                    <input type="checkbox" className="rounded border-gray-300 text-emerald-500 focus:ring-emerald-500" required />
-                    <span className="ml-2 text-sm text-gray-600">
-                      By clicking "Next" you agree to the{' '}
-                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline">Terms of Use</a>
+                  <label className="flex items-start cursor-pointer group">
+                    <div className="relative mt-1">
+                      <input type="checkbox" className="peer sr-only" required />
+                      <div className={`w-5 h-5 rounded-md border-2 transition-all peer-checked:bg-emerald-500 peer-checked:border-emerald-500 ${
+                        isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+                      }`} />
+                      <svg className="absolute inset-0 w-5 h-5 text-white scale-0 peer-checked:scale-100 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <span className={`ml-3 text-xs font-bold leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                      I certify that the information provided is correct and I agree to the{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">Terms of Engagement</a>
                       {' '}and{' '}
-                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-purple-600 hover:text-purple-800 underline">Privacy Policy</a>.
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">Privacy Protocol</a>.
                     </span>
                   </label>
                 </div>
@@ -480,76 +560,80 @@ const ReservationPreview: React.FC = () => {
 
             {/* Selected Menu Items */}
             {Object.keys(selectedMenuItems).length > 0 ? (
-              <div className="mt-8 border-t border-gray-200 pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <svg className="w-5 h-5 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    Your Order Details
+              <div className={`mt-12 pt-12 border-t-2 ${isDarkMode ? 'border-gray-800' : 'border-gray-50'}`}>
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                  <h3 className={`text-xl font-black uppercase tracking-widest flex items-center gap-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center">
+                      <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                      </svg>
+                    </div>
+                    Provisioning Manifest
                   </h3>
-                  <div className="flex items-center gap-4">
-                    <div className="flex flex-col items-end">
-                      <span className="text-sm text-gray-600">Total Items: {Object.values(selectedMenuItems).reduce((sum, count) => sum + count, 0)}</span>
-                      <span className="text-lg font-bold text-emerald-600">Total Amount: ₹{getTotalPrice}</span>
+                  <div className="flex flex-wrap items-center gap-4">
+                    <div className={`px-6 py-4 rounded-2xl border-2 font-black ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
+                      <p className={`text-[10px] uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Total Valuation</p>
+                      <p className={`text-2xl text-emerald-500 font-black`}>₹{getTotalPrice}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => setShowMenuItems(!showMenuItems)}
-                      className="flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+                      className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all border-2 active:scale-95 ${
+                        isDarkMode 
+                          ? 'bg-gray-800 border-gray-700 text-white hover:border-gray-600' 
+                          : 'bg-white border-gray-100 text-gray-700 hover:bg-gray-50'
+                      }`}
                     >
-                      <span className="font-medium">{showMenuItems ? 'Hide' : 'Show'} Menu</span>
+                      <span>{showMenuItems ? 'Consolidate' : 'Expand'} Provisions</span>
                       <svg
-                        className={`w-5 h-5 transform transition-transform duration-200 ${showMenuItems ? 'rotate-180' : ''}`}
+                        className={`w-4 h-4 transform transition-transform duration-300 ${showMenuItems ? 'rotate-180' : ''}`}
                         fill="none"
                         viewBox="0 0 24 24"
                         stroke="currentColor"
+                        strokeWidth={4}
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                       </svg>
                     </button>
                   </div>
                 </div>
-                <div className={`mt-4 space-y-4 transition-all duration-200 ${showMenuItems ? 'opacity-100 max-h-[1000px]' : 'opacity-0 max-h-0 overflow-hidden'}`}>
+                
+                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 transition-all duration-500 overflow-hidden ${
+                  showMenuItems ? 'opacity-100 max-h-[2000px] mb-8' : 'opacity-0 max-h-0'
+                }`}>
                   {Object.entries(selectedMenuItems).map(([itemId, count]) => {
                     const item = restaurant?.menu?.find(m => m.id === itemId);
-                    if (!item) {
-                      console.log(`Item not found for ID: ${itemId}`); // Debug log
-                      console.log('Available menu items:', restaurant?.menu?.map(m => ({ id: m.id, name: m.name }))); // Debug log
-                      // Show a fallback item if the menu item is not found
-                      return (
-                        <div key={itemId} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                          <div className="w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <span className="text-gray-500 text-xs">?</span>
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-medium">Item ID: {itemId}</h4>
-                            <p className="text-sm text-gray-600">Quantity: {count}</p>
-                            <p className="text-sm text-gray-500">Price: Not available</p>
-                          </div>
-                          <div className="text-right">
-                            <p className="font-medium text-gray-400">₹0</p>
-                          </div>
-                        </div>
-                      );
-                    }
                     return (
-                      <div key={itemId} className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                          onError={(e) => {
-                            e.currentTarget.src = 'https://placehold.co/64x64?text=Food';
-                          }}
-                        />
-                        <div className="flex-1">
-                          <h4 className="font-medium">{item.name}</h4>
-                          <p className="text-sm text-gray-600">Quantity: {count}</p>
-                          <p className="text-sm text-gray-500">₹{item.price} each</p>
+                      <div key={itemId} className={`flex items-center gap-6 p-4 rounded-[2rem] border-2 transition-all group ${
+                        isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-emerald-500/30' : 'bg-white border-gray-50 hover:border-emerald-500/30 shadow-sm'
+                      }`}>
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-500/10">
+                          {item ? (
+                            <img
+                              src={item.image}
+                              alt={item.name}
+                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                              onError={(e) => {
+                                e.currentTarget.src = 'https://placehold.co/100x100?text=Food';
+                              }}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center font-black text-gray-400">?</div>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className={`font-black text-lg truncate mb-1 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {item?.name || `Item ${itemId}`}
+                          </h4>
+                          <div className="flex items-center gap-4">
+                            <span className={`px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 text-[10px] font-black`}>{count}X</span>
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
+                              ₹{item?.price || 0} unit
+                            </span>
+                          </div>
                         </div>
                         <div className="text-right">
-                          <p className="font-medium">₹{item.price * count}</p>
+                          <p className={`font-black text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{(item?.price || 0) * count}</p>
                         </div>
                       </div>
                     );
@@ -557,18 +641,19 @@ const ReservationPreview: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="mt-8 border-t border-gray-200 pt-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Your Order Details</h3>
-                  <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-gray-600">Total Items: 0</span>
-                      <span className="text-sm font-medium">Total Amount: ₹0</span>
-                    </div>
+              <div className={`mt-12 pt-12 border-t-2 ${isDarkMode ? 'border-gray-800' : 'border-gray-50'}`}>
+                <div className={`rounded-3xl p-12 text-center border-2 border-dashed transition-all ${
+                  isDarkMode ? 'bg-gray-800/40 border-gray-700' : 'bg-gray-50 border-gray-100'
+                }`}>
+                  <div className="w-16 h-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                    <svg className="w-8 h-8 text-emerald-500 opacity-40" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
                   </div>
-                </div>
-                <div className="p-4 bg-gray-50 rounded-xl text-center">
-                  <p className="text-gray-600">No menu items selected</p>
+                  <h3 className={`text-xl font-black mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No Provisions Selected</h3>
+                  <p className={`text-sm font-bold opacity-60 mb-8 max-w-xs mx-auto ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+                    Your equipment list is empty. Would you like to add items before proceeding?
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
@@ -578,20 +663,26 @@ const ReservationPreview: React.FC = () => {
                       if (guests) params.set('guests', guests);
                       navigate(`/restaurant/${id}/menu?${params.toString()}`);
                     }}
-                    className="mt-2 text-emerald-600 hover:text-emerald-700 underline"
+                    className="group relative bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white font-black uppercase tracking-widest text-[10px] py-4 px-10 rounded-full transition-all active:scale-95 overflow-hidden"
                   >
-                    Go back to menu to select items
+                    <span>Back to Armoury</span>
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="flex justify-end mt-8">
+            <div className="flex justify-end pt-12">
               <button
                 type="submit"
-                className="px-6 py-3 rounded-xl transition-colors bg-black text-white hover:bg-gray-800"
+                className="group relative bg-black hover:bg-gray-900 text-white font-black uppercase tracking-widest text-sm py-5 px-16 rounded-[2rem] transition-all shadow-2xl active:scale-95 overflow-hidden"
               >
-                Proceed
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <span className="relative flex items-center justify-center gap-4">
+                  Confirm Engagement
+                  <svg className="w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                  </svg>
+                </span>
               </button>
             </div>
           </form>

@@ -69,6 +69,16 @@ import { EntityProvider } from './contexts/EntityContext';
 import FloorPlanDesigner from './components/FloorPlanDesigner';
 import EventSeatingDesigner from './components/EventSeatingDesigner';
 import OnboardingPage from './pages/OnboardingPage';
+import { getSessionToken } from './utils/sessionGuard';
+
+// Helper component for business dashboard redirection
+const BusinessDashboardRedirect = () => {
+  const token = getSessionToken();
+  if (token) {
+    return <Navigate to={`/business/app/dashboard/${token}`} replace />;
+  }
+  return <Navigate to="/business/businessLogin" replace />;
+};
 
 // Custom hook to set the document title based on the current route
 function usePageTitle() {
@@ -202,8 +212,8 @@ const App: React.FC = () => {
                 {/* Business Protected Routes */}
                 <Route path="/business/app" element={<ProtectedBusinessRoute />}>
                   <Route element={<BusinessLayout />}>
-                    <Route index element={<Navigate to="/business/businessLogin" replace />} />
-                    <Route path="dashboard" element={<Navigate to="/business/businessLogin" replace />} />
+                    <Route index element={<BusinessDashboardRedirect />} />
+                    <Route path="dashboard" element={<BusinessDashboardRedirect />} />
                     <Route path="dashboard/:sessionToken" element={<BusinessDashboard />} />
                     <Route path="notifications" element={<BusinessNotifications />} />
                     <Route path="onboarding" element={<BusinessOnboarding />} />

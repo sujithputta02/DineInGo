@@ -75,31 +75,31 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
   return (
     <div className={`${isCompact ? 'p-0 bg-transparent border-0 shadow-none' : `p-8 rounded-[2.5rem] ${isDarkMode ? 'bg-zinc-900 border-white/5' : 'bg-white border-gray-200'} border-2 shadow-2xl`}`}>
       {!isCompact && (
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-yellow-500 rounded-xl text-black">
+            <div className="p-2 bg-yellow-500 rounded-xl text-black flex-shrink-0">
               <Sparkles size={20} />
             </div>
-            <div className="flex flex-col">
-              <h3 className="text-2xl font-black uppercase tracking-tight leading-none mb-1">Dino's Daily Morsels</h3>
+            <div className="flex flex-col min-w-0">
+              <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-none mb-1 truncate">Dino's Daily Morsels</h3>
               <div className="flex items-center gap-1.5">
-                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">AI-Powered Insights Active</span>
+                <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 truncate">AI-Powered Insights Active</span>
               </div>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
             <button 
               onClick={() => fetchMorsels(true)}
-              className={`p-2 rounded-xl border border-white/10 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'} transition-all active:scale-90 group`}
+              className={`p-2 rounded-xl border border-white/10 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'} transition-all active:scale-90 group flex-shrink-0`}
               title="Refresh AI Insights"
             >
               <Zap size={16} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} group-hover:text-yellow-500 transition-colors`} />
             </button>
-            <div className={`flex items-center gap-2 px-3 py-1 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'} border border-white/5`}>
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-40">Current Vibe:</span>
-              <span className="text-[10px] font-bold uppercase text-emerald-500">{userMood} {getVibeIcon(userMood)}</span>
+            <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'} border border-white/5 flex-shrink-0`}>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">Current Vibe:</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-500 whitespace-nowrap">{userMood} {getVibeIcon(userMood)}</span>
             </div>
           </div>
         </div>

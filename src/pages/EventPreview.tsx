@@ -39,6 +39,10 @@ const EventPreview: React.FC = () => {
     phoneNumber: '',
     specialRequest: ''
   });
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("dineInGoDarkMode");
+    return saved === "true" ? true : false;
+  });
 
   const selectedSeatIds = location.state?.selectedSeatIds || [];
   const numberOfGuests = location.state?.numberOfGuests || parseInt(searchParams.get('guests') || '1');
@@ -188,7 +192,7 @@ const EventPreview: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         <Loader className="w-8 h-8 animate-spin text-emerald-500" />
       </div>
     );
@@ -196,9 +200,9 @@ const EventPreview: React.FC = () => {
 
   if (!event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-950 text-white' : 'bg-gray-50 text-gray-900'}`}>
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Event not found</h2>
+          <h2 className="text-2xl font-bold mb-4">Event not found</h2>
           <button
             onClick={() => navigate('/events')}
             className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600"
@@ -211,36 +215,44 @@ const EventPreview: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className={`min-h-screen transition-colors duration-300 py-8 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
       <div className="max-w-4xl mx-auto px-4">
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
+          className={`flex items-center gap-2 mb-6 transition-colors ${
+            isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-800'
+          }`}
         >
           <ArrowLeft size={20} />
           Back
         </button>
 
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className={`rounded-2xl shadow-lg overflow-hidden transition-all border-2 ${
+          isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'
+        }`}>
           {/* Header */}
-          <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-white">
+          <div className={`p-6 text-white ${isDarkMode ? 'bg-gradient-to-r from-purple-900/40 to-purple-800/40' : 'bg-gradient-to-r from-purple-600 to-purple-700'}`}>
             <h1 className="text-3xl font-bold mb-2">Event Registration Preview</h1>
-            <p className="text-purple-100">Please review your booking details before confirming</p>
+            <p className={isDarkMode ? 'text-purple-300' : 'text-purple-100'}>Please review your booking details before confirming</p>
           </div>
 
           <div className="p-6 space-y-6">
             {/* Event Details */}
             <div>
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Event Details</h2>
-              <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+              <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Event Details</h2>
+              <div className={`rounded-lg p-4 space-y-3 border-2 ${
+                isDarkMode ? 'bg-gray-800/50 border-gray-700' : 'bg-gray-50 border-gray-100'
+              }`}>
                 <div className="flex items-start gap-3">
                   <Ticket className="text-purple-600 mt-1" size={20} />
                   <div>
-                    <p className="text-sm text-gray-500">Event</p>
-                    <p className="font-semibold text-gray-800">{event.title}</p>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Event</p>
+                    <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{event.title}</p>
                     {event.category && (
-                      <span className="inline-block mt-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs rounded">
+                      <span className={`inline-block mt-1 px-2 py-1 text-xs rounded ${
+                        isDarkMode ? 'bg-purple-900/30 text-purple-300' : 'bg-purple-100 text-purple-700'
+                      }`}>
                         {event.category}
                       </span>
                     )}
@@ -250,8 +262,8 @@ const EventPreview: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Calendar className="text-purple-600" size={20} />
                   <div>
-                    <p className="text-sm text-gray-500">Date</p>
-                    <p className="font-semibold text-gray-800">
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Date</p>
+                    <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
                       {event.startDate && event.endDate ? (
                         (() => {
                           const start = new Date(event.startDate);
@@ -275,37 +287,37 @@ const EventPreview: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <Clock className="text-purple-600" size={20} />
                   <div>
-                    <p className="text-sm text-gray-500">Time</p>
-                    <p className="font-semibold text-gray-800">{event.time}</p>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Time</p>
+                    <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{event.time}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <MapPin className="text-purple-600" size={20} />
                   <div>
-                    <p className="text-sm text-gray-500">Location</p>
-                    <p className="font-semibold text-gray-800">{event.location}</p>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Location</p>
+                    <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{event.location}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-3">
                   <Users className="text-purple-600" size={20} />
                   <div>
-                    <p className="text-sm text-gray-500">Attendees</p>
-                    <p className="font-semibold text-gray-800">{numberOfGuests} {numberOfGuests === 1 ? 'Person' : 'People'}</p>
+                    <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Attendees</p>
+                    <p className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{numberOfGuests} {numberOfGuests === 1 ? 'Person' : 'People'}</p>
                   </div>
                 </div>
 
                 {selectedTickets.length > 0 && (
-                  <div className="flex items-start gap-3 border-t border-gray-100 pt-2 mt-2">
+                  <div className={`flex items-start gap-3 border-t pt-2 mt-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                     <Ticket className="text-purple-600 mt-1" size={20} />
                     <div className="flex-1">
-                      <p className="text-sm text-gray-500 mb-1">Tickets</p>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mb-1`}>Tickets</p>
                       <div className="space-y-1">
                         {selectedTickets.map((t: any) => (
                           <div key={t.ticketId} className="flex justify-between text-sm">
-                            <span className="text-gray-800">{t.name} x {t.quantity}</span>
-                            <span className="font-medium">₹{t.price * t.quantity}</span>
+                            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-800'}>{t.name} x {t.quantity}</span>
+                            <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{t.price * t.quantity}</span>
                           </div>
                         ))}
                       </div>
@@ -314,15 +326,15 @@ const EventPreview: React.FC = () => {
                 )}
 
                 {selectedAddOns.length > 0 && (
-                  <div className="flex items-start gap-3 border-t border-gray-100 pt-2 mt-2">
+                  <div className={`flex items-start gap-3 border-t pt-2 mt-2 ${isDarkMode ? 'border-gray-700' : 'border-gray-100'}`}>
                     <CreditCard className="text-purple-600 mt-1" size={20} />
                     <div className="flex-1">
-                      <p className="text-sm text-gray-500 mb-1">Add-ons</p>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'} mb-1`}>Add-ons</p>
                       <div className="space-y-1">
                         {selectedAddOns.map((a: any) => (
                           <div key={a.addOnId} className="flex justify-between text-sm">
-                            <span className="text-gray-800">{a.name} x {a.quantity}</span>
-                            <span className="font-medium">₹{a.price * a.quantity}</span>
+                            <span className={isDarkMode ? 'text-gray-300' : 'text-gray-800'}>{a.name} x {a.quantity}</span>
+                            <span className={`font-medium ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{a.price * a.quantity}</span>
                           </div>
                         ))}
                       </div>
@@ -334,7 +346,7 @@ const EventPreview: React.FC = () => {
                   <div className="flex items-start gap-3">
                     <Ticket className="text-purple-600 mt-1" size={20} />
                     <div>
-                      <p className="text-sm text-gray-500">
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         {event.seatingLayout?.areas && event.seatingLayout.areas.length > 0 ? 'Selected Area' : 'Selected Seats'}
                       </p>
                       <div className="flex flex-wrap gap-2 mt-1">
@@ -352,55 +364,63 @@ const EventPreview: React.FC = () => {
 
             {/* Contact Information */}
             <div>
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Contact Information</h2>
+              <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Contact Information</h2>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Full Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+                      isDarkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                     placeholder="Enter your full name"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Email <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+                      isDarkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                     placeholder="Enter your email"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Phone Number <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
                     value={formData.phoneNumber}
                     onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+                      isDarkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                     placeholder="Enter your phone number"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className={`block text-sm font-medium mb-1 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                     Special Requests (Optional)
                   </label>
                   <textarea
                     value={formData.specialRequest}
                     onChange={(e) => setFormData({ ...formData, specialRequest: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-colors ${
+                      isDarkMode ? 'bg-gray-800 border-gray-700 text-white placeholder-gray-500' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
                     rows={3}
                     placeholder="Any special requests or dietary requirements?"
                   />
@@ -410,20 +430,22 @@ const EventPreview: React.FC = () => {
 
             {/* Payment Summary */}
             <div>
-              <h2 className="text-xl font-bold mb-4 text-gray-800">Payment Summary</h2>
-              <div className="bg-purple-50 rounded-lg p-4 space-y-2">
+              <h2 className={`text-xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Payment Summary</h2>
+              <div className={`rounded-lg p-4 space-y-2 border-2 ${
+                isDarkMode ? 'bg-purple-900/10 border-purple-900/40' : 'bg-purple-50 border-purple-100'
+              }`}>
                 <div className="flex justify-between items-center">
-                  <span className="text-gray-600">
+                  <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>
                     {event.hasSeating
                       ? (event.seatingLayout?.areas && event.seatingLayout.areas.length > 0)
                         ? `${numberOfGuests} Guest${numberOfGuests > 1 ? 's' : ''} (Area)`
                         : `${selectedSeatIds.length} Seat${selectedSeatIds.length > 1 ? 's' : ''}`
                       : `${numberOfGuests} Ticket${numberOfGuests > 1 ? 's' : ''}`}
                   </span>
-                  <span className="font-semibold">₹{totalAmount}</span>
+                  <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{totalAmount}</span>
                 </div>
-                <div className="flex justify-between items-center pt-2 border-t border-purple-200">
-                  <span className="font-bold text-lg">Total Amount</span>
+                <div className={`flex justify-between items-center pt-2 border-t ${isDarkMode ? 'border-purple-900/40' : 'border-purple-200'}`}>
+                  <span className={`font-bold text-lg ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total Amount</span>
                   <span className="font-bold text-2xl text-purple-600">₹{totalAmount}</span>
                 </div>
               </div>
@@ -433,7 +455,9 @@ const EventPreview: React.FC = () => {
             <div className="flex gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-colors"
+                className={`flex-1 px-6 py-3 border-2 rounded-lg font-semibold transition-colors ${
+                  isDarkMode ? 'border-gray-700 text-gray-300 hover:bg-gray-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+                }`}
               >
                 Go Back
               </button>

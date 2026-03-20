@@ -24,6 +24,7 @@ import { toast } from 'react-toastify';
 import DineInGoLogo from '../components/DineInGoLogo';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
+import { getSessionToken } from '../utils/sessionGuard';
 
 const BusinessLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -33,6 +34,8 @@ const BusinessLayout: React.FC = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    const sessionToken = getSessionToken();
 
     // Helper to check if link is active
     const isActive = (path: string) => location.pathname.startsWith(path);
@@ -50,7 +53,7 @@ const BusinessLayout: React.FC = () => {
     };
 
     const navItems = [
-        { name: 'Dashboard', path: '/business/app/dashboard', icon: LayoutDashboard },
+        { name: 'Dashboard', path: `/business/app/dashboard/${sessionToken}`, icon: LayoutDashboard },
         { name: 'Reservations', path: '/business/app/reservations', icon: Calendar },
         { name: 'Waitlist', path: '/business/app/waitlist', icon: Users },
         { name: 'Events', path: '/business/app/events', icon: Ticket },
@@ -72,7 +75,7 @@ const BusinessLayout: React.FC = () => {
             {/* Sidebar for Desktop */}
             <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white fixed h-full z-20">
                 <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col gap-1">
-                    <Link to="/business/app/dashboard" className="flex items-center gap-2">
+                    <Link to={`/business/app/dashboard/${sessionToken}`} className="flex items-center gap-2">
                         <DineInGoLogo size="small" color="#ffffff" />
                     </Link>
                     <span className="text-emerald-400 text-xs uppercase tracking-wider font-bold ml-1">Business Portal</span>
@@ -126,14 +129,14 @@ const BusinessLayout: React.FC = () => {
             {/* Main Content Area */}
             <div className="flex-1 md:ml-64 flex flex-col">
                 {/* Top Header */}
-                <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
+                <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-2 md:py-4 flex items-center justify-between">
                     {/* Search / Breadcrumbs placeholder */}
-                    <div className="hidden md:flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-2xl w-96 border border-slate-200">
-                        <Search size={18} className="text-slate-400" />
+                    <div className="hidden lg:flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-2xl w-64 xl:w-96 border border-slate-200">
+                        <Search size={18} className="text-slate-400 font-bold" />
                         <input
                             type="text"
                             placeholder="Quick search..."
-                            className="bg-transparent border-none outline-none text-sm w-full text-slate-600 placeholder:text-slate-400"
+                            className="bg-transparent border-none outline-none text-sm w-full text-slate-600 placeholder:text-slate-400 font-medium"
                         />
                     </div>
 
@@ -141,14 +144,14 @@ const BusinessLayout: React.FC = () => {
                         <DineInGoLogo size="small" />
                     </div>
 
-                    <div className="flex items-center gap-2 md:gap-4">
+                    <div className="flex items-center gap-1 md:gap-4">
                         {/* Notifications Bell with Dropdown */}
                         <div className="relative">
                             <button
                                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                                className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center"
+                                className="p-1.5 md:p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative min-h-[38px] min-w-[38px] md:min-h-[44px] md:min-w-[44px] flex items-center justify-center"
                             >
-                                <Bell size={20} />
+                                <Bell size={18} className="md:w-5 md:h-5" />
                                 {unreadCount > 0 && (
                                     <span className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] text-[10px] font-bold bg-red-500 text-white rounded-full border-2 border-white">
                                         {unreadCount > 99 ? '99+' : unreadCount}
@@ -257,9 +260,9 @@ const BusinessLayout: React.FC = () => {
                         <div className="relative">
                             <button
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                className="flex items-center gap-2 md:gap-3 p-1 pr-2 md:pr-3 hover:bg-slate-100 rounded-2xl transition-all min-h-[44px]"
+                                className="flex items-center gap-2 md:gap-3 p-1 pr-1.5 md:pr-3 hover:bg-slate-100 rounded-2xl transition-all min-h-[38px] md:min-h-[44px]"
                             >
-                                <div className="w-8 md:w-9 h-8 md:h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md">
+                                <div className="w-7 md:w-9 h-7 md:h-9 bg-emerald-600 rounded-lg md:rounded-xl flex items-center justify-center text-white font-bold text-[10px] md:text-sm shadow-md">
                                     {getInitials(currentUser?.displayName || 'Business')}
                                 </div>
                                 <div className="hidden lg:block text-left">

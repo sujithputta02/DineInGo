@@ -164,14 +164,14 @@ const AdminLayout: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 md:ml-64 flex flex-col">
         {/* Top Header */}
-        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-2 md:py-4 flex items-center justify-between">
           {/* Search */}
-          <div className="hidden md:flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-2xl w-96 border border-slate-200">
-            <Search size={18} className="text-slate-400" />
+          <div className="hidden lg:flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-2xl w-64 xl:w-96 border border-slate-200">
+            <Search size={18} className="text-slate-400 font-bold" />
             <input
               type="text"
-              placeholder="Search admin functions..."
-              className="bg-transparent border-none outline-none text-sm w-full text-slate-600 placeholder:text-slate-400"
+              placeholder="Search admin..."
+              className="bg-transparent border-none outline-none text-sm w-full text-slate-600 placeholder:text-slate-400 font-medium"
             />
           </div>
 
@@ -193,14 +193,14 @@ const AdminLayout: React.FC = () => {
             <div className="relative">
               <button
                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center gap-2 md:gap-3 p-1 pr-2 md:pr-3 hover:bg-slate-100 rounded-2xl transition-all min-h-[44px]"
+                className="flex items-center gap-2 md:gap-3 p-1 pr-1.5 md:pr-3 hover:bg-slate-100 rounded-2xl transition-all min-h-[38px] md:min-h-[44px]"
               >
-                <div className="w-8 md:w-9 h-8 md:h-9 bg-red-600 rounded-xl flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md">
+                <div className="w-7 md:w-9 h-7 md:h-9 bg-red-600 rounded-lg md:rounded-xl flex items-center justify-center text-white font-bold text-[10px] md:text-sm shadow-md">
                   {getAdminInitials()}
                 </div>
                 <div className="hidden lg:block text-left">
                   <p className="text-xs font-bold text-slate-900 leading-tight">
-                    System Administrator
+                    Admin
                   </p>
                   <p className="text-[10px] text-slate-500">Super User</p>
                 </div>

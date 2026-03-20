@@ -173,7 +173,7 @@ const getMockDataForEndpoint = (url: string) => {
       return {
         businesses: [
           {
-            id: '1',
+            _id: '1',
             name: 'Mock Restaurant',
             type: 'restaurant',
             location: 'Mock City',
@@ -199,7 +199,7 @@ const getMockDataForEndpoint = (url: string) => {
     if (url.includes('/owner/')) {
       return [
         {
-          id: '1',
+          _id: '1',
           name: 'Mock Restaurant',
           type: 'restaurant',
           location: 'Mock City',

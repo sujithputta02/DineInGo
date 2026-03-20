@@ -59,40 +59,41 @@ const OwnerDashboard: React.FC = () => {
     }
 
     return (
-        <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between mb-8">
+        <div className="px-4 sm:px-0 max-w-7xl mx-auto py-6 sm:py-8">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Dashboard</h1>
-                    <p className="text-slate-500">Welcome back, {userData?.displayName || 'Owner'}</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Dashboard</h1>
+                    <p className="text-sm sm:text-base text-slate-500">Welcome back, {userData?.displayName || 'Owner'}</p>
                 </div>
                 <Link
                     to="/business/onboarding"
-                    className="bg-emerald-600 text-white px-6 py-3 rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                    className="w-full sm:w-auto bg-emerald-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-200"
                 >
                     <Plus size={20} />
                     Add Restaurant
                 </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                <div className="bg-slate-900 text-white p-8 rounded-3xl relative overflow-hidden">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-12">
+                <div className="bg-slate-900 text-white p-6 sm:p-8 rounded-3xl relative overflow-hidden shadow-xl shadow-slate-200">
                     <div className="relative z-10">
-                        <h3 className="text-slate-400 font-medium mb-2">Total Revenue</h3>
-                        <p className="text-4xl font-bold">$12,450</p>
-                        <span className="text-emerald-400 text-sm font-bold flex items-center gap-1 mt-2">↑ 12% vs last month</span>
+                        <h3 className="text-slate-400 text-sm font-medium mb-1 line-clamp-1">Total Revenue</h3>
+                        <p className="text-3xl sm:text-4xl font-black">$12,450</p>
+                        <span className="text-emerald-400 text-xs font-bold flex items-center gap-1 mt-2 bg-emerald-400/10 px-2 py-1 rounded-lg w-fit">↑ 12% vs last month</span>
                     </div>
-                    <div className="absolute right-0 bottom-0 opacity-10">
-                        <DollarSign size={120} />
+                    <div className="absolute right-0 bottom-0 opacity-10 pointer-events-none">
+                        <DollarSign size={100} />
                     </div>
                 </div>
-                <div className="bg-white border border-slate-100 p-8 rounded-3xl">
-                    <h3 className="text-slate-500 font-medium mb-2">Active Reservations</h3>
-                    <p className="text-4xl font-bold text-slate-900">24</p>
-                    <span className="text-slate-400 text-sm mt-2 block">For today</span>
+                <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm">
+                    <h3 className="text-slate-500 text-sm font-medium mb-1 line-clamp-1">Active Reservations</h3>
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900">24</p>
+                    <span className="text-slate-400 text-xs mt-2 block font-medium">For today</span>
                 </div>
-                <div className="bg-white border border-slate-100 p-8 rounded-3xl">
-                    <h3 className="text-slate-500 font-medium mb-2">Total Restaurants</h3>
-                    <p className="text-4xl font-bold text-slate-900">{restaurants.length}</p>
+                <div className="bg-white border border-slate-100 p-6 sm:p-8 rounded-3xl shadow-sm">
+                    <h3 className="text-slate-500 text-sm font-medium mb-1 line-clamp-1">Total Restaurants</h3>
+                    <p className="text-3xl sm:text-4xl font-black text-slate-900">{restaurants.length}</p>
+                    <span className="text-slate-400 text-xs mt-2 block font-medium">Active locations</span>
                 </div>
             </div>
 
@@ -135,14 +136,14 @@ const OwnerDashboard: React.FC = () => {
                             animate={{ opacity: 1, y: 0 }}
                             className="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-slate-100 group relative"
                         >
-                            <div className="h-48 overflow-hidden relative">
+                        <div className="h-40 sm:h-48 overflow-hidden relative">
                                 <img
                                     src={restaurant.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070"}
                                     alt={restaurant.name}
-                                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
-                                <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm">
-                                    <Star size={12} className="text-yellow-400 fill-current" />
+                                <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-lg text-[10px] font-black flex items-center gap-1 shadow-sm border border-slate-100">
+                                    <Star size={10} className="text-yellow-400 fill-current" />
                                     {restaurant.rating.toFixed(1)}
                                 </div>
                             </div>

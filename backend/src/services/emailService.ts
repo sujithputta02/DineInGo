@@ -16,27 +16,27 @@ const createTransporter = () => {
   const gmailUser = process.env.EMAIL_USER;
   const gmailPass = process.env.EMAIL_PASS;
 
-  // Primary: Brevo SMTP
+  // Primary: Gmail SMTP (Verified Working)
+  if (gmailUser && gmailPass) {
+    console.log('Using Gmail SMTP as primary email provider');
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+    });
+  }
+
+  // Fallback: Brevo SMTP
   if (brevoKey && brevoUser) {
-    console.log('Using Brevo SMTP as primary email provider');
+    console.warn('Falling back to Brevo SMTP for email delivery');
     return nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
       port: 587,
       auth: {
         user: brevoUser,
         pass: brevoKey,
-      },
-    });
-  }
-
-  // Fallback: Gmail SMTP
-  if (gmailUser && gmailPass) {
-    console.warn('Falling back to Gmail SMTP for email delivery');
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
       },
     });
   }

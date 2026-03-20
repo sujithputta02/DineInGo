@@ -20,6 +20,8 @@ import {
   Music,
   Trash2,
   ArrowRight,
+  ChevronDown,
+  ChevronRight,
   Target,
   Award,
   Flame,
@@ -447,39 +449,57 @@ const BusinessDashboard: React.FC = () => {
       const data = await businessApi.getDashboard();
 
       // Enhance businesses with real ratings calculated from reviews
-      if (data && data.businesses) {
+      if (data && data.businesses && data.businesses.length > 0) {
         const enhancedBusinesses = await Promise.all(data.businesses.map(async (business: Business) => {
-          // Skip real API calls for mock IDs (e.g., '1', '2') to avoid 500 errors
-          const isMockId = business._id.length < 10;
+          // Robust ID check to handle both real (_id) and mock (id) data
+          const businessId = business._id || (business as any).id || (business as any)._id;
+          
+          if (!businessId) {
+            return {
+              ...business,
+              rating: business.rating || null
+            };
+          }
+
+          // Skip real API calls for mock IDs (e.g., '1', '2') to avoid 500 errors or rate limits
+          const isMockId = String(businessId).length < 10;
 
           if (isMockId) {
             return {
               ...business,
-              rating: null // Mock businesses show as "Not rated" or use original mock value if preferred
+              _id: businessId, // Ensure _id is set even for mock data
+              rating: business.rating || null
             };
           }
 
           try {
-            const stats = await businessApi.getRatingStats(business._id);
-            // Only use stats.averageRating if there are actually reviews
+            // Only fetch individual stats if we have a valid real ID
+            const stats = await businessApi.getRatingStats(businessId);
             return {
               ...business,
-              rating: stats.totalReviews > 0 ? stats.averageRating : null
+              _id: businessId,
+              rating: stats.totalReviews > 0 ? stats.averageRating : (business.rating || null)
             };
           } catch (e) {
+            console.warn(`Failed to fetch rating for ${businessId}:`, e);
             return {
               ...business,
-              rating: null // Fallback to null (not rated) on error
+              _id: businessId,
+              rating: business.rating || null
             };
           }
         }));
 
         data.businesses = enhancedBusinesses;
 
-        // Recalculate overall stats using only rated businesses
-        const ratedBusinesses = enhancedBusinesses.filter(b => b.rating !== null);
-        const totalRating = ratedBusinesses.reduce((acc, b) => acc + (b.rating || 0), 0);
-        data.stats.averageRating = ratedBusinesses.length > 0 ? parseFloat((totalRating / ratedBusinesses.length).toFixed(1)) : 0;
+        // Recalculate overall stats safely
+        if (data.stats) {
+          const ratedBusinesses = enhancedBusinesses.filter(b => b.rating !== null);
+          const totalRating = ratedBusinesses.reduce((acc, b) => acc + (b.rating || 0), 0);
+          data.stats.averageRating = ratedBusinesses.length > 0
+            ? parseFloat((totalRating / ratedBusinesses.length).toFixed(1))
+            : (data.stats.averageRating || 0);
+        }
       }
 
       setDashboardData(data);
@@ -912,241 +932,212 @@ const BusinessDashboard: React.FC = () => {
     return (
       <div className="space-y-8">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 rounded-2xl p-8 text-white">
-          <div className="flex items-center justify-between">
+        <div className="bg-gradient-to-br from-emerald-600 via-emerald-600 to-emerald-800 rounded-3xl p-6 md:p-10 text-white shadow-xl shadow-emerald-200 relative overflow-hidden">
+          <div className="absolute top-0 right-0 -mt-4 -mr-4 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+          <div className="relative z-10 flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold mb-2">Welcome back!</h1>
-              <p className="text-emerald-100 text-lg">
+              <h1 className="text-2xl md:text-4xl font-extrabold mb-2 tracking-tight">Welcome back!</h1>
+              <p className="text-emerald-50 text-base md:text-xl font-medium opacity-90">
                 Manage your restaurants and events with ease
               </p>
             </div>
-            <div className="hidden md:block">
-              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4">
-                <Building2 size={48} className="text-white" />
+            <div className="hidden lg:block">
+              <div className="bg-white/20 backdrop-blur-md rounded-2xl p-5 border border-white/20 shadow-inner">
+                <Building2 size={56} className="text-white drop-shadow-lg" />
               </div>
             </div>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
           <button
             onClick={() => window.location.href = '/business/onboarding'}
-            className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 text-left group"
+            className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-emerald-100 rounded-lg p-3">
-                <Plus className="text-emerald-600" size={24} />
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-100 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                <Plus className="text-emerald-600 group-hover:text-white transition-colors" size={24} />
               </div>
-              <ArrowRight className="text-slate-400 group-hover:text-emerald-600 transition-colors" size={20} />
+              <ArrowRight className="text-slate-300 group-hover:text-emerald-600 transition-all group-hover:translate-x-1" size={20} />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Add New Business</h3>
-            <p className="text-slate-600 text-sm">Create a new restaurant or event venue</p>
+            <h3 className="font-bold text-slate-900 mb-1.5 text-base md:text-lg relative z-10">Add New Business</h3>
+            <p className="text-slate-500 text-sm font-medium relative z-10">Create a new restaurant or event venue</p>
+            <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-emerald-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
 
           <button
             onClick={() => window.open('/business/floor-plans', '_blank')}
-            className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 text-left group"
+            className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-blue-100 rounded-lg p-3">
-                <MapPin className="text-blue-600" size={24} />
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <div className="bg-blue-50 rounded-xl p-3 border border-blue-100 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <MapPin className="text-blue-600 group-hover:text-white transition-colors" size={24} />
               </div>
-              <ArrowRight className="text-slate-400 group-hover:text-blue-600 transition-colors" size={20} />
+              <ArrowRight className="text-slate-300 group-hover:text-blue-600 transition-all group-hover:translate-x-1" size={20} />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Design Floor Plans</h3>
-            <p className="text-slate-600 text-sm">Create restaurant seating layouts</p>
+            <h3 className="font-bold text-slate-900 mb-1.5 text-base md:text-lg relative z-10">Design Floor Plans</h3>
+            <p className="text-slate-500 text-sm font-medium relative z-10">Create restaurant seating layouts</p>
+            <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-blue-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
 
           <button
             onClick={() => window.open('/business/event-seating', '_blank')}
-            className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all duration-200 text-left group"
+            className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 text-left group relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-4">
-              <div className="bg-purple-100 rounded-lg p-3">
-                <Users className="text-purple-600" size={24} />
+            <div className="flex items-center justify-between mb-4 relative z-10">
+              <div className="bg-purple-50 rounded-xl p-3 border border-purple-100 group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                <Users className="text-purple-600 group-hover:text-white transition-colors" size={24} />
               </div>
-              <ArrowRight className="text-slate-400 group-hover:text-purple-600 transition-colors" size={20} />
+              <ArrowRight className="text-slate-300 group-hover:text-purple-600 transition-all group-hover:translate-x-1" size={20} />
             </div>
-            <h3 className="font-semibold text-slate-900 mb-2">Event Seating</h3>
-            <p className="text-slate-600 text-sm">Design event seating arrangements</p>
+            <h3 className="font-bold text-slate-900 mb-1.5 text-base md:text-lg relative z-10">Event Seating</h3>
+            <p className="text-slate-500 text-sm font-medium relative z-10">Design event seating arrangements</p>
+            <div className="absolute -bottom-2 -right-2 w-16 h-16 bg-purple-50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
           </button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-8">
+          <div className="bg-white rounded-2xl p-5 md:p-8 shadow-sm border border-slate-200 hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Total Businesses</p>
-                <p className="text-xl md:text-3xl font-bold text-slate-900">{dashboardData.stats.totalBusinesses}</p>
-                 <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
-                  <TrendingUp size={10} /> Active: {dashboardData.stats.activeBusinesses}
+                <p className="text-xs md:text-sm font-bold text-slate-400 mb-2 uppercase tracking-widest">Total Businesses</p>
+                <p className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight group-hover:text-emerald-600 transition-colors">{dashboardData.stats.totalBusinesses}</p>
+                 <p className="text-[11px] md:text-sm text-emerald-600 mt-3 flex items-center gap-1.5 font-bold">
+                  <TrendingUp size={14} /> Active: {dashboardData.stats.activeBusinesses}
                 </p>
               </div>
-              <div className="hidden sm:block bg-slate-100 rounded-lg p-3">
-                <Building2 className="h-6 w-6 text-slate-600" />
+              <div className="hidden sm:flex bg-slate-50 rounded-2xl p-4 border border-slate-100 group-hover:bg-emerald-50 group-hover:border-emerald-100 transition-colors">
+                <Building2 className="h-8 w-8 text-slate-400 group-hover:text-emerald-600 transition-colors" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-2xl p-5 md:p-8 shadow-sm border border-slate-200 hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Today's Bookings</p>
-                <p className="text-xl md:text-3xl font-bold text-slate-900">{dashboardData.stats.todayBookings}</p>
-                <p className="text-[10px] text-blue-600 mt-1 uppercase font-bold">
+                <p className="text-xs md:text-sm font-bold text-slate-400 mb-2 uppercase tracking-widest">Today's Bookings</p>
+                <p className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight group-hover:text-blue-600 transition-colors">{dashboardData.stats.todayBookings}</p>
+                <p className="text-[11px] md:text-sm text-blue-600 mt-3 uppercase font-extrabold tracking-tighter">
                   Live Reservations
                 </p>
               </div>
-              <div className="hidden sm:block bg-blue-100 rounded-lg p-3">
-                <Calendar className="h-6 w-6 text-blue-600" />
+              <div className="hidden sm:flex bg-blue-50 rounded-2xl p-4 border border-blue-100 group-hover:bg-blue-600 transition-colors">
+                <Calendar className="h-8 w-8 text-blue-400 group-hover:text-white transition-colors" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-2xl p-5 md:p-8 shadow-sm border border-slate-200 hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Total Revenue</p>
-                <p className="text-xl md:text-3xl font-bold text-slate-900">₹{dashboardData.stats.totalRevenue.toLocaleString()}</p>
-                <p className="text-[10px] text-green-600 mt-1 font-bold">
-                  +12% vs last month
+                <p className="text-xs md:text-sm font-bold text-slate-400 mb-2 uppercase tracking-widest">Total Revenue</p>
+                <p className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight group-hover:text-green-600 transition-colors">₹{dashboardData.stats.totalRevenue.toLocaleString()}</p>
+                <p className="text-[11px] md:text-sm text-green-600 mt-3 font-extrabold">
+                  +12% <span className="text-slate-400 font-bold opacity-70 italic">vs last month</span>
                 </p>
               </div>
-              <div className="hidden sm:block bg-green-100 rounded-lg p-3">
-                <DollarSign className="h-6 w-6 text-green-600" />
+              <div className="hidden sm:flex bg-green-50 rounded-2xl p-4 border border-green-100 group-hover:bg-green-600 transition-colors">
+                <DollarSign className="h-8 w-8 text-green-400 group-hover:text-white transition-colors" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-2xl p-5 md:p-8 shadow-sm border border-slate-200 hover:shadow-xl transition-all group">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Avg Rating</p>
+                <p className="text-xs md:text-sm font-bold text-slate-400 mb-2 uppercase tracking-widest">Avg Rating</p>
                 {dashboardData.stats.averageRating > 0 ? (
                   <>
-                    <p className="text-xl md:text-3xl font-bold text-slate-900">{dashboardData.stats.averageRating}</p>
-                    <div className="flex items-center mt-1">
-                      <StarRating rating={dashboardData.stats.averageRating} size={12} />
+                    <p className="text-3xl md:text-4xl font-extrabold text-slate-900 tracking-tight group-hover:text-yellow-600 transition-colors">{dashboardData.stats.averageRating}</p>
+                    <div className="flex items-center mt-3">
+                      <StarRating rating={dashboardData.stats.averageRating} size={18} />
                     </div>
                   </>
                 ) : (
-                  <p className="text-sm font-semibold text-slate-400">No ratings yet</p>
+                  <p className="text-sm md:text-base font-extrabold text-slate-400 mt-3 italic tracking-tight uppercase">No ratings yet</p>
                 )}
               </div>
-              <div className="hidden sm:block bg-yellow-100 rounded-lg p-3">
-                <Star className="h-6 w-6 text-yellow-600" />
+              <div className="hidden sm:flex bg-yellow-50 rounded-2xl p-4 border border-yellow-100 group-hover:bg-yellow-500 transition-colors">
+                <Star className="h-8 w-8 text-yellow-500 group-hover:text-white transition-colors" />
               </div>
             </div>
           </div>
         </div>
-
         {/* Active Businesses Now */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200 mb-8">
-          <div className="flex items-center justify-between mb-6">
+        <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200 mb-8">
+          <div className="flex items-center justify-between mb-8">
             <div>
-              <h3 className="text-lg font-semibold text-slate-900">Active Businesses Now</h3>
-              <p className="text-sm text-slate-600 mt-1">Your businesses and their current status</p>
+              <h3 className="text-xl md:text-2xl font-extrabold text-slate-900 tracking-tight">Active Businesses Now</h3>
+              <p className="text-sm md:text-base font-medium text-slate-500 mt-1">Live status of your operational venues</p>
             </div>
             <button
               onClick={() => changeViewMode('businesses')}
-              className="text-emerald-600 hover:text-emerald-700 text-sm font-medium"
+              className="text-emerald-600 hover:text-emerald-700 text-sm md:text-base font-bold px-4 py-2 hover:bg-emerald-50 rounded-xl transition-all"
             >
               View all
             </button>
           </div>
 
           {dashboardData.businesses.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {dashboardData.businesses.map(business => (
                 <div
                   key={business._id}
-                  className="border border-slate-200 rounded-lg p-4 hover:shadow-md transition-all duration-200"
+                  className="border border-slate-200 rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-slate-50/50 group"
                 >
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex items-center gap-3 flex-1">
-                      <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${business.status === 'active' ? 'bg-green-100' :
-                        business.status === 'paused' ? 'bg-yellow-100' :
-                          'bg-gray-100'
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="flex items-center gap-4 flex-1">
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner border-2 ${business.status === 'active' ? 'bg-green-50 border-green-100/50' :
+                        business.status === 'paused' ? 'bg-yellow-50 border-yellow-100/50' :
+                          'bg-slate-100 border-slate-200'
                         }`}>
                         {business.type === 'restaurant' ? (
-                          <ChefHat size={20} className={`${business.status === 'active' ? 'text-green-600' :
+                          <ChefHat size={32} className={`${business.status === 'active' ? 'text-green-600' :
                             business.status === 'paused' ? 'text-yellow-600' :
-                              'text-gray-600'
-                            }`} />
-                        ) : business.type === 'event' ? (
-                          <Music size={20} className={`${business.status === 'active' ? 'text-green-600' :
-                            business.status === 'paused' ? 'text-yellow-600' :
-                              'text-gray-600'
-                            }`} />
+                              'text-slate-600'
+                            } drop-shadow-sm`} />
                         ) : (
-                          <Building2 size={20} className={`${business.status === 'active' ? 'text-green-600' :
+                          <Music size={32} className={`${business.status === 'active' ? 'text-green-600' :
                             business.status === 'paused' ? 'text-yellow-600' :
-                              'text-gray-600'
-                            }`} />
+                              'text-slate-600'
+                            } drop-shadow-sm`} />
                         )}
                       </div>
-                      <div className="flex-1">
-                        <h4 className="font-semibold text-slate-900">{business.name}</h4>
-                        <p className="text-sm text-slate-600 mt-0.5">
-                          {business.locationData ? (
-                            <>
-                              {business.locationData.area && `${business.locationData.area}, `}
-                              {business.locationData.city}
-                            </>
-                          ) : (
-                            business.location
-                          )}
+                      <div className="min-w-0">
+                        <h4 className="font-extrabold text-slate-900 text-lg md:text-xl truncate group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{business.name}</h4>
+                        <p className="text-xs md:text-sm text-slate-500 flex items-center gap-1.5 font-medium mt-1">
+                          <MapPin size={14} className="text-slate-400" />
+                          <span className="truncate">{business.location}</span>
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                       {business.status === 'active' && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 rounded-full">
-                          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                          <span className="text-xs font-medium text-green-700">Active</span>
-                        </div>
-                      )}
-                      {business.status === 'paused' && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-yellow-100 rounded-full">
-                          <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-yellow-700">Paused</span>
-                        </div>
-                      )}
-                      {business.status === 'draft' && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-gray-100 rounded-full">
-                          <div className="w-2 h-2 bg-gray-500 rounded-full"></div>
-                          <span className="text-xs font-medium text-gray-700">Draft</span>
-                        </div>
-                      )}
-                    </div>
+                    <span className={`inline-flex px-3 py-1 text-[10px] md:text-xs font-bold uppercase tracking-widest rounded-full border ${business.status === 'active' ? 'bg-green-50 text-green-700 border-green-200' :
+                      business.status === 'paused' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                        'bg-slate-100 text-slate-700 border-slate-300'
+                      }`}>
+                      {business.status}
+                    </span>
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3 mb-3 pt-3 border-t border-slate-100">
-                    <div>
-                      <p className="text-xs text-slate-500">Bookings</p>
-                      <p className="text-sm font-semibold text-slate-900 mt-0.5">{business.totalBookings}</p>
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Bookings</p>
+                      <p className="font-extrabold text-slate-900 text-lg">{business.totalBookings}</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Revenue</p>
-                      <p className="text-sm font-semibold text-slate-900 mt-0.5">₹{business.revenue.toLocaleString()}</p>
+                    <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Revenue</p>
+                      <p className="font-extrabold text-slate-900 text-lg">₹{(business.revenue / 1000).toFixed(1)}k</p>
                     </div>
-                    <div>
-                      <p className="text-xs text-slate-500">Rating</p>
-                      <div className="text-sm font-semibold text-slate-900 mt-0.5 flex items-center gap-1">
-                        {business.rating !== null ? (
-                          <>
-                            <StarRating rating={business.rating} size={12} />
-                            <span>{business.rating}</span>
-                          </>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 font-medium">Not rated</span>
-                        )}
+                    <div className="text-center p-3 bg-white rounded-xl border border-slate-100 shadow-sm">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Rating</p>
+                      <div className="flex items-center justify-center gap-1 font-extrabold text-slate-900 text-lg">
+                        <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                        {business.rating || '0'}
                       </div>
                     </div>
                   </div>
-
                   <div className="flex gap-2">
                     <button
                       onClick={() => changeViewMode('businesses')}
@@ -1193,20 +1184,20 @@ const BusinessDashboard: React.FC = () => {
             <div className="overflow-x-auto no-scrollbar -mx-2 px-2">
               <div className="space-y-4 min-w-[320px]">
                 {dashboardData.recentBookings.slice(0, 5).map(booking => (
-                  <div key={booking._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                        <Users size={16} className="text-emerald-600" />
+                  <div key={booking._id} className="flex items-center justify-between p-5 bg-white rounded-2xl hover:bg-slate-50 transition-all border border-slate-100 shadow-sm hover:shadow-md group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center shadow-inner border border-emerald-100 group-hover:bg-emerald-600 transition-colors">
+                        <Users size={24} className="text-emerald-600 group-hover:text-white transition-colors" />
                       </div>
-                      <div>
-                        <p className="font-medium text-slate-900">{booking.customerName}</p>
-                        <p className="text-sm text-slate-600">{booking.businessName}</p>
-                        <p className="text-xs text-slate-500">{booking.date} at {booking.time}</p>
+                      <div className="min-w-0">
+                        <p className="font-extrabold text-slate-900 text-base md:text-lg truncate tracking-tight">{booking.customerName}</p>
+                        <p className="text-sm text-slate-500 truncate font-semibold">{booking.businessName}</p>
+                        <p className="text-[11px] md:text-sm text-slate-400 mt-1 font-extrabold uppercase tracking-widest">{booking.date} • {booking.time}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold text-slate-900">₹{booking.amount}</p>
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getBookingStatusColor(booking.status)}`}>
+                      <p className="font-extrabold text-slate-900 text-lg md:text-xl tracking-tighter">₹{booking.amount}</p>
+                      <span className={`inline-flex px-3 py-1 text-[10px] md:text-xs font-extrabold uppercase tracking-widest rounded-full mt-2 border ${getBookingStatusColor(booking.status)}`}>
                         {booking.status}
                       </span>
                     </div>
@@ -1235,20 +1226,21 @@ const BusinessDashboard: React.FC = () => {
             </div>
             <div className="space-y-4">
               {dashboardData.businesses.slice(0, 3).map(business => (
-                <div key={business._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div key={business._id} className="flex items-center justify-between p-4 bg-slate-50/50 rounded-xl hover:bg-slate-100 transition-colors border border-slate-100">
+                  <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100 shadow-sm">
                       {business.type === 'restaurant' ? (
-                        <ChefHat size={16} className="text-blue-600" />
+                        <ChefHat size={20} className="text-blue-600" />
                       ) : business.type === 'event' ? (
-                        <Music size={16} className="text-blue-600" />
+                        <Music size={20} className="text-blue-600" />
                       ) : (
-                        <Building2 size={16} className="text-blue-600" />
+                        <Building2 size={20} className="text-blue-600" />
                       )}
                     </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{business.name}</p>
-                      <p className="text-sm text-slate-600">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-900 text-sm md:text-base truncate">{business.name}</p>
+                      <p className="text-xs md:text-sm text-slate-500 truncate flex items-center gap-1">
+                        <MapPin size={10} />
                         {business.locationData ? (
                           <>
                             {business.locationData.area && `${business.locationData.area}, `}
@@ -1258,20 +1250,20 @@ const BusinessDashboard: React.FC = () => {
                           business.location
                         )}
                       </p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(business.status)}`}>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <span className={`inline-flex px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-full ${getStatusColor(business.status)} border border-current/10`}>
                           {business.status}
                         </span>
-                        <span className="text-xs text-slate-500 capitalize">{business.type}</span>
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">{business.type}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-slate-900">{business.utilizationRate}%</p>
-                    <p className="text-xs text-slate-500">Utilization</p>
-                    <div className="w-16 bg-slate-200 rounded-full h-2 mt-1">
+                  <div className="text-right flex-shrink-0">
+                    <p className="font-bold text-slate-900 text-sm md:text-base">{business.utilizationRate}%</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Utilization</p>
+                    <div className="w-16 bg-slate-200 rounded-full h-1.5 mt-1.5 overflow-hidden">
                       <div
-                        className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                        className="bg-emerald-500 h-full rounded-full transition-all duration-300 shadow-[0_0_8px_rgba(16,185,129,0.3)]"
                         style={{ width: `${business.utilizationRate}%` }}
                       ></div>
                     </div>
@@ -1298,26 +1290,26 @@ const BusinessDashboard: React.FC = () => {
         <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200 mt-8">
           <h3 className="text-lg font-semibold text-slate-900 mb-6">Performance Insights</h3>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
-            <div className="text-center p-3 md:p-4 bg-emerald-50 rounded-lg">
-              <div className="bg-emerald-100 rounded-full p-2.5 md:p-3 w-10 md:w-12 h-10 md:h-12 mx-auto mb-3 flex items-center justify-center">
-                <TrendingUp className="text-emerald-600 w-5 h-5 md:w-6 md:h-6" />
+            <div className="text-center p-4 md:p-5 bg-emerald-50 rounded-2xl border border-emerald-100 shadow-sm">
+              <div className="bg-emerald-100 rounded-full p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center shadow-inner">
+                <TrendingUp className="text-emerald-600 w-6 h-6" />
               </div>
-              <p className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-tighter">Growing Fast</p>
-              <p className="text-[10px] md:text-sm text-slate-600 mt-1">Bookings +25% this month</p>
+              <p className="text-sm font-bold text-slate-900 uppercase tracking-wide">Growing Fast</p>
+              <p className="text-xs md:text-sm text-slate-600 mt-1.5 font-medium">Bookings +25% this month</p>
             </div>
-            <div className="text-center p-3 md:p-4 bg-blue-50 rounded-lg">
-              <div className="bg-blue-100 rounded-full p-2.5 md:p-3 w-10 md:w-12 h-10 md:h-12 mx-auto mb-3 flex items-center justify-center">
-                <Target className="text-blue-600 w-5 h-5 md:w-6 md:h-6" />
+            <div className="text-center p-4 md:p-5 bg-blue-50 rounded-2xl border border-blue-100 shadow-sm">
+              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center shadow-inner">
+                <Target className="text-blue-600 w-6 h-6" />
               </div>
-              <p className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-tighter">Peak Hours</p>
-              <p className="text-[10px] md:text-sm text-slate-600 mt-1">7-9 PM are your busiest</p>
+              <p className="text-sm font-bold text-slate-900 uppercase tracking-wide">Peak Hours</p>
+              <p className="text-xs md:text-sm text-slate-600 mt-1.5 font-medium">7-9 PM are your busiest</p>
             </div>
-            <div className="text-center p-3 md:p-4 bg-purple-50 rounded-lg">
-              <div className="bg-purple-100 rounded-full p-2.5 md:p-3 w-10 md:w-12 h-10 md:h-12 mx-auto mb-3 flex items-center justify-center">
-                <Award className="text-purple-600 w-5 h-5 md:w-6 md:h-6" />
+            <div className="text-center p-4 md:p-5 bg-purple-50 rounded-2xl border border-purple-100 shadow-sm">
+              <div className="bg-purple-100 rounded-full p-3 w-12 h-12 mx-auto mb-4 flex items-center justify-center shadow-inner">
+                <Award className="text-purple-600 w-6 h-6" />
               </div>
-              <p className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-tighter">Top Rated</p>
-              <p className="text-[10px] md:text-sm text-slate-600 mt-1">Exceptional service quality</p>
+              <p className="text-sm font-bold text-slate-900 uppercase tracking-wide">Top Rated</p>
+              <p className="text-xs md:text-sm text-slate-600 mt-1.5 font-medium">Exceptional service quality</p>
             </div>
           </div>
         </div>
@@ -1411,54 +1403,56 @@ const BusinessDashboard: React.FC = () => {
             </div>
 
             <div className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">{business.name}</h3>
-                  <p className="text-sm text-slate-600 flex items-center gap-1">
-                    <MapPin size={14} />
+              <div className="flex items-start justify-between mb-5">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-xl md:text-2xl font-bold text-slate-900 mb-1.5 truncate">{business.name}</h3>
+                  <p className="text-sm text-slate-500 flex items-center gap-1.5 font-medium truncate">
+                    <MapPin size={14} className="text-slate-400" />
                     {business.locationData ? (
                       <>
                         {business.locationData.area && `${business.locationData.area}, `}
-                        {business.locationData.city}, {business.locationData.state}
+                        {business.locationData.city}
                       </>
                     ) : (
                       business.location
                     )}
                   </p>
-                  {business.locationData?.pincode && (
-                    <p className="text-xs text-slate-500">PIN: {business.locationData.pincode}</p>
-                  )}
-                  {business.locationData?.buildingDetails && (
-                    <p className="text-xs text-slate-500">{business.locationData.buildingDetails}</p>
-                  )}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="text-center p-3 bg-slate-50 rounded-lg">
-                  <p className="text-xs text-slate-500 mb-1">Bookings</p>
-                  <p className="font-bold text-slate-900">{business.totalBookings}</p>
-                </div>
-                <div className="text-center p-3 bg-slate-50 rounded-lg">
-                  <p className="text-xs text-slate-500 mb-1">Revenue</p>
-                  <p className="font-bold text-slate-900">₹{business.revenue.toLocaleString()}</p>
-                </div>
-                <div className="text-center p-3 bg-slate-50 rounded-lg">
-                  <p className="text-xs text-slate-500 mb-1">Rating</p>
-                  <div className="flex items-center justify-center gap-1">
-                    {business.rating !== null ? (
-                      <>
-                        <StarRating rating={business.rating} size={14} />
-                        <p className="font-bold text-slate-900">{business.rating}</p>
-                      </>
-                    ) : (
-                      <p className="text-[10px] font-medium text-slate-400">Not rated</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {business.locationData?.pincode && (
+                      <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider">PIN: {business.locationData.pincode}</span>
+                    )}
+                    {business.locationData?.buildingDetails && (
+                      <span className="text-[11px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase tracking-wider truncate max-w-[150px]">{business.locationData.buildingDetails}</span>
                     )}
                   </div>
                 </div>
-                <div className="text-center p-3 bg-slate-50 rounded-lg">
-                  <p className="text-xs text-slate-500 mb-1">Utilization</p>
-                  <p className="font-bold text-slate-900">{business.utilizationRate}%</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Bookings</p>
+                  <p className="font-extrabold text-slate-900 text-base">{business.totalBookings}</p>
+                </div>
+                <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Revenue</p>
+                  <p className="font-extrabold text-slate-900 text-base">₹{business.revenue.toLocaleString()}</p>
+                </div>
+                <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Rating</p>
+                  <div className="flex items-center justify-center gap-1.5">
+                    {business.rating !== null ? (
+                      <>
+                        <StarRating rating={business.rating} size={14} />
+                        <p className="font-extrabold text-slate-900 text-sm">{business.rating}</p>
+                      </>
+                    ) : (
+                      <p className="text-[10px] font-bold text-slate-400 uppercase">N/A</p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-center p-3 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
+                  <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Usage</p>
+                  <p className="font-extrabold text-slate-900 text-base">{business.utilizationRate}%</p>
                 </div>
               </div>
 
@@ -1525,41 +1519,41 @@ const BusinessDashboard: React.FC = () => {
 
   const renderBookings = () => (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Bookings</h2>
-          <p className="text-slate-600">Manage all your bookings</p>
+          <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Bookings</h2>
+          <p className="text-sm font-medium text-slate-500 mt-0.5">Manage and track all your guest reservations</p>
         </div>
-        <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-          <Download size={16} />
-          Export
+        <button className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm hover:bg-slate-50 transition-all font-bold text-sm text-slate-700">
+          <Download size={18} className="text-slate-400" />
+          Export Data
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto no-scrollbar pb-1">
+          <table className="min-w-full divide-y divide-slate-100">
             <thead className="bg-slate-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   Customer
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   Business
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                  Date & Time
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                  Date • Time
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   Seats
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   Amount
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                <th className="px-5 py-4 text-left text-[11px] font-bold text-slate-400 uppercase tracking-widest">
                   Actions
                 </th>
               </tr>
@@ -1642,79 +1636,85 @@ const BusinessDashboard: React.FC = () => {
     return (
       <div className="space-y-6">
         {/* Header with Period Selector */}
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-slate-900">Analytics</h2>
-            <p className="text-slate-600">Insights and performance metrics</p>
+            <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">Analytics</h2>
+            <p className="text-sm font-medium text-slate-500 mt-0.5">Comprehensive insights and performance metrics</p>
           </div>
-          <div className="flex gap-4">
-            <select
-              value={selectedAnalyticsBusiness}
-              onChange={(e) => setSelectedAnalyticsBusiness(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-            >
-              <option value="all">Overall Performance</option>
-              {dashboardData?.businesses.map(b => (
-                <option key={b._id} value={b._id}>{b.name}</option>
-              ))}
-            </select>
-            <select
-              value={analyticsPeriod}
-              onChange={(e) => setAnalyticsPeriod(e.target.value)}
-              className="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-            >
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="90d">Last 90 Days</option>
-            </select>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 sm:flex-initial min-w-[160px]">
+              <select
+                value={selectedAnalyticsBusiness}
+                onChange={(e) => setSelectedAnalyticsBusiness(e.target.value)}
+                className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-bold text-sm text-slate-700 appearance-none cursor-pointer"
+              >
+                <option value="all">Global Performance</option>
+                {dashboardData?.businesses.map(b => (
+                  <option key={b._id} value={b._id}>{b.name}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            </div>
+            <div className="relative flex-1 sm:flex-initial min-w-[140px]">
+              <select
+                value={analyticsPeriod}
+                onChange={(e) => setAnalyticsPeriod(e.target.value)}
+                className="w-full pl-4 pr-10 py-2.5 bg-white border border-slate-200 rounded-xl shadow-sm focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 transition-all font-bold text-sm text-slate-700 appearance-none cursor-pointer"
+              >
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+                <option value="90d">Last 90 Days</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            </div>
           </div>
         </div>
 
         {/* Summary Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Total Bookings</p>
-                <p className="text-3xl font-bold text-slate-900">{analyticsData.summary.totalBookings}</p>
+                <p className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Total Bookings</p>
+                <p className="text-2xl md:text-3xl font-extrabold text-slate-900">{analyticsData.summary.totalBookings}</p>
               </div>
-              <div className="bg-blue-100 rounded-lg p-3">
+              <div className="hidden sm:flex bg-blue-50 rounded-xl p-3 border border-blue-100">
                 <Calendar className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Total Revenue</p>
-                <p className="text-3xl font-bold text-slate-900">₹{analyticsData.summary.totalRevenue.toLocaleString()}</p>
+                <p className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Total Revenue</p>
+                <p className="text-2xl md:text-3xl font-extrabold text-slate-900">₹{analyticsData.summary.totalRevenue.toLocaleString()}</p>
               </div>
-              <div className="bg-green-100 rounded-lg p-3">
+              <div className="hidden sm:flex bg-green-50 rounded-xl p-3 border border-green-100">
                 <DollarSign className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Avg Booking Value</p>
-                <p className="text-3xl font-bold text-slate-900">₹{analyticsData.summary.averageBookingValue}</p>
+                <p className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Avg Value</p>
+                <p className="text-2xl md:text-3xl font-extrabold text-slate-900">₹{analyticsData.summary.averageBookingValue}</p>
               </div>
-              <div className="bg-purple-100 rounded-lg p-3">
+              <div className="hidden sm:flex bg-purple-50 rounded-xl p-3 border border-purple-100">
                 <TrendingUp className="h-6 w-6 text-purple-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-2xl p-5 md:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Confirmation Rate</p>
-                <p className="text-3xl font-bold text-slate-900">{analyticsData.summary.confirmationRate}%</p>
+                <p className="text-xs font-bold text-slate-500 mb-1.5 uppercase tracking-wider">Conv. Rate</p>
+                <p className="text-2xl md:text-3xl font-extrabold text-slate-900">{analyticsData.summary.confirmationRate}%</p>
               </div>
-              <div className="bg-emerald-100 rounded-lg p-3">
+              <div className="hidden sm:flex bg-emerald-50 rounded-xl p-3 border border-emerald-100">
                 <BarChart3 className="h-6 w-6 text-emerald-600" />
               </div>
             </div>
@@ -1734,13 +1734,13 @@ const BusinessDashboard: React.FC = () => {
                     <XAxis
                       dataKey="date"
                       stroke="#64748b"
-                      tick={{ fontSize: 12 }}
+                      tick={{ fontSize: 14, fontWeight: 'bold' }}
                       tickFormatter={(value) => {
                         const date = new Date(value);
                         return `${date.getMonth() + 1}/${date.getDate()}`;
                       }}
                     />
-                    < YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                    <YAxis stroke="#64748b" tick={{ fontSize: 14, fontWeight: 'bold' }} />
                     < Tooltip
                       contentStyle={{
                         backgroundColor: '#fff',
@@ -1792,13 +1792,13 @@ const BusinessDashboard: React.FC = () => {
                       <XAxis
                         dataKey="date"
                         stroke="#64748b"
-                        tick={{ fontSize: 12 }}
+                        tick={{ fontSize: 14, fontWeight: 'bold' }}
                         tickFormatter={(value) => {
                           const date = new Date(value);
                           return `${date.getMonth() + 1}/${date.getDate()}`;
                         }}
                       />
-                      <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                      <YAxis stroke="#64748b" tick={{ fontSize: 14, fontWeight: 'bold' }} />
                       <Tooltip
                         contentStyle={{
                           backgroundColor: '#fff',
@@ -2210,52 +2210,56 @@ const BusinessDashboard: React.FC = () => {
     <div className="min-h-screen bg-slate-50">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-4xl font-bold text-slate-900">Business Dashboard</h1>
-              <p className="text-slate-600 mt-1">Manage your restaurants and events with ease</p>
-            </div>
-            <div className="hidden md:flex items-center gap-3">
-              <div className="bg-white rounded-lg px-4 py-2 shadow-sm border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm text-slate-600">Live Dashboard</span>
-                </div>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
+          <div className="flex-1">
+            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+              Dashboard
+            </h1>
+            <p className="text-base md:text-xl text-slate-500 font-medium mt-1">
+              Manage your restaurants and events with ease
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="bg-white rounded-2xl px-5 py-3 shadow-lg shadow-slate-100 border border-slate-200">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                <span className="text-sm md:text-base font-bold text-slate-700 tracking-tight">Live Dashboard</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <div className="mb-8 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
-          <nav className="flex space-x-1 bg-white rounded-xl p-1 shadow-sm border border-slate-200 min-w-max">
-            {[
-              { id: 'overview', label: 'Overview', icon: BarChart3 },
-              { id: 'businesses', label: 'Businesses', icon: Building2 },
-              { id: 'bookings', label: 'Bookings', icon: Calendar },
-              { id: 'analytics', label: 'Analytics', icon: TrendingUp },
-              { id: 'operations', label: 'Staff & Ops', icon: Briefcase },
-              { id: 'marketing', label: 'Marketing', icon: Megaphone },
-              { id: 'reviews', label: 'Reviews', icon: MessageSquare }
-            ].map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => changeViewMode(id as any)}
-                className={`flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-all duration-200 whitespace-nowrap flex-shrink-0 ${viewMode === id
-                  ? 'bg-emerald-600 text-white shadow-md'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
-                  }`}
-              >
-                <Icon size={16} className="md:w-[18px] md:h-[18px]" />
-                {label}
-              </button>
-            ))}
-          </nav>
+        <div className="mb-10 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div className="overflow-x-auto no-scrollbar pb-3">
+            <nav className="flex space-x-3 bg-white/60 backdrop-blur-md rounded-3xl p-2 shadow-xl shadow-slate-100 border border-slate-200 min-w-max">
+              {[
+                { id: 'overview', label: 'Overview', icon: BarChart3 },
+                { id: 'businesses', label: 'Businesses', icon: Building2 },
+                { id: 'bookings', label: 'Bookings', icon: Calendar },
+                { id: 'analytics', label: 'Analytics', icon: TrendingUp },
+                { id: 'operations', label: 'Staff & Ops', icon: Briefcase },
+                { id: 'marketing', label: 'Marketing', icon: Megaphone },
+                { id: 'reviews', label: 'Reviews', icon: MessageSquare }
+              ].map(({ id, label, icon: Icon }) => (
+                <button
+                  key={id}
+                  onClick={() => setViewMode(id as any)}
+                  className={`flex items-center gap-3 px-5 md:px-8 py-3.5 md:py-4.5 rounded-2xl font-black text-sm md:text-base transition-all duration-300 whitespace-nowrap flex-shrink-0 ${viewMode === id
+                    ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200 ring-4 ring-emerald-50'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 hover:shadow-inner'
+                    }`}
+                >
+                  <Icon size={viewMode === id ? 20 : 18} className={viewMode === id ? 'text-white' : 'text-slate-400'} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
         </div>
 
         {/* Content */}
-        <div>
+        <div className="min-h-[500px]">
           {viewMode === 'overview' && renderOverview()}
           {viewMode === 'businesses' && renderBusinesses()}
           {viewMode === 'bookings' && renderBookings()}

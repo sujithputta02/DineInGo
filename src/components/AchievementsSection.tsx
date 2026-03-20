@@ -146,7 +146,7 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
   }
 
   return (
-    <div className={`space-y-8 max-w-7xl mx-auto px-4 py-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+    <div className={`space-y-8 max-w-7xl mx-auto p-4 sm:p-8 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
       {/* Premium Header with Mascot */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
         <div className="lg:col-span-1">
@@ -163,7 +163,7 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
                <div className="h-2 w-12 bg-yellow-500 rounded-full" />
                <span className="text-yellow-500 font-black text-xs uppercase tracking-[0.2em]">Dino Expedition Status</span>
             </div>
-            <h1 className="text-5xl font-black mb-4 leading-tight">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight">
               YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">DIG SITE</span>
             </h1>
             <p className={`${isDarkMode ? 'text-zinc-400' : 'text-gray-600'} text-lg max-w-xl font-medium`}>

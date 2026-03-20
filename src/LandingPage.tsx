@@ -679,12 +679,7 @@ export default function LandingPage() {
           minHeight: "100vh",
           position: "relative",
           alignItems: "center",
-          justifyContent: isMobile ? "center" : "flex-start",
-          gap: isMobile ? "3rem" : "2rem",
-          maxWidth: "1400px",
-          margin: "0 auto",
-          width: "100%",
-          padding: isMobile ? "120px 5% 60px" : "0 5%",
+          padding: isMobile ? "90px 4% 40px" : "0 5%",
           boxSizing: "border-box",
           textAlign: isMobile ? "center" : "left",
         }}>
@@ -741,15 +736,15 @@ export default function LandingPage() {
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5, duration: 0.6 }}
               style={{
-                fontSize: "clamp(0.95rem, 3vw, 1.15rem)",
+                fontSize: "clamp(0.9rem, 2.5vw, 1.1rem)",
                 color: glassStyles.colors.gray,
-                maxWidth: "90%",
-                marginBottom: "40px",
+                maxWidth: isMobile ? "100%" : "90%",
+                marginBottom: isMobile ? "30px" : "40px",
                 fontWeight: "500",
                 lineHeight: "1.6"
               }}
             >
-              Select exact tables at restaurants or specific seats at events with India's first truly interactive booking platform.
+              Select exact tables or specific seats with India's first truly interactive booking platform.
             </motion.p>
 
               <motion.div

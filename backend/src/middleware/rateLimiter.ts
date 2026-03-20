@@ -42,7 +42,7 @@ const getClientIp = (req: Request): string => {
  */
 export const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // limit each IP to 100 requests per windowMs
+  max: 500, // Increased from 100 to avoid 429
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true, // Return rate limit info in `RateLimit-*` headers
   legacyHeaders: false, // Disable `X-RateLimit-*` headers
@@ -239,7 +239,7 @@ export const adminApiLimiter = rateLimit({
  */
 export const businessRegistrationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 3,
+  max: 50, // Increased from 3
   message: 'Too many business registration attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -260,7 +260,7 @@ export const businessRegistrationLimiter = rateLimit({
  */
 export const businessApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100,
+  max: 500, // Increased from 100
   message: 'Too many business API requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

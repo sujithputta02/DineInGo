@@ -170,22 +170,22 @@ const AdminDashboard: React.FC = () => {
   };
 
   const StatCard = React.memo(({ title, value, change, icon: Icon, color = 'emerald' }: any) => (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
-      <div className="flex items-center justify-between mb-4">
-        <div className={`p-3 rounded-xl bg-${color}-100`}>
-          <Icon className={`text-${color}-600`} size={24} />
+    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <div className={`p-2.5 sm:p-3 rounded-xl bg-${color}-100`}>
+          <Icon className={`text-${color}-600`} size={20} />
         </div>
         {change && (
-          <div className={`flex items-center gap-1 text-sm font-medium ${
+          <div className={`flex items-center gap-1 text-[10px] sm:text-sm font-bold ${
             change > 0 ? 'text-green-600' : 'text-red-600'
           }`}>
-            {change > 0 ? <ArrowUpRight size={16} /> : <ArrowDownRight size={16} />}
+            {change > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
             {Math.abs(change)}%
           </div>
         )}
       </div>
-      <h3 className="text-2xl font-bold text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
-      <p className="text-slate-600 text-sm">{title}</p>
+      <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
+      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{title}</p>
     </div>
   ));
 
@@ -282,32 +282,36 @@ const AdminDashboard: React.FC = () => {
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4, delay: 0.1 }}
-        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4"
+        className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6"
       >
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <Shield className="text-red-600" size={32} />
-            Admin Dashboard
+        <div className="w-full sm:w-auto">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2 sm:gap-3">
+            <Shield className="text-red-600 shrink-0" size={28} />
+            <span className="truncate">Admin Dashboard</span>
           </h1>
-          <p className="text-slate-600 mt-1">
-            System overview and management • Last updated: {lastUpdated.toLocaleTimeString()}
+          <p className="text-slate-600 text-xs sm:text-sm mt-1 whitespace-nowrap">
+            System overview • {lastUpdated.toLocaleTimeString()}
           </p>
         </div>
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          {/* Real-time Clock */}
-          <Clock />
-          <button 
-            onClick={handleRefresh}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors">
-            <Eye size={16} />
-            Live Monitor
-          </button>
+        <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+          {/* Real-time Clock - Hidden on very small screens if needed, or made compact */}
+          <div className="flex-1 xs:flex-none">
+            <Clock />
+          </div>
+          <div className="flex gap-2 w-full xs:w-auto">
+            <button 
+              onClick={handleRefresh}
+              disabled={loading}
+              className="flex-1 xs:flex-none flex items-center justify-center gap-2 px-3 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 text-sm font-bold"
+            >
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+            <button className="flex-1 xs:flex-none flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors text-sm font-bold">
+              <Eye size={14} />
+              Live
+            </button>
+          </div>
         </div>
       </motion.div>
 

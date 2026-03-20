@@ -74,6 +74,10 @@ const EventRegistration: React.FC = () => {
   const [hoverRating, setHoverRating] = useState(0);
   const [newComment, setNewComment] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("dineInGoDarkMode");
+    return saved === "true" ? true : false;
+  });
 
 
   useEffect(() => {
@@ -675,7 +679,7 @@ const EventRegistration: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
         <Loader className="w-8 h-8 animate-spin text-emerald-500" />
       </div>
     );
@@ -683,19 +687,21 @@ const EventRegistration: React.FC = () => {
 
   if (!event) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-900' : 'bg-white'}`}>
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Event not found</h2>
+          <h2 className={`text-2xl font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Event not found</h2>
           <div className="flex gap-4 justify-center">
             <button
               onClick={() => navigate('/events')}
-              className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600"
+              className="bg-emerald-500 text-white px-6 py-2 rounded-lg hover:bg-emerald-600 transition-colors"
             >
               Browse Events
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className="text-emerald-500 hover:text-emerald-600 px-6 py-2 border border-emerald-500 rounded-lg"
+              className={`px-6 py-2 border rounded-lg transition-colors ${
+                isDarkMode ? 'text-emerald-400 border-emerald-400 hover:bg-emerald-400/10' : 'text-emerald-500 border-emerald-500 hover:bg-emerald-50'
+              }`}
             >
               Go to Dashboard
             </button>
@@ -708,92 +714,127 @@ const EventRegistration: React.FC = () => {
   const spotsLeft = event ? Math.max(0, event.capacity - (event.registeredCount || 0)) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 md:py-8">
+    <div className={`min-h-screen py-4 md:py-8 transition-colors duration-300 ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
       <div className="max-w-4xl mx-auto px-3 md:px-4">
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4 md:mb-6 min-h-[44px] min-w-[44px]"
+          className={`flex items-center gap-2 mb-4 md:mb-6 min-h-[44px] min-w-[44px] transition-colors ${
+            isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-800'
+          }`}
         >
           <ArrowLeft size={20} />
-          <span className="text-sm md:text-base">Back</span>
+          <span className="text-sm md:text-base font-bold uppercase tracking-widest">Back</span>
         </button>
 
         {/* Event Details Card */}
-        <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+        <div className={`rounded-3xl shadow-2xl overflow-hidden border-2 mb-8 ${
+          isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'
+        }`}>
           {/* Event Image */}
-          <div className="h-40 md:h-56 lg:h-64 bg-gradient-to-r from-emerald-500 to-emerald-600 relative">
+          <div className="h-40 md:h-56 lg:h-72 bg-gradient-to-r from-emerald-500 to-emerald-600 relative overflow-hidden">
             {event.imageUrl && (
               <img
                 src={event.imageUrl}
                 alt={event.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
               />
             )}
-            <div className="absolute inset-0 bg-black bg-opacity-30 flex items-end">
-              <div className="p-3 md:p-4 lg:p-6 text-white w-full">
-                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2">{event.title}</h1>
-                <p className="text-xs md:text-sm text-emerald-100">{event.category}</p>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent flex items-end">
+              <div className="p-4 md:p-6 lg:p-8 text-white w-full">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="px-3 py-1 bg-emerald-500 rounded-full text-[10px] font-black uppercase tracking-widest">{event.category}</span>
+                </div>
+                <h1 className="text-2xl md:text-3xl lg:text-4xl font-black mb-1 md:mb-2 tracking-tight">{event.title}</h1>
               </div>
             </div>
           </div>
 
-          <div className="p-3 md:p-4 lg:p-6">
+          <div className="p-4 md:p-6 lg:p-8">
             {/* Event Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
-              <div className="flex items-center gap-3">
-                <Calendar className="text-emerald-500" size={20} />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-500/5 border border-gray-500/10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <Calendar size={20} />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-500">Date</p>
-                  <p className="font-semibold">{new Date(event.date).toLocaleDateString()}</p>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Date</p>
+                  <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{new Date(event.date).toLocaleDateString()}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Clock className="text-emerald-500" size={20} />
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-500/5 border border-gray-500/10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <Clock size={20} />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-500">Time</p>
-                  <p className="font-semibold">{event.time}</p>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Time</p>
+                  <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{event.time}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <MapPin className="text-emerald-500" size={20} />
-                <div>
-                  <p className="text-sm text-gray-500">Location</p>
-                  <p className="font-semibold">{event.location}</p>
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-500/5 border border-gray-500/10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <MapPin size={20} />
+                </div>
+                <div className="min-w-0">
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Location</p>
+                  <p className={`font-bold text-sm truncate ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{event.location}</p>
                 </div>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Users className="text-emerald-500" size={20} />
+              <div className="flex items-center gap-4 p-4 rounded-2xl bg-gray-500/5 border border-gray-500/10">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                  <Users size={20} />
+                </div>
                 <div>
-                  <p className="text-sm text-gray-500">Availability</p>
-                  <p className="font-semibold">
-                    {spotsLeft} / {event.capacity} spots left
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Spots</p>
+                  <p className={`font-bold text-sm ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                    {spotsLeft} / {event.capacity}
                   </p>
                 </div>
               </div>
             </div>
 
-            {/* Add to Favorites Button */}
-            <button
-              onClick={toggleFavorite}
-              disabled={favoriteLoading}
-              className={`w-full mb-4 py-3 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2 ${isFavorite
-                ? 'bg-red-50 text-red-600 border-2 border-red-600 hover:bg-red-100'
-                : 'bg-white text-emerald-600 border-2 border-emerald-600 hover:bg-emerald-50'
+            {/* Registration Progress */}
+            {event && !event.hasSeating && (
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-2">
+                  <span className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Registration Progress</span>
+                  <span className={`text-[10px] font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{Math.round((event.registeredCount / event.capacity) * 100)}% Full</span>
+                </div>
+                <div className={`h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
+                  <div 
+                    className="h-full bg-emerald-500 transition-all duration-1000" 
+                    style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Favorite & Share Buttons */}
+            <div className="flex gap-4 mb-8">
+              <button
+                onClick={toggleFavorite}
+                disabled={favoriteLoading}
+                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-3 border-2 active:scale-95 ${
+                  isFavorite
+                  ? 'bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/20'
+                  : isDarkMode
+                    ? 'bg-transparent border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                    : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
                 }`}
-            >
-              {favoriteLoading ? (
-                <Loader className="w-5 h-5 animate-spin" />
-              ) : (
-                <>
-                  <Heart className={isFavorite ? 'fill-current' : ''} size={20} />
-                  {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
-                </>
-              )}
-            </button>
+              >
+                {favoriteLoading ? (
+                  <Loader className="w-5 h-5 animate-spin" />
+                ) : (
+                  <>
+                    <Heart className={isFavorite ? 'fill-current animate-bounce' : ''} size={18} />
+                    {isFavorite ? 'Remove Favorite' : 'Add to Collection'}
+                  </>
+                )}
+              </button>
+            </div>
 
             {/* Description */}
             <div className="mb-6">

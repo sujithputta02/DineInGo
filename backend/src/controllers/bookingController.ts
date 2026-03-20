@@ -497,10 +497,14 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
       // Send event-specific confirmation email with event pass
       try {
         const { sendEventConfirmationEmail } = require('../services/eventEmailService');
-        await sendEventConfirmationEmail({
+        const emailData = {
           ...booking.toObject(),
-          ...req.body
-        });
+          ...req.body,
+          email: booking.customerEmail || req.body.email || (booking as any).email,
+          fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
+          guests: booking.seats || req.body.guests || (booking as any).guests
+        };
+        await sendEventConfirmationEmail(emailData);
         console.log('Event confirmation email sent successfully');
       } catch (emailError) {
         console.error('Error sending event confirmation email:', emailError);
@@ -536,6 +540,10 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
         // Send confirmation email with all attachments
         await emailService.sendReservationConfirmationEmail({
           ...req.body,
+          ...booking.toObject(),
+          email: booking.customerEmail || req.body.email || (booking as any).email,
+          fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
+          guests: booking.seats || req.body.guests || (booking as any).guests,
           restaurantName: booking.restaurantName || req.body.restaurantName,
           address: (booking.restaurantId as any)?.address || req.body.address,
           attachments: [
@@ -1034,18 +1042,19 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
 
       // Prepare email data
       const emailData = {
+        ...booking.toObject(),
         _id: booking._id,
         id: booking._id,
         userId: booking.userId,
         eventId: booking.eventId,
         restaurantId: booking.restaurantId,
-        eventName: booking.eventName || (booking.eventId && typeof booking.eventId === 'object' && 'name' in booking.eventId ? booking.eventId.name : undefined),
+        eventName: booking.eventName || (booking.eventId && typeof booking.eventId === 'object' && 'name' in booking.eventId ? booking.eventId.name : undefined) || (booking.eventId && typeof booking.eventId === 'object' && 'title' in booking.eventId ? (booking.eventId as any).title : undefined),
         restaurantName: booking.restaurantName || (booking.restaurantId && typeof booking.restaurantId === 'object' && 'name' in booking.restaurantId ? booking.restaurantId.name : undefined),
         date: booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date,
         time: booking.time,
-        guests: booking.guests || booking.seats || 1,
+        guests: booking.seats || booking.guests || 1,
         selectedSeats: booking.selectedSeats || booking.seatNumbers || [],
-        totalAmount: booking.totalAmount || booking.amount,
+        totalAmount: booking.amount || booking.totalAmount,
         fullName: booking.customerName || booking.fullName,
         email: booking.customerEmail || booking.email,
         phoneNumber: booking.customerPhone || booking.phoneNumber,
@@ -1238,10 +1247,12 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
 
       // Send email notification if email is available
       try {
-        if (booking.email) {
+        const email = booking.customerEmail || (booking as any).email;
+        if (email) {
           // Prepare booking data for email
           const isEvent = !!(booking.eventId || booking.eventName);
           const emailData = {
+            ...booking.toObject(),
             _id: booking._id,
             id: booking._id,
             userId: booking.userId,
@@ -1251,19 +1262,38 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
             restaurantName: booking.restaurantName || (booking.restaurantId && typeof booking.restaurantId === 'object' ? (booking.restaurantId as any).name : undefined),
             date: booking.date instanceof Date ? booking.date.toISOString().slice(0, 10) : booking.date,
             time: booking.time,
-            guests: booking.seats || 1, // Map seats to guests for email template
-            selectedSeats: booking.seatNumbers || [],
-            totalAmount: booking.amount,
-            fullName: booking.customerName,
-            email: booking.customerEmail,
-            phoneNumber: booking.customerPhone,
-            specialRequest: booking.specialRequests,
+            guests: booking.seats || booking.guests || 1,
+            selectedSeats: booking.seatNumbers || booking.selectedSeats || [],
+            totalAmount: booking.amount || booking.totalAmount,
+            fullName: booking.customerName || (booking as any).fullName,
+            email: email,
+            phoneNumber: booking.customerPhone || (booking as any).phoneNumber,
+            specialRequest: booking.specialRequests || (booking as any).specialRequest,
             status: booking.status
           };
 
-          // Import and send email
-          const { sendEventConfirmationEmail } = await import('../services/eventEmailService');
-          await sendEventConfirmationEmail(emailData);
+          if (isEvent) {
+            const { sendEventConfirmationEmail } = await import('../services/eventEmailService');
+            await sendEventConfirmationEmail(emailData);
+          } else {
+            // For restaurants, try to send with invoice if possible, otherwise simple confirmation
+            try {
+              const pdfBuffer = await generateInvoicePdfBuffer(booking);
+              await emailService.sendReservationConfirmationEmail({
+                ...emailData,
+                attachments: [
+                  {
+                    filename: 'DineInGo_Invoice.pdf',
+                    content: pdfBuffer,
+                    contentType: 'application/pdf'
+                  }
+                ]
+              });
+            } catch (invoiceError) {
+              console.warn('Could not generate invoice for confirmation, sending without it:', invoiceError);
+              await emailService.sendReservationConfirmationEmail(emailData);
+            }
+          }
         }
       } catch (emailError) {
         console.warn('Could not send confirmation email:', emailError);

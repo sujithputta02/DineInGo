@@ -192,9 +192,9 @@ export default function BusinessLandingPage() {
                         flexDirection: "column",
                         alignItems: "center",
                         justifyContent: "center",
-                        minHeight: "calc(100vh - 80px)",
+                        minHeight: "calc(100vh - 120px)",
                         textAlign: "center",
-                        padding: "clamp(20px, 5vw, 40px) 5%",
+                        padding: "40px 5%",
                         position: "relative",
                         zIndex: 5,
                     }}
@@ -362,20 +362,22 @@ export default function BusinessLandingPage() {
                 >
                     <h2
                         style={{
-                            fontSize: "3rem",
+                            fontSize: "clamp(2rem, 5vw, 3rem)",
                             fontWeight: "800",
                             color: "#1a1a2e",
-                            marginBottom: "20px",
+                            marginBottom: "16px",
+                            lineHeight: "1.1",
                         }}
                     >
                         Everything You Need to <span style={{ color: "#00F29D" }}>Succeed</span>
                     </h2>
                     <p
                         style={{
-                            fontSize: "1.3rem",
+                            fontSize: "clamp(1rem, 2vw, 1.2rem)",
                             color: "#666",
                             maxWidth: "600px",
                             margin: "0 auto",
+                            lineHeight: "1.5",
                         }}
                     >
                         Powerful features designed for modern restaurants and event venues
@@ -386,8 +388,8 @@ export default function BusinessLandingPage() {
                 <div
                     style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-                        gap: "40px",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+                        gap: "24px sm:40px",
                         maxWidth: "1400px",
                         margin: "0 auto",
                     }}

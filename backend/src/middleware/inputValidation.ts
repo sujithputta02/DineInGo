@@ -185,6 +185,28 @@ export const validateSearchQuery = [
 ];
 
 /**
+ * Business Search Query Validation
+ */
+export const validateBusinessSearch = [
+  query('type')
+    .optional()
+    .isIn(['restaurant', 'event', 'both', 'all'])
+    .withMessage('Invalid business type'),
+  query('location')
+    .optional()
+    .trim()
+    .isLength({ max: 100 })
+    .escape()
+    .withMessage('Location must not exceed 100 characters'),
+  query('cuisine')
+    .optional()
+    .trim()
+    .isLength({ max: 50 })
+    .escape()
+    .withMessage('Cuisine must not exceed 50 characters'),
+];
+
+/**
  * MongoDB ObjectId Validation
  */
 export const validateObjectId = [
@@ -217,6 +239,7 @@ export default {
   validateEventRegistration,
   validatePasswordReset,
   validateSearchQuery,
+  validateBusinessSearch,
   validateObjectId,
   validatePagination
 };

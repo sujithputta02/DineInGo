@@ -241,24 +241,27 @@ const BusinessSignup: React.FC = () => {
                         <li className="flex items-center gap-3"><span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Advanced analytics dashboard</li>
                     </ul>
                 </div>
-            </div>
+            </div>            {/* Right Panel - Signup Form */}
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 bg-white overflow-y-auto">
+                <div className="w-full max-w-md space-y-10 py-8">
+                    {/* Mobile Logo Only */}
+                    <div className="lg:hidden flex justify-center mb-6">
+                        <DineInGoLogo size="medium" color="#0f172a" />
+                    </div>
 
-            {/* Right Panel - Signup Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center lg:text-left">
-                        <h2 className="text-3xl font-bold text-slate-900">
+                    <div className="text-center lg:text-left space-y-3">
+                        <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
                             Partner with DineInGo
                         </h2>
-                        <p className="mt-2 text-slate-500">
+                        <p className="text-base md:text-lg text-slate-500 font-medium leading-relaxed">
                             {showReferralModal ? "Just one more step to verify your business beta access!" : "Create your business account to get started"}
                         </p>
                     </div>
 
                     {showReferralModal ? (
-                         <div className="space-y-6">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Early Access Code</label>
+                         <div className="space-y-8 bg-emerald-50/50 p-6 md:p-8 rounded-3xl border-2 border-emerald-100 shadow-sm">
+                            <div className="space-y-3">
+                                <label className="block text-sm md:text-base font-bold text-slate-700 text-center uppercase tracking-widest">Early Access Code</label>
                                 <input
                                     type="text"
                                     name="referralCode"
@@ -267,30 +270,35 @@ const BusinessSignup: React.FC = () => {
                                         setFormData(prev => ({ ...prev, referralCode: e.target.value.toUpperCase() }));
                                         setReferralError('');
                                     }}
-                                    className={`w-full px-4 py-3 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-200 focus:border-emerald-500'} outline-none transition-all uppercase`}
-                                    placeholder="e.g. DINO-B4X2"
+                                    className={`w-full px-6 py-5 text-center text-2xl md:text-3xl font-black tracking-[0.2em] rounded-2xl border-3 ${referralError ? 'border-red-500 bg-red-50' : 'border-emerald-200 bg-white focus:border-emerald-500'} outline-none transition-all uppercase shadow-inner`}
+                                    placeholder="DINO-XXXX"
                                 />
                                 {referralError && (
-                                    <p className="text-red-500 text-xs text-center font-medium mt-2">{referralError}</p>
+                                    <p className="text-red-500 text-sm text-center font-bold mt-2">{referralError}</p>
                                 )}
                             </div>
 
                             <button
                                 onClick={handleGoogleReferralSubmit}
                                 disabled={isLoading}
-                                className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200 flex justify-center"
+                                className="w-full bg-emerald-500 text-white py-5 rounded-2xl font-black text-lg hover:bg-emerald-600 transition-all shadow-xl shadow-emerald-200 flex justify-center items-center gap-3"
                             >
-                                {isLoading ? <Loader2 className="animate-spin" /> : "Verify Code & Continue"}
+                                {isLoading ? <Loader2 className="animate-spin" /> : (
+                                    <>
+                                        Verify & Continue
+                                        <ArrowRight size={22} />
+                                    </>
+                                )}
                             </button>
                             
-                            <div className="text-center mt-4">
+                            <div className="text-center pt-2">
                                 <button
                                     onClick={async () => {
                                         setShowReferralModal(false);
                                         setGoogleUserToRegister(null);
                                         await auth.signOut();
                                     }}
-                                    className="text-sm text-slate-500 hover:text-slate-700 font-medium"
+                                    className="text-sm md:text-base text-slate-500 hover:text-slate-700 font-bold"
                                 >
                                     Cancel & Go Back
                                 </button>
@@ -298,83 +306,87 @@ const BusinessSignup: React.FC = () => {
                         </div>
                     ) : (
                         <>
-                            <form onSubmit={handleRegister} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                            <form onSubmit={handleRegister} className="space-y-8">
+                        <div className="space-y-2">
+                            <label className="block text-sm md:text-base font-bold text-slate-700 ml-1">Full Name</label>
                             <input
                                 type="text"
                                 name="name"
                                 value={formData.name}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
                                 placeholder="Restaurant Owner Name"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                        <div className="space-y-2">
+                            <label className="block text-sm md:text-base font-bold text-slate-700 ml-1">Email Address</label>
                             <input
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
                                 placeholder="you@restaurant.com"
                             />
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <div className="space-y-2">
+                            <label className="block text-sm md:text-base font-bold text-slate-700 ml-1">Password</label>
                             <input
                                 type="password"
                                 name="password"
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
-                                className={`w-full px-4 py-3 rounded-xl border ${passwordStrength.label === 'Strong' ? 'border-emerald-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all`}
+                                className={`w-full px-5 py-4 md:py-5 rounded-2xl border-2 ${passwordStrength.label === 'Strong' ? 'border-emerald-500' : 'border-slate-100'} bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg`}
                                 placeholder="••••••••"
                             />
                             {formData.password && (
-                                <div className="mt-2 text-xs">
-                                    <div className="flex items-center gap-2 mb-1">
-                                        <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                            <div 
-                                                className={`h-full transition-all duration-500 ${passwordStrength.color}`} 
-                                                style={{ width: `${(passwordStrength.score / 6) * 100}%` }}
-                                            />
-                                        </div>
-                                        <span className={`font-bold ${passwordStrength.label === 'Strong' ? 'text-emerald-500' : passwordStrength.label === 'Moderate' ? 'text-yellow-500' : 'text-red-500'}`}>
-                                            {passwordStrength.label}
+                                <div className="mt-3 px-1">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <span className={`text-xs md:text-sm font-black uppercase tracking-wider ${passwordStrength.label === 'Strong' ? 'text-emerald-500' : passwordStrength.label === 'Moderate' ? 'text-yellow-500' : 'text-red-500'}`}>
+                                            {passwordStrength.label} Strength
                                         </span>
                                     </div>
-                                    <p className="text-slate-400">Must include 8+ characters, upper/lowercase, numbers & symbols.</p>
+                                    <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                        <motion.div 
+                                            initial={{ width: 0 }}
+                                            animate={{ width: `${(passwordStrength.score / 6) * 100}%` }}
+                                            className={`h-full transition-all duration-500 ${passwordStrength.color}`} 
+                                        />
+                                    </div>
+                                    <p className="text-slate-400 mt-2 text-xs md:text-sm font-medium">Use 8+ characters with a mix of letters, numbers & symbols.</p>
                                 </div>
                             )}
                         </div>
 
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Confirm Password</label>
+                        <div className="space-y-2">
+                            <label className="block text-sm md:text-base font-bold text-slate-700 ml-1">Confirm Password</label>
                             <input
                                 type="password"
                                 name="confirmPassword"
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
                                 required
-                                className={`w-full px-4 py-3 rounded-xl border ${passwordsMatch === true ? 'border-emerald-500' : passwordsMatch === false ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all`}
+                                className={`w-full px-5 py-4 md:py-5 rounded-2xl border-2 ${passwordsMatch === true ? 'border-emerald-500 text-emerald-600' : passwordsMatch === false ? 'border-red-500' : 'border-slate-100'} bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg`}
                                 placeholder="••••••••"
                             />
                             {formData.confirmPassword && (
-                                <p className={`mt-1 text-xs font-bold ${passwordsMatch ? 'text-emerald-500' : 'text-red-500'}`}>
-                                    {passwordsMatch ? '✓ Passwords match' : '✕ Passwords do not match'}
+                                <p className={`mt-2 text-xs md:text-sm font-black ml-1 ${passwordsMatch ? 'text-emerald-500' : 'text-red-500'}`}>
+                                    {passwordsMatch ? '✓ Passwords matched' : '✕ Passwords do not match'}
                                 </p>
                             )}
                         </div>
 
                         {/* BETA ACCESS GUARD: Referral Code Input */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Early Access Code <span className="text-emerald-500">*</span></label>
+                        <div className="space-y-2 bg-emerald-50/30 p-5 rounded-2xl border-2 border-emerald-100/50">
+                            <label className="block text-sm md:text-base font-bold text-slate-700 ml-1 flex items-center justify-between">
+                                Early Access Code 
+                                <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest bg-emerald-100 px-2 py-0.5 rounded-full">Required</span>
+                            </label>
                             <input
                                 type="text"
                                 name="referralCode"
@@ -384,38 +396,38 @@ const BusinessSignup: React.FC = () => {
                                     setReferralError('');
                                 }}
                                 required
-                                className={`w-full px-4 py-3 rounded-xl border ${referralError ? 'border-red-500' : 'border-slate-200'} focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all uppercase`}
-                                placeholder="Check your welcome email"
+                                className={`w-full px-5 py-4 md:py-5 rounded-xl border-2 ${referralError ? 'border-red-500 bg-red-50' : 'border-emerald-200 bg-white focus:border-emerald-500'} outline-none transition-all text-lg font-black tracking-widest uppercase text-center`}
+                                placeholder="DINO-XXXX"
                             />
                             {referralError && (
-                                <p className="text-red-500 text-xs font-medium mt-1">{referralError}</p>
+                                <p className="text-red-500 text-xs md:text-sm font-bold mt-2 ml-1 text-center">{referralError}</p>
                             )}
                         </div>
 
                         <button
                             type="submit"
                             disabled={isLoading || isGoogleLoading || passwordStrength.label !== 'Strong' || !passwordsMatch || !formData.referralCode}
-                            className={`w-full py-4 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${
+                            className={`w-full py-4 md:py-5 rounded-2xl font-black text-lg transition-all flex items-center justify-center gap-3 shadow-xl ${
                                 (passwordStrength.label === 'Strong' && passwordsMatch && formData.referralCode && !isLoading)
-                                ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-xl'
-                                : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                                ? 'bg-slate-900 text-white hover:bg-slate-800 shadow-slate-200'
+                                : 'bg-slate-100 text-slate-400 cursor-not-allowed border-2 border-slate-200 shadow-none'
                             }`}
                         >
                             {isLoading ? <Loader2 className="animate-spin" /> : (
                                 <>
                                     Create Business Account
-                                    {!isLoading && <ArrowRight size={20} />}
+                                    {!isLoading && <ArrowRight size={22} />}
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <div className="relative">
+                    <div className="relative py-2">
                         <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-slate-200" />
+                            <span className="w-full border-t border-slate-100" />
                         </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-slate-500">Or continue with</span>
+                        <div className="relative flex justify-center text-sm md:text-base">
+                            <span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-widest">Or continue with</span>
                         </div>
                     </div>
 
@@ -423,22 +435,22 @@ const BusinessSignup: React.FC = () => {
                         type="button"
                         onClick={handleGoogleAuth}
                         disabled={isGoogleLoading || isLoading}
-                        className="w-full bg-white text-slate-700 border border-slate-200 py-3 rounded-xl font-medium hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-white text-slate-700 border-2 border-slate-100 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-3 shadow-sm hover:shadow-md"
                     >
-                        {isGoogleLoading ? <Loader2 className="animate-spin" size={20} /> : (
+                        {isGoogleLoading ? <Loader2 className="animate-spin" size={24} /> : (
                             <>
-                                <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" fill="#10B981" /></svg>
+                                <svg className="w-6 h-6" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" fill="#10B981" /></svg>
                                 Google
                             </>
                         )}
                     </button>
 
-                    <div className="text-center mt-6">
-                        <p className="text-slate-600">
+                    <div className="text-center pt-4">
+                        <p className="text-slate-500 text-base md:text-lg">
                             Already have an account?{" "}
                             <button
                                 onClick={() => navigate('/business/businessLogin')}
-                                className="text-emerald-600 font-bold hover:underline"
+                                className="text-emerald-600 font-extrabold hover:underline"
                             >
                                 Login here
                             </button>

@@ -136,41 +136,46 @@ const BusinessLogin: React.FC = () => {
             </div>
 
             {/* Right Panel - Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-white">
-                <div className="w-full max-w-md space-y-8">
-                    <div className="text-center lg:text-left">
-                        <h2 className="text-3xl font-bold text-slate-900">
+            <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 lg:p-16 bg-white">
+                <div className="w-full max-w-md space-y-10">
+                    {/* Mobile Logo Only */}
+                    <div className="lg:hidden flex justify-center mb-8">
+                        <DineInGoLogo size="medium" color="#0f172a" />
+                    </div>
+
+                    <div className="text-center lg:text-left space-y-3">
+                        <h2 className="text-3xl md:text-4xl lg:text-5xl font-black text-slate-900 tracking-tight">
                             Welcome Back
                         </h2>
-                        <p className="mt-2 text-slate-500">
-                            Sign in to manage your restaurant
+                        <p className="text-base md:text-lg text-slate-500 font-medium leading-relaxed">
+                            Sign in to manage your restaurant and grow your business
                         </p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
+                    <form onSubmit={handleLogin} className="space-y-8">
+                        <div className="space-y-2">
+                            <label className="block text-sm md:text-base font-bold text-slate-700 ml-1">Email Address</label>
                             <input
                                 type="email"
                                 name="email"
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
                                 placeholder="you@restaurant.com"
                             />
                         </div>
 
                         <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                            <div className="space-y-2">
+                                <label className="block text-sm md:text-base font-bold text-slate-700 ml-1">Password</label>
                                 <input
                                     type="password"
                                     name="password"
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-transparent outline-none transition-all"
+                                    className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -179,7 +184,7 @@ const BusinessLogin: React.FC = () => {
                                 <button
                                     type="button"
                                     onClick={() => navigate('/business/forgot-password')}
-                                    className="text-sm text-emerald-600 hover:text-emerald-700 font-medium hover:underline"
+                                    className="text-sm md:text-base text-emerald-600 hover:text-emerald-700 font-bold hover:underline"
                                 >
                                     Forgot Password?
                                 </button>
@@ -189,23 +194,23 @@ const BusinessLogin: React.FC = () => {
                         <button
                             type="submit"
                             disabled={isLoading || isGoogleLoading}
-                            className="w-full bg-slate-900 text-white py-4 rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-2"
+                            className="w-full bg-slate-900 text-white py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-slate-800 transition-all flex items-center justify-center gap-3 shadow-xl shadow-slate-200"
                         >
                             {isLoading ? <Loader2 className="animate-spin" /> : (
                                 <>
                                     Login to Dashboard
-                                    {!isLoading && <ArrowRight size={20} />}
+                                    {!isLoading && <ArrowRight size={22} />}
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <div className="relative">
+                    <div className="relative py-2">
                         <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t border-slate-200" />
+                            <span className="w-full border-t border-slate-100" />
                         </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-slate-500">Or continue with</span>
+                        <div className="relative flex justify-center text-sm md:text-base">
+                            <span className="px-4 bg-white text-slate-400 font-bold uppercase tracking-widest">Or continue with</span>
                         </div>
                     </div>
 
@@ -213,24 +218,24 @@ const BusinessLogin: React.FC = () => {
                         type="button"
                         onClick={handleGoogleAuth}
                         disabled={isGoogleLoading || isLoading}
-                        className="w-full bg-white text-slate-700 border border-slate-200 py-3 rounded-xl font-medium hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                        className="w-full bg-white text-slate-700 border-2 border-slate-100 py-4 rounded-2xl font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-3 shadow-sm hover:shadow-md"
                     >
-                        {isGoogleLoading ? <Loader2 className="animate-spin" size={20} /> : (
+                        {isGoogleLoading ? <Loader2 className="animate-spin" size={24} /> : (
                             <>
-                                <svg className="w-5 h-5" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" fill="#10B981" /></svg>
+                                <svg className="w-6 h-6" viewBox="0 0 24 24"><path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" fill="#10B981" /></svg>
                                 Google
                             </>
                         )}
                     </button>
 
-                    <div className="text-center mt-6">
-                        <p className="text-slate-600">
+                    <div className="text-center pt-4">
+                        <p className="text-slate-500 text-base md:text-lg">
                             New to DineInGo?{" "}
                             <button
                                 onClick={() => navigate('/business/businessSignup')}
-                                className="text-emerald-600 font-bold hover:underline"
+                                className="text-emerald-600 font-extrabold hover:underline"
                             >
-                                Register your Restaurant
+                                Register Restaurant
                             </button>
                         </p>
                     </div>

@@ -346,27 +346,61 @@ export const generateEventConfirmationHTML = (booking: EventBooking): string => 
   `;
 };
 
+const createTransporter = () => {
+  const brevoKey = process.env.BREVO_API_KEY;
+  const brevoUser = process.env.BREVO_SMTP_USER;
+  const gmailUser = process.env.EMAIL_USER;
+  const gmailPass = process.env.EMAIL_PASS;
+
+  // Primary: Gmail SMTP (Verified Working)
+  if (gmailUser && gmailPass) {
+    console.log('Using Gmail SMTP as primary email provider for events');
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+    });
+  }
+
+  // Fallback: Brevo SMTP
+  if (brevoKey && brevoUser) {
+    console.warn('Falling back to Brevo SMTP for event email delivery');
+    return nodemailer.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      auth: {
+        user: brevoUser,
+        pass: brevoKey,
+      },
+    });
+  }
+
+  console.error('CRITICAL: No email providers configured for event email service');
+  return null;
+};
+
 /**
  * Send Event Confirmation Email with Pass
  */
 export const sendEventConfirmationEmail = async (booking: EventBooking): Promise<void> => {
-  // Check if email credentials are configured
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error('Email credentials not configured for event confirmation');
-    throw new Error('Email service not configured');
-  }
-
-  if (!booking.email) {
+  const email = booking.email || (booking as any).customerEmail;
+  
+  if (!email) {
     console.error('No email address provided for event confirmation');
-    throw new Error('No email address provided');
+    return;
   }
 
   if (!PDFDocument) {
     console.warn('pdfkit not installed, skipping PDF generation');
-    throw new Error('PDF generation not available');
+    return;
   }
 
   try {
+    const transporter = createTransporter();
+    if (!transporter) return;
+
     // Generate event pass PDF
     console.log('Generating event pass PDF...');
     const passPDF = await generateEventPassPDF(booking);
@@ -375,20 +409,11 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
     // Generate HTML email
     const htmlBody = generateEventConfirmationHTML(booking);
 
-    // Create transporter
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
     // Send email with PDF and logo attachments
     await transporter.sendMail({
-      from: `"DineInGo Events" <${process.env.EMAIL_USER}>`,
-      to: booking.email,
-      subject: `🎉 Event Pass: ${booking.eventName} - ${new Date(booking.date).toLocaleDateString()}`,
+      from: `"DineInGo Events" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+      to: email,
+      subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString()}`,
       html: htmlBody,
       attachments: [
         {
@@ -404,10 +429,9 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
       ],
     });
 
-    console.log('Event confirmation email sent successfully to:', booking.email);
+    console.log('Event confirmation email sent successfully to:', email);
   } catch (error) {
     console.error('Error sending event confirmation email:', error);
-    throw error;
   }
 };
 
@@ -508,37 +532,26 @@ export const generateCancellationHTML = (booking: EventBooking, isEvent: boolean
  * Send Cancellation Confirmation Email
  */
 export const sendCancellationEmail = async (booking: EventBooking, isEvent: boolean = false): Promise<void> => {
-  // Check if email credentials are configured
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error('Email credentials not configured for cancellation email');
-    return;
-  }
+  const email = booking.email || (booking as any).customerEmail;
 
-  if (!booking.email) {
+  if (!email) {
     console.error('No email address provided for cancellation email');
     return;
   }
 
   try {
+    const transporter = createTransporter();
+    if (!transporter) return;
+
     // Generate HTML email
     const htmlBody = generateCancellationHTML(booking, isEvent);
 
-    // Create transporter
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
     const bookingName = booking.eventName || booking.restaurantName || 'your booking';
-    const bookingType = isEvent ? 'Event Registration' : 'Reservation';
 
     // Send email with logo attachment
     await transporter.sendMail({
-      from: `"DineInGo" <${process.env.EMAIL_USER}>`,
-      to: booking.email,
+      from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+      to: email,
       subject: `Cancellation Confirmed - ${bookingName}`,
       html: htmlBody,
       attachments: [{
@@ -548,7 +561,7 @@ export const sendCancellationEmail = async (booking: EventBooking, isEvent: bool
       }]
     });
 
-    console.log('Cancellation email sent successfully to:', booking.email);
+    console.log('Cancellation email sent successfully to:', email);
   } catch (error) {
     console.error('Error sending cancellation email:', error);
     // Don't throw error - cancellation should succeed even if email fails

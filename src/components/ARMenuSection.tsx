@@ -275,7 +275,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   };
 
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4`}>
+    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} p-4 sm:p-8`}>
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} rounded-2xl p-6 mb-6 shadow-lg`}>

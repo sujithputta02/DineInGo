@@ -9,22 +9,30 @@
  */
 
 export function suppressProductionLogs() {
-  if (import.meta.env.PROD) {
+  if (true) { // Suppress all portal logs as requested
     // Override all console methods
     const noop = () => {};
     console.log = noop;
     console.debug = noop;
     console.info = noop;
     console.warn = noop;
+    console.clear = noop;
+    console.table = noop;
+    console.dir = noop;
+    console.time = noop;
+    console.timeEnd = noop;
+    
+    // Clear initial logs
+    window.console.clear();
+    
     // Keep console.error for critical client-side issues only
-    // but strip stack traces in prod
     const originalError = console.error.bind(console);
     console.error = (...args: any[]) => {
-      // Only show the message, not full objects or stack traces
-      const safeArgs = args.map(a =>
-        typeof a === 'string' ? a : a instanceof Error ? a.message : '[Error]'
-      );
-      originalError(...safeArgs);
+      // Stripped error reporting
+      const message = args.map(a => 
+        typeof a === 'string' ? a : a instanceof Error ? a.message : 'Application Error'
+      ).join(' ');
+      originalError(`[DineInGo] ${message}`);
     };
   }
 }

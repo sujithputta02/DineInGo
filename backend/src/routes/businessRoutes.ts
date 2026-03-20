@@ -40,6 +40,8 @@ import {
   validatePromotion,
   validateCampaign,
   validateReviewReply,
+  validateBusinessSearch,
+  validateObjectId,
   handleValidationErrors
 } from '../middleware/inputValidation';
 import { accountLockoutCheck } from '../middleware/accountLockout';
@@ -67,7 +69,7 @@ router.get('/test', (req: Request, res: Response) => {
 });
 
 // New Business Management API
-router.get('/', businessApiLimiter, getAllBusinesses);
+router.get('/', businessApiLimiter, validateBusinessSearch, handleValidationErrors, getAllBusinesses);
 router.post('/', businessRegistrationLimiter, logBusinessAction, upload.fields([
   { name: 'thumbnail', maxCount: 1 },
   { name: 'coverImage', maxCount: 1 }
@@ -75,7 +77,7 @@ router.post('/', businessRegistrationLimiter, logBusinessAction, upload.fields([
 router.get('/owner/:ownerId', businessApiLimiter, getOwnerBusinesses);
 router.get('/dashboard/:ownerId', businessApiLimiter, getBusinessDashboard);
 router.get('/analytics/dashboard/:ownerId', businessApiLimiter, getDashboardAnalytics);
-router.get('/:id', businessApiLimiter, getBusiness);
+router.get('/:id', businessApiLimiter, validateObjectId, handleValidationErrors, getBusiness);
 router.put('/:id', businessUpdateLimiter, logBusinessAction, upload.fields([
   { name: 'thumbnail', maxCount: 1 },
   { name: 'coverImage', maxCount: 1 }

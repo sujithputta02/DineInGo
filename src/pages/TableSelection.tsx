@@ -42,6 +42,10 @@ const TableSelection: React.FC = () => {
   const [loadingTables, setLoadingTables] = useState(false);
   const [unavailableTables, setUnavailableTables] = useState<string[]>([]);
   const [businessFloorPlan, setBusinessFloorPlan] = useState<any>(null);
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem("dineInGoDarkMode");
+    return saved === "true" ? true : false;
+  });
 
   // Use the correct restaurantId (ObjectId) for all API calls
   const [restaurantId, setRestaurantId] = useState<string>(id || '');
@@ -440,20 +444,24 @@ const TableSelection: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
+    <div className={`flex flex-col h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-gray-50 text-gray-800'}`}>
       {/* Header */}
-      <header className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 px-6 py-4 flex justify-between items-center z-30 shadow-lg">
+      <header className={`backdrop-blur-xl border-b px-6 py-4 flex justify-between items-center z-30 shadow-lg transition-all ${
+        isDarkMode ? 'bg-slate-900/80 border-slate-700/50 text-white' : 'bg-white border-gray-100 text-gray-900'
+      }`}>
         <button
           onClick={() => navigate(`/restaurant/${id}/preview?${searchParams.toString()}`)}
-          className="flex items-center gap-2 px-4 py-2 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors text-slate-200"
+          className={`flex items-center gap-3 px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 border-2 ${
+            isDarkMode ? 'bg-slate-800/50 border-white/10 text-white hover:bg-slate-700' : 'bg-gray-50 border-gray-100 text-gray-700 hover:bg-gray-100'
+          }`}
         >
-          <ArrowLeft size={20} />
-          <span className="font-medium">Back</span>
+          <ArrowLeft size={16} />
+          <span>Back</span>
         </button>
 
         <div className="text-center">
-          <h2 className="text-xl font-bold text-white">{restaurantName}</h2>
-          <p className="text-sm text-slate-400">Table Selection</p>
+          <h2 className={`text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{restaurantName}</h2>
+          <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Table Selection</p>
         </div>
 
         {/* Floor Tabs */}
@@ -495,18 +503,20 @@ const TableSelection: React.FC = () => {
           </div>
 
           {/* Legend */}
-          <div className="mt-6 bg-slate-800/80 backdrop-blur-md rounded-2xl px-6 py-4 flex items-center gap-6 shadow-2xl border border-slate-700/50 overflow-x-auto max-w-[90vw]">
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <div className="w-4 h-4 rounded bg-gradient-to-br from-slate-600 to-slate-800 border border-slate-500 shadow-sm"></div>
-              <span className="text-xs font-semibold text-slate-300 uppercase">Available</span>
+          <div className={`mt-8 backdrop-blur-3xl rounded-[2rem] px-8 py-4 flex items-center gap-8 shadow-2xl transition-all border-2 ${
+            isDarkMode ? 'bg-slate-900/80 border-white/10' : 'bg-white/90 border-gray-100'
+          }`}>
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <div className={`w-4 h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-gray-200 border-gray-300'}`}></div>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Available</span>
             </div>
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <div className="w-4 h-4 rounded bg-emerald-500 border border-emerald-400 shadow-sm"></div>
-              <span className="text-xs font-semibold text-slate-300 uppercase">Selected</span>
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <div className="w-4 h-4 rounded-md bg-emerald-500 border-2 border-emerald-400"></div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Selected</span>
             </div>
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <div className="w-4 h-4 rounded bg-slate-900 border border-slate-800 shadow-sm"></div>
-              <span className="text-xs font-semibold text-slate-300 uppercase">Booked</span>
+            <div className="flex items-center gap-3 whitespace-nowrap">
+              <div className={`w-4 h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-900 border-slate-950' : 'bg-gray-400 border-gray-500'}`}></div>
+              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Booked</span>
             </div>
           </div>
         </div>
