@@ -89,17 +89,30 @@ export const customSecurityHeaders = (req: Request, res: Response, next: NextFun
  */
 export const corsConfig = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    const allowedOrigins = [
+    const rawOrigins = [
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:5001',
       process.env.FRONTEND_URL,
       process.env.ADMIN_URL,
-    ].filter(Boolean);
+      process.env.CLIENT_URL
+    ];
 
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Normalize: remove trailing slashes from all allowed origins
+    const allowedOrigins = rawOrigins
+      .filter(Boolean)
+      .map(url => url?.replace(/\/$/, ''));
+
+    // Normalize: remove trailing slash from incoming origin
+    const normalizedOrigin = origin?.replace(/\/$/, '');
+
+    console.log(`[CORS] Request from origin: ${origin} (Normalized: ${normalizedOrigin})`);
+    console.log(`[CORS] Allowed origins:`, allowedOrigins);
+
+    if (!origin || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
+      console.warn(`[CORS] Blocked origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
