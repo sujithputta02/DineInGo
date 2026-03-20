@@ -189,8 +189,10 @@ export const requestAdminOTP = async (req: Request, res: Response) => {
       expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
     });
 
-    // Send OTP email
-    await sendOTPEmail(email, otp);
+    // Send OTP email (non-blocking)
+    sendOTPEmail(email, otp).catch(err => 
+      console.error('Failed to send admin OTP email:', err)
+    );
     
     res.json({ 
       success: true, 
@@ -417,8 +419,10 @@ export const addAdmin = async (req: Request, res: Response) => {
       addedBy: req.admin!.email
     });
 
-    // Send welcome email
-    const welcomeEmailSent = await sendWelcomeEmail(email);
+    // Send welcome email (non-blocking)
+    sendWelcomeEmail(email).catch(err => 
+      console.error('Failed to send admin welcome email:', err)
+    );
 
     res.json({ 
       success: true, 
@@ -428,8 +432,7 @@ export const addAdmin = async (req: Request, res: Response) => {
         role: newAdmin.role,
         addedBy: newAdmin.addedBy,
         createdAt: newAdmin.createdAt
-      },
-      welcomeEmailSent
+      }
     });
 
   } catch (error) {

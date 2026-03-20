@@ -110,12 +110,10 @@ export const registerOrLinkOwner = async (req: Request, res: Response) => {
                 hasPassword: provider === 'password',
             });
 
-            // Send business welcome email (done asynchronously but we wait for it to ensure it sends)
-            try {
-                await emailService.sendBusinessWelcomeEmail(email, displayName);
-            } catch (emailError) {
-                console.error('Failed to send business welcome email:', emailError);
-            }
+            // Send business welcome email (non-blocking)
+            emailService.sendBusinessWelcomeEmail(email, displayName).catch((emailError: any) => 
+               console.error('Failed to send business welcome email:', emailError)
+            );
 
             return res.status(201).json({
                 success: true,

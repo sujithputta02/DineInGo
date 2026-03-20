@@ -1,5 +1,7 @@
 {
   "rewrites": [
+    { "source": "/api/v1/:path*", "destination": "https://dineingo-backend.onrender.com/api/v1/:path*" },
+    { "source": "/uploads/:path*", "destination": "https://dineingo-backend.onrender.com/uploads/:path*" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -3443,7 +3443,7 @@ const renderSection = () => {
                   // Fetch the latest profile data from backend to ensure sync
                   try {
                     const res = await fetch(
-                      `/api/v1/profile/${auth.currentUser.uid}`,
+                      `${API_CONFIG.BASE_URL}/api/v1/profile/${auth.currentUser.uid}`,
                     );
                     if (res.ok) {
                       const profile = await res.json();

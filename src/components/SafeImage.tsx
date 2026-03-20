@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { API_CONFIG } from '../config/api';
 
 interface SafeImageProps {
   src: string;
@@ -15,7 +16,11 @@ const SafeImage: React.FC<SafeImageProps> = ({
   fallbackSrc = '/images/placeholder-food.svg',
   onError 
 }) => {
-  const [imgSrc, setImgSrc] = useState(src);
+  const [imgSrc, setImgSrc] = useState(API_CONFIG.getAssetUrl(src) || '');
+  
+  useEffect(() => {
+    setImgSrc(API_CONFIG.getAssetUrl(src) || '');
+  }, [src]);
   const [hasError, setHasError] = useState(false);
 
   const handleError = () => {

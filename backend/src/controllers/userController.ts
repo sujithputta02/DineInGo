@@ -85,8 +85,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       await welcomeNotification.save();
       console.log(`Welcome notification sent to new user: ${name} (${uid})`);
 
-      // Send welcome email
-      await emailService.sendUserWelcomeEmail(email, name);
+      // Send welcome email (non-blocking)
+      emailService.sendUserWelcomeEmail(email, name).catch((err: any) => 
+        console.error('Failed to send user welcome email:', err)
+      );
 
       // Emit real-time notification if socket.io is available
       const io = req.app.get('io');

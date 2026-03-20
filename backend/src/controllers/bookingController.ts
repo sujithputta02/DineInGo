@@ -504,8 +504,10 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
           fullName: booking.customerName || req.body.fullName || (booking as any).fullName,
           guests: booking.seats || req.body.guests || (booking as any).guests
         };
-        await sendEventConfirmationEmail(emailData);
-        console.log('Event confirmation email sent successfully');
+        // Send event-specific confirmation email (non-blocking)
+        sendEventConfirmationEmail(emailData).catch((emailError: any) => 
+          console.error('Error sending event confirmation email:', emailError)
+        );
       } catch (emailError) {
         console.error('Error sending event confirmation email:', emailError);
         // Don't fail the booking creation if email fails
@@ -537,8 +539,8 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
           console.error('Error generating wallet passes for confirmation:', walletError);
         }
 
-        // Send confirmation email with all attachments
-        await emailService.sendReservationConfirmationEmail({
+        // Send confirmation email with all attachments (non-blocking)
+        emailService.sendReservationConfirmationEmail({
           ...req.body,
           ...booking.toObject(),
           email: booking.customerEmail || req.body.email || (booking as any).email,
@@ -1062,10 +1064,11 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
         status: 'cancelled'
       };
 
-      // Only send email if we have an email address
+      // Only send email if we have an email address (non-blocking)
       if (emailData.email) {
-        await sendCancellationEmail(emailData, isEvent);
-        console.log('Cancellation email sent successfully to:', emailData.email);
+        sendCancellationEmail(emailData, isEvent).catch((err: any) => 
+          console.error('Failed to send cancellation email:', err)
+        );
       } else {
         console.warn('No email address found for booking cancellation:', booking._id);
       }
@@ -1274,12 +1277,16 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
 
           if (isEvent) {
             const { sendEventConfirmationEmail } = await import('../services/eventEmailService');
-            await sendEventConfirmationEmail(emailData);
+            // Send event-specific confirmation email (non-blocking)
+            sendEventConfirmationEmail(emailData).catch((emailError: any) => 
+              console.error('Error sending event confirmation email during confirm:', emailError)
+            );
           } else {
             // For restaurants, try to send with invoice if possible, otherwise simple confirmation
             try {
               const pdfBuffer = await generateInvoicePdfBuffer(booking);
-              await emailService.sendReservationConfirmationEmail({
+              // Send reservation confirmation email (non-blocking)
+              emailService.sendReservationConfirmationEmail({
                 ...emailData,
                 attachments: [
                   {
@@ -1288,10 +1295,15 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
                     contentType: 'application/pdf'
                   }
                 ]
-              });
+              }).catch((emailError: any) => 
+                console.error('Error sending reservation confirmation email during confirm:', emailError)
+              );
             } catch (invoiceError) {
               console.warn('Could not generate invoice for confirmation, sending without it:', invoiceError);
-              await emailService.sendReservationConfirmationEmail(emailData);
+              // Send basic reservation confirmation email (non-blocking)
+              emailService.sendReservationConfirmationEmail(emailData).catch((emailError: any) => 
+                console.error('Error sending basic reservation confirmation email during confirm:', emailError)
+              );
             }
           }
         }

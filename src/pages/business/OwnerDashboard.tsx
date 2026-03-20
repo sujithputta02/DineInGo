@@ -139,7 +139,7 @@ const OwnerDashboard: React.FC = () => {
                         >
                         <div className="h-40 sm:h-48 overflow-hidden relative">
                                 <img
-                                    src={restaurant.image || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070"}
+                                    src={API_CONFIG.getAssetUrl(restaurant.image) || "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?q=80&w=2070"}
                                     alt={restaurant.name}
                                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
                                 />
