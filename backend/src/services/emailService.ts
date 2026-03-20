@@ -420,8 +420,14 @@ export const emailService = {
       `;
 
 
+      // Determine sender based on provider
+      const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+      const gmailSender = process.env.EMAIL_USER;
+      const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
+      const sender = isBrevo ? brevoSender : gmailSender;
+
       const mailOptions = {
-        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${sender}>`,
         to: email,
         subject: `Reservation Confirmed - ${bookingName}`,
         html: htmlBody,
@@ -560,8 +566,14 @@ export const emailService = {
         </div>
       `;
 
+      // Determine sender based on provider
+      const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+      const gmailSender = process.env.EMAIL_USER;
+      const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
+      const sender = isBrevo ? brevoSender : gmailSender;
+
       await transporter.sendMail({
-        from: `"DineInGo Admin" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo Admin" <${sender}>`,
         to: email,
         subject: `${otp} is your Admin Portal OTP`,
         html
@@ -1107,8 +1119,14 @@ export const emailService = {
       const transporter = createTransporter();
       if (!transporter) return false;
 
+      // Determine sender based on provider
+      const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+      const gmailSender = process.env.EMAIL_USER;
+      const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
+      const sender = isBrevo ? brevoSender : gmailSender;
+
       await transporter.sendMail({
-        from: `"DineInGo Security" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo Security" <${sender}>`,
         to: alertEmail,
         subject: `🚨 DineInGo Security Alert: ${subject}`,
         html: `
@@ -1149,8 +1167,14 @@ export const emailService = {
       const emailHtml = options.html || `<pre>${options.message || 'No message provided.'}</pre>`;
       const emailText = options.text || options.message || 'No message provided.';
 
+      // Determine sender based on provider
+      const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+      const gmailSender = process.env.EMAIL_USER;
+      const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
+      const defaultSender = isBrevo ? brevoSender : gmailSender;
+
       await transporter.sendMail({
-        from: options.from ? `${options.from}` : `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: options.from ? `${options.from}` : `"DineInGo" <${defaultSender}>`,
         to: recipient,
         subject: emailSubject,
         html: emailHtml,
@@ -1179,8 +1203,14 @@ export const emailService = {
       const transporter = createTransporter();
       if (!transporter) return false;
 
+      // Determine sender based on provider
+      const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+      const gmailSender = process.env.EMAIL_USER;
+      const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
+      const sender = isBrevo ? brevoSender : gmailSender;
+
       const mailOptions: any = {
-        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${sender}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
