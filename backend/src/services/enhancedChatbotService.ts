@@ -151,7 +151,7 @@ export class EnhancedChatbotService {
     if (!session) return [];
 
     // Return last 50 messages
-    return session.messages.slice(-50).filter(msg => msg.role !== 'system');
+    return session.messages.slice(-50).filter((msg: IChatMessage) => msg.role !== 'system');
   }
 
   async clearSession(userId: string): Promise<void> {
@@ -213,7 +213,7 @@ export class EnhancedChatbotService {
         ];
       } else {
         // Subsequent messages
-        apiMessages = recentMessages.map(msg => ({
+        apiMessages = recentMessages.map((msg: IChatMessage) => ({
           role: msg.role === 'system' ? 'user' : msg.role,
           content: msg.content
         }));
