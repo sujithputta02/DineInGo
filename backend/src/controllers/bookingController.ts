@@ -1217,40 +1217,41 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
             status: booking.status
           };
 
-          if (isEvent) {
-            const { sendEventConfirmationEmail } = await import('../services/eventEmailService');
-            // Send event-specific confirmation email (non-blocking)
-            sendEventConfirmationEmail(emailData).catch((emailError: any) => 
-              console.error('Error sending event confirmation email during confirm:', emailError)
-            );
-          } else {
-            // For restaurants, try to send with invoice if possible, otherwise simple confirmation
+          // Move PDF generation and email sending to background to prevent UI hangs
+          const sendBackgroundEmail = async () => {
             try {
-              const pdfBuffer = await generateInvoicePdfBuffer(booking);
-              // Send reservation confirmation email (non-blocking)
-              emailService.sendReservationConfirmationEmail({
-                ...emailData,
-                attachments: [
-                  {
-                    filename: 'DineInGo_Invoice.pdf',
-                    content: pdfBuffer,
-                    contentType: 'application/pdf'
-                  }
-                ]
-              }).catch((emailError: any) => 
-                console.error('Error sending reservation confirmation email during confirm:', emailError)
-              );
-            } catch (invoiceError) {
-              console.warn('Could not generate invoice for confirmation, sending without it:', invoiceError);
-              // Send basic reservation confirmation email (non-blocking)
-              emailService.sendReservationConfirmationEmail(emailData).catch((emailError: any) => 
-                console.error('Error sending basic reservation confirmation email during confirm:', emailError)
-              );
+              if (isEvent) {
+                const { sendEventConfirmationEmail } = await import('../services/eventEmailService');
+                await sendEventConfirmationEmail(emailData);
+              } else {
+                try {
+                  const pdfBuffer = await generateInvoicePdfBuffer(emailData);
+                  await emailService.sendReservationConfirmationEmail({
+                    ...emailData,
+                    attachments: [
+                      {
+                        filename: 'DineInGo_Invoice.pdf',
+                        content: pdfBuffer,
+                        contentType: 'application/pdf'
+                      }
+                    ]
+                  });
+                } catch (invoiceError) {
+                  console.warn('Could not generate invoice, sending basic email:', invoiceError);
+                  await emailService.sendReservationConfirmationEmail(emailData);
+                }
+              }
+              console.log(`✓ Confirmation email sent for booking ${booking._id}`);
+            } catch (bgError) {
+              console.error('✗ Background email task failed:', bgError);
             }
-          }
+          };
+
+          // Start background task without awaiting
+          sendBackgroundEmail();
         }
       } catch (emailError) {
-        console.warn('Could not send confirmation email:', emailError);
+        console.warn('Could not initiate background email:', emailError);
       }
     }
 

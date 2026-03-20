@@ -10,7 +10,11 @@ interface ReviewEmailData {
   replyText?: string;
 }
 
+let transporterInstance: any = null;
+
 export const createTransporter = () => {
+  if (transporterInstance) return transporterInstance;
+
   const brevoKey = process.env.BREVO_API_KEY;
   const brevoUser = process.env.BREVO_SMTP_USER;
   const gmailUser = process.env.EMAIL_USER;
@@ -19,29 +23,33 @@ export const createTransporter = () => {
   // Primary: Brevo SMTP (More reliable for cloud hosting like Render/Koyeb)
   if (brevoKey && brevoUser) {
     console.log('Using Brevo SMTP as primary email provider');
-    return nodemailer.createTransport({
+    transporterInstance = nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
       port: 587,
       auth: {
         user: brevoUser,
         pass: brevoKey,
       },
+      // Optimization: Pooled connections
+      pool: true,
+      maxConnections: 5,
+      maxMessages: 100
     });
+    return transporterInstance;
   }
 
   // Fallback: Gmail SMTP
   if (gmailUser && gmailPass) {
-    // Clean up password (remove spaces often found in Google App Passwords)
     const cleanPass = gmailPass.trim().replace(/\s/g, '');
-    
     console.warn('Falling back to Gmail SMTP for email delivery');
-    return nodemailer.createTransport({
+    transporterInstance = nodemailer.createTransport({
       service: 'gmail',
       auth: {
         user: gmailUser.trim(),
         pass: cleanPass,
       },
     });
+    return transporterInstance;
   }
 
   console.error('CRITICAL: No email providers configured');
@@ -551,7 +559,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo Admin" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo Admin" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to: email,
         subject: `${otp} is your Admin Portal OTP`,
         html
@@ -635,7 +643,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo Security" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo Security" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to: email,
         subject: `🔐 Admin Login Alert: ${formattedTime}`,
         html
@@ -751,7 +759,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to,
         subject: `Welcome to DineInGo, ${name}! 🎉`,
         html,
@@ -1098,7 +1106,7 @@ export const emailService = {
       if (!transporter) return false;
 
       await transporter.sendMail({
-        from: `"DineInGo Security" <${alertEmail}>`,
+        from: `"DineInGo Security" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to: alertEmail,
         subject: `🚨 DineInGo Security Alert: ${subject}`,
         html: `
@@ -1140,7 +1148,7 @@ export const emailService = {
       const emailText = options.text || options.message || 'No message provided.';
 
       await transporter.sendMail({
-        from: options.from ? `${options.from}` : `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: options.from ? `${options.from}` : `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to: recipient,
         subject: emailSubject,
         html: emailHtml,
@@ -1170,7 +1178,7 @@ export const emailService = {
       if (!transporter) return false;
 
       const mailOptions: any = {
-        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
