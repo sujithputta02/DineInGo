@@ -23,9 +23,19 @@ export const API_CONFIG = {
   // Helper to get asset URL (for uploaded files)
   getAssetUrl: (path: string) => {
     if (!path) return null;
+    
+    // Normalize: If the path already contains a localhost URL (from development DB)
+    // replace it with the current BASE_URL.
+    if (path.includes('localhost:5001')) {
+      return path.replace(/https?:\/\/localhost:5001/, API_CONFIG.BASE_URL);
+    }
+
     if (path.startsWith('http')) return path;
     if (path.startsWith('data:')) return path; // Base64 images
-    return `${API_CONFIG.BASE_URL}${path}`;
+    
+    // Ensure path starts with / if it's relative
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_CONFIG.BASE_URL}${normalizedPath}`;
   }
 };
 

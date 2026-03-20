@@ -1155,7 +1155,7 @@ useEffect(() => {
 
         // Load profile data from MongoDB (primary source of truth)
         try {
-          const profileRes = await fetch(`/api/v1/profile/${user.uid}`);
+          const profileRes = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${user.uid}`));
           if (profileRes.ok) {
             const profile = await profileRes.json();
 
@@ -1241,7 +1241,7 @@ useEffect(() => {
             };
 
             // Create profile in MongoDB
-            await fetch(`/api/v1/profile/${user.uid}`, {
+            await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${user.uid}`), {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({

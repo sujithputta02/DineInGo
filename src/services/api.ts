@@ -10,13 +10,23 @@ const RETRY_DELAY = 1000; // 1 second
  */
 export const normalizeImageUrl = (imagePath: string | undefined): string => {
   if (!imagePath) return '/images/placeholder.jpg';
+  
+  // Normalize: If the path already contains a localhost URL (from development DB)
+  // replace it with the current API_URL.
+  if (imagePath.includes('localhost:5001')) {
+    return imagePath.replace(/https?:\/\/localhost:5001/, API_URL);
+  }
+
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
   }
   if (imagePath.startsWith('/images/')) {
     return imagePath; // Local placeholder images
   }
-  return `${API_URL}${imagePath}`;
+  
+  // Ensure path starts with / if it's relative
+  const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
+  return `${API_URL}${normalizedPath}`;
 };
 
 const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
