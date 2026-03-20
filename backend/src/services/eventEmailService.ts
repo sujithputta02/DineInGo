@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { createTransporter } from './emailService';
 import QRCode from 'qrcode';
 import path from 'path';
 
@@ -346,40 +347,7 @@ export const generateEventConfirmationHTML = (booking: EventBooking): string => 
   `;
 };
 
-const createTransporter = () => {
-  const brevoKey = process.env.BREVO_API_KEY;
-  const brevoUser = process.env.BREVO_SMTP_USER;
-  const gmailUser = process.env.EMAIL_USER;
-  const gmailPass = process.env.EMAIL_PASS;
 
-  // Primary: Gmail SMTP (Verified Working)
-  if (gmailUser && gmailPass) {
-    console.log('Using Gmail SMTP as primary email provider for events');
-    return nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser,
-        pass: gmailPass,
-      },
-    });
-  }
-
-  // Fallback: Brevo SMTP
-  if (brevoKey && brevoUser) {
-    console.warn('Falling back to Brevo SMTP for event email delivery');
-    return nodemailer.createTransport({
-      host: 'smtp-relay.brevo.com',
-      port: 587,
-      auth: {
-        user: brevoUser,
-        pass: brevoKey,
-      },
-    });
-  }
-
-  console.error('CRITICAL: No email providers configured for event email service');
-  return null;
-};
 
 /**
  * Send Event Confirmation Email with Pass
@@ -401,37 +369,44 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
     const transporter = createTransporter();
     if (!transporter) return;
 
-    // Generate event pass PDF
-    console.log('Generating event pass PDF...');
-    const passPDF = await generateEventPassPDF(booking);
-    console.log('Event pass PDF generated successfully');
+    // Generate event pass PDF and send email (non-blocking)
+    const sendAsync = async () => {
+      try {
+        console.log('Generating event pass PDF...');
+        const passPDF = await generateEventPassPDF(booking);
+        console.log('Event pass PDF generated successfully');
 
-    // Generate HTML email
-    const htmlBody = generateEventConfirmationHTML(booking);
+        // Generate HTML email
+        const htmlBody = generateEventConfirmationHTML(booking);
 
-    // Send email with PDF and logo attachments
-    await transporter.sendMail({
-      from: `"DineInGo Events" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString()}`,
-      html: htmlBody,
-      attachments: [
-        {
-          filename: `DineInGo_EventPass_${(booking.eventName || 'Event').replace(/[^a-z0-9]/gi, '_')}.pdf`,
-          content: passPDF,
-          contentType: 'application/pdf',
-        },
-        {
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }
-      ],
-    });
+        // Send email with PDF and logo attachments
+        await transporter.sendMail({
+          from: `"DineInGo Events" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+          to: email,
+          subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString()}`,
+          html: htmlBody,
+          attachments: [
+            {
+              filename: `DineInGo_EventPass_${(booking.eventName || 'Event').replace(/[^a-z0-9]/gi, '_')}.pdf`,
+              content: passPDF,
+              contentType: 'application/pdf',
+            },
+            {
+              filename: 'logo.png',
+              path: logoPath,
+              cid: cidLogo
+            }
+          ],
+        });
+        console.log('Event confirmation email sent successfully to:', email);
+      } catch (err) {
+        console.error('Error in async event confirmation email send:', err);
+      }
+    };
 
-    console.log('Event confirmation email sent successfully to:', email);
+    sendAsync();
   } catch (error) {
-    console.error('Error sending event confirmation email:', error);
+    console.error('Error initiating event confirmation email:', error);
   }
 };
 
@@ -543,28 +518,34 @@ export const sendCancellationEmail = async (booking: EventBooking, isEvent: bool
     const transporter = createTransporter();
     if (!transporter) return;
 
-    // Generate HTML email
-    const htmlBody = generateCancellationHTML(booking, isEvent);
+    // Send cancellation email (non-blocking)
+    const sendAsync = async () => {
+      try {
+        // Generate HTML email
+        const htmlBody = generateCancellationHTML(booking, isEvent);
+        const bookingName = booking.eventName || booking.restaurantName || 'your booking';
 
-    const bookingName = booking.eventName || booking.restaurantName || 'your booking';
+        // Send email with logo attachment
+        await transporter.sendMail({
+          from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+          to: email,
+          subject: `Cancellation Confirmed - ${bookingName}`,
+          html: htmlBody,
+          attachments: [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }]
+        });
+        console.log('Cancellation email sent successfully to:', email);
+      } catch (err) {
+        console.error('Error in async cancellation email send:', err);
+      }
+    };
 
-    // Send email with logo attachment
-    await transporter.sendMail({
-      from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
-      to: email,
-      subject: `Cancellation Confirmed - ${bookingName}`,
-      html: htmlBody,
-      attachments: [{
-        filename: 'logo.png',
-        path: logoPath,
-        cid: cidLogo
-      }]
-    });
-
-    console.log('Cancellation email sent successfully to:', email);
+    sendAsync();
   } catch (error) {
-    console.error('Error sending cancellation email:', error);
-    // Don't throw error - cancellation should succeed even if email fails
+    console.error('Error initiating cancellation email:', error);
   }
 };
 

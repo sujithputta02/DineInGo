@@ -10,7 +10,7 @@ interface ReviewEmailData {
   replyText?: string;
 }
 
-const createTransporter = () => {
+export const createTransporter = () => {
   const brevoKey = process.env.BREVO_API_KEY;
   const brevoUser = process.env.BREVO_SMTP_USER;
   const gmailUser = process.env.EMAIL_USER;
@@ -18,12 +18,15 @@ const createTransporter = () => {
 
   // Primary: Gmail SMTP (Verified Working)
   if (gmailUser && gmailPass) {
-    console.log('Using Gmail SMTP as primary email provider');
+    // Clean up password (remove spaces often found in Google App Passwords)
+    const cleanPass = gmailPass.trim().replace(/\s/g, '');
+    
+    console.log('Initializing Gmail SMTP transporter...');
     return nodemailer.createTransport({
       service: 'gmail',
       auth: {
-        user: gmailUser,
-        pass: gmailPass,
+        user: gmailUser.trim(),
+        pass: cleanPass,
       },
     });
   }
@@ -503,6 +506,152 @@ export const emailService = {
   /**
    * Send premium welcome email to new users
    */
+  async sendAdminOTPEmail(email: string, otp: string): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) {
+         console.warn('Cannot send admin OTP: No transporter available');
+         return false;
+      }
+
+      // Verify connection before sending
+      try {
+        await transporter.verify();
+        console.log('✓ SMTP connection verified for Admin OTP');
+      } catch (verifyError) {
+        console.error('✗ SMTP verification failed for Admin OTP:', verifyError);
+        return false;
+      }
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 24px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #10b981; margin: 0; font-size: 32px;">DineInGo</h1>
+            <p style="color: #64748b; margin: 5px 0; font-weight: 600;">Admin Portal Access</p>
+          </div>
+          
+          <div style="background: white; border-radius: 16px; padding: 40px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #1e293b; margin-bottom: 24px; font-size: 20px;">Your Admin Login OTP</h2>
+            <div style="background: #f1f5f9; border: 2px solid #e2e8f0; border-radius: 12px; padding: 24px; margin: 24px 0;">
+              <span style="font-size: 36px; font-weight: bold; color: #059669; letter-spacing: 12px; margin-left: 12px;">${otp}</span>
+            </div>
+            <p style="color: #64748b; margin: 24px 0; font-size: 16px;">This OTP is valid for <strong>10 minutes</strong> only.</p>
+            <div style="background: #fffbeb; padding: 12px; border-radius: 8px; border: 1px solid #fef3c7;">
+               <p style="color: #92400e; font-size: 13px; margin: 0;">If you didn't request this OTP, please secure your account immediately.</p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <p style="color: #94a3b8; font-size: 12px;">
+              This is an automated security message from DineInGo Admin Systems.<br>
+              © 2026 DineInGo. All rights reserved.
+            </p>
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: `"DineInGo Admin" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `${otp} is your Admin Portal OTP`,
+        html
+      });
+
+      console.log(`✓ Admin OTP email sent successfully to ${email}`);
+      return true;
+    } catch (error) {
+      console.error('✗ Error sending admin OTP email:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send security alert for admin portal login
+   */
+  async sendAdminLoginNotificationEmail(email: string, loginTime: Date, ipAddress?: string): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const formattedDate = loginTime.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+      
+      const formattedTime = loginTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZoneName: 'short'
+      });
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 24px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #10b981; margin: 0; font-size: 32px;">DineInGo</h1>
+            <p style="color: #64748b; margin: 5px 0; font-weight: 600;">Security Alert</p>
+          </div>
+          
+          <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px; margin-bottom: 24px;">
+              <h2 style="color: #92400e; font-size: 18px; margin: 0 0 8px 0;">New Admin Login Detected</h2>
+              <p style="color: #78350f; font-size: 14px; margin: 0;">We noticed a new login to your admin account. If this was you, no action is needed.</p>
+            </div>
+            
+            <div style="padding: 24px; background: #f1f5f9; border-radius: 12px; margin-bottom: 24px;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td style="color: #64748b; font-size: 14px; padding: 8px 0;">Date:</td>
+                  <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">${formattedDate}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-size: 14px; padding: 8px 0;">Time:</td>
+                  <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">${formattedTime}</td>
+                </tr>
+                <tr>
+                  <td style="color: #64748b; font-size: 14px; padding: 8px 0;">IP Address:</td>
+                  <td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 8px 0;">${ipAddress || 'Unknown'}</td>
+                </tr>
+              </table>
+            </div>
+
+            <div style="background: #eff6ff; border: 1px solid #3b82f6; border-radius: 12px; padding: 20px;">
+              <h3 style="color: #1e40af; font-size: 16px; margin: 0 0 12px 0;">Security Recommendation</h3>
+              <p style="color: #1e3a8a; font-size: 14px; margin: 0; line-height: 1.5;">
+                If you did not initiate this login, please <strong>change your password immediately</strong> and contact DineInGo technical support.
+              </p>
+            </div>
+          </div>
+          
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <p style="color: #94a3b8; font-size: 12px;">
+              © 2026 DineInGo Security Operations.<br>
+              This is an automated security notification.
+            </p>
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: `"DineInGo Security" <${process.env.EMAIL_USER}>`,
+        to: email,
+        subject: `🔐 Admin Login Alert: ${formattedTime}`,
+        html
+      });
+
+      console.log(`✓ Admin login notification sent to ${email}`);
+      return true;
+    } catch (error) {
+      console.error('✗ Error sending admin login notification:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send premium welcome email to new users
+   */
   async sendUserWelcomeEmail(to: string, name: string): Promise<boolean> {
     try {
       const transporter = createTransporter();
@@ -936,6 +1085,113 @@ export const emailService = {
     }
 
     return { success: successCount, failed: failedCount };
+  },
+
+  /**
+   * Send security alert email to the team
+   */
+  async sendSecurityAlert(subject: string, body: string): Promise<boolean> {
+    const alertEmail = process.env.EMAIL_USER || 'sec.dineingo.team@gmail.com';
+    
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      await transporter.sendMail({
+        from: `"DineInGo Security" <${alertEmail}>`,
+        to: alertEmail,
+        subject: `🚨 DineInGo Security Alert: ${subject}`,
+        html: `
+          <div style="font-family:monospace;background:#111;color:#0f0;padding:20px;border-radius:8px;">
+            <h2 style="color:#ff4444;">🚨 Security Alert — DineInGo</h2>
+            <pre style="color:#eee;">${body}</pre>
+            <hr style="border:1px solid #333;"/>
+            <p style="color:#888;">This is an automated alert from DineInGo Security Monitor.<br/>Time: ${new Date().toISOString()}</p>
+          </div>
+        `
+      });
+
+      console.log('Security alert sent successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to send security alert:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send general/feedback email
+   */
+  async sendGeneralEmail(options: {
+    to?: string;
+    from?: string;
+    subject?: string;
+    html?: string;
+    text?: string;
+    message?: string;
+  }): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const recipient = options.to || process.env.EMAIL_USER;
+      const emailSubject = options.subject || 'DineInGo Feedback/General Email';
+      const emailHtml = options.html || `<pre>${options.message || 'No message provided.'}</pre>`;
+      const emailText = options.text || options.message || 'No message provided.';
+
+      await transporter.sendMail({
+        from: options.from ? `${options.from}` : `"DineInGo" <${process.env.EMAIL_USER}>`,
+        to: recipient,
+        subject: emailSubject,
+        html: emailHtml,
+        text: emailText
+      });
+
+      console.log('General/feedback email sent successfully to:', recipient);
+      return true;
+    } catch (error) {
+      console.error('Error sending general email:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send invoice email with attachments
+   */
+  async sendInvoiceEmail(options: {
+    to: string;
+    subject: string;
+    html: string;
+    text?: string;
+    attachments?: any[];
+  }): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const mailOptions: any = {
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+        to: options.to,
+        subject: options.subject,
+        html: options.html,
+        text: options.text || 'Please view this email in HTML format for the best experience.'
+      };
+
+      if (options.attachments && Array.isArray(options.attachments)) {
+        mailOptions.attachments = options.attachments.map((attachment: any) => ({
+          filename: attachment.filename,
+          content: typeof attachment.content === 'string' ? Buffer.from(attachment.content, 'base64') : attachment.content,
+          contentType: attachment.contentType
+        }));
+      }
+
+      await transporter.sendMail(mailOptions);
+      console.log('Invoice email sent successfully to:', options.to);
+      return true;
+    } catch (error) {
+      console.error('Error sending invoice email:', error);
+      return false;
+    }
   }
 };
 

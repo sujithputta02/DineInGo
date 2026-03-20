@@ -1,6 +1,6 @@
 import { LoginAttempt } from '../models/LoginAttempt';
 import { SecurityEvent } from '../models/SecurityEvent';
-import nodemailer from 'nodemailer';
+import { emailService } from './emailService';
 
 /**
  * ============================================================
@@ -19,35 +19,11 @@ const MAX_ATTEMPTS = 5;           // Lock after 5 consecutive failures
 const BASE_LOCKOUT_MINUTES = 15;  // First lockout = 15 min; doubles each time
 const ALERT_EMAIL = process.env.EMAIL_USER || 'sec.dineingo.team@gmail.com';
 
-// ─────────────────────────────────────────────────────────
-// Email transporter (reuses existing project config)
-// ─────────────────────────────────────────────────────────
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS
-  }
-});
-
 async function sendSecurityAlert(subject: string, body: string) {
-  try {
-    await transporter.sendMail({
-      from: `"DineInGo Security" <${ALERT_EMAIL}>`,
-      to: ALERT_EMAIL,
-      subject: `🚨 DineInGo Security Alert: ${subject}`,
-      html: `
-        <div style="font-family:monospace;background:#111;color:#0f0;padding:20px;border-radius:8px;">
-          <h2 style="color:#ff4444;">🚨 Security Alert — DineInGo</h2>
-          <pre style="color:#eee;">${body}</pre>
-          <hr style="border:1px solid #333;"/>
-          <p style="color:#888;">This is an automated alert from DineInGo Security Monitor.<br/>Time: ${new Date().toISOString()}</p>
-        </div>
-      `
-    });
-  } catch (err) {
-    console.error('SecurityMonitor: Failed to send alert email:', err);
-  }
+  // Send security alert (non-blocking)
+  emailService.sendSecurityAlert(subject, body).catch(err => 
+    console.error('SecurityMonitor: Failed to send alert email:', err)
+  );
 }
 
 // ─────────────────────────────────────────────────────────

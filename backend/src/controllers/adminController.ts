@@ -9,49 +9,11 @@ import BusinessNotification from '../models/BusinessNotification';
 import AllUserNotification from '../models/AllUserNotification';
 import NotificationStats from '../models/NotificationStats';
 import { getSystemSettings } from '../models/SystemSettings';
-import nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
 import { generateAdminToken } from '../middleware/adminAuth';
 import { SecurityLog } from '../models/SecurityLog';
 import { EarlyAccess } from '../models/EarlyAccess';
 import { emailService } from '../services/emailService';
-
-// Email configuration - create transporter lazily
-let transporter: nodemailer.Transporter | null = null;
-
-const getEmailTransporter = () => {
-  if (transporter) {
-    return transporter;
-  }
-  
-  const emailUser = process.env.EMAIL_USER?.trim();
-  const emailPass = process.env.EMAIL_PASS?.trim().replace(/\s/g, ''); // Remove any spaces and trim
-  
-  console.log('Initializing email transporter...');
-  
-  if (!emailUser || !emailPass) {
-    console.warn('Email credentials not configured properly');
-    return null;
-  }
-  
-  transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Use STARTTLS
-    auth: {
-      user: emailUser,
-      pass: emailPass
-    },
-    tls: {
-      rejectUnauthorized: false,
-      minVersion: 'TLSv1.2'
-    },
-    debug: false, // Disable debug in production
-    logger: false // Disable logging in production
-  });
-  
-  return transporter;
-};
 
 // Super admin email (DineInGo owner)
 const SUPER_ADMIN_EMAIL = 'sujithputta02@gmail.com';
@@ -79,75 +41,9 @@ const generateOTP = (): string => {
   return crypto.randomInt(100000, 999999).toString();
 };
 
-// Send OTP email
+// Send OTP email (legacy wrapper for backward compatibility within this file)
 const sendOTPEmail = async (email: string, otp: string): Promise<boolean> => {
-  try {
-    const emailTransporter = getEmailTransporter();
-    
-    if (!emailTransporter) {
-      // In development only, log to console as fallback
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('=== DEV MODE: OTP (email not configured) ===');
-        console.log('OTP:', otp);
-        console.log('============================================');
-      }
-      return true;
-    }
-    
-    try {
-      await emailTransporter.verify();
-    } catch (verifyError: any) {
-      console.error('✗ SMTP connection failed:', verifyError.code);
-      if (process.env.NODE_ENV !== 'production') {
-        console.log('=== DEV MODE: SMTP failed — OTP fallback ===');
-        console.log('OTP:', otp);
-        console.log('============================================');
-      }
-      return true;
-    }
-    
-    const mailOptions = {
-      from: `"DineInGo Admin" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'DineInGo Admin Portal - Login OTP',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #10b981; margin: 0;">DineInGo</h1>
-            <p style="color: #64748b; margin: 5px 0;">Admin Portal Access</p>
-          </div>
-          
-          <div style="background: #f8fafc; border-radius: 12px; padding: 30px; text-align: center;">
-            <h2 style="color: #1e293b; margin-bottom: 20px;">Your Admin Login OTP</h2>
-            <div style="background: white; border: 2px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
-              <span style="font-size: 32px; font-weight: bold; color: #dc2626; letter-spacing: 8px;">${otp}</span>
-            </div>
-            <p style="color: #64748b; margin: 20px 0;">This OTP is valid for 10 minutes only.</p>
-            <p style="color: #64748b; font-size: 14px;">If you didn't request this OTP, please ignore this email.</p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-            <p style="color: #94a3b8; font-size: 12px;">
-              This is an automated message from DineInGo Admin Portal.<br>
-              Please do not reply to this email.
-            </p>
-          </div>
-        </div>
-      `
-    };
-
-    await emailTransporter.sendMail(mailOptions);
-    console.log('\u2713 Email sent successfully');
-    return true;
-
-  } catch (error: any) {
-    console.error('\u2717 Error sending OTP email:', error.message);
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('=== DEV MODE: Email failed \u2014 OTP fallback ===');
-      console.log('OTP:', otp);
-    }
-    return true;
-  }
+  return emailService.sendAdminOTPEmail(email, otp);
 };
 
 export const requestAdminOTP = async (req: Request, res: Response) => {
@@ -312,13 +208,9 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
 
     // Send login notification email (non-blocking)
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-    // We'll import this at the top or locally. It seems it was used before.
-    // Assuming sendLoginNotificationEmail is defined in this file or imported.
-    if (typeof (global as any).sendLoginNotificationEmail === 'function') {
-        (global as any).sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress).catch((err: any) => {
-          console.error('Failed to send login notification:', err);
-        });
-    }
+    sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress).catch(err => 
+      console.error('Failed to send login notification:', err)
+    );
 
     res.json({ 
       success: true, 
@@ -444,230 +336,14 @@ export const addAdmin = async (req: Request, res: Response) => {
   }
 };
 
-// Send login notification email to admin
+// Send login notification email to admin (wrapper)
 const sendLoginNotificationEmail = async (email: string, loginTime: Date, ipAddress?: string): Promise<boolean> => {
-  try {
-    const emailTransporter = getEmailTransporter();
-    
-    if (!emailTransporter) {
-      console.log('Email transporter not configured, skipping login notification');
-      return false;
-    }
-
-    // Format date and time
-    const formattedDate = loginTime.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-    
-    const formattedTime = loginTime.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      timeZoneName: 'short'
-    });
-
-    // Get browser/device info from user agent (if available)
-    const deviceInfo = ipAddress ? `IP Address: ${ipAddress}` : 'Device information not available';
-    
-    const mailOptions = {
-      from: `"DineInGo Security" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: '🔐 Admin Portal Login Alert - DineInGo',
-      html: `
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <style>
-            body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; }
-            .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
-            .header { background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center; }
-            .logo { color: #ffffff; font-size: 32px; font-weight: bold; margin: 0; }
-            .subtitle { color: #d1fae5; font-size: 14px; margin: 5px 0 0 0; }
-            .content { padding: 40px 30px; }
-            .alert-box { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px; margin: 20px 0; }
-            .alert-icon { font-size: 32px; margin-bottom: 10px; }
-            .alert-title { color: #92400e; font-size: 18px; font-weight: bold; margin: 0 0 10px 0; }
-            .alert-text { color: #78350f; font-size: 14px; line-height: 1.6; margin: 0; }
-            .info-card { background: #f8fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 20px 0; }
-            .info-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #e2e8f0; }
-            .info-row:last-child { border-bottom: none; }
-            .info-label { color: #64748b; font-size: 14px; font-weight: 600; }
-            .info-value { color: #1e293b; font-size: 14px; font-weight: 500; text-align: right; }
-            .security-tips { background: #eff6ff; border: 2px solid #3b82f6; border-radius: 12px; padding: 20px; margin: 20px 0; }
-            .security-title { color: #1e40af; font-size: 16px; font-weight: bold; margin: 0 0 15px 0; display: flex; align-items: center; }
-            .security-title::before { content: '🛡️'; margin-right: 8px; font-size: 20px; }
-            .security-list { margin: 0; padding-left: 20px; }
-            .security-list li { color: #1e40af; font-size: 13px; line-height: 1.8; margin-bottom: 8px; }
-            .action-button { display: inline-block; background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); color: #ffffff; text-decoration: none; padding: 14px 32px; border-radius: 8px; font-weight: 600; font-size: 14px; margin: 20px 0; }
-            .footer { background: #f8fafc; padding: 30px; text-align: center; border-top: 1px solid #e2e8f0; }
-            .footer-text { color: #64748b; font-size: 12px; line-height: 1.6; margin: 5px 0; }
-            .divider { height: 1px; background: linear-gradient(to right, transparent, #e2e8f0, transparent); margin: 30px 0; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <!-- Header -->
-            <div class="header">
-              <h1 class="logo">DineInGo</h1>
-              <p class="subtitle">Admin Portal Security Alert</p>
-            </div>
-
-            <!-- Content -->
-            <div class="content">
-              <!-- Alert Box -->
-              <div class="alert-box">
-                <div class="alert-icon">🔐</div>
-                <h2 class="alert-title">Successful Admin Login Detected</h2>
-                <p class="alert-text">
-                  Your admin account was successfully accessed. If this was you, no action is needed. 
-                  If you did not authorize this login, please take immediate action to secure your account.
-                </p>
-              </div>
-
-              <!-- Login Details -->
-              <div class="info-card">
-                <div class="info-row">
-                  <span class="info-label">📧 Account</span>
-                  <span class="info-value">${email}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">📅 Date</span>
-                  <span class="info-value">${formattedDate}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">🕐 Time</span>
-                  <span class="info-value">${formattedTime}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">🌐 Location</span>
-                  <span class="info-value">${deviceInfo}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-label">✅ Status</span>
-                  <span class="info-value" style="color: #10b981; font-weight: 700;">Verified & Authenticated</span>
-                </div>
-              </div>
-
-              <div class="divider"></div>
-
-              <!-- Security Tips -->
-              <div class="security-tips">
-                <h3 class="security-title">Security Best Practices</h3>
-                <ul class="security-list">
-                  <li>Never share your admin credentials with anyone</li>
-                  <li>Always log out when finished using the admin portal</li>
-                  <li>Use a strong, unique password for your admin account</li>
-                  <li>Be cautious of phishing emails requesting your credentials</li>
-                  <li>Report any suspicious activity immediately</li>
-                </ul>
-              </div>
-
-              <!-- Unauthorized Access Warning -->
-              <div style="text-align: center; margin: 30px 0;">
-                <p style="color: #64748b; font-size: 14px; margin-bottom: 15px;">
-                  <strong>Didn't authorize this login?</strong>
-                </p>
-                <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin-bottom: 20px;">
-                  If you did not perform this login, your account may be compromised. 
-                  Please contact the super administrator immediately.
-                </p>
-                <a href="mailto:${process.env.EMAIL_USER}" class="action-button">
-                  🚨 Report Unauthorized Access
-                </a>
-              </div>
-            </div>
-
-            <!-- Footer -->
-            <div class="footer">
-              <p class="footer-text">
-                <strong>DineInGo Admin Portal</strong><br>
-                This is an automated security notification. Please do not reply to this email.
-              </p>
-              <p class="footer-text" style="margin-top: 15px;">
-                © ${new Date().getFullYear()} DineInGo. All rights reserved.
-              </p>
-              <p class="footer-text" style="color: #94a3b8; font-size: 11px; margin-top: 10px;">
-                This email was sent to ${email} because you are registered as an administrator.
-              </p>
-            </div>
-          </div>
-        </body>
-        </html>
-      `
-    };
-
-    await emailTransporter.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    console.error('Error sending login notification email:', error);
-    return false;
-  }
+  return emailService.sendAdminLoginNotificationEmail(email, loginTime, ipAddress);
 };
 
-// Send welcome email to new admin
+// Send welcome email (wrapper)
 const sendWelcomeEmail = async (email: string): Promise<boolean> => {
-  try {
-    const emailTransporter = getEmailTransporter();
-    
-    if (!emailTransporter) {
-      console.log('Email transporter not configured, skipping welcome email');
-      return false;
-    }
-    
-    const mailOptions = {
-      from: `"DineInGo Admin" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Welcome to DineInGo Admin Portal',
-      html: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
-          <div style="text-align: center; margin-bottom: 30px;">
-            <h1 style="color: #10b981; margin: 0;">DineInGo</h1>
-            <p style="color: #64748b; margin: 5px 0;">Admin Portal</p>
-          </div>
-          
-          <div style="background: #f8fafc; border-radius: 12px; padding: 30px;">
-            <h2 style="color: #1e293b; margin-bottom: 20px;">Welcome to the Admin Team!</h2>
-            <p style="color: #64748b; line-height: 1.6;">
-              You have been added as an administrator for the DineInGo platform. 
-              You now have access to the admin portal where you can manage users, businesses, and platform operations.
-            </p>
-            
-            <div style="background: white; border-left: 4px solid #10b981; padding: 20px; margin: 20px 0;">
-              <h3 style="color: #1e293b; margin-top: 0;">How to Access:</h3>
-              <ol style="color: #64748b; line-height: 1.6;">
-                <li>Visit the admin login page</li>
-                <li>Enter your email address</li>
-                <li>Check your email for the OTP</li>
-                <li>Enter the OTP to access the admin portal</li>
-              </ol>
-            </div>
-            
-            <p style="color: #64748b; line-height: 1.6;">
-              <strong>Important:</strong> Keep your admin access secure and do not share your login credentials with anyone.
-            </p>
-          </div>
-          
-          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
-            <p style="color: #94a3b8; font-size: 12px;">
-              Welcome to the DineInGo team!<br>
-              If you have any questions, please contact the super admin.
-            </p>
-          </div>
-        </div>
-      `
-    };
-
-    await emailTransporter.sendMail(mailOptions);
-    return true;
-  } catch (error) {
-    console.error('Error sending welcome email:', error);
-    return false;
-  }
+  return emailService.sendUserWelcomeEmail(email, 'New Admin');
 };
 
 // Remove admin (only for super admin)

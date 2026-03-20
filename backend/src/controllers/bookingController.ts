@@ -4,7 +4,6 @@ import { Event } from '../models/Event';
 import { UserStats } from '../models/UserStats';
 import { Restaurant } from '../models/Restaurant';
 import { TableBooking } from '../models/TableBooking';
-import nodemailer from 'nodemailer';
 import { generateBothWalletPasses } from '../utils/walletPassGenerator';
 import mongoose from 'mongoose';
 import { emailService } from '../services/emailService';
@@ -257,64 +256,7 @@ const generateInvoicePdfBuffer = async (bookingData: any): Promise<Buffer> => {
   });
 };
 
-// Send invoice PDF email
-const sendInvoicePdfEmail = async (bookingData: any) => {
-  if (!bookingData.email) return;
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error('Email credentials not configured for invoice PDF email');
-    return;
-  }
-  if (!PDFDocument) {
-    console.warn('Skipping PDF invoice generation - pdfkit not installed');
-    return;
-  }
-  const pdfBuffer = await generateInvoicePdfBuffer(bookingData);
-  const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
-  const bookingName = getBookingDisplayName(bookingData);
 
-  // Generate wallet passes
-  let walletAttachments: { filename: string; content: Buffer; contentType: string }[] = [];
-  try {
-    const passes = await generateBothWalletPasses(bookingData);
-    walletAttachments = [passes.apple, passes.google];
-    console.log('Wallet passes generated successfully for email');
-  } catch (err) {
-    console.warn('Failed to generate wallet passes for email:', err);
-  }
-
-  await transporter.sendMail({
-    from: `"DineInGo" <${process.env.EMAIL_USER}>`,
-    to: bookingData.email,
-    subject: `Your DineInGo Invoice (PDF) - ${bookingName}`,
-    text: `Please find your invoice attached as a PDF for ${bookingName}. Thank you for choosing DineInGo!`,
-    attachments: [
-      {
-        filename: 'DineInGo_Invoice.pdf',
-        content: pdfBuffer,
-        contentType: 'application/pdf',
-      },
-      ...walletAttachments
-    ],
-  });
-  console.log('Invoice PDF email sent to:', bookingData.email);
-};
-
-// Helper function to get booking display name
-const getBookingDisplayName = (booking: any) => {
-  return (
-    booking.restaurantName ||
-    booking.eventName ||
-    (booking.restaurantId && booking.restaurantId.name) ||
-    (booking.eventId && booking.eventId.title) ||
-    'your reservation'
-  );
-};
 
 // Create a new booking
 export const createBooking = async (req: Request, res: Response): Promise<void> => {

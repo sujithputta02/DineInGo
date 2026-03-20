@@ -1,5 +1,4 @@
 import express from 'express';
-import nodemailer from 'nodemailer';
 import { emailService } from '../services/emailService';
 
 
@@ -26,42 +25,27 @@ router.post('/send-invoice', async (req, res) => {
 
   try {
     console.log('Sending invoice email to:', to);
-    console.log('Email subject:', subject);
-    console.log('Has attachments:', !!attachments);
+    
+    // Add attachments if provided and convert to Buffer from base64 if necessary
+    const processedAttachments = attachments && Array.isArray(attachments) 
+      ? attachments.map((attachment: any) => ({
+          ...attachment,
+          content: typeof attachment.content === 'string' ? Buffer.from(attachment.content, 'base64') : attachment.content
+        }))
+      : undefined;
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions: any = {
-      from: `"DineInGo" <${process.env.EMAIL_USER}>`,
-      to: to,
-      subject: subject,
-      html: html,
-      text: text || 'Please view this email in HTML format for the best experience.'
-    };
-
-    // Add attachments if provided
-    if (attachments && Array.isArray(attachments)) {
-      mailOptions.attachments = attachments.map((attachment: any) => ({
-        filename: attachment.filename,
-        content: Buffer.from(attachment.content, 'base64'),
-        contentType: attachment.contentType
-      }));
-    }
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Invoice email sent successfully to:', to);
-    console.log('Message ID:', info.messageId);
+    // Send invoice email (non-blocking)
+    emailService.sendInvoiceEmail({
+      to,
+      subject,
+      html,
+      text,
+      attachments: processedAttachments
+    }).catch(err => console.error('Error in /send-invoice non-blocking send:', err));
 
     res.json({
       success: true,
-      message: 'Invoice email sent successfully',
-      messageId: info.messageId
+      message: 'Invoice email sending initiated'
     });
   } catch (error) {
     console.error('Error sending invoice email:', error);
@@ -89,53 +73,34 @@ router.post('/', async (req, res) => {
     if (type === 'reservation' && formData) {
       console.log('Sending restaurant reservation email to:', formData.email);
 
-      const success = await emailService.sendReservationConfirmationEmail(formData);
+      // Send reservation confirmation (non-blocking)
+      emailService.sendReservationConfirmationEmail(formData).catch(err => 
+        console.error('Error in reservation email non-blocking send:', err)
+      );
 
-      if (success) {
-        return res.json({
-          success: true,
-          message: 'Reservation email sent successfully'
-        });
-      } else {
-        throw new Error('Failed to send reservation email via unified service');
-      }
+      return res.json({
+        success: true,
+        message: 'Reservation email sending initiated'
+      });
     }
 
-
     // Handle general/feedback emails
-
     const recipient = to || process.env.EMAIL_USER;
-    const emailSubject = subject || 'DineInGo Feedback/General Email';
-    const emailHtml = html || `<pre>${message || 'No message provided.'}</pre>`;
-    const emailText = text || message || 'No message provided.';
-
     console.log('Sending general/feedback email to:', recipient);
-    console.log('Email subject:', emailSubject);
 
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions: any = {
-      from: from ? `${from}` : `"DineInGo" <${process.env.EMAIL_USER}>`,
+    // Send general email (non-blocking)
+    emailService.sendGeneralEmail({
       to: recipient,
-      subject: emailSubject,
-      html: emailHtml,
-      text: emailText
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log('General/feedback email sent successfully to:', recipient);
-    console.log('Message ID:', info.messageId);
+      from,
+      subject,
+      html,
+      text,
+      message
+    }).catch(err => console.error('Error in general email non-blocking send:', err));
 
     res.json({
       success: true,
-      message: 'Email sent successfully',
-      messageId: info.messageId
+      message: 'Email sending initiated'
     });
   } catch (error) {
     console.error('Error sending email:', error);
