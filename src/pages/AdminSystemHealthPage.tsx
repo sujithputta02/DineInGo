@@ -303,55 +303,56 @@ const AdminSystemHealthPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-3 sm:py-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => navigate('/admin')}
-                className="text-gray-600 hover:text-gray-900"
+                className="text-gray-600 hover:text-gray-900 text-sm sm:text-base"
               >
                 ← Back
               </button>
-              <Activity className="w-6 h-6 text-emerald-600" />
-              <h1 className="text-2xl font-bold text-gray-900">System Health</h1>
+              <Activity className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600" />
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900">System Health</h1>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-sm text-gray-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <div className="text-xs sm:text-sm text-gray-500 hidden md:block">
                 Last updated: {lastUpdated.toLocaleTimeString()}
               </div>
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-2 text-xs sm:text-sm">
                 <input
                   type="checkbox"
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
                   className="rounded text-emerald-600 focus:ring-emerald-500"
                 />
-                Auto-refresh
+                <span className="hidden sm:inline">Auto-refresh</span>
+                <span className="sm:hidden">Auto</span>
               </label>
               <button
                 onClick={() => fetchSystemHealth(true)}
                 disabled={refreshing}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50"
+                className="px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50 text-sm"
               >
                 <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
-                Refresh
+                <span className="hidden sm:inline">Refresh</span>
               </button>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6 lg:py-8">
         {/* Maintenance Mode Alert */}
         {maintenanceMode && (
-          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-6 rounded-lg">
-            <div className="flex items-center">
-              <AlertTriangle className="w-5 h-5 text-yellow-400 mr-3" />
+          <div className="bg-yellow-50 border-l-4 border-yellow-400 p-3 sm:p-4 mb-4 sm:mb-6 rounded-lg">
+            <div className="flex items-start sm:items-center gap-2 sm:gap-0">
+              <AlertTriangle className="w-5 h-5 text-yellow-400 mr-2 sm:mr-3 flex-shrink-0" />
               <div className="flex-1">
-                <h3 className="text-sm font-medium text-yellow-800">
+                <h3 className="text-xs sm:text-sm font-medium text-yellow-800">
                   Maintenance Mode Active
                 </h3>
-                <p className="text-sm text-yellow-700 mt-1">
+                <p className="text-xs sm:text-sm text-yellow-700 mt-1">
                   The platform is currently in maintenance mode. Users will see the maintenance page.
                 </p>
               </div>
@@ -360,64 +361,64 @@ const AdminSystemHealthPage: React.FC = () => {
         )}
 
         {/* Quick Actions */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Quick Actions</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <button
               onClick={handleToggleMaintenance}
               disabled={processingMaintenance}
-              className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-colors ${
+              className={`flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg font-medium transition-colors text-sm sm:text-base ${
                 maintenanceMode
                   ? 'bg-green-600 hover:bg-green-700 text-white'
                   : 'bg-yellow-600 hover:bg-yellow-700 text-white'
               } disabled:opacity-50 disabled:cursor-not-allowed`}
             >
-              <Wrench className="w-5 h-5" />
-              {processingMaintenance ? 'Processing...' : maintenanceMode ? 'End Maintenance' : 'Start Maintenance'}
+              <Wrench className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="truncate">{processingMaintenance ? 'Processing...' : maintenanceMode ? 'End Maintenance' : 'Start Maintenance'}</span>
             </button>
             
             <button
               onClick={handleClearCache}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors text-sm sm:text-base"
             >
-              <Trash2 className="w-5 h-5" />
+              <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
               Clear Cache
             </button>
             
             <button
               onClick={handleRestartServices}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors text-sm sm:text-base"
             >
-              <Power className="w-5 h-5" />
+              <Power className="w-4 h-4 sm:w-5 sm:h-5" />
               Restart Services
             </button>
             
             <button
               onClick={() => fetchSystemHealth(true)}
               disabled={refreshing}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
-              <RefreshCw className={`w-5 h-5 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${refreshing ? 'animate-spin' : ''}`} />
               Force Refresh
             </button>
           </div>
         </div>
 
         {/* Overall Status */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 sm:gap-3">
               {getStatusIcon(systemHealth?.system.status || 'unknown')}
               <div>
-                <h2 className="text-xl font-bold text-gray-900">System Status</h2>
-                <p className={`text-sm font-medium ${getStatusColor(systemHealth?.system.status || 'unknown')}`}>
+                <h2 className="text-lg sm:text-xl font-bold text-gray-900">System Status</h2>
+                <p className={`text-xs sm:text-sm font-medium ${getStatusColor(systemHealth?.system.status || 'unknown')}`}>
                   {systemHealth?.system.status.toUpperCase()}
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">System Uptime</p>
-              <p className="text-lg font-semibold text-gray-900">
+            <div className="text-left sm:text-right w-full sm:w-auto">
+              <p className="text-xs sm:text-sm text-gray-500">System Uptime</p>
+              <p className="text-base sm:text-lg font-semibold text-gray-900">
                 {systemHealth ? formatUptime(systemHealth.system.systemUptime) : 'N/A'}
               </p>
             </div>
@@ -425,20 +426,20 @@ const AdminSystemHealthPage: React.FC = () => {
         </div>
 
         {/* Service Status Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6">
           {serviceStatus && Object.entries(serviceStatus).map(([key, service]: [string, any]) => (
-            <div key={key} className="bg-white rounded-xl shadow-sm p-6">
-              <div className="flex items-center justify-between mb-4">
+            <div key={key} className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+              <div className="flex items-center justify-between mb-3 sm:mb-4">
                 <div className="flex items-center gap-2">
-                  {key === 'api' && <Server className="w-5 h-5 text-gray-600" />}
-                  {key === 'database' && <Database className="w-5 h-5 text-gray-600" />}
-                  {key === 'storage' && <HardDrive className="w-5 h-5 text-gray-600" />}
-                  {key === 'email' && <Zap className="w-5 h-5 text-gray-600" />}
-                  <h3 className="font-semibold text-gray-900 capitalize">{key}</h3>
+                  {key === 'api' && <Server className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />}
+                  {key === 'database' && <Database className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />}
+                  {key === 'storage' && <HardDrive className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />}
+                  {key === 'email' && <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />}
+                  <h3 className="font-semibold text-gray-900 capitalize text-sm sm:text-base">{key}</h3>
                 </div>
                 {getStatusIcon(service.status)}
               </div>
-              <p className={`text-sm font-medium ${getStatusColor(service.status)}`}>
+              <p className={`text-xs sm:text-sm font-medium ${getStatusColor(service.status)}`}>
                 {service.status.toUpperCase()}
               </p>
               {service.uptime !== undefined && (
@@ -456,12 +457,12 @@ const AdminSystemHealthPage: React.FC = () => {
         </div>
 
         {/* Performance Metrics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-4 sm:mb-6">
           {/* Memory Usage */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <HardDrive className="w-5 h-5 text-gray-600" />
-              <h3 className="font-semibold text-gray-900">Memory Usage</h3>
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <HardDrive className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Memory Usage</h3>
             </div>
             {systemHealth && (
               <>
@@ -510,10 +511,10 @@ const AdminSystemHealthPage: React.FC = () => {
           </div>
 
           {/* CPU Usage */}
-          <div className="bg-white rounded-xl shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Cpu className="w-5 h-5 text-gray-600" />
-              <h3 className="font-semibold text-gray-900">CPU Usage</h3>
+          <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6">
+            <div className="flex items-center gap-2 mb-3 sm:mb-4">
+              <Cpu className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+              <h3 className="font-semibold text-gray-900 text-sm sm:text-base">CPU Usage</h3>
             </div>
             {systemHealth && (
               <>
@@ -557,47 +558,47 @@ const AdminSystemHealthPage: React.FC = () => {
         </div>
 
         {/* Database Collections */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Database className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">Database Collections</h3>
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            <Database className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">Database Collections</h3>
           </div>
           {systemHealth && (
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <Users className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+              <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <Users className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 mx-auto mb-2" />
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {systemHealth.database.collections.users.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500">Users</p>
+                <p className="text-xs sm:text-sm text-gray-500">Users</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <Building2 className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <Building2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 mx-auto mb-2" />
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {systemHealth.database.collections.businesses.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500">Businesses</p>
+                <p className="text-xs sm:text-sm text-gray-500">Businesses</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <Calendar className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 mx-auto mb-2" />
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {systemHealth.database.collections.bookings.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500">Bookings</p>
+                <p className="text-xs sm:text-sm text-gray-500">Bookings</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <Server className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <Server className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 mx-auto mb-2" />
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {systemHealth.database.collections.restaurants.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500">Restaurants</p>
+                <p className="text-xs sm:text-sm text-gray-500">Restaurants</p>
               </div>
-              <div className="text-center p-4 bg-gray-50 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-emerald-600 mx-auto mb-2" />
-                <p className="text-2xl font-bold text-gray-900">
+              <div className="text-center p-3 sm:p-4 bg-gray-50 rounded-lg">
+                <TrendingUp className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 mx-auto mb-2" />
+                <p className="text-lg sm:text-2xl font-bold text-gray-900">
                   {systemHealth.database.collections.events.toLocaleString()}
                 </p>
-                <p className="text-sm text-gray-500">Events</p>
+                <p className="text-xs sm:text-sm text-gray-500">Events</p>
               </div>
             </div>
           )}
@@ -640,16 +641,16 @@ const AdminSystemHealthPage: React.FC = () => {
         </div>
 
         {/* System Info */}
-        <div className="bg-white rounded-xl shadow-sm p-6 mt-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Server className="w-5 h-5 text-gray-600" />
-            <h3 className="font-semibold text-gray-900">System Information</h3>
+        <div className="bg-white rounded-xl shadow-sm p-4 sm:p-6 mt-4 sm:mt-6">
+          <div className="flex items-center gap-2 mb-3 sm:mb-4">
+            <Server className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+            <h3 className="font-semibold text-gray-900 text-sm sm:text-base">System Information</h3>
           </div>
           {systemHealth && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 text-xs sm:text-sm">
               <div>
                 <p className="text-gray-500">Node Version</p>
-                <p className="font-medium text-gray-900">{systemHealth.system.nodeVersion}</p>
+                <p className="font-medium text-gray-900 break-all">{systemHealth.system.nodeVersion}</p>
               </div>
               <div>
                 <p className="text-gray-500">Platform</p>
@@ -672,57 +673,57 @@ const AdminSystemHealthPage: React.FC = () => {
 
       {/* Maintenance Mode Modal */}
       {showMaintenanceModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
-                <Wrench className="w-6 h-6 text-yellow-600" />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-yellow-100 rounded-full flex items-center justify-center flex-shrink-0">
+                <Wrench className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
               </div>
-              <h2 className="text-xl font-bold text-gray-900">Enable Maintenance Mode</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Enable Maintenance Mode</h2>
             </div>
             
-            <p className="text-gray-600 mb-4">
+            <p className="text-sm sm:text-base text-gray-600 mb-3 sm:mb-4">
               This will display a maintenance page to all users. Only admins will be able to access the platform.
             </p>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                   Maintenance Message
                 </label>
                 <textarea
                   value={maintenanceMessage}
                   onChange={(e) => setMaintenanceMessage(e.target.value)}
                   placeholder="We are currently performing scheduled maintenance..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                   rows={3}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
                   Estimated End Time (Optional)
                 </label>
                 <input
                   type="datetime-local"
                   value={estimatedEndTime}
                   onChange={(e) => setEstimatedEndTime(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm"
                 />
               </div>
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex gap-2 sm:gap-3 mt-4 sm:mt-6">
               <button
                 onClick={() => setShowMaintenanceModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                className="flex-1 px-3 sm:px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm sm:text-base"
               >
                 Cancel
               </button>
               <button
                 onClick={handleEnableMaintenance}
                 disabled={processingMaintenance}
-                className="flex-1 px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50"
+                className="flex-1 px-3 sm:px-4 py-2 bg-yellow-600 text-white rounded-lg hover:bg-yellow-700 transition-colors disabled:opacity-50 text-sm sm:text-base"
               >
                 {processingMaintenance ? 'Enabling...' : 'Enable Maintenance'}
               </button>

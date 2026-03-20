@@ -47,7 +47,8 @@ const CustomerRoute: React.FC = () => {
 
     if (shouldRedirect) {
         toast.info("Registered Owners must use the Business Portal.");
-        return <Navigate to="/business/dashboard" replace />;
+        // Redirect to login to safely generate a new session token
+        return <Navigate to="/business/businessLogin" replace />;
     }
 
     return <Outlet />;

@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import PasswordReset from '../models/PasswordReset';
 import { User } from '../models/User';
 import { sendEmail, emailService } from '../services/emailService';
+import securityConfig from '../config/security';
 
 // Generate 6-digit OTP
 const generateOTP = (): string => {
@@ -27,9 +28,26 @@ export const requestSignupOTP = async (req: Request, res: Response) => {
         }
 
         // Check if user already exists
-        const existingUser = await User.findOne({ email: email.toLowerCase() });
+        const emailLower = email.toLowerCase();
+        const existingUser = await User.findOne({ email: emailLower });
         if (existingUser) {
             return res.status(400).json({ success: false, message: 'User already exists' });
+        }
+
+        // BETA ACCESS GUARD: Check if on early access list (only in beta mode)
+        if (securityConfig.betaOnly) {
+            const { EarlyAccess } = await import('../models/EarlyAccess');
+            const hasAccess = await EarlyAccess.findOne({ 
+                email: emailLower,
+                userType: 'user'
+            });
+
+            if (!hasAccess) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: "Dino says: This email isn't on the waitlist yet! Please join the waitlist to get beta access." 
+                });
+            }
         }
 
         // Rate limiting: Check if too many requests

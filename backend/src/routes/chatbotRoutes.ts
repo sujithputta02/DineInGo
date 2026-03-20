@@ -1,10 +1,11 @@
 import express, { Request, Response } from 'express';
 import { chatbotService } from '../services/chatbotService';
+import { promptInjectionGuard } from '../middleware/aiThreatGuard';
 
 const router = express.Router();
 
-// Send a message to the chatbot
-router.post('/message', async (req: Request, res: Response) => {
+// Send a message to the chatbot — guarded by prompt injection detector
+router.post('/message', promptInjectionGuard, async (req: Request, res: Response) => {
   try {
     const { userId, message, userContext, language } = req.body;
 

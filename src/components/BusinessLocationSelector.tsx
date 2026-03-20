@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Map, CheckCircle } from 'lucide-react';
 
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+
 interface LocationData {
   address: string;
   buildingDetails?: string; // Floor, building number, etc.
@@ -98,7 +100,7 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
       // Strategy 1: Direct address search
       searchPromises.push(
         fetch(
-          `http://localhost:5001/api/geocoding/search?` +
+          `${API_BASE}/api/v1/geocoding/search?` +
           `q=${encodeURIComponent(query)}&` +
           `countrycodes=in&` +
           `limit=3&` +
@@ -115,7 +117,7 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
         const cityState = addressParts.slice(-2).join(', '); // Last 2 parts usually city, state+PIN
         searchPromises.push(
           fetch(
-            `http://localhost:5001/api/geocoding/search?` +
+            `${API_BASE}/api/v1/geocoding/search?` +
             `q=${encodeURIComponent(cityState)}&` +
             `countrycodes=in&` +
             `limit=2&` +
@@ -129,16 +131,11 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
           const areaCity = addressParts.slice(-4, -1).join(', '); // Area, City, State (without PIN)
           searchPromises.push(
             fetch(
-              `http://localhost:5001/api/geocoding/search?` +
-              `` +
+              `${API_BASE}/api/v1/geocoding/search?` +
               `q=${encodeURIComponent(areaCity)}&` +
               `countrycodes=in&` +
               `limit=2&` +
-              `addressdetails=1`,
-              {
-                headers: {
-                }
-              }
+              `addressdetails=1`
             )
           );
         }
@@ -149,16 +146,11 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
       if (pincodeMatch) {
         searchPromises.push(
           fetch(
-            `http://localhost:5001/api/geocoding/search?` +
-            `` +
+            `${API_BASE}/api/v1/geocoding/search?` +
             `postalcode=${pincodeMatch[0]}&` +
             `countrycodes=in&` +
             `limit=2&` +
-            `addressdetails=1`,
-            {
-              headers: {
-              }
-            }
+            `addressdetails=1`
           )
         );
       }
@@ -288,16 +280,11 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
 
       // Reverse geocoding using Nominatim
       const response = await fetch(
-        `http://localhost:5001/api/geocoding/search?` +
-        `` +
+        `${API_BASE}/api/v1/geocoding/search?` +
         `lat=${latitude}&` +
         `lon=${longitude}&` +
         `addressdetails=1&` +
-        `extratags=1`,
-        {
-          headers: {
-          }
-        }
+        `extratags=1`
       );
 
       if (!response.ok) {

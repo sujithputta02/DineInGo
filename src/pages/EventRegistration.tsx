@@ -297,7 +297,7 @@ const EventRegistration: React.FC = () => {
 
   const fetchEvent = async () => {
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}`);
 
       if (!response.ok) {
         if (response.status === 400 || response.status === 404) {
@@ -318,11 +318,11 @@ const EventRegistration: React.FC = () => {
       if (data.seatingLayout?.areas?.length > 0 || data.seatingLayout?.eventConfig?.concertAreas?.length > 0) {
         try {
           await fetch(
-            `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}/recalculate-areas`,
+            `${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}/recalculate-areas`,
             { method: 'POST' }
           );
           // Re-fetch with fresh counts
-          const fresh = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}`);
+          const fresh = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}`);
           if (fresh.ok) {
             const freshData = await fresh.json();
             setEvent(freshData);
@@ -350,7 +350,7 @@ const EventRegistration: React.FC = () => {
   const fetchReviews = async () => {
     try {
       setReviewsLoading(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}/reviews`);
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}/reviews`);
       const data = await response.json();
       setReviews(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -368,7 +368,7 @@ const EventRegistration: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/reviews/${reviewId}/like`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/reviews/${reviewId}/like`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -399,7 +399,7 @@ const EventRegistration: React.FC = () => {
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/reviews/${reviewId}/dislike`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/reviews/${reviewId}/dislike`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -445,7 +445,7 @@ const EventRegistration: React.FC = () => {
 
     try {
       setIsSubmittingReview(true);
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/events/${id}/reviews`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/events/${id}/reviews`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -495,16 +495,14 @@ const EventRegistration: React.FC = () => {
   };
 
   const checkIfFavorite = async () => {
-    if (!auth.currentUser) return;
+    if (!auth.currentUser || !id) return;
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/favorites/${auth.currentUser.uid}`);
-      const data = await response.json();
-
-      if (data.favorites) {
-        const isFav = data.favorites.some((fav: any) => fav.eventId === id);
-        setIsFavorite(isFav);
-      }
+      const { favoritesApi } = await import('../services/favoritesApi');
+      const response = await favoritesApi.get(auth.currentUser.uid);
+      const eventFavs = response.eventIds || [];
+      const isFav = eventFavs.includes(id);
+      setIsFavorite(isFav);
     } catch (error) {
       console.error('Error checking favorites:', error);
     }
@@ -517,31 +515,20 @@ const EventRegistration: React.FC = () => {
       return;
     }
 
-    if (!event) return;
+    if (!id) return;
 
     setFavoriteLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/favorites`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: auth.currentUser.uid,
-          eventId: event._id,
-          type: 'event'
-        })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setIsFavorite(!isFavorite);
-        toast.success(isFavorite ? 'Removed from favorites' : 'Added to favorites');
+      const { favoritesApi } = await import('../services/favoritesApi');
+      if (isFavorite) {
+        await favoritesApi.removeEvent(auth.currentUser.uid, id);
+        toast.success('Removed from favorites');
       } else {
-        throw new Error(data.message || 'Failed to update favorites');
+        await favoritesApi.addEvent(auth.currentUser.uid, id);
+        toast.success('Added to favorites');
       }
+      setIsFavorite(!isFavorite);
     } catch (error: any) {
       console.error('Error toggling favorite:', error);
       toast.error(error.message || 'Failed to update favorites');
@@ -721,21 +708,21 @@ const EventRegistration: React.FC = () => {
   const spotsLeft = event ? Math.max(0, event.capacity - (event.registeredCount || 0)) : 0;
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-4xl mx-auto px-4">
+    <div className="min-h-screen bg-gray-50 py-4 md:py-8">
+      <div className="max-w-4xl mx-auto px-3 md:px-4">
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-4 md:mb-6 min-h-[44px] min-w-[44px]"
         >
           <ArrowLeft size={20} />
-          Back
+          <span className="text-sm md:text-base">Back</span>
         </button>
 
         {/* Event Details Card */}
         <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
           {/* Event Image */}
-          <div className="h-64 bg-gradient-to-r from-emerald-500 to-emerald-600 relative">
+          <div className="h-40 md:h-56 lg:h-64 bg-gradient-to-r from-emerald-500 to-emerald-600 relative">
             {event.imageUrl && (
               <img
                 src={event.imageUrl}
@@ -744,16 +731,16 @@ const EventRegistration: React.FC = () => {
               />
             )}
             <div className="absolute inset-0 bg-black bg-opacity-30 flex items-end">
-              <div className="p-6 text-white">
-                <h1 className="text-3xl font-bold mb-2">{event.title}</h1>
-                <p className="text-emerald-100">{event.category}</p>
+              <div className="p-3 md:p-4 lg:p-6 text-white w-full">
+                <h1 className="text-xl md:text-2xl lg:text-3xl font-bold mb-1 md:mb-2">{event.title}</h1>
+                <p className="text-xs md:text-sm text-emerald-100">{event.category}</p>
               </div>
             </div>
           </div>
 
-          <div className="p-6">
+          <div className="p-3 md:p-4 lg:p-6">
             {/* Event Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-6">
               <div className="flex items-center gap-3">
                 <Calendar className="text-emerald-500" size={20} />
                 <div>

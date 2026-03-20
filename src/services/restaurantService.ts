@@ -50,7 +50,7 @@ export const getRestaurantById = async (id: string) => {
         // If it's a MongoDB ObjectId, try business API first
         if (isObjectId) {
           console.log(`Fetching business restaurant with ObjectId: ${id}`);
-          response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/business/${id}?_t=${timestamp}`, {
+          response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/business/${id}?_t=${timestamp}`, {
             method: 'GET',
             mode: 'cors',
             cache: 'no-cache',
@@ -140,7 +140,7 @@ export const getRestaurantById = async (id: string) => {
         
         // Fallback to legacy restaurant API
         console.log(`Trying legacy restaurant API for ID: ${id}`);
-        response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/restaurants/${id}?_t=${timestamp}`, {
+        response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/restaurants/${id}?_t=${timestamp}`, {
           method: 'GET',
           mode: 'cors',
           cache: 'no-cache',

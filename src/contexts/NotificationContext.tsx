@@ -42,7 +42,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   
   const refreshNotifications = async () => {
     if (!auth.currentUser?.uid) {
-      console.log('No user logged in, skipping notification fetch');
       setLoading(false);
       return;
     }
@@ -50,8 +49,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     try {
       setLoading(true);
       const data = await notificationsApi.getAll(auth.currentUser.uid);
-      console.log('Fetched notifications from API:', data);
-
       // Show desktop notifications for unread notifications
       if (NotificationService.getPermission() === 'granted') {
         const unread = data.filter((n: Notification) => 
@@ -79,21 +76,17 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
     
-    console.log(`Marking notification ${id} as read for user ${auth.currentUser.uid}`);
-    
     // Immediately update UI (optimistic update)
     setNotifications(prev => {
       const updated = prev.map(n => 
         n._id === id ? { ...n, isRead: true } : n
       );
-      console.log(`Optimistically updated notification ${id} to read`);
       return updated;
     });
     
     try {
       // Then update on server
       await notificationsApi.markAsRead(id, auth.currentUser.uid);
-      console.log(`Notification ${id} marked as read on server successfully`);
     } catch (error) {
       console.error('Error marking notification as read on server:', error);
       // Revert the optimistic update on error
@@ -107,19 +100,15 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return;
     }
     
-    console.log(`Marking all notifications as read for user ${auth.currentUser.uid}`);
-    
     // Immediately update UI (optimistic update)
     setNotifications(prev => {
       const updated = prev.map(n => ({ ...n, isRead: true }));
-      console.log(`Optimistically marked ${updated.length} notifications as read`);
       return updated;
     });
     
     try {
       // Then update on server
       await notificationsApi.markAllAsRead(auth.currentUser.uid);
-      console.log('All notifications marked as read on server successfully');
     } catch (error) {
       console.error('Error marking all notifications as read on server:', error);
       // Revert the optimistic update on error

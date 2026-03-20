@@ -4,6 +4,7 @@ export interface IEarlyAccess extends Document {
     email: string;
     userType: 'user' | 'business';
     status: 'pending' | 'contacted' | 'converted';
+    referralCode?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -25,6 +26,11 @@ const earlyAccessSchema = new Schema<IEarlyAccess>({
         type: String,
         enum: ['pending', 'contacted', 'converted'],
         default: 'pending'
+    },
+    referralCode: {
+        type: String,
+        trim: true,
+        index: true
     }
 }, {
     timestamps: true

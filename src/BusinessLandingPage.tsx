@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function BusinessLandingPage() {
     const [scrollY, setScrollY] = useState(0);
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -141,10 +142,11 @@ export default function BusinessLandingPage() {
                         alignItems: "center",
                         position: "relative",
                         zIndex: 10,
+                        flexWrap: "wrap",
                     }}
                 >
                     <DineInGoLogo size="small" />
-                    <div style={{ display: "flex", gap: "16px" }}>
+                    <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                         <motion.button
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
@@ -153,8 +155,8 @@ export default function BusinessLandingPage() {
                                 backgroundColor: "transparent",
                                 border: "2px solid #00F29D",
                                 color: "#00F29D",
-                                padding: "10px 24px",
-                                fontSize: "1rem",
+                                padding: "clamp(8px, 2vw, 10px) clamp(16px, 4vw, 24px)",
+                                fontSize: "clamp(0.85rem, 2vw, 1rem)",
                                 fontWeight: "bold",
                                 borderRadius: "999px",
                                 cursor: "pointer",
@@ -168,8 +170,8 @@ export default function BusinessLandingPage() {
                             onClick={() => navigate('/business/businessSignup')}
                             style={{
                                 backgroundColor: "#facc15",
-                                padding: "10px 24px",
-                                fontSize: "1rem",
+                                padding: "clamp(8px, 2vw, 10px) clamp(16px, 4vw, 24px)",
+                                fontSize: "clamp(0.85rem, 2vw, 1rem)",
                                 fontWeight: "bold",
                                 borderRadius: "999px",
                                 border: "none",
@@ -192,7 +194,7 @@ export default function BusinessLandingPage() {
                         justifyContent: "center",
                         minHeight: "calc(100vh - 80px)",
                         textAlign: "center",
-                        padding: "0 5%",
+                        padding: "clamp(20px, 5vw, 40px) 5%",
                         position: "relative",
                         zIndex: 5,
                     }}
@@ -210,7 +212,7 @@ export default function BusinessLandingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2, duration: 0.8 }}
                         style={{
-                            fontSize: "3.2rem",
+                            fontSize: "clamp(1.8rem, 6vw, 3.2rem)",
                             fontWeight: "800",
                             marginTop: "30px",
                             marginBottom: "24px",
@@ -228,7 +230,7 @@ export default function BusinessLandingPage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.4, duration: 0.8 }}
                         style={{
-                            fontSize: "1.3rem",
+                            fontSize: "clamp(1rem, 3vw, 1.3rem)",
                             color: "#555",
                             maxWidth: "700px",
                             marginBottom: "50px",
@@ -255,8 +257,8 @@ export default function BusinessLandingPage() {
                             onClick={() => navigate('/business/businessSignup')}
                             style={{
                                 backgroundColor: "#00F29D",
-                                padding: "18px 40px",
-                                fontSize: "1.2rem",
+                                padding: "clamp(14px, 3vw, 18px) clamp(28px, 5vw, 40px)",
+                                fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
                                 fontWeight: "700",
                                 borderRadius: "16px",
                                 border: "none",
@@ -276,8 +278,8 @@ export default function BusinessLandingPage() {
                             }}
                             style={{
                                 backgroundColor: "#fff",
-                                padding: "18px 40px",
-                                fontSize: "1.2rem",
+                                padding: "clamp(14px, 3vw, 18px) clamp(28px, 5vw, 40px)",
+                                fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
                                 fontWeight: "700",
                                 borderRadius: "16px",
                                 border: "2px solid #facc15",
@@ -297,7 +299,7 @@ export default function BusinessLandingPage() {
                         transition={{ delay: 0.8, duration: 0.8 }}
                         style={{
                             display: "flex",
-                            gap: "60px",
+                            gap: "clamp(30px, 5vw, 60px)",
                             marginTop: "80px",
                             flexWrap: "wrap",
                             justifyContent: "center",
@@ -315,14 +317,14 @@ export default function BusinessLandingPage() {
                             >
                                 <div
                                     style={{
-                                        fontSize: "3rem",
+                                        fontSize: "clamp(2rem, 5vw, 3rem)",
                                         fontWeight: "900",
                                         color: stat.color,
                                     }}
                                 >
                                     {stat.value}
                                 </div>
-                                <div style={{ fontSize: "1rem", color: "#666", marginTop: "8px", fontWeight: "500" }}>
+                                <div style={{ fontSize: "clamp(0.85rem, 2vw, 1rem)", color: "#666", marginTop: "8px", fontWeight: "500" }}>
                                     {stat.label}
                                 </div>
                             </motion.div>

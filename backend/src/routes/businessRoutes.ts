@@ -42,11 +42,12 @@ import {
   validateReviewReply,
   handleValidationErrors
 } from '../middleware/inputValidation';
+import { accountLockoutCheck } from '../middleware/accountLockout';
 
 const router = express.Router();
 
 // Owner Authentication & Account Management
-router.post('/register', businessRegistrationLimiter, logBusinessAction, registerOrLinkOwner);
+router.post('/register', businessRegistrationLimiter, accountLockoutCheck('business'), logBusinessAction, registerOrLinkOwner);
 router.get('/owner/profile/:uid', businessApiLimiter, getOwnerProfile);
 router.post('/owner/link-google', businessApiLimiter, logBusinessAction, linkGoogleAccount);
 router.post('/owner/set-password', businessApiLimiter, logBusinessAction, setPassword);

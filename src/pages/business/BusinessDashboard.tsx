@@ -42,6 +42,8 @@ import {
   X,
   Check
 } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { validateSession, clearSession } from '../../utils/sessionGuard';
 import socketService from '../../utils/socketService';
 import EmojiPicker from '../../components/EmojiPicker';
 import {
@@ -144,6 +146,17 @@ const getInitialViewMode = (): 'overview' | 'businesses' | 'bookings' | 'analyti
 };
 
 const BusinessDashboard: React.FC = () => {
+  const navigate = useNavigate();
+  const { sessionToken } = useParams<{ sessionToken: string }>();
+
+  // 🔒 SESSION TOKEN GUARD
+  useEffect(() => {
+    if (!validateSession(sessionToken)) {
+      clearSession();
+      navigate('/business/businessLogin', { replace: true });
+    }
+  }, [sessionToken, navigate]);
+
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
@@ -698,31 +711,31 @@ const BusinessDashboard: React.FC = () => {
           <div className="space-y-6">
             {/* Summary Stats */}
             {ratingStats && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
-                  <p className="text-sm font-medium text-slate-500 mb-1">Average Rating</p>
-                  <p className="text-3xl font-bold text-slate-900">{ratingStats.averageRating.toFixed(1)}</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm text-center">
+                  <p className="text-[10px] md:text-sm font-medium text-slate-500 mb-1">Average Rating</p>
+                  <p className="text-xl md:text-3xl font-bold text-slate-900">{ratingStats.averageRating.toFixed(1)}</p>
                   <div className="flex justify-center mt-1">
-                    <StarRating rating={ratingStats.averageRating} size={14} />
+                    <StarRating rating={ratingStats.averageRating} size={10} />
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm text-center">
                   <p className="text-sm font-medium text-slate-500 mb-1">Total Reviews</p>
                   <p className="text-3xl font-bold text-slate-900">{ratingStats.totalReviews}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm col-span-2">
+                <div className="bg-white p-4 md:p-6 rounded-xl border border-slate-200 shadow-sm col-span-2">
                   <div className="space-y-2">
                     {[5, 4, 3, 2, 1].map(star => {
                       const distribution = ratingStats.ratingDistribution || {};
                       const count = distribution[star] || 0;
                       const percentage = ratingStats.totalReviews > 0 ? (count / ratingStats.totalReviews) * 100 : 0;
                       return (
-                        <div key={star} className="flex items-center gap-3 text-sm">
-                          <span className="w-4">{star}★</span>
-                          <div className="flex-1 bg-slate-100 rounded-full h-2">
-                            <div className="bg-yellow-400 h-2 rounded-full" style={{ width: `${percentage}%` }}></div>
+                        <div key={star} className="flex items-center gap-2 md:gap-3 text-[10px] md:text-sm">
+                          <span className="w-3 md:w-4">{star}★</span>
+                          <div className="flex-1 bg-slate-100 rounded-full h-1.5 md:h-2">
+                            <div className="bg-yellow-400 h-full rounded-full" style={{ width: `${percentage}%` }}></div>
                           </div>
-                          <span className="w-8 text-right text-slate-500">{count}</span>
+                          <span className="w-6 md:w-8 text-right text-slate-500">{count}</span>
                         </div>
                       );
                     })}
@@ -961,68 +974,68 @@ const BusinessDashboard: React.FC = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Total Businesses</p>
-                <p className="text-3xl font-bold text-slate-900">{dashboardData.stats.totalBusinesses}</p>
-                <p className="text-sm text-emerald-600 mt-1">
-                  {dashboardData.stats.activeBusinesses} active
+                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Total Businesses</p>
+                <p className="text-xl md:text-3xl font-bold text-slate-900">{dashboardData.stats.totalBusinesses}</p>
+                 <p className="text-[10px] text-emerald-600 mt-1 flex items-center gap-1">
+                  <TrendingUp size={10} /> Active: {dashboardData.stats.activeBusinesses}
                 </p>
               </div>
-              <div className="bg-emerald-100 rounded-lg p-3">
-                <Building2 className="h-6 w-6 text-emerald-600" />
+              <div className="hidden sm:block bg-slate-100 rounded-lg p-3">
+                <Building2 className="h-6 w-6 text-slate-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">This Month</p>
-                <p className="text-3xl font-bold text-slate-900">{dashboardData.stats.monthBookings}</p>
-                <p className="text-sm text-blue-600 mt-1">
-                  {dashboardData.stats.todayBookings} today
+                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Today's Bookings</p>
+                <p className="text-xl md:text-3xl font-bold text-slate-900">{dashboardData.stats.todayBookings}</p>
+                <p className="text-[10px] text-blue-600 mt-1 uppercase font-bold">
+                  Live Reservations
                 </p>
               </div>
-              <div className="bg-blue-100 rounded-lg p-3">
+              <div className="hidden sm:block bg-blue-100 rounded-lg p-3">
                 <Calendar className="h-6 w-6 text-blue-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Total Revenue</p>
-                <p className="text-3xl font-bold text-slate-900">₹{dashboardData.stats.totalRevenue.toLocaleString()}</p>
-                <p className="text-sm text-green-600 mt-1">
-                  +12% from last month
+                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Total Revenue</p>
+                <p className="text-xl md:text-3xl font-bold text-slate-900">₹{dashboardData.stats.totalRevenue.toLocaleString()}</p>
+                <p className="text-[10px] text-green-600 mt-1 font-bold">
+                  +12% vs last month
                 </p>
               </div>
-              <div className="bg-green-100 rounded-lg p-3">
+              <div className="hidden sm:block bg-green-100 rounded-lg p-3">
                 <DollarSign className="h-6 w-6 text-green-600" />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+          <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Avg Rating</p>
+                <p className="text-[10px] md:text-sm font-medium text-slate-600 mb-1 uppercase tracking-wider">Avg Rating</p>
                 {dashboardData.stats.averageRating > 0 ? (
                   <>
-                    <p className="text-3xl font-bold text-slate-900">{dashboardData.stats.averageRating}</p>
+                    <p className="text-xl md:text-3xl font-bold text-slate-900">{dashboardData.stats.averageRating}</p>
                     <div className="flex items-center mt-1">
-                      <StarRating rating={dashboardData.stats.averageRating} size={14} />
+                      <StarRating rating={dashboardData.stats.averageRating} size={12} />
                     </div>
                   </>
                 ) : (
-                  <p className="text-lg font-semibold text-slate-400">No ratings yet</p>
+                  <p className="text-sm font-semibold text-slate-400">No ratings yet</p>
                 )}
               </div>
-              <div className="bg-yellow-100 rounded-lg p-3">
+              <div className="hidden sm:block bg-yellow-100 rounded-lg p-3">
                 <Star className="h-6 w-6 text-yellow-600" />
               </div>
             </div>
@@ -1089,7 +1102,7 @@ const BusinessDashboard: React.FC = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {business.status === 'active' && (
+                       {business.status === 'active' && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 rounded-full">
                           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                           <span className="text-xs font-medium text-green-700">Active</span>
@@ -1177,34 +1190,36 @@ const BusinessDashboard: React.FC = () => {
                 View all
               </button>
             </div>
-            <div className="space-y-4">
-              {dashboardData.recentBookings.slice(0, 5).map(booking => (
-                <div key={booking._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
-                      <Users size={16} className="text-emerald-600" />
+            <div className="overflow-x-auto no-scrollbar -mx-2 px-2">
+              <div className="space-y-4 min-w-[320px]">
+                {dashboardData.recentBookings.slice(0, 5).map(booking => (
+                  <div key={booking._id} className="flex items-center justify-between p-4 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                        <Users size={16} className="text-emerald-600" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-900">{booking.customerName}</p>
+                        <p className="text-sm text-slate-600">{booking.businessName}</p>
+                        <p className="text-xs text-slate-500">{booking.date} at {booking.time}</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-slate-900">{booking.customerName}</p>
-                      <p className="text-sm text-slate-600">{booking.businessName}</p>
-                      <p className="text-xs text-slate-500">{booking.date} at {booking.time}</p>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">₹{booking.amount}</p>
+                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getBookingStatusColor(booking.status)}`}>
+                        {booking.status}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-semibold text-slate-900">₹{booking.amount}</p>
-                    <span className={`inline - flex px - 2 py - 1 text - xs font - medium rounded - full ${getBookingStatusColor(booking.status)} `}>
-                      {booking.status}
-                    </span>
+                ))}
+                {dashboardData.recentBookings.length === 0 && (
+                  <div className="text-center py-8">
+                    <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
+                    <p className="text-slate-500">No recent bookings</p>
+                    <p className="text-slate-400 text-sm">New bookings will appear here</p>
                   </div>
-                </div>
-              ))}
-              {dashboardData.recentBookings.length === 0 && (
-                <div className="text-center py-8">
-                  <Calendar className="mx-auto h-12 w-12 text-slate-300 mb-3" />
-                  <p className="text-slate-500">No recent bookings</p>
-                  <p className="text-slate-400 text-sm">New bookings will appear here</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
@@ -1237,14 +1252,14 @@ const BusinessDashboard: React.FC = () => {
                         {business.locationData ? (
                           <>
                             {business.locationData.area && `${business.locationData.area}, `}
-                            {business.locationData.city}, {business.locationData.state}
+                            {business.locationData.city}
                           </>
                         ) : (
                           business.location
                         )}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className={`inline - flex px - 2 py - 1 text - xs font - medium rounded - full ${getStatusColor(business.status)} `}>
+                        <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(business.status)}`}>
                           {business.status}
                         </span>
                         <span className="text-xs text-slate-500 capitalize">{business.type}</span>
@@ -1257,7 +1272,7 @@ const BusinessDashboard: React.FC = () => {
                     <div className="w-16 bg-slate-200 rounded-full h-2 mt-1">
                       <div
                         className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${business.utilizationRate}% ` }}
+                        style={{ width: `${business.utilizationRate}%` }}
                       ></div>
                     </div>
                   </div>
@@ -1280,29 +1295,29 @@ const BusinessDashboard: React.FC = () => {
         </div>
 
         {/* Performance Insights */}
-        <div className="bg-white rounded-xl p-6 shadow-sm border border-slate-200">
+        <div className="bg-white rounded-xl p-4 md:p-6 shadow-sm border border-slate-200 mt-8">
           <h3 className="text-lg font-semibold text-slate-900 mb-6">Performance Insights</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center p-4 bg-emerald-50 rounded-lg">
-              <div className="bg-emerald-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <TrendingUp className="text-emerald-600" size={20} />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6">
+            <div className="text-center p-3 md:p-4 bg-emerald-50 rounded-lg">
+              <div className="bg-emerald-100 rounded-full p-2.5 md:p-3 w-10 md:w-12 h-10 md:h-12 mx-auto mb-3 flex items-center justify-center">
+                <TrendingUp className="text-emerald-600 w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <p className="font-semibold text-slate-900">Growing Fast</p>
-              <p className="text-sm text-slate-600 mt-1">Your bookings increased by 25% this month</p>
+              <p className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-tighter">Growing Fast</p>
+              <p className="text-[10px] md:text-sm text-slate-600 mt-1">Bookings +25% this month</p>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="bg-blue-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <Target className="text-blue-600" size={20} />
+            <div className="text-center p-3 md:p-4 bg-blue-50 rounded-lg">
+              <div className="bg-blue-100 rounded-full p-2.5 md:p-3 w-10 md:w-12 h-10 md:h-12 mx-auto mb-3 flex items-center justify-center">
+                <Target className="text-blue-600 w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <p className="font-semibold text-slate-900">Peak Hours</p>
-              <p className="text-sm text-slate-600 mt-1">7-9 PM are your busiest hours</p>
+              <p className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-tighter">Peak Hours</p>
+              <p className="text-[10px] md:text-sm text-slate-600 mt-1">7-9 PM are your busiest</p>
             </div>
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="bg-purple-100 rounded-full p-3 w-12 h-12 mx-auto mb-3 flex items-center justify-center">
-                <Award className="text-purple-600" size={20} />
+            <div className="text-center p-3 md:p-4 bg-purple-50 rounded-lg">
+              <div className="bg-purple-100 rounded-full p-2.5 md:p-3 w-10 md:w-12 h-10 md:h-12 mx-auto mb-3 flex items-center justify-center">
+                <Award className="text-purple-600 w-5 h-5 md:w-6 md:h-6" />
               </div>
-              <p className="font-semibold text-slate-900">Top Rated</p>
-              <p className="text-sm text-slate-600 mt-1">Customers love your service quality</p>
+              <p className="text-xs md:text-sm font-bold text-slate-900 uppercase tracking-tighter">Top Rated</p>
+              <p className="text-[10px] md:text-sm text-slate-600 mt-1">Exceptional service quality</p>
             </div>
           </div>
         </div>
@@ -1384,7 +1399,7 @@ const BusinessDashboard: React.FC = () => {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
               <div className="absolute top-4 right-4">
-                <span className={`inline - flex px - 3 py - 1 text - xs font - semibold rounded - full shadow - sm ${getStatusColor(business.status)} `}>
+                <span className={`inline-flex px-3 py-1 text-xs font-semibold rounded-full shadow-sm ${getStatusColor(business.status)}`}>
                   {business.status}
                 </span>
               </div>
@@ -1569,7 +1584,7 @@ const BusinessDashboard: React.FC = () => {
                     <div className="text-sm font-medium text-slate-900">₹{booking.amount}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline - flex px - 2 py - 1 text - xs font - medium rounded - full ${getBookingStatusColor(booking.status)} `}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getBookingStatusColor(booking.status)}`}>
                       {booking.status}
                     </span>
                   </td>
@@ -2110,7 +2125,7 @@ const BusinessDashboard: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {tableStatuses.length > 0 ? tableStatuses.map(table => (
                     <div
                       key={table.tableId}
@@ -2213,8 +2228,8 @@ const BusinessDashboard: React.FC = () => {
         </div>
 
         {/* Navigation */}
-        <div className="mb-8">
-          <nav className="flex space-x-1 bg-white rounded-xl p-1 shadow-sm border border-slate-200">
+        <div className="mb-8 overflow-x-auto no-scrollbar -mx-4 px-4 sm:mx-0 sm:px-0">
+          <nav className="flex space-x-1 bg-white rounded-xl p-1 shadow-sm border border-slate-200 min-w-max">
             {[
               { id: 'overview', label: 'Overview', icon: BarChart3 },
               { id: 'businesses', label: 'Businesses', icon: Building2 },
@@ -2227,12 +2242,12 @@ const BusinessDashboard: React.FC = () => {
               <button
                 key={id}
                 onClick={() => changeViewMode(id as any)}
-                className={`flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200 ${viewMode === id
-                  ? 'bg-emerald-600 text-white shadow-sm'
+                className={`flex items-center gap-2 px-4 md:px-6 py-2.5 md:py-3 rounded-lg font-bold text-xs md:text-sm transition-all duration-200 whitespace-nowrap flex-shrink-0 ${viewMode === id
+                  ? 'bg-emerald-600 text-white shadow-md'
                   : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
                   }`}
               >
-                <Icon size={18} />
+                <Icon size={16} className="md:w-[18px] md:h-[18px]" />
                 {label}
               </button>
             ))}

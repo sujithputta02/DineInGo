@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createSession } from '../../utils/sessionGuard';
 import { motion } from 'framer-motion';
 import { auth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInWithPopup, provider } from '../../firebase';
 import { toast } from 'react-toastify';
@@ -40,7 +41,7 @@ const BusinessAuth: React.FC = () => {
             const user = userCredential.user;
 
             // 2. Register as Owner in Backend
-            await axios.post(`${API_URL}/api/business/register`, {
+            await axios.post(`${API_URL}/api/v1/business/register`, {
                 uid: user.uid,
                 email: user.email,
                 displayName: formData.name,
@@ -78,7 +79,8 @@ const BusinessAuth: React.FC = () => {
             }));
 
             toast.success("Login successful");
-            navigate('/business/dashboard');
+            const token = createSession(user.uid);
+            navigate(`/business/app/dashboard/${token}`);
         } catch (error: any) {
             console.error("Login Error:", error);
             toast.error("Invalid email or password");
@@ -94,7 +96,7 @@ const BusinessAuth: React.FC = () => {
             const user = result.user;
 
             // Register/Login with backend to ensure owner role
-            await axios.post(`${API_URL}/api/business/register`, {
+            await axios.post(`${API_URL}/api/v1/business/register`, {
                 uid: user.uid,
                 email: user.email,
                 displayName: user.displayName || 'Business Owner',
@@ -114,7 +116,8 @@ const BusinessAuth: React.FC = () => {
             // Ideally we check if they have restaurants, if not -> onboarding.
             // Let's optimize: try to fetch restaurants, if existing -> dashboard, else -> onboarding?
             // Or just go to dashboard and let dashboard prompt "No restaurants yet" (which it does).
-            navigate('/business/dashboard');
+            const token = createSession(user.uid);
+            navigate(`/business/app/dashboard/${token}`);
 
         } catch (error: any) {
             console.error("Google Auth Error:", error);

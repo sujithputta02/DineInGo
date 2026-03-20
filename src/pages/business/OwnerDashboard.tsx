@@ -35,7 +35,7 @@ const OwnerDashboard: React.FC = () => {
                 const user = JSON.parse(storedUser);
                 setUserData(user);
 
-                const response = await axios.get<{ success: boolean; data: Restaurant[] }>(`${API_URL}/api/business/restaurants/${user.uid}`);
+                const response = await axios.get<{ success: boolean; data: Restaurant[] }>(`${API_URL}/api/v1/business/restaurants/${user.uid}`);
                 if (response.data.success) {
                     setRestaurants(response.data.data);
                 }

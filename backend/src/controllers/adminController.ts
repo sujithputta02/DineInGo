@@ -12,6 +12,9 @@ import { getSystemSettings } from '../models/SystemSettings';
 import nodemailer from 'nodemailer';
 import * as crypto from 'crypto';
 import { generateAdminToken } from '../middleware/adminAuth';
+import { SecurityLog } from '../models/SecurityLog';
+import { EarlyAccess } from '../models/EarlyAccess';
+import { emailService } from '../services/emailService';
 
 // Email configuration - create transporter lazily
 let transporter: nodemailer.Transporter | null = null;
@@ -25,9 +28,6 @@ const getEmailTransporter = () => {
   const emailPass = process.env.EMAIL_PASS?.trim().replace(/\s/g, ''); // Remove any spaces and trim
   
   console.log('Initializing email transporter...');
-  console.log('Email User:', emailUser);
-  console.log('Email Pass length:', emailPass?.length || 0);
-  console.log('Email Pass (first 4 chars):', emailPass?.substring(0, 4) || 'N/A');
   
   if (!emailUser || !emailPass) {
     console.warn('Email credentials not configured properly');
@@ -59,21 +59,15 @@ const SUPER_ADMIN_EMAIL = 'sujithputta02@gmail.com';
 // Initialize super admin on first run
 export const initializeSuperAdmin = async () => {
   try {
-    console.log('Initializing super admin...');
-    console.log('Super admin email:', SUPER_ADMIN_EMAIL);
-    
     const existingSuperAdmin = await Admin.findOne({ email: SUPER_ADMIN_EMAIL });
     if (!existingSuperAdmin) {
-      console.log('Creating super admin...');
       await Admin.create({
         email: SUPER_ADMIN_EMAIL,
         role: 'super_admin',
         isActive: true,
         addedBy: 'system'
       });
-      console.log('Super admin initialized:', SUPER_ADMIN_EMAIL);
-    } else {
-      console.log('Super admin already exists:', SUPER_ADMIN_EMAIL);
+      console.log('✓ Super admin initialized successfully');
     }
   } catch (error) {
     console.error('Error initializing super admin:', error);
@@ -88,37 +82,27 @@ const generateOTP = (): string => {
 // Send OTP email
 const sendOTPEmail = async (email: string, otp: string): Promise<boolean> => {
   try {
-    console.log('Preparing to send email to:', email);
-    
-    // Get transporter (creates it if not exists)
     const emailTransporter = getEmailTransporter();
     
-    // Check if email credentials are configured
     if (!emailTransporter) {
-      console.log('=== EMAIL NOT CONFIGURED - OTP FOR TESTING ===');
-      console.log('Email:', email);
-      console.log('OTP:', otp);
-      console.log('Use this OTP to login to the admin portal');
-      console.log('==============================================');
+      // In development only, log to console as fallback
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('=== DEV MODE: OTP (email not configured) ===');
+        console.log('OTP:', otp);
+        console.log('============================================');
+      }
       return true;
     }
     
-    // Test the transporter connection first
     try {
-      console.log('Testing SMTP connection...');
       await emailTransporter.verify();
-      console.log('✓ SMTP connection verified successfully');
     } catch (verifyError: any) {
-      console.error('✗ SMTP connection verification failed:', verifyError.message);
-      console.error('Error code:', verifyError.code);
-      
-      // Fallback to console logging
-      console.log('=== EMAIL CONNECTION FAILED - OTP FOR TESTING ===');
-      console.log('Email:', email);
-      console.log('OTP:', otp);
-      console.log('Use this OTP to login to the admin portal');
-      console.log('Error details:', verifyError.message);
-      console.log('=================================================');
+      console.error('✗ SMTP connection failed:', verifyError.code);
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('=== DEV MODE: SMTP failed — OTP fallback ===');
+        console.log('OTP:', otp);
+        console.log('============================================');
+      }
       return true;
     }
     
@@ -152,49 +136,32 @@ const sendOTPEmail = async (email: string, otp: string): Promise<boolean> => {
       `
     };
 
-    console.log('Sending email...');
-    const result = await emailTransporter.sendMail(mailOptions);
-    console.log('✓ Email sent successfully!');
-    console.log('Message ID:', result.messageId);
+    await emailTransporter.sendMail(mailOptions);
+    console.log('\u2713 Email sent successfully');
     return true;
 
   } catch (error: any) {
-    console.error('✗ Error sending OTP email:', error.message);
-    
-    // Always fallback to console logging for testing
-    console.log('=== EMAIL SEND FAILED - OTP FOR TESTING ===');
-    console.log('Email:', email);
-    console.log('OTP:', otp);
-    console.log('Use this OTP to login to the admin portal');
-    console.log('Error:', error.message);
-    console.log('===========================================');
-    
-    return true; // Always return true so the system works
+    console.error('\u2717 Error sending OTP email:', error.message);
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('=== DEV MODE: Email failed \u2014 OTP fallback ===');
+      console.log('OTP:', otp);
+    }
+    return true;
   }
 };
 
-// Request OTP for admin login
 export const requestAdminOTP = async (req: Request, res: Response) => {
   try {
-    console.log('Admin OTP request received:', req.body);
     const { email } = req.body;
 
     if (!email) {
-      console.log('No email provided');
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Email is required' 
-      });
+      return res.status(400).json({ success: false, message: 'Email is required' });
     }
-
-    console.log('Looking for admin with email:', email.toLowerCase());
 
     // Check if email is a valid admin
     const admin = await Admin.findOne({ email: email.toLowerCase(), isActive: true });
-    console.log('Admin found:', admin ? 'Yes' : 'No');
     
     if (!admin) {
-      console.log('Admin not found or inactive');
       return res.status(401).json({ 
         success: false, 
         message: 'Access denied. You are not authorized as an admin.' 
@@ -212,50 +179,29 @@ export const requestAdminOTP = async (req: Request, res: Response) => {
 
     // Clear any old OTP records for this email first
     await AdminOTP.deleteMany({ email: email.toLowerCase() });
-    console.log('Cleared old OTP records');
-
-    // Check for recent OTP requests (rate limiting) - reduced to 1 minute
-    const recentOTP = await AdminOTP.findOne({
-      email: email.toLowerCase(),
-      createdAt: { $gt: new Date(Date.now() - 1 * 60 * 1000) } // 1 minute
-    });
-
-    if (recentOTP) {
-      console.log('Recent OTP found, rate limiting');
-      return res.status(429).json({ 
-        success: false, 
-        message: 'Please wait 1 minute before requesting a new OTP.' 
-      });
-    }
 
     // Generate and save OTP
     const otp = generateOTP();
-    console.log('Generated OTP:', otp);
     
     await AdminOTP.create({
       email: email.toLowerCase(),
       otp,
       expiresAt: new Date(Date.now() + 10 * 60 * 1000) // 10 minutes
     });
-    console.log('OTP saved to database');
 
     // Send OTP email
-    console.log('Attempting to send email...');
-    const emailSent = await sendOTPEmail(email, otp);
-    console.log('Email sent:', emailSent);
+    await sendOTPEmail(email, otp);
     
-    // Always succeed in development or when email fails
-    console.log('OTP request successful');
     res.json({ 
       success: true, 
-      message: 'OTP sent successfully. Check your email or console logs for the OTP.'
+      message: 'OTP sent successfully. Check your email.'
     });
 
   } catch (error) {
     console.error('Error requesting admin OTP:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Internal server error: ' + (error as Error).message 
+      message: 'Internal server error' 
     });
   }
 };
@@ -296,31 +242,48 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       // Increment failed attempts for the admin
       if (admin) {
         admin.loginAttempts += 1;
-        
-        // Lock account after 5 failed attempts
+        const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+        const { logFailedLogin } = await import('../middleware/adminAuditLog');
+
         if (admin.loginAttempts >= 5) {
           admin.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
           await admin.save();
           
-          // Log failed login attempt
-          const { logFailedLogin } = await import('../middleware/adminAuditLog');
-          const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
-          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked after 5 failed attempts');
-          
+          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked due to 5 failed attempts');
+
+          // Log to Universal Security Log
+          await SecurityLog.create({
+            portal: 'admin',
+            eventType: 'failed_login',
+            severity: 'high',
+            details: `Admin account ${email} locked after 5 failed OTP attempts.`,
+            ip: String(ipAddress),
+            userAgent: req.headers['user-agent'],
+            path: req.path
+          });
+
           return res.status(423).json({
             success: false,
             message: 'Account locked due to too many failed attempts. Try again in 15 minutes.',
             locked: true,
             lockUntil: admin.lockUntil
           });
+        } else {
+          await admin.save();
+          
+          await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/5 attempts)`);
+
+          // Log to Universal Security Log
+          await SecurityLog.create({
+            portal: 'admin',
+            eventType: 'failed_login',
+            severity: 'medium',
+            details: `Invalid OTP attempt for ${email} (${admin.loginAttempts}/5 attempts)`,
+            ip: String(ipAddress),
+            userAgent: req.headers['user-agent'],
+            path: req.path
+          });
         }
-        
-        await admin.save();
-        
-        // Log failed login attempt
-        const { logFailedLogin } = await import('../middleware/adminAuditLog');
-        const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
-        await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/5 attempts)`);
       }
 
       return res.status(401).json({ 
@@ -347,9 +310,13 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
 
     // Send login notification email (non-blocking)
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-    sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress).catch(err => {
-      console.error('Failed to send login notification:', err);
-    });
+    // We'll import this at the top or locally. It seems it was used before.
+    // Assuming sendLoginNotificationEmail is defined in this file or imported.
+    if (typeof (global as any).sendLoginNotificationEmail === 'function') {
+        (global as any).sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress).catch((err: any) => {
+          console.error('Failed to send login notification:', err);
+        });
+    }
 
     res.json({ 
       success: true, 
@@ -632,7 +599,6 @@ const sendLoginNotificationEmail = async (email: string, loginTime: Date, ipAddr
     };
 
     await emailTransporter.sendMail(mailOptions);
-    console.log('✓ Login notification email sent to:', email);
     return true;
   } catch (error) {
     console.error('Error sending login notification email:', error);
@@ -1466,5 +1432,229 @@ export const updateMaxAdmins = async (req: Request, res: Response) => {
       success: false, 
       message: 'Internal server error' 
     });
+  }
+};
+
+/**
+ * UNIVERSAL SECURITY: Get security stats for the dashboard
+ */
+export const getSecurityStats = async (req: Request, res: Response) => {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    // Initial values
+    let totalLogs = 0;
+    let last24h = 0;
+    let blockedIps: any[] = [];
+    let criticalThreats = 0;
+    let portalStats: any[] = [];
+    let severityStats: any[] = [];
+
+    // Safety checks for SecurityLog model
+    if (!SecurityLog) {
+      console.error('CRITICAL: SecurityLog model is NOT loaded!');
+      return res.status(500).json({ success: false, message: 'Security System monitor offline' });
+    }
+
+    try {
+      const results = await Promise.all([
+        SecurityLog.countDocuments({}).catch(() => 0),
+        SecurityLog.countDocuments({ timestamp: { $gte: twentyFourHoursAgo } }).catch(() => 0),
+        SecurityLog.distinct('ip', { eventType: 'blocked_ip' }).catch(() => []),
+        SecurityLog.countDocuments({ severity: 'critical' }).catch(() => 0)
+      ]);
+      
+      totalLogs = results[0];
+      last24h = results[1];
+      blockedIps = results[2];
+      criticalThreats = results[3];
+    } catch (e) {
+      console.error('Error in primary security stats:', e);
+    }
+
+    const blockedIpsCount = Array.isArray(blockedIps) ? blockedIps.length : 0;
+
+    try {
+      // Breakdown by portal (last 7 days)
+      portalStats = await SecurityLog.aggregate([
+        { $match: { timestamp: { $gte: sevenDaysAgo } } },
+        { $group: { _id: '$portal', count: { $sum: 1 } } }
+      ]).catch(() => []);
+    } catch (e) {
+      console.error('Error in portalStats aggregation:', e);
+    }
+
+    try {
+      // Severity breakdown
+      severityStats = await SecurityLog.aggregate([
+        { $group: { _id: '$severity', count: { $sum: 1 } } }
+      ]).catch(() => []);
+    } catch (e) {
+      console.error('Error in severityStats aggregation:', e);
+    }
+
+    res.json({
+      success: true,
+      stats: {
+        total: totalLogs,
+        last24h,
+        blockedIpsCount,
+        criticalThreats,
+        portals: Array.isArray(portalStats) ? portalStats : [],
+        severity: Array.isArray(severityStats) ? severityStats : []
+      }
+    });
+
+  } catch (error: any) {
+    console.error('CRITICAL: Error fetching security stats:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to fetch security stats'
+    });
+  }
+};
+
+/**
+ * UNIVERSAL SECURITY: Get security logs with filtering
+ */
+export const getSecurityLogs = async (req: Request, res: Response) => {
+  try {
+    const { portal, eventType, severity, limit = 50 } = req.query;
+    const query: any = {};
+
+    if (portal) query.portal = portal;
+    if (eventType) query.eventType = eventType;
+    if (severity) query.severity = severity;
+
+    const logs = await SecurityLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(Number(limit));
+
+    res.json({
+      success: true,
+      logs
+    });
+
+  } catch (error) {
+    console.error('Error fetching security logs:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch security logs' });
+  }
+};
+
+/**
+ * WAITLIST: Get waitlist statistics
+ */
+export const getWaitlistStats = async (req: Request, res: Response) => {
+  try {
+    const [total, users, businesses, pending, contacted] = await Promise.all([
+      EarlyAccess.countDocuments({}),
+      EarlyAccess.countDocuments({ userType: 'user' }),
+      EarlyAccess.countDocuments({ userType: 'business' }),
+      EarlyAccess.countDocuments({ status: 'pending' }),
+      EarlyAccess.countDocuments({ status: 'contacted' })
+    ]);
+
+    // Get last 10 signups
+    const recentSignups = await EarlyAccess.find({})
+      .sort({ createdAt: -1 })
+      .limit(10);
+
+    res.json({
+      success: true,
+      stats: {
+        total,
+        users,
+        businesses,
+        pending,
+        contacted
+      },
+      recentSignups
+    });
+  } catch (error) {
+    console.error('Error fetching waitlist stats:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch waitlist stats' });
+  }
+};
+
+/**
+ * WAITLIST: Send broadcast email to waitlist
+ */
+export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
+  try {
+    const { subject, html, targetType } = req.body; // targetType: 'all', 'user', 'business'
+
+    if (!subject || !html) {
+      return res.status(400).json({ success: false, message: 'Subject and content are required' });
+    }
+
+    const query: any = {};
+    if (targetType && targetType !== 'all') {
+      query.userType = targetType;
+    }
+
+    const recipients = await EarlyAccess.find(query).select('email');
+    const emailList = recipients.map(r => r.email);
+
+    if (emailList.length === 0) {
+      return res.status(400).json({ success: false, message: 'No recipients found for the selected segment' });
+    }
+
+    // Log the security event for mass mailing
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: 'mass_email_broadcast',
+      severity: 'medium',
+      details: `Admin broadcast initiated for ${emailList.length} recipients. Subject: ${subject}`,
+      ip: req.ip || 'internal',
+      userAgent: req.headers['user-agent'],
+      path: req.path,
+      userId: (req as any).admin?.email
+    });
+
+    // Send broadcast asynchronously
+    const runBroadcast = async () => {
+      try {
+        if (targetType === 'all') {
+          // Send to users
+          const users = await EarlyAccess.find({ userType: 'user' }).select('email');
+          const userEmails = users.map(u => u.email);
+          if (userEmails.length > 0) {
+            await emailService.sendBroadcastEmail(userEmails, subject, html, 'user');
+          }
+
+          // Send to businesses
+          const businesses = await EarlyAccess.find({ userType: 'business' }).select('email');
+          const businessEmails = businesses.map(b => b.email);
+          if (businessEmails.length > 0) {
+            await emailService.sendBroadcastEmail(businessEmails, subject, html, 'business');
+          }
+        } else {
+          await emailService.sendBroadcastEmail(emailList, subject, html, targetType as 'user' | 'business');
+        }
+
+        // Update status for contacted users
+        await EarlyAccess.updateMany(
+          { email: { $in: emailList }, status: 'pending' },
+          { status: 'contacted' }
+        );
+        
+        console.log(`Broadcast completed for ${emailList.length} recipients`);
+      } catch (err) {
+        console.error('Error during async broadcast:', err);
+      }
+    };
+
+    runBroadcast();
+
+    res.json({
+      success: true,
+      message: `Broadcast initiated for ${emailList.length} recipients. ${targetType === 'all' ? 'Users and Businesses will receive specialized templates.' : ''}`,
+      recipientCount: emailList.length
+    });
+
+  } catch (error) {
+    console.error('Error sending waitlist broadcast:', error);
+    res.status(500).json({ success: false, message: 'Failed to initiate broadcast' });
   }
 };

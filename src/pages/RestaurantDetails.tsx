@@ -311,10 +311,10 @@ const RestaurantDetails = () => {
       try {
         const user = JSON.parse(userStr);
         if (user.uid && id) {
-          const response = await userAPI.getFavorites(user.uid);
-          const favorites = response.favorites || [];
-          // Check if current ID exists in favorites array (handling both string IDs and object populations)
-          const isFav = favorites.some((f: any) => (typeof f === 'string' ? f : f._id || f.id) === id);
+          const { favoritesApi } = await import('../services/favoritesApi');
+          const response = await favoritesApi.get(user.uid);
+          const restFavs = response.restaurantIds || [];
+          const isFav = restFavs.includes(id);
           setIsFavorite(isFav);
         }
       } catch (err) {
@@ -336,11 +336,12 @@ const RestaurantDetails = () => {
       const user = JSON.parse(userStr);
       if (!user.uid || !id) return;
 
+      const { favoritesApi } = await import('../services/favoritesApi');
       if (isFavorite) {
-        await userAPI.removeFavorite(user.uid, id);
+        await favoritesApi.removeRestaurant(user.uid, id);
         toast.success('Removed from favorites');
       } else {
-        await userAPI.addFavorite(user.uid, id);
+        await favoritesApi.addRestaurant(user.uid, id);
         toast.success('Added to favorites');
       }
       setIsFavorite(!isFavorite);
@@ -388,52 +389,51 @@ const RestaurantDetails = () => {
         {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard')}
-          className="absolute top-4 left-4 z-30 p-2 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors"
+          className="absolute top-3 md:top-4 left-3 md:left-4 z-30 p-2 bg-white/90 rounded-full shadow-lg hover:bg-white transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
         >
-          <ArrowLeft size={24} className="text-gray-700" />
+          <ArrowLeft size={20} className="text-gray-700" />
         </button>
 
         {/* Hero Section with Restaurant Image */}
-        <div className="relative h-[400px]">
+        <div className="relative h-[250px] md:h-[350px] lg:h-[400px]">
           <div className="absolute inset-0 bg-black/40 z-10" />
           <img
             src={restaurant.image}
             alt={restaurant.name}
             className="w-full h-full object-cover"
           />
-          <div className="absolute bottom-8 left-8 z-20 text-white">
-            <div className="flex items-center gap-4">
+          <div className="absolute bottom-4 md:bottom-6 lg:bottom-8 left-4 md:left-6 lg:left-8 z-20 text-white">
+            <div className="flex items-center gap-2 md:gap-4">
               <button
                 onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                className="p-2 hover:bg-gray-100 rounded-full min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
-                <ChevronLeft className="w-6 h-6" />
+                <ChevronLeft className="w-5 md:w-6 h-5 md:h-6" />
               </button>
-              <h1 className="text-xl font-semibold">{restaurant.name}</h1>
+              <h1 className="text-base md:text-xl lg:text-2xl font-semibold">{restaurant.name}</h1>
             </div>
-            <p className="text-lg mb-2">{restaurant.cuisine?.join(', ')}</p>
-            <div className="flex items-center gap-6 text-sm">
+            <p className="text-sm md:text-base lg:text-lg mb-2 mt-1 md:mt-2">{restaurant.cuisine?.join(', ')}</p>
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 lg:gap-6 text-xs md:text-sm">
               <div className="flex items-center gap-2">
-                <Clock size={16} />
+                <Clock size={14} className="md:w-4 md:h-4" />
                 <span>{restaurant && isRestaurantOpen(restaurant) ? 'Open Now' : 'Closed'}</span>
-
               </div>
               <div className="flex items-center gap-2">
-                <MapPin size={16} />
+                <MapPin size={14} className="md:w-4 md:h-4" />
                 <a
                   href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-emerald-500 transition-colors"
+                  className="hover:text-emerald-500 transition-colors line-clamp-1"
                 >
                   <span>{restaurant.address}</span>
                 </a>
               </div>
-              <div className="flex items-center gap-2 bg-black/30 px-3 py-1 rounded-full">
+              <div className="flex items-center gap-2 bg-black/30 px-2 md:px-3 py-1 rounded-full">
                 {averageRating !== null ? (
-                  <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl">
-                    <span className="text-emerald-400 text-lg">★</span>
-                    <span className="text-lg font-bold text-gray-900 dark:text-white">{averageRating}</span>
+                  <div className="flex items-center gap-1 md:gap-1.5 px-2 md:px-3 py-1 md:py-1.5 rounded-xl">
+                    <span className="text-emerald-400 text-base md:text-lg">★</span>
+                    <span className="text-base md:text-lg font-bold text-gray-900 dark:text-white">{averageRating}</span>
                   </div>
                 ) : (
                   <span className="text-xs font-semibold text-emerald-400">Not yet rated</span>
@@ -444,9 +444,9 @@ const RestaurantDetails = () => {
         </div>
 
         {/* Main Content */}
-        <div className="max-w-7xl mx-auto px-4 py-8 grid grid-cols-3 gap-8">
+        <div className="max-w-7xl mx-auto px-3 md:px-4 py-6 md:py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
           {/* Booking Section */}
-          <div className="col-span-2">
+          <div className="lg:col-span-2">
             <div className="bg-white rounded-2xl p-6 shadow-sm mb-8">
               <h2 className="text-2xl font-semibold mb-6">Make a Reservation</h2>
 

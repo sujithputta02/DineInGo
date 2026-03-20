@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { createSession } from '../../utils/sessionGuard';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { ArrowLeft, Menu as MenuIcon, Map, Settings, Info } from 'lucide-react';
@@ -22,7 +23,7 @@ const ManageRestaurant: React.FC = () => {
             const user = JSON.parse(storedUser);
 
             // Fetch from the owner's list of restaurants
-            const response = await axios.get<{ success: boolean; data: any[] }>(`${API_URL}/api/business/restaurants/${user.uid}`);
+            const response = await axios.get<{ success: boolean; data: any[] }>(`${API_URL}/api/v1/business/restaurants/${user.uid}`);
             if (response.data.success) {
                 // Find the specific restaurant by _id or restaurantId
                 const found = response.data.data.find((r: any) => r._id === id || r.restaurantId === id);
@@ -39,7 +40,7 @@ const ManageRestaurant: React.FC = () => {
     const handlePublish = async () => {
         if (!restaurant) return;
         try {
-            await axios.put(`${API_URL}/api/business/restaurant/${restaurant._id}`, {
+            await axios.put(`${API_URL}/api/v1/business/restaurant/${restaurant._id}`, {
                 ownerId: restaurant.ownerId,
                 isPublished: true
             });
@@ -62,7 +63,11 @@ const ManageRestaurant: React.FC = () => {
     return (
         <div className="max-w-6xl mx-auto px-4 py-8">
             <button
-                onClick={() => navigate('/business/dashboard')}
+                onClick={() => {
+                    const u = JSON.parse(sessionStorage.getItem('userData') || '{}');
+                    const token = createSession(u.uid || 'temp');
+                    navigate(`/business/app/dashboard/${token}`);
+                }}
                 className="flex items-center gap-2 text-slate-500 hover:text-slate-800 mb-6 font-medium transition-colors"
             >
                 <ArrowLeft size={20} /> Back to Dashboard

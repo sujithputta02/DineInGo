@@ -536,10 +536,11 @@ const BookingManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Bookings Table */}
+            {/* Bookings Table (Desktop) / Cards (Mobile) */}
             <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-slate-200">
+              {/* Desktop view: Table inside scrollable container */}
+              <div className="hidden md:block overflow-x-auto">
+                <table className="min-w-[1000px] w-full divide-y divide-slate-200">
                   <thead className="bg-slate-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
@@ -610,15 +611,12 @@ const BookingManagement: React.FC = () => {
                             {booking.tableNumber && (
                               <div className="text-sm text-slate-500">Table {booking.tableNumber}</div>
                             )}
-                            {booking.seatNumbers && (
-                              <div className="text-sm text-slate-500">{booking.seatNumbers.join(', ')}</div>
-                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
                             <div className="text-sm font-medium text-slate-900">₹{booking.amount}</div>
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>
+                            <span className={`inline-flex px-2 py-1 text-[10px] font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>
                               {booking.paymentStatus}
                             </span>
                           </div>
@@ -638,15 +636,16 @@ const BookingManagement: React.FC = () => {
                                 setSelectedBooking(booking);
                                 setShowBookingModal(true);
                               }}
-                              className="text-emerald-600 hover:text-emerald-900"
+                              className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                              title="View Details"
                             >
-                              <Eye size={16} />
+                              <Eye size={18} />
                             </button>
-                            <button className="text-slate-600 hover:text-slate-900">
-                              <Edit size={16} />
+                            <button className="p-1 text-slate-600 hover:bg-slate-100 rounded">
+                              <Edit size={18} />
                             </button>
-                            <button className="text-red-600 hover:text-red-900">
-                              <Trash2 size={16} />
+                            <button className="p-1 text-red-600 hover:bg-red-50 rounded">
+                              <Trash2 size={18} />
                             </button>
                           </div>
                         </td>
@@ -656,14 +655,78 @@ const BookingManagement: React.FC = () => {
                 </table>
               </div>
 
+              {/* Mobile view: List of Cards */}
+              <div className="md:hidden divide-y divide-slate-100">
+                {filteredBookings.map(booking => (
+                  <div key={booking._id} className="p-4 hover:bg-slate-50 transition-colors">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">#{booking.bookingNumber || booking._id.slice(-6)}</span>
+                          <span className={`px-2 py-0.5 text-[10px] font-bold rounded-full uppercase ${getStatusColor(booking.status)}`}>
+                            {booking.status}
+                          </span>
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-base">{booking.customerName}</h4>
+                        <p className="text-xs text-slate-500">{booking.businessName}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-emerald-600 text-lg">₹{booking.amount}</p>
+                        <p className="text-[10px] text-slate-400 font-medium uppercase">{booking.paymentStatus}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 gap-3 mb-4">
+                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                        <Calendar size={14} className="text-emerald-500" />
+                        <span>{booking.date}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                        <Clock size={14} className="text-emerald-500" />
+                        <span>{booking.time}</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg">
+                        <Users size={14} className="text-emerald-500" />
+                        <span>{booking.seats} Seats</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg truncate">
+                        <Mail size={14} className="text-emerald-500" />
+                        <span className="truncate">{booking.customerEmail}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setSelectedBooking(booking);
+                          setShowBookingModal(true);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-2 py-2.5 text-xs font-bold bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors uppercase tracking-wider"
+                      >
+                        <Eye size={14} />
+                        View Details
+                      </button>
+                      <button className="px-3 py-2.5 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-lg transition-colors">
+                        <Edit size={16} />
+                      </button>
+                      <button className="px-3 py-2.5 text-red-400 hover:text-red-600 bg-red-50 hover:bg-red-100 rounded-lg transition-colors">
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
               {filteredBookings.length === 0 && (
-                <div className="text-center py-12">
-                  <Calendar className="mx-auto h-12 w-12 text-slate-400" />
-                  <h3 className="mt-2 text-sm font-medium text-slate-900">No bookings found</h3>
-                  <p className="mt-1 text-sm text-slate-500">
+                <div className="text-center py-20 px-4">
+                  <div className="bg-slate-100 rounded-full p-6 w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                    <Calendar className="h-12 w-12 text-slate-400" />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-2">No Bookings Found</h3>
+                  <p className="text-slate-500 max-w-sm mx-auto">
                     {searchTerm || Object.values(filters).some(f => f !== 'all')
-                      ? 'Try adjusting your search or filter criteria.'
-                      : 'No bookings have been made yet.'
+                      ? 'Adjust your filters or search terms to find what you are looking for.'
+                      : 'You do not have any bookings yet. Once customers start booking, they will appear here.'
                     }
                   </p>
                 </div>

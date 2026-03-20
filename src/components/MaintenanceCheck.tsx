@@ -28,7 +28,7 @@ const MaintenanceCheck: React.FC<MaintenanceCheckProps> = ({ children }) => {
   useEffect(() => {
     const checkMaintenanceStatus = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/admin/maintenance-status`);
+        const response = await axios.get(`${API_URL}/api/v1/admin/maintenance-status`);
         const maintenanceMode = (response.data as any).maintenanceMode;
         
         setIsInMaintenance(maintenanceMode);

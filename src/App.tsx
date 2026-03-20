@@ -19,6 +19,7 @@ import UserFeedbackForm from './components/UserFeedbackForm';
 import FoodMenu from './pages/FoodMenu';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminSecurityPage from './pages/AdminSecurityPage';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
 import AdminBusinessesPage from './pages/AdminBusinessesPage';
@@ -28,6 +29,7 @@ import AdminSystemHealthPage from './pages/AdminSystemHealthPage';
 import AdminReportsPage from './pages/AdminReportsPage';
 import AdminIssueReportsPage from './pages/AdminIssueReportsPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
+import AdminWaitlistPage from './pages/AdminWaitlistPage';
 import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceCheck from './components/MaintenanceCheck';
 import AuthActionHandler from './pages/AuthActionHandler';
@@ -63,6 +65,7 @@ import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
 import AIChatbot from './components/AIChatbot';
+import { EntityProvider } from './contexts/EntityContext';
 import FloorPlanDesigner from './components/FloorPlanDesigner';
 import EventSeatingDesigner from './components/EventSeatingDesigner';
 import OnboardingPage from './pages/OnboardingPage';
@@ -90,7 +93,8 @@ function usePageTitle() {
     else if (location.pathname.startsWith('/debug')) title = 'Debug | DineInGo';
     else if (location.pathname.startsWith('/auth/action')) title = 'Auth Action | DineInGo';
     else if (location.pathname.startsWith('/admin/notifications')) title = 'Admin Notifications | DineInGo';
-    else if (location.pathname.startsWith('/admin-login')) title = 'Admin Login | DineInGo';
+    else if (location.pathname.startsWith('/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9')) title = 'Admin Portal | DineInGo';
+    else if (location.pathname.includes('/security')) title = 'Security Command Center | DineInGo';
     document.title = title;
   }, [location]);
 }
@@ -107,8 +111,9 @@ const App: React.FC = () => {
       <PageTitleHandler />
       <AuthProvider>
         <UserActivityProvider>
-          <NotificationProvider>
-            <MaintenanceCheck>
+          <EntityProvider>
+            <NotificationProvider>
+              <MaintenanceCheck>
               <ToastContainer
                 position="top-center"
                 autoClose={5000}
@@ -134,8 +139,8 @@ const App: React.FC = () => {
                 <Route path="/business/businessSignup" element={<BusinessSignup />} />
                 <Route path="/business/forgot-password" element={<ForgotPassword />} />
 
-                {/* Redirect /business/dashboard to /business/app/dashboard */}
-                <Route path="/business/dashboard" element={<Navigate to="/business/app/dashboard" replace />} />
+                {/* Redirect old /business/dashboard to trigger a new login if they don't have a token URL */}
+                <Route path="/business/dashboard" element={<Navigate to="/business/businessLogin" replace />} />
                 <Route path="/business/onboarding" element={<Navigate to="/business/app/onboarding" replace />} />
                 <Route path="/business/edit/:id" element={<Navigate to="/business/app/edit/:id" replace />} />
                 <Route path="/business/view/:id" element={<Navigate to="/business/app/view/:id" replace />} />
@@ -154,7 +159,9 @@ const App: React.FC = () => {
 
                 {/* Customer Protected Routes (Redirect Owners to Business) */}
                 <Route element={<CustomerRoute />}>
-                  <Route path="/dashboard" element={<DashboardPage />} />
+                  {/* Bare /dashboard redirects to login — valid sessions use /dashboard/:sessionToken */}
+                  <Route path="/dashboard" element={<Navigate to="/login" replace />} />
+                  <Route path="/dashboard/:sessionToken" element={<DashboardPage />} />
                   <Route path="/restaurant/:id" element={<RestaurantDetails />} />
                   <Route path="/restaurant/:id/preview" element={<ReservationPreview />} />
                   <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
@@ -165,12 +172,20 @@ const App: React.FC = () => {
                   <Route path="/event/:id/preview" element={<EventPreview />} />
                 </Route>
 
-                <Route path="/admin-login" element={<AdminLoginPage />} />
+                <Route path="/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9" element={<AdminLoginPage />} />
+                
+                {/* Redirect standard admin paths to landing page (Security Trapdoor) */}
+                <Route path="/admin-login" element={<Navigate to="/" replace />} />
 
-                {/* Admin Protected Routes */}
-                <Route path="/admin" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
-                  <Route index element={<Navigate to="/admin/dashboard" replace />} />
+                {/* Admin Protected Routes - Standard path triggers redirect to landing page if no session */}
+                <Route path="/admin" element={<Navigate to="/" replace />} />
+
+                {/* Admin Protected Routes with Session Token */}
+                <Route path="/admin/:sessionToken" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
+                  <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="security" element={<AdminSecurityPage />} />
+                  <Route path="waitlist" element={<AdminWaitlistPage />} />
                   <Route path="users" element={<AdminUsersPage />} />
                   <Route path="notifications" element={<AdminNotificationsPage />} />
                   <Route path="businesses" element={<AdminBusinessesPage />} />
@@ -182,14 +197,14 @@ const App: React.FC = () => {
                   <Route path="settings" element={<AdminSettingsPage />} />
                 </Route>
 
-                <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
                 <Route path="/privacy" element={<PrivacyPolicyPage />} />
 
                 {/* Business Protected Routes */}
                 <Route path="/business/app" element={<ProtectedBusinessRoute />}>
                   <Route element={<BusinessLayout />}>
-                    <Route index element={<BusinessDashboard />} />
-                    <Route path="dashboard" element={<BusinessDashboard />} />
+                    <Route index element={<Navigate to="/business/businessLogin" replace />} />
+                    <Route path="dashboard" element={<Navigate to="/business/businessLogin" replace />} />
+                    <Route path="dashboard/:sessionToken" element={<BusinessDashboard />} />
                     <Route path="notifications" element={<BusinessNotifications />} />
                     <Route path="onboarding" element={<BusinessOnboarding />} />
                     <Route path="edit/:id" element={<BusinessOnboarding />} />
@@ -219,6 +234,7 @@ const App: React.FC = () => {
               </Routes>
             </MaintenanceCheck>
           </NotificationProvider>
+          </EntityProvider>
         </UserActivityProvider>
       </AuthProvider>
     </Router>

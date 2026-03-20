@@ -5,13 +5,13 @@ export const API_CONFIG = {
   
   // API endpoints
   ENDPOINTS: {
-    PROFILE: '/api/profile',
-    USERS: '/api/users',
-    BOOKINGS: '/api/bookings',
-    RESTAURANTS: '/api/restaurants',
-    EVENTS: '/api/events',
-    FAVORITES: '/api/favorites',
-    NOTIFICATIONS: '/api/notifications',
+    PROFILE: '/api/v1/profile',
+    USERS: '/api/v1/users',
+    BOOKINGS: '/api/v1/bookings',
+    RESTAURANTS: '/api/v1/restaurants',
+    EVENTS: '/api/v1/events',
+    FAVORITES: '/api/v1/favorites',
+    NOTIFICATIONS: '/api/v1/notifications',
   },
   
   // Helper to get full URL

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Trash2, Loader } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useEntity } from '../contexts/EntityContext';
 import { toast } from 'react-toastify';
 
 interface Message {
@@ -27,6 +28,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const auth = useAuth();
+  const { visibleEntities } = useEntity();
 
   const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001';
 
@@ -47,7 +49,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
     setIsLoadingHistory(true);
     try {
-      const response = await fetch(`${API_URL}/api/chatbot/history/${auth.currentUser.uid}`);
+      const response = await fetch(`${API_URL}/api/v1/chatbot/history/${auth.currentUser.uid}`);
       const data = await response.json();
 
       if (data.success && data.history.length > 0) {
@@ -90,7 +92,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${API_URL}/api/chatbot/message`, {
+      const response = await fetch(`${API_URL}/api/v1/chatbot/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -101,7 +103,13 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
           userContext: {
             ...userContext,
             userName: auth.currentUser.displayName || userContext?.userName,
-            email: auth.currentUser.email || userContext?.email
+            email: auth.currentUser.email || userContext?.email,
+            visibleEntities: visibleEntities.map(e => ({
+              name: e.name,
+              type: e.type,
+              cuisine: e.cuisine,
+              location: e.location
+            }))
           }
         })
       });
@@ -140,7 +148,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
     if (!confirmClear) return;
 
     try {
-      await fetch(`${API_URL}/api/chatbot/session/${auth.currentUser.uid}`, {
+      await fetch(`${API_URL}/api/v1/chatbot/session/${auth.currentUser.uid}`, {
         method: 'DELETE'
       });
 

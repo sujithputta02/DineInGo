@@ -183,7 +183,7 @@ const DineInGoOnboarding: React.FC = () => {
     setError(null);
     try {
       // The API route is proxied so we can just use /api/send-email
-      const response = await fetch('/api/send-email', {
+      const response = await fetch('/api/v1/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

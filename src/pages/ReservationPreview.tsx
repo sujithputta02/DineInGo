@@ -219,7 +219,7 @@ const ReservationPreview: React.FC = () => {
 
   const sendEmail = async (data: any) => {
     try {
-      const response = await fetch('/api/send-email', {
+      const response = await fetch('/api/v1/send-email', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

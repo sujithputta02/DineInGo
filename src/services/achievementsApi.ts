@@ -4,7 +4,7 @@ export const achievementsApi = {
   // Get user achievements
   async getUserAchievements(userId: string) {
     try {
-      const response = await fetch(`${API_URL}/api/achievements/${userId}`);
+      const response = await fetch(`${API_URL}/api/v1/achievements/${userId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch achievements');
       }
@@ -18,7 +18,7 @@ export const achievementsApi = {
   // Update user stats
   async updateUserStats(userId: string, action: string, data: any) {
     try {
-      const response = await fetch(`${API_URL}/api/achievements/${userId}/stats`, {
+      const response = await fetch(`${API_URL}/api/v1/achievements/${userId}/stats`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -40,7 +40,7 @@ export const achievementsApi = {
   // Get user stats
   async getUserStats(userId: string) {
     try {
-      const response = await fetch(`${API_URL}/api/achievements/${userId}/stats`);
+      const response = await fetch(`${API_URL}/api/v1/achievements/${userId}/stats`);
       if (!response.ok) {
         throw new Error('Failed to fetch user stats');
       }

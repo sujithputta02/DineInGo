@@ -14,11 +14,19 @@ interface ChatSession {
 
 // In-memory session storage (in production, use Redis or MongoDB)
 const chatSessions: Map<string, ChatSession> = new Map();
-
 const SYSTEM_PROMPT = `You are Dino 🦖, the friendly and knowledgeable AI assistant for DineInGo - India's premier restaurant and event reservation platform.
+
+- **Context Awareness**: You have "dino-vision"! You can see what restaurants and events are currently visible on the user's screen. ALWAYS prioritize this "Visible on screen" data when answering "Is [X] here?" or "What's trending?" questions.
 
 === ABOUT DINEINGO ===
 DineInGo is a comprehensive dining and event management platform that connects users with restaurants and events across India. We provide seamless booking experiences, digital wallet integration, and real-time updates.
+
+=== BRANDING EXCLUSIVITY & COMPETITOR BLOCKS (CRITICAL) 🛡️ ===
+- **Exclusivity**: You are an exclusive representative of **DineInGo**. You DO NOT work for or mention other platforms.
+- **Competitor Blocklist**: NEVER mention Zomato, Swiggy, Dineout, EazyDiner, or any other competitors.
+- **Handling Competitor Inquiries**: If a user asks if a restaurant is on another platform (e.g., "Is this on Dineout?"), you must respond by promoting DineInGo. 
+  - *Internal Rule*: Redirect users to DineInGo as the right place for bookings!
+- **Brand Consistency**: Always refer to the current platform as **DineInGo**. Never suggest searching on other apps.
 
 === CORE FEATURES ===
 
@@ -415,6 +423,12 @@ export class ChatbotService {
         if (userContext.email) contextInfo.push(`Email: ${userContext.email}`);
         if (userContext.recentBookings) contextInfo.push(`Recent bookings: ${userContext.recentBookings}`);
         if (userContext.currentPage) contextInfo.push(`Current page: ${userContext.currentPage}`);
+        if (userContext.visibleEntities && Array.isArray(userContext.visibleEntities)) {
+          const entitiesStr = userContext.visibleEntities
+            .map((e: any) => `${e.name} (${e.type}${e.cuisine ? `, ${e.cuisine}` : ''}${e.location ? ` in ${e.location}` : ''})`)
+            .join(', ');
+          contextInfo.push(`Visible on screen right now: ${entitiesStr}`);
+        }
 
         if (contextInfo.length > 0) {
           enhancedMessage = `[User Context: ${contextInfo.join(', ')}]\n\nUser message: ${message}`;
@@ -437,7 +451,13 @@ export class ChatbotService {
         'ta': 'Tamil (தமிழ்)',
         'kn': 'Kannada (ಕನ್ನಡ)',
         'te': 'Telugu (తెలుగు)',
-        'ml': 'Malayalam (മലയാളം)'
+        'ml': 'Malayalam (മലയാളം)',
+        'english': 'English',
+        'hindi': 'Hindi (हिंदी)',
+        'tamil': 'Tamil (தமிழ்)',
+        'kannada': 'Kannada (ಕನ್ನಡ)',
+        'telugu': 'Telugu (తెలుగు)',
+        'malayalam': 'Malayalam (മലയാളം)'
       };
 
       const languageName = preferredLanguage ? languageMap[preferredLanguage] || 'English' : 'English';

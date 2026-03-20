@@ -71,7 +71,6 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
   while (attempt < retries) {
     attempt++;
     try {
-      console.log(`API request attempt ${attempt} to ${url}`);
       const response = await fetch(url, defaultOptions);
       clearTimeout(timeoutId);
 
@@ -88,7 +87,6 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
 
       // Check if it's an abort error (timeout or cancelled)
       if (error.name === 'AbortError' || error.message.includes('aborted')) {
-        console.log(`API request to ${url} was aborted (timeout or cancelled)`);
         lastError = new Error('Request timeout - backend server may not be running');
       } else {
         console.error(`API request attempt ${attempt} failed:`, error);
@@ -105,7 +103,6 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
 
   // If we've exhausted retries, return mock data in development
   if (process.env.NODE_ENV !== 'production') {
-    console.log(`Backend server unavailable, returning mock data for ${url}`);
     return getMockDataForEndpoint(url);
   }
 
@@ -115,7 +112,7 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
 // Helper function to return mock data for various endpoints
 const getMockDataForEndpoint = (url: string) => {
   // Basic mock responses based on URL patterns
-  if (url.includes('/api/bookings')) {
+  if (url.includes('/api/v1/bookings')) {
     // Return an array of mock bookings for getAll
     if (url.match(/\/api\/bookings\/user\//)) {
       return [
@@ -125,7 +122,7 @@ const getMockDataForEndpoint = (url: string) => {
     }
 
     // For booking creation (POST request)
-    if (url.endsWith('/api/bookings') && !url.includes('?')) {
+    if (url.endsWith('/api/v1/bookings') && !url.includes('?')) {
       return {
         id: `mock-booking-${Date.now()}`,
         status: 'confirmed',
@@ -159,7 +156,7 @@ const getMockDataForEndpoint = (url: string) => {
     };
   }
 
-  if (url.includes('/api/restaurants')) {
+  if (url.includes('/api/v1/restaurants')) {
     const idMatch = url.match(/\/restaurants\/([^\/]+)/);
     const id = idMatch ? idMatch[1] : '1';
     return {
@@ -170,7 +167,7 @@ const getMockDataForEndpoint = (url: string) => {
     };
   }
 
-  if (url.includes('/api/business')) {
+  if (url.includes('/api/v1/business')) {
     // Business API mock responses
     if (url.includes('/dashboard/')) {
       return {
@@ -339,7 +336,7 @@ export const businessApi = {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for file uploads
 
     try {
-      const response = await fetch(`${API_URL}/api/business`, {
+      const response = await fetch(`${API_URL}/api/v1/business`, {
         method: 'POST',
         body: formData,
         signal: controller.signal,
@@ -375,7 +372,7 @@ export const businessApi = {
     if (type && type !== 'all') params.append('type', type);
 
     const queryString = params.toString();
-    const url = `${API_URL}/api/business/owner/${user.uid}${queryString ? `?${queryString}` : ''}`;
+    const url = `${API_URL}/api/v1/business/owner/${user.uid}${queryString ? `?${queryString}` : ''}`;
 
     return apiRequest(url);
   },
@@ -385,7 +382,7 @@ export const businessApi = {
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
 
-    return apiRequest(`${API_URL}/api/business/dashboard/${user.uid}`);
+    return apiRequest(`${API_URL}/api/v1/business/dashboard/${user.uid}`);
   },
 
   // Get dashboard analytics with time-series data
@@ -393,12 +390,12 @@ export const businessApi = {
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
 
-    return apiRequest(`${API_URL}/api/business/analytics/dashboard/${user.uid}?period=${period}`);
+    return apiRequest(`${API_URL}/api/v1/business/analytics/dashboard/${user.uid}?period=${period}`);
   },
 
   // Get a specific business
   getById: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/${id}`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}`);
   },
 
   // Update a business
@@ -422,7 +419,7 @@ export const businessApi = {
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for file uploads
 
     try {
-      const response = await fetch(`${API_URL}/api/business/${id}`, {
+      const response = await fetch(`${API_URL}/api/v1/business/${id}`, {
         method: 'PUT',
         body: formData,
         signal: controller.signal,
@@ -450,27 +447,27 @@ export const businessApi = {
 
   // Delete a business
   delete: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/${id}`, 'DELETE');
   },
 
   // Validate business configuration
   validate: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/${id}/validate`, 'POST');
+    return apiRequest(`${API_URL}/api/v1/business/${id}/validate`, 'POST');
   },
 
   // Deploy business (make it live)
   deploy: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/${id}/deploy`, 'POST');
+    return apiRequest(`${API_URL}/api/v1/business/${id}/deploy`, 'POST');
   },
 
   // Toggle business status (active/paused)
   toggleStatus: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/${id}/toggle-status`, 'PATCH');
+    return apiRequest(`${API_URL}/api/v1/business/${id}/toggle-status`, 'PATCH');
   },
 
   // Get business analytics
   getAnalytics: async (id: string, period: string = '30d') => {
-    return apiRequest(`${API_URL}/api/business/${id}/analytics?period=${period}`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}/analytics?period=${period}`);
   },
 
   // Get business bookings
@@ -481,41 +478,41 @@ export const businessApi = {
     params.append('limit', limit.toString());
 
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/business/${id}/bookings?${queryString}`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}/bookings?${queryString}`);
   },
 
   // Get booking analytics for a business
   getBookingAnalytics: async (id: string, period: string = '30d') => {
-    return apiRequest(`${API_URL}/api/business/${id}/booking-analytics?period=${period}`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}/booking-analytics?period=${period}`);
   },
 
   // Get heatmap data for a business
   getHeatmapData: async (id: string, period: string = '30d') => {
-    return apiRequest(`${API_URL}/api/business/${id}/analytics/heatmap?period=${period}`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}/analytics/heatmap?period=${period}`);
   },
 
   // Get revenue forecast for a business
   getRevenueForecast: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/${id}/analytics/forecast`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}/analytics/forecast`);
   },
 
   // Get customer loyalty data for a business
   getCustomerLoyalty: async (id: string, limit: number = 10) => {
-    return apiRequest(`${API_URL}/api/business/${id}/analytics/loyalty?limit=${limit}`);
+    return apiRequest(`${API_URL}/api/v1/business/${id}/analytics/loyalty?limit=${limit}`);
   },
 
   // Staff Management
   getStaff: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/staff`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/staff`);
   },
   addStaff: async (businessId: string, staffData: any) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/staff`, 'POST', staffData);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/staff`, 'POST', staffData);
   },
   updateStaff: async (staffId: string, updates: any) => {
-    return apiRequest(`${API_URL}/api/business/staff/${staffId}`, 'PUT', updates);
+    return apiRequest(`${API_URL}/api/v1/business/staff/${staffId}`, 'PUT', updates);
   },
   removeStaff: async (staffId: string) => {
-    return apiRequest(`${API_URL}/api/business/staff/${staffId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/staff/${staffId}`, 'DELETE');
   },
 
   // Shift Scheduling
@@ -524,106 +521,106 @@ export const businessApi = {
     if (start) params.append('start', start);
     if (end) params.append('end', end);
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/business/${businessId}/shifts${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/shifts${queryString ? `?${queryString}` : ''}`);
   },
   createShift: async (businessId: string, shiftData: any) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/shifts`, 'POST', shiftData);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/shifts`, 'POST', shiftData);
   },
   updateShift: async (shiftId: string, updates: any) => {
-    return apiRequest(`${API_URL}/api/business/shifts/${shiftId}`, 'PUT', updates);
+    return apiRequest(`${API_URL}/api/v1/business/shifts/${shiftId}`, 'PUT', updates);
   },
   deleteShift: async (shiftId: string) => {
-    return apiRequest(`${API_URL}/api/business/shifts/${shiftId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/shifts/${shiftId}`, 'DELETE');
   },
 
   // Table Status tracking
   getTableStatuses: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/table-status`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status`);
   },
   updateTableStatus: async (businessId: string, tableId: string, data: any) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/table-status/${tableId}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status/${tableId}`, 'PUT', data);
   },
   batchUpdateTableStatus: async (businessId: string, updates: any[]) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/table-status/batch`, 'POST', { updates });
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status/batch`, 'POST', { updates });
   },
 
   // Marketing Engine
   getCampaigns: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/campaigns`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/campaigns`);
   },
   createCampaign: async (businessId: string, data: any) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/campaigns`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/campaigns`, 'POST', data);
   },
   updateCampaign: async (id: string, data: any) => {
-    return apiRequest(`${API_URL}/api/business/campaigns/${id}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/business/campaigns/${id}`, 'PUT', data);
   },
   deleteCampaign: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/campaigns/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/campaigns/${id}`, 'DELETE');
   },
   sendCampaign: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/campaigns/${id}/send`, 'POST');
+    return apiRequest(`${API_URL}/api/v1/business/campaigns/${id}/send`, 'POST');
   },
 
   // Promotion Manager
   getPromotions: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/promotions`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/promotions`);
   },
   createPromotion: async (businessId: string, data: any) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/promotions`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/promotions`, 'POST', data);
   },
   updatePromotion: async (id: string, data: any) => {
-    return apiRequest(`${API_URL}/api/business/promotions/${id}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/business/promotions/${id}`, 'PUT', data);
   },
   deletePromotion: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/promotions/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/promotions/${id}`, 'DELETE');
   },
   validatePromotion: async (businessId: string, code: string) => {
-    return apiRequest(`${API_URL}/api/business/promotions/validate`, 'POST', { businessId, code });
+    return apiRequest(`${API_URL}/api/v1/business/promotions/validate`, 'POST', { businessId, code });
   },
 
   // Review Management
   getReviews: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/reviews`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/reviews`);
   },
   addReview: async (data: any) => {
     const { businessId, ...reviewData } = data;
-    return apiRequest(`${API_URL}/api/business/${businessId}/reviews`, 'POST', reviewData);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/reviews`, 'POST', reviewData);
   },
   replyToReview: async (id: string, text: string) => {
-    return apiRequest(`${API_URL}/api/business/reviews/${id}/reply`, 'POST', { text });
+    return apiRequest(`${API_URL}/api/v1/business/reviews/${id}/reply`, 'POST', { text });
   },
   updateReview: async (id: string, data: { rating: number; comment: string }) => {
-    return apiRequest(`${API_URL}/api/business/reviews/${id}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/business/reviews/${id}`, 'PUT', data);
   },
   updateReply: async (id: string, text: string) => {
-    return apiRequest(`${API_URL}/api/business/reviews/${id}/reply`, 'PUT', { text });
+    return apiRequest(`${API_URL}/api/v1/business/reviews/${id}/reply`, 'PUT', { text });
   },
   deleteReply: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/reviews/${id}/reply`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/reviews/${id}/reply`, 'DELETE');
   },
   deleteReview: async (id: string) => {
-    return apiRequest(`${API_URL}/api/business/reviews/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/reviews/${id}`, 'DELETE');
   },
   getUserReviews: async (userId: string) => {
-    return apiRequest(`${API_URL}/api/users/${userId}/reviews`);
+    return apiRequest(`${API_URL}/api/v1/users/${userId}/reviews`);
   },
   getRatingStats: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/${businessId}/rating-stats`);
+    return apiRequest(`${API_URL}/api/v1/business/${businessId}/rating-stats`);
   },
 
   // Payout Management
   getPayoutAnalytics: async (ownerId: string, period: string = '30d') => {
-    const response = await apiRequest(`${API_URL}/api/business/payouts/analytics/${ownerId}?period=${period}`);
+    const response = await apiRequest(`${API_URL}/api/v1/business/payouts/analytics/${ownerId}?period=${period}`);
     return response.data || response;
   },
 
   calculatePayout: async (data: { ownerId: string; businessId?: string; startDate: string; endDate: string }) => {
-    const response = await apiRequest(`${API_URL}/api/business/payouts/calculate`, 'POST', data);
+    const response = await apiRequest(`${API_URL}/api/v1/business/payouts/calculate`, 'POST', data);
     return response.data || response;
   },
 
   requestPayout: async (data: { ownerId: string; businessId?: string; startDate: string; endDate: string; bankDetails: any }) => {
-    const response = await apiRequest(`${API_URL}/api/business/payouts/request`, 'POST', data);
+    const response = await apiRequest(`${API_URL}/api/v1/business/payouts/request`, 'POST', data);
     return response.data || response;
   },
 
@@ -632,7 +629,7 @@ export const businessApi = {
     if (status && status !== 'all') params.append('status', status);
     if (limit) params.append('limit', limit.toString());
     const queryString = params.toString();
-    const response = await apiRequest(`${API_URL}/api/business/payouts/${ownerId}${queryString ? `?${queryString}` : ''}`);
+    const response = await apiRequest(`${API_URL}/api/v1/business/payouts/${ownerId}${queryString ? `?${queryString}` : ''}`);
     return response.data || response;
   },
 
@@ -643,28 +640,28 @@ export const businessApi = {
     if (endDate) params.append('endDate', endDate);
     if (limit) params.append('limit', limit.toString());
     const queryString = params.toString();
-    const response = await apiRequest(`${API_URL}/api/business/invoices/${businessId}${queryString ? `?${queryString}` : ''}`);
+    const response = await apiRequest(`${API_URL}/api/v1/business/invoices/${businessId}${queryString ? `?${queryString}` : ''}`);
     return response.data || response;
   },
 
   // POS Integration
   connectPOS: async (data: { businessId: string; provider: string; apiKey: string; apiSecret?: string; webhookSecret?: string }) => {
-    const response = await apiRequest(`${API_URL}/api/business/pos/connect`, 'POST', data);
+    const response = await apiRequest(`${API_URL}/api/v1/business/pos/connect`, 'POST', data);
     return response.data || response;
   },
 
   getPOSIntegration: async (businessId: string) => {
-    const response = await apiRequest(`${API_URL}/api/business/pos/${businessId}`);
+    const response = await apiRequest(`${API_URL}/api/v1/business/pos/${businessId}`);
     return response.data || response;
   },
 
   syncPOSOrders: async (businessId: string) => {
-    const response = await apiRequest(`${API_URL}/api/business/pos/${businessId}/sync`, 'POST');
+    const response = await apiRequest(`${API_URL}/api/v1/business/pos/${businessId}/sync`, 'POST');
     return response.data || response;
   },
 
   disconnectPOS: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/business/pos/${businessId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/pos/${businessId}`, 'DELETE');
   }
 };
 
@@ -674,12 +671,12 @@ export const bookingsApi = {
   getAll: async () => {
     const user = auth.currentUser;
     if (!user) throw new Error('User not authenticated');
-    return apiRequest(`${API_URL}/api/bookings/user/${user.uid}`);
+    return apiRequest(`${API_URL}/api/v1/bookings/user/${user.uid}`);
   },
 
   // Get a specific booking by ID
   getById: async (id: string) => {
-    return apiRequest(`${API_URL}/api/bookings/${id}`);
+    return apiRequest(`${API_URL}/api/v1/bookings/${id}`);
   },
 
   // Create a new booking
@@ -694,65 +691,65 @@ export const bookingsApi = {
       createdAt: new Date().toISOString()
     };
 
-    return apiRequest(`${API_URL}/api/bookings`, 'POST', booking);
+    return apiRequest(`${API_URL}/api/v1/bookings`, 'POST', booking);
   },
 
   // Update a booking
   update: async (id: string, bookingData: any) => {
-    return apiRequest(`${API_URL}/api/bookings/${id}`, 'PUT', bookingData);
+    return apiRequest(`${API_URL}/api/v1/bookings/${id}`, 'PUT', bookingData);
   },
 
   // Cancel a booking
   cancel: async (id: string) => {
-    return apiRequest(`${API_URL}/api/bookings/${id}/cancel`, 'PATCH');
+    return apiRequest(`${API_URL}/api/v1/bookings/${id}/cancel`, 'PATCH');
   },
 
   // Delete a booking
   delete: async (id: string) => {
-    return apiRequest(`${API_URL}/api/bookings/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/bookings/${id}`, 'DELETE');
   },
 
   // Confirm a booking
   confirm: async (id: string) => {
-    return apiRequest(`${API_URL}/api/bookings/${id}/confirm`, 'PATCH');
+    return apiRequest(`${API_URL}/api/v1/bookings/${id}/confirm`, 'PATCH');
   },
 
   // Confirm a table booking
   confirmTable: async ({ restaurantId, tableId, date, time, userId }: { restaurantId: string, tableId: string, date: string, time: string, userId: string }) => {
-    return apiRequest(`${API_URL}/api/bookings/confirm-table`, 'POST', { restaurantId, tableId, date, time, userId });
+    return apiRequest(`${API_URL}/api/v1/bookings/confirm-table`, 'POST', { restaurantId, tableId, date, time, userId });
   },
 
   // Track a slot reservation or cancellation
   trackSlot: async ({ userId, restaurantId, date, time, action }: { userId: string, restaurantId: string, date: string, time: string, action: 'reserve' | 'cancel' }) => {
-    return apiRequest(`${API_URL}/api/bookings/track-slot`, 'POST', { userId, restaurantId, date, time, action });
+    return apiRequest(`${API_URL}/api/v1/bookings/track-slot`, 'POST', { userId, restaurantId, date, time, action });
   },
 
   // Get all tracked slots for a restaurant and date
   getTrackedSlots: async (restaurantId: string, date: string) => {
-    const url = `${API_URL}/api/bookings/track-slots?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}`;
+    const url = `${API_URL}/api/v1/bookings/track-slots?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}`;
     return apiRequest(url, 'GET');
   },
 
   // Reserve or cancel a table booking
   reserveTable: async ({ restaurantId, tableId, date, time, userId, guests, status }: { restaurantId: string, tableId: string, date: string, time: string, userId: string, guests: number, status: 'reserved' | 'cancelled' }) => {
-    return apiRequest(`${API_URL}/api/bookings/table-booking`, 'POST', { restaurantId, tableId, date, time, userId, guests, status });
+    return apiRequest(`${API_URL}/api/v1/bookings/table-booking`, 'POST', { restaurantId, tableId, date, time, userId, guests, status });
   },
 
   // Get all table bookings for a restaurant, date, and time
   getTableBookings: async (restaurantId: string, date: string, time: string) => {
-    const url = `${API_URL}/api/bookings/table-bookings?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+    const url = `${API_URL}/api/v1/bookings/table-bookings?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
     return apiRequest(url, 'GET');
   },
 
   // Get all booked (confirmed) tables for a restaurant, date, and time
   getBookedTables: async (restaurantId: string, date: string, time: string) => {
-    const url = `${API_URL}/api/bookings/booked-tables?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+    const url = `${API_URL}/api/v1/bookings/booked-tables?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
     return apiRequest(url, 'GET');
   },
 
   // Cancel a table booking
   cancelTable: async (data: { restaurantId: string; tableId: string; date: string; time: string; userId: string }) => {
-    const url = `${API_URL}/api/bookings/cancel-table`;
+    const url = `${API_URL}/api/v1/bookings/cancel-table`;
     return apiRequest(url, 'POST', data);
   },
 };
@@ -761,21 +758,21 @@ export const bookingsApi = {
 export const menuApi = {
   // Category Management
   createCategory: async (data: any) => {
-    return apiRequest(`${API_URL}/api/menu/categories`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/menu/categories`, 'POST', data);
   },
   getCategories: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/menu/categories/${businessId}`);
+    return apiRequest(`${API_URL}/api/v1/menu/categories/${businessId}`);
   },
   updateCategory: async (categoryId: string, data: any) => {
-    return apiRequest(`${API_URL}/api/menu/categories/${categoryId}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/menu/categories/${categoryId}`, 'PUT', data);
   },
   deleteCategory: async (categoryId: string) => {
-    return apiRequest(`${API_URL}/api/menu/categories/${categoryId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/menu/categories/${categoryId}`, 'DELETE');
   },
 
   // Menu Item Management
   createItem: async (data: any) => {
-    return apiRequest(`${API_URL}/api/menu/items`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/menu/items`, 'POST', data);
   },
   getItems: async (businessId: string, filters?: { categoryId?: string, dietaryTags?: string, available?: boolean }) => {
     const params = new URLSearchParams();
@@ -784,112 +781,118 @@ export const menuApi = {
     if (filters?.available !== undefined) params.append('available', String(filters.available));
 
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/menu/items/${businessId}${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`${API_URL}/api/v1/menu/items/${businessId}${queryString ? `?${queryString}` : ''}`);
   },
   getFullMenu: async (businessId: string) => {
-    return apiRequest(`${API_URL}/api/menu/menu/${businessId}`);
+    return apiRequest(`${API_URL}/api/v1/menu/menu/${businessId}`);
   },
   updateItem: async (itemId: string, data: any) => {
-    return apiRequest(`${API_URL}/api/menu/items/${itemId}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/menu/items/${itemId}`, 'PUT', data);
   },
   toggleAvailability: async (itemId: string, isAvailable: boolean) => {
-    return apiRequest(`${API_URL}/api/menu/items/${itemId}/availability`, 'PATCH', { isAvailable });
+    return apiRequest(`${API_URL}/api/v1/menu/items/${itemId}/availability`, 'PATCH', { isAvailable });
   },
   deleteItem: async (itemId: string) => {
-    return apiRequest(`${API_URL}/api/menu/items/${itemId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/menu/items/${itemId}`, 'DELETE');
   },
   bulkUpdateDisplayOrder: async (items: { id: string, displayOrder: number }[]) => {
-    return apiRequest(`${API_URL}/api/menu/items/bulk/display-order`, 'POST', { items });
+    return apiRequest(`${API_URL}/api/v1/menu/items/bulk/display-order`, 'POST', { items });
   }
 };
 
 // Waitlist API endpoints
 export const waitlistApi = {
+  checkAccess: async (email: string, type: 'user' | 'business' = 'user') => {
+    return apiRequest(`${API_URL}/api/v1/waitlist/check-access?email=${encodeURIComponent(email)}&type=${type}`);
+  },
+  verifyCode: async (email: string, code: string, type: 'user' | 'business' = 'user') => {
+    return apiRequest(`${API_URL}/api/v1/waitlist/check-access?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&type=${type}`);
+  },
   join: async (data: any) => {
-    return apiRequest(`${API_URL}/api/waitlist/join`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/waitlist/join`, 'POST', data);
   },
   getBusinessWaitlist: async (businessId: string, status?: string) => {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/waitlist/business/${businessId}${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`${API_URL}/api/v1/waitlist/business/${businessId}${queryString ? `?${queryString}` : ''}`);
   },
   getCustomerStatus: async (customerId: string) => {
-    return apiRequest(`${API_URL}/api/waitlist/customer/${customerId}/status`);
+    return apiRequest(`${API_URL}/api/v1/waitlist/customer/${customerId}/status`);
   },
   notifyCustomer: async (entryId: string) => {
-    return apiRequest(`${API_URL}/api/waitlist/${entryId}/notify`, 'PATCH');
+    return apiRequest(`${API_URL}/api/v1/waitlist/${entryId}/notify`, 'PATCH');
   },
   markAsSeated: async (entryId: string) => {
-    return apiRequest(`${API_URL}/api/waitlist/${entryId}/seated`, 'PATCH');
+    return apiRequest(`${API_URL}/api/v1/waitlist/${entryId}/seated`, 'PATCH');
   },
   cancel: async (entryId: string) => {
-    return apiRequest(`${API_URL}/api/waitlist/${entryId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/waitlist/${entryId}`, 'DELETE');
   }
 };
 
 // Pre-order API endpoints
 export const preOrderApi = {
   create: async (data: any) => {
-    return apiRequest(`${API_URL}/api/preorder`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/preorder`, 'POST', data);
   },
   getBusinessPreOrders: async (businessId: string, status?: string, date?: string) => {
     const params = new URLSearchParams();
     if (status) params.append('status', status);
     if (date) params.append('date', date);
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/preorder/business/${businessId}${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`${API_URL}/api/v1/preorder/business/${businessId}${queryString ? `?${queryString}` : ''}`);
   },
   getCustomerPreOrders: async (customerId: string) => {
-    return apiRequest(`${API_URL}/api/preorder/customer/${customerId}`);
+    return apiRequest(`${API_URL}/api/v1/preorder/customer/${customerId}`);
   },
   getByBooking: async (bookingId: string) => {
-    return apiRequest(`${API_URL}/api/preorder/booking/${bookingId}`);
+    return apiRequest(`${API_URL}/api/v1/preorder/booking/${bookingId}`);
   },
   updateStatus: async (preOrderId: string, status: string) => {
-    return apiRequest(`${API_URL}/api/preorder/${preOrderId}/status`, 'PATCH', { status });
+    return apiRequest(`${API_URL}/api/v1/preorder/${preOrderId}/status`, 'PATCH', { status });
   },
   cancel: async (preOrderId: string) => {
-    return apiRequest(`${API_URL}/api/preorder/${preOrderId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/preorder/${preOrderId}`, 'DELETE');
   },
   getAnalytics: async (businessId: string, startDate?: string, endDate?: string) => {
     const params = new URLSearchParams();
     if (startDate) params.append('startDate', startDate);
     if (endDate) params.append('endDate', endDate);
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/preorder/business/${businessId}/analytics${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`${API_URL}/api/v1/preorder/business/${businessId}/analytics${queryString ? `?${queryString}` : ''}`);
   }
 };
 
 // Event API endpoints
 export const eventApi = {
   getAll: async () => {
-    return apiRequest(`${API_URL}/api/events`);
+    return apiRequest(`${API_URL}/api/v1/events`);
   },
   getById: async (id: string) => {
-    return apiRequest(`${API_URL}/api/events/${id}`);
+    return apiRequest(`${API_URL}/api/v1/events/${id}`);
   },
   create: async (data: any) => {
-    return apiRequest(`${API_URL}/api/events`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/events`, 'POST', data);
   },
   update: async (id: string, data: any) => {
-    return apiRequest(`${API_URL}/api/events/${id}`, 'PUT', data);
+    return apiRequest(`${API_URL}/api/v1/events/${id}`, 'PUT', data);
   },
   delete: async (id: string) => {
-    return apiRequest(`${API_URL}/api/events/${id}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/events/${id}`, 'DELETE');
   },
   getUpcoming: async () => {
-    return apiRequest(`${API_URL}/api/events/upcoming`);
+    return apiRequest(`${API_URL}/api/v1/events/upcoming`);
   },
   search: async (query: string, location?: string) => {
     const params = new URLSearchParams();
     if (query) params.append('query', query);
     if (location) params.append('location', location);
     const queryString = params.toString();
-    return apiRequest(`${API_URL}/api/events/search${queryString ? `?${queryString}` : ''}`);
+    return apiRequest(`${API_URL}/api/v1/events/search${queryString ? `?${queryString}` : ''}`);
   },
   register: async (id: string, data: any) => {
-    return apiRequest(`${API_URL}/api/events/${id}/register`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/events/${id}/register`, 'POST', data);
   }
 };
 
@@ -903,7 +906,7 @@ export interface UserData {
 }
 
 const addUserActivity = async (uid: string, activity: any) => {
-  const response = await fetch(`${API_URL}/api/users/${uid}/activities`, {
+  const response = await fetch(`${API_URL}/api/v1/users/${uid}/activities`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -919,7 +922,7 @@ const addUserActivity = async (uid: string, activity: any) => {
 
 export const userAPI = {
   getReviews: async (userId: string) => {
-    return apiRequest(`${API_URL}/api/users/${userId}/reviews`);
+    return apiRequest(`${API_URL}/api/v1/users/${userId}/reviews`);
   },
   createUser: async (userData: UserData) => {
     // Ensure all required fields are present
@@ -931,11 +934,10 @@ export const userAPI = {
       photoURL: userData.photoURL || null,
       emailVerified: userData.emailVerified ?? false
     };
-    console.log('Sending user creation payload:', payload);
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users`, {
+        const response = await fetch(`${API_URL}/api/v1/users`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -948,7 +950,7 @@ export const userAPI = {
           // If user already exists, try updating instead
           if (response.status === 400 && (errorData.message || '').includes('already exists')) {
             // Try updating the user
-            const updateResponse = await fetch(`${API_URL}/api/users/${userData.uid}`, {
+            const updateResponse = await fetch(`${API_URL}/api/v1/users/${userData.uid}`, {
               method: 'PUT',
               headers: {
                 'Content-Type': 'application/json',
@@ -989,8 +991,7 @@ export const userAPI = {
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
         // Use the full URL to ensure the correct endpoint is being hit
-        console.log(`Attempting login for user ${uid} with source ${loginSource}`);
-        const response = await fetch(`${API_URL}/api/users/login`, {
+        const response = await fetch(`${API_URL}/api/v1/users/login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1001,12 +1002,8 @@ export const userAPI = {
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
-          console.log(`Login failed with status ${response.status}: ${JSON.stringify(errorData)}`);
-
           // If user not found, try to fetch the user by ID as a fallback
           if (response.status === 404) {
-            console.log(`User not found, attempting fallback to user creation/update`);
-
             // Get the current user from Firebase auth
             const user = auth.currentUser;
             if (!user) {
@@ -1030,7 +1027,7 @@ export const userAPI = {
             };
 
             // Use the createUser endpoint which handles both creation and updates
-            const createResponse = await fetch(`${API_URL}/api/users`, {
+            const createResponse = await fetch(`${API_URL}/api/v1/users`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1068,7 +1065,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users/logout`, {
+        const response = await fetch(`${API_URL}/api/v1/users/logout`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1080,7 +1077,6 @@ export const userAPI = {
           const errorData = await response.json().catch(() => ({}));
           // If user not found, try to create/update user, then retry logout
           if (response.status === 404) {
-            console.log(`Logout: User not found, attempting fallback to user creation/update`);
             const user = auth.currentUser;
             if (!user) {
               throw new Error('No authenticated user found');
@@ -1097,7 +1093,7 @@ export const userAPI = {
               logoutSource
             };
             // Create or update user
-            const createResponse = await fetch(`${API_URL}/api/users`, {
+            const createResponse = await fetch(`${API_URL}/api/v1/users`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1110,7 +1106,7 @@ export const userAPI = {
               throw new Error(createErrorData.message || `Server error during fallback: ${createResponse.status}`);
             }
             // Retry logout after creating/updating user
-            const retryResponse = await fetch(`${API_URL}/api/users/logout`, {
+            const retryResponse = await fetch(`${API_URL}/api/v1/users/logout`, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
@@ -1144,7 +1140,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users/${uid}/activities`);
+        const response = await fetch(`${API_URL}/api/v1/users/${uid}/activities`);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -1169,7 +1165,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users/${uid}`);
+        const response = await fetch(`${API_URL}/api/v1/users/${uid}`);
 
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
@@ -1194,7 +1190,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users/${uid}`, {
+        const response = await fetch(`${API_URL}/api/v1/users/${uid}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -1225,7 +1221,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users/${uid}`, {
+        const response = await fetch(`${API_URL}/api/v1/users/${uid}`, {
           method: 'DELETE',
         });
 
@@ -1252,7 +1248,7 @@ export const userAPI = {
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
       try {
-        const response = await fetch(`${API_URL}/api/users/reset-password`, {
+        const response = await fetch(`${API_URL}/api/v1/users/reset-password`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -1280,27 +1276,25 @@ export const userAPI = {
   },
   // Favorites
   addFavorite: async (userId: string, restaurantId: string) => {
-    return apiRequest(`${API_URL}/api/business/favorites/add`, 'POST', { userId, restaurantId });
+    return apiRequest(`${API_URL}/api/v1/business/favorites/add`, 'POST', { userId, restaurantId });
   },
   removeFavorite: async (userId: string, restaurantId: string) => {
-    return apiRequest(`${API_URL}/api/business/favorites/${userId}/${restaurantId}`, 'DELETE');
+    return apiRequest(`${API_URL}/api/v1/business/favorites/${userId}/${restaurantId}`, 'DELETE');
   },
   getFavorites: async (userId: string) => {
-    return apiRequest(`${API_URL}/api/business/favorites/${userId}`);
+    return apiRequest(`${API_URL}/api/v1/business/favorites/${userId}`);
   },
 };
 
 // Add direct API check function to test connection from frontend
 export const checkApiConnection = async () => {
   try {
-    console.log('Testing API connection...');
-    const response = await fetch(`${API_URL}/api/users/health`);
+    const response = await fetch(`${API_URL}/api/v1/users/health`);
     if (!response.ok) {
       console.error('API server not responding properly:', await response.text());
       return { success: false, message: `Error: ${response.status} ${response.statusText}` };
     }
     const data = await response.json();
-    console.log('API connection test successful:', data);
     return { success: true, data };
   } catch (error) {
     console.error('API connection failed:', error);
@@ -1316,15 +1310,13 @@ export const notificationsApi = {
   // Get all notifications for a specific user
   getAll: async (userId: string) => {
     try {
-      console.log('Fetching notifications for user:', userId);
-      const response = await fetch(`${API_URL}/api/notifications?userId=${userId}`);
+      const response = await fetch(`${API_URL}/api/v1/notifications?userId=${userId}`);
 
       if (!response.ok) {
         throw new Error(`Error fetching notifications: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('Notifications fetched successfully:', data.length);
       return data;
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
@@ -1335,8 +1327,7 @@ export const notificationsApi = {
   // Mark a notification as read
   markAsRead: async (notificationId: string, userId: string) => {
     try {
-      console.log(`Marking notification ${notificationId} as read for user ${userId}`);
-      const response = await fetch(`${API_URL}/api/notifications/${notificationId}/read`, {
+      const response = await fetch(`${API_URL}/api/v1/notifications/${notificationId}/read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -1349,7 +1340,6 @@ export const notificationsApi = {
       }
 
       const data = await response.json();
-      console.log('Notification marked as read successfully');
       return data;
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -1360,8 +1350,7 @@ export const notificationsApi = {
   // Mark all notifications as read
   markAllAsRead: async (userId: string) => {
     try {
-      console.log(`Marking all notifications as read for user ${userId}`);
-      const response = await fetch(`${API_URL}/api/notifications/mark-all-read`, {
+      const response = await fetch(`${API_URL}/api/v1/notifications/mark-all-read`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -1374,7 +1363,6 @@ export const notificationsApi = {
       }
 
       const data = await response.json();
-      console.log('All notifications marked as read successfully');
       return data;
     } catch (error) {
       console.error('Failed to mark all notifications as read:', error);
@@ -1386,23 +1374,23 @@ export const notificationsApi = {
 // User Preference API endpoints
 export const userPreferenceApi = {
   get: async (userId: string) => {
-    return apiRequest(`${API_URL}/api/user-preferences/${userId}`);
+    return apiRequest(`${API_URL}/api/v1/user-preferences/${userId}`);
   },
   upsert: async (data: any) => {
-    return apiRequest(`${API_URL}/api/user-preferences`, 'POST', data);
+    return apiRequest(`${API_URL}/api/v1/user-preferences`, 'POST', data);
   },
   updateCuisineScore: async (userId: string, cuisineName: string, increment?: number) => {
-    return apiRequest(`${API_URL}/api/user-preferences/score`, 'POST', { userId, cuisineName, increment });
+    return apiRequest(`${API_URL}/api/v1/user-preferences/score`, 'POST', { userId, cuisineName, increment });
   }
 };
 
 
 export const authOtpApi = {
-  requestSignupOTP: (email: string) => apiRequest(`${API_URL}/api/auth/otp/signup/request`, 'POST', { email }),
-  verifySignupOTP: (email: string, otp: string) => apiRequest(`${API_URL}/api/auth/otp/signup/verify`, 'POST', { email, otp }),
-  requestForgotPasswordOTP: (email: string) => apiRequest(`${API_URL}/api/auth/otp/forgot-password/request`, 'POST', { email }),
-  verifyForgotPasswordOTP: (email: string, otp: string) => apiRequest(`${API_URL}/api/auth/otp/forgot-password/verify`, 'POST', { email, otp }),
-  resetPassword: (email: string, resetToken: string, newPassword: any) => apiRequest(`${API_URL}/api/auth/otp/forgot-password/reset`, 'POST', { email, resetToken, newPassword }),
+  requestSignupOTP: (email: string) => apiRequest(`${API_URL}/api/v1/auth/otp/signup/request`, 'POST', { email }),
+  verifySignupOTP: (email: string, otp: string) => apiRequest(`${API_URL}/api/v1/auth/otp/signup/verify`, 'POST', { email, otp }),
+  requestForgotPasswordOTP: (email: string) => apiRequest(`${API_URL}/api/v1/auth/otp/forgot-password/request`, 'POST', { email }),
+  verifyForgotPasswordOTP: (email: string, otp: string) => apiRequest(`${API_URL}/api/v1/auth/otp/forgot-password/verify`, 'POST', { email, otp }),
+  resetPassword: (email: string, resetToken: string, newPassword: any) => apiRequest(`${API_URL}/api/v1/auth/otp/forgot-password/reset`, 'POST', { email, resetToken, newPassword }),
 };
 
 export default {

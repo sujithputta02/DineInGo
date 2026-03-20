@@ -14,7 +14,6 @@ class SocketService {
 
     // Don't attempt connection if we've exceeded max attempts
     if (this.connectionAttempts >= this.maxConnectionAttempts) {
-      console.log('Socket.IO: Max connection attempts reached. Backend may not be running.');
       return this.socket;
     }
 
@@ -40,7 +39,6 @@ class SocketService {
 
     if (this.socket) {
       this.socket.on('connect', () => {
-        console.log('✓ Socket.IO connected successfully');
         this.isConnecting = false;
         this.connectionAttempts = 0; // Reset on successful connection
       });
@@ -49,8 +47,7 @@ class SocketService {
         this.isConnecting = false;
         // Only log if it's the first few attempts
         if (this.connectionAttempts <= 2) {
-          console.log('Socket.IO: Backend server not available (this is normal if server is not running)');
-        }
+}
       });
 
       this.socket.on('disconnect', (reason) => {
@@ -62,7 +59,6 @@ class SocketService {
       });
 
       this.socket.on('reconnect', (attemptNumber) => {
-        console.log('✓ Socket.IO reconnected');
         this.connectionAttempts = 0;
       });
 
@@ -72,7 +68,6 @@ class SocketService {
 
       this.socket.on('reconnect_failed', () => {
         this.isConnecting = false;
-        console.log('Socket.IO: Unable to connect to backend server');
       });
     }
 

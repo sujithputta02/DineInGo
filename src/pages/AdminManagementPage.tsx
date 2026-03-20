@@ -150,12 +150,12 @@ const AdminManagementPage: React.FC = () => {
   };
 
   const AddAdminModal = React.memo(() => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full">
-        <div className="p-6 border-b border-slate-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 border-b border-slate-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <UserPlus className="text-blue-600" size={24} />
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <UserPlus className="text-blue-600" size={20} />
               Add New Admin
             </h2>
             <button
@@ -167,26 +167,26 @@ const AdminManagementPage: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleAddAdmin} className="p-6 space-y-4">
+        <form onSubmit={handleAddAdmin} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
               Email Address
             </label>
             <input
               type="email"
               value={newAdminEmail}
               onChange={(e) => setNewAdminEmail(e.target.value)}
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
               placeholder="admin@example.com"
               required
               autoFocus
             />
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="text-blue-600 mt-0.5" size={16} />
-              <div className="text-sm text-blue-800">
+              <AlertTriangle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+              <div className="text-xs sm:text-sm text-blue-800">
                 <p className="font-medium mb-1">Admin Limit: {totalCount}/{maxAdmins}</p>
                 <p>The new admin will receive a welcome email with login instructions.</p>
               </div>
@@ -195,23 +195,23 @@ const AdminManagementPage: React.FC = () => {
 
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
-              <AlertTriangle size={16} />
-              <span className="text-sm font-medium">{error}</span>
+              <AlertTriangle size={16} className="flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">{error}</span>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
             <button
               type="button"
               onClick={() => setShowAddModal(false)}
-              className="flex-1 px-4 py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium"
+              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={actionLoading === 'add' || !newAdminEmail || totalCount >= maxAdmins}
-              className="flex-1 bg-blue-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
             >
               {actionLoading === 'add' ? (
                 <>
@@ -232,12 +232,12 @@ const AdminManagementPage: React.FC = () => {
   ));
 
   const CapacityModal = React.memo(() => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full">
-        <div className="p-6 border-b border-slate-200">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 border-b border-slate-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <Shield className="text-purple-600" size={24} />
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <Shield className="text-purple-600" size={20} />
               Update Admin Capacity
             </h2>
             <button
@@ -249,9 +249,9 @@ const AdminManagementPage: React.FC = () => {
           </div>
         </div>
 
-        <form onSubmit={handleUpdateCapacity} className="p-6 space-y-4">
+        <form onSubmit={handleUpdateCapacity} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
               Maximum Admins
             </label>
             <input
@@ -259,16 +259,16 @@ const AdminManagementPage: React.FC = () => {
               min={totalCount}
               value={newMaxAdmins}
               onChange={(e) => setNewMaxAdmins(parseInt(e.target.value))}
-              className="w-full px-4 py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm"
               required
               autoFocus
             />
           </div>
 
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 sm:p-4">
             <div className="flex items-start gap-2">
-              <AlertTriangle className="text-purple-600 mt-0.5" size={16} />
-              <div className="text-sm text-purple-800">
+              <AlertTriangle className="text-purple-600 mt-0.5 flex-shrink-0" size={16} />
+              <div className="text-xs sm:text-sm text-purple-800">
                 <p className="font-medium mb-1">Current: {totalCount} active admins</p>
                 <p>You can only set the capacity to {totalCount} or higher.</p>
               </div>
@@ -277,23 +277,23 @@ const AdminManagementPage: React.FC = () => {
 
           {error && (
             <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
-              <AlertTriangle size={16} />
-              <span className="text-sm font-medium">{error}</span>
+              <AlertTriangle size={16} className="flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">{error}</span>
             </div>
           )}
 
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
             <button
               type="button"
               onClick={() => setShowCapacityModal(false)}
-              className="flex-1 px-4 py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium"
+              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={actionLoading === 'capacity' || newMaxAdmins < totalCount}
-              className="flex-1 bg-purple-600 text-white px-4 py-3 rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="flex-1 bg-purple-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
             >
               {actionLoading === 'capacity' ? (
                 <>
@@ -325,29 +325,29 @@ const AdminManagementPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
-            <Shield className="text-red-600" size={32} />
-            Admin Team Management
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 flex items-center gap-2 sm:gap-3">
+            <Shield className="text-red-600" size={24} />
+            <span className="sm:inline">Admin Team Management</span>
           </h1>
-          <p className="text-slate-600 mt-1">Manage DineInGo administrator access</p>
+          <p className="text-sm sm:text-base text-slate-600 mt-1">Manage DineInGo administrator access</p>
         </div>
-        <div className="flex gap-3">
+        <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
           <button
             onClick={loadAdmins}
             disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors"
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors text-sm flex-1 sm:flex-initial"
           >
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            Refresh
+            <span className="hidden sm:inline">Refresh</span>
           </button>
           <button
             onClick={() => setShowAddModal(true)}
             disabled={totalCount >= maxAdmins}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex-1 sm:flex-initial"
           >
             <Plus size={16} />
             Add Admin
@@ -356,12 +356,12 @@ const AdminManagementPage: React.FC = () => {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Users className="text-blue-600" size={20} />
-              <span className="text-sm font-medium text-slate-600">Total Admins</span>
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Users className="text-blue-600" size={18} />
+              <span className="text-xs sm:text-sm font-medium text-slate-600">Total Admins</span>
             </div>
             <button
               onClick={() => setShowCapacityModal(true)}
@@ -371,24 +371,24 @@ const AdminManagementPage: React.FC = () => {
               Edit Limit
             </button>
           </div>
-          <p className="text-2xl font-bold text-slate-900">{totalCount}</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{totalCount}</p>
           <p className="text-xs text-slate-500 mt-1">Maximum: {maxAdmins}</p>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-          <div className="flex items-center gap-3 mb-2">
-            <CheckCircle className="text-green-600" size={20} />
-            <span className="text-sm font-medium text-slate-600">Active Admins</span>
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <CheckCircle className="text-green-600" size={18} />
+            <span className="text-xs sm:text-sm font-medium text-slate-600">Active Admins</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">
             {admins.filter(a => a.isActive).length}
           </p>
         </div>
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-          <div className="flex items-center gap-3 mb-2">
-            <Crown className="text-yellow-600" size={20} />
-            <span className="text-sm font-medium text-slate-600">Super Admins</span>
+        <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <Crown className="text-yellow-600" size={18} />
+            <span className="text-xs sm:text-sm font-medium text-slate-600">Super Admins</span>
           </div>
-          <p className="text-2xl font-bold text-slate-900">
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">
             {admins.filter(a => a.role === 'super_admin').length}
           </p>
         </div>
@@ -419,34 +419,34 @@ const AdminManagementPage: React.FC = () => {
 
       {/* Admin List */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-6 border-b border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-900">Admin Team Members</h3>
+        <div className="p-4 sm:p-6 border-b border-slate-200">
+          <h3 className="text-base sm:text-lg font-semibold text-slate-900">Admin Team Members</h3>
         </div>
         <div className="divide-y divide-slate-200">
           {admins.map((admin) => (
-            <div key={admin.email} className="p-6 hover:bg-slate-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold ${
+            <div key={admin.email} className="p-4 sm:p-6 hover:bg-slate-50 transition-colors">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-start sm:items-center gap-3 sm:gap-4 w-full sm:w-auto">
+                  <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${
                     admin.role === 'super_admin' ? 'bg-gradient-to-br from-yellow-500 to-orange-600' : 'bg-gradient-to-br from-blue-500 to-purple-600'
                   }`}>
-                    {admin.role === 'super_admin' ? <Crown size={20} /> : admin.email.charAt(0).toUpperCase()}
+                    {admin.role === 'super_admin' ? <Crown size={18} /> : admin.email.charAt(0).toUpperCase()}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold text-slate-900">{admin.email}</h4>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex flex-wrap items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-slate-900 text-sm sm:text-base truncate">{admin.email}</h4>
                       {admin.role === 'super_admin' && (
-                        <span className="px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
+                        <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full whitespace-nowrap">
                           Super Admin
                         </span>
                       )}
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                      <span className={`px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
                         admin.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                       }`}>
                         {admin.isActive ? 'Active' : 'Inactive'}
                       </span>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-slate-500">
                       <div className="flex items-center gap-1">
                         <Calendar size={12} />
                         <span>Added: {new Date(admin.createdAt).toLocaleDateString()}</span>
@@ -459,25 +459,25 @@ const AdminManagementPage: React.FC = () => {
                       )}
                       <div className="flex items-center gap-1">
                         <UserPlus size={12} />
-                        <span>Added by: {admin.addedBy}</span>
+                        <span className="truncate">By: {admin.addedBy}</span>
                       </div>
                     </div>
                   </div>
                 </div>
 
                 {admin.role !== 'super_admin' && (
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 w-full sm:w-auto">
                     <button
                       onClick={() => handleToggleStatus(admin.email)}
                       disabled={actionLoading === admin.email}
-                      className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex-1 sm:flex-initial px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                         admin.isActive
                           ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
                           : 'bg-green-100 text-green-800 hover:bg-green-200'
                       } disabled:opacity-50`}
                     >
                       {actionLoading === admin.email ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mx-auto" />
                       ) : admin.isActive ? (
                         'Deactivate'
                       ) : (
@@ -487,7 +487,7 @@ const AdminManagementPage: React.FC = () => {
                     <button
                       onClick={() => handleRemoveAdmin(admin.email)}
                       disabled={actionLoading === admin.email}
-                      className="px-3 py-2 bg-red-100 text-red-800 hover:bg-red-200 rounded-lg text-sm font-medium transition-colors disabled:opacity-50"
+                      className="px-3 py-2 bg-red-100 text-red-800 hover:bg-red-200 rounded-lg text-xs sm:text-sm font-medium transition-colors disabled:opacity-50 flex items-center justify-center"
                     >
                       {actionLoading === admin.email ? (
                         <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent" />

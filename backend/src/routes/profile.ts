@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { User } from '../models/User';
-import multer, { StorageEngine } from 'multer';
+import { uploadCloud as upload } from '../config/cloudinary';
 import path from 'path';
 import fs from 'fs';
 import { Server } from 'socket.io';
@@ -8,34 +8,16 @@ import { getIO } from '../utils/socket';
 
 const router = express.Router();
 
-// Multer setup for avatar uploads
-// Multer setup for avatar uploads (Memory Storage)
-const storage: StorageEngine = multer.memoryStorage();
-const upload = multer({
-  storage,
-  limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB limit
-  },
-  fileFilter: (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Not an image! Please upload an image.'));
-    }
-  }
-});
-
 // Avatar upload endpoint
 router.post('/:uid/avatar', upload.single('avatar'), async (req: Request, res: Response) => {
   try {
-    const file = req.file as Express.Multer.File | undefined;
+    const file = req.file;
     if (!file) return res.status(400).json({ error: 'No file uploaded' });
 
-    // URL to serve the image
-    const avatarUrl = `/api/profile/${req.params.uid}/avatar/image`;
+    // The Cloudinary URL is available directly on file.path
+    const avatarUrl = file.path;
 
     // Add avatar to avatars array and set as currentAvatar in User model
-    // Store binary data in profilePicture field
     const user = await User.findOneAndUpdate(
       { uid: req.params.uid },
       {
@@ -43,11 +25,7 @@ router.post('/:uid/avatar', upload.single('avatar'), async (req: Request, res: R
         $set: {
           currentAvatar: avatarUrl,
           photoURL: avatarUrl,
-          updatedAt: new Date(),
-          profilePicture: {
-            data: file.buffer,
-            contentType: file.mimetype
-          }
+          updatedAt: new Date()
         }
       },
       { new: true, upsert: true }
@@ -88,18 +66,21 @@ router.post('/:uid/avatar', upload.single('avatar'), async (req: Request, res: R
   }
 });
 
-// Get avatar image endpoint
+// Get avatar image endpoint (Legacy support for users still using DB binary)
 router.get('/:uid/avatar/image', async (req: Request, res: Response) => {
   try {
     const user = await User.findOne({ uid: req.params.uid });
 
+    // If they have a cloudinary URL, redirect them there
+    if (user?.photoURL && user.photoURL.includes('res.cloudinary.com')) {
+      return res.redirect(user.photoURL);
+    }
+
     if (!user || !user.profilePicture || !user.profilePicture.data) {
-      // Redirect to default avatar or return 404
-      // For now, let's just send a 404 so the frontend shows a placeholder
       return res.status(404).send('No profile picture found');
     }
 
-    res.contentType(user.profilePicture.contentType);
+    res.contentType(user.profilePicture.contentType as string);
     res.send(user.profilePicture.data);
   } catch (error) {
     console.error('Error serving avatar image:', error);

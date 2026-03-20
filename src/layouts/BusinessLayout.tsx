@@ -71,38 +71,38 @@ const BusinessLayout: React.FC = () => {
         <div className="min-h-screen bg-slate-50 flex">
             {/* Sidebar for Desktop */}
             <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white fixed h-full z-20">
-                <div className="p-6 border-b border-slate-800 flex flex-col gap-1">
+                <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col gap-1">
                     <Link to="/business/app/dashboard" className="flex items-center gap-2">
                         <DineInGoLogo size="small" color="#ffffff" />
                     </Link>
                     <span className="text-emerald-400 text-xs uppercase tracking-wider font-bold ml-1">Business Portal</span>
                 </div>
 
-                <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
+                <nav className="flex-1 p-3 md:p-4 space-y-1 md:space-y-2 overflow-y-auto">
                     {navItems.map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${isActive(item.path)
+                            className={`flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl transition-all text-sm md:text-base ${isActive(item.path)
                                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
                                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                                 }`}
                         >
-                            <item.icon size={20} />
+                            <item.icon size={18} className="md:w-5 md:h-5" />
                             <span className="font-medium">{item.name}</span>
                         </Link>
                     ))}
-                    
+
                     {/* Notifications Link */}
                     <Link
                         to={notificationsPath}
-                        className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative ${
+                        className={`flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl transition-all relative text-sm md:text-base ${
                             isActive('/business/app/notifications')
                                 ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-900/20'
                                 : 'text-slate-400 hover:bg-slate-800 hover:text-white'
                         }`}
                     >
-                        <Bell size={20} />
+                        <Bell size={18} className="md:w-5 md:h-5" />
                         <span className="font-medium">Notifications</span>
                         {unreadCount > 0 && (
                             <span className="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
@@ -112,12 +112,12 @@ const BusinessLayout: React.FC = () => {
                     </Link>
                 </nav>
 
-                <div className="p-4 border-t border-slate-800">
+                <div className="p-3 md:p-4 border-t border-slate-800">
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-3 px-4 py-3 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl w-full transition-colors"
+                        className="flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-xl w-full transition-colors text-sm md:text-base"
                     >
-                        <LogOut size={20} />
+                        <LogOut size={18} className="md:w-5 md:h-5" />
                         <span className="font-medium">Logout</span>
                     </button>
                 </div>
@@ -126,7 +126,7 @@ const BusinessLayout: React.FC = () => {
             {/* Main Content Area */}
             <div className="flex-1 md:ml-64 flex flex-col">
                 {/* Top Header */}
-                <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+                <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-3 md:py-4 flex items-center justify-between">
                     {/* Search / Breadcrumbs placeholder */}
                     <div className="hidden md:flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-2xl w-96 border border-slate-200">
                         <Search size={18} className="text-slate-400" />
@@ -141,12 +141,12 @@ const BusinessLayout: React.FC = () => {
                         <DineInGoLogo size="small" />
                     </div>
 
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 md:gap-4">
                         {/* Notifications Bell with Dropdown */}
                         <div className="relative">
-                            <button 
+                            <button
                                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-                                className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative"
+                                className="p-2 text-slate-500 hover:bg-slate-100 rounded-xl transition-colors relative min-h-[44px] min-w-[44px] flex items-center justify-center"
                             >
                                 <Bell size={20} />
                                 {unreadCount > 0 && (
@@ -191,7 +191,7 @@ const BusinessLayout: React.FC = () => {
                                                 </button>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="overflow-y-auto flex-1">
                                             {notifications.length === 0 ? (
                                                 <div className="p-8 text-center">
@@ -235,7 +235,7 @@ const BusinessLayout: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        
+
                                         {notifications.length > 0 && (
                                             <div className="p-3 border-t border-slate-100 bg-slate-50/50">
                                                 <Link
@@ -252,14 +252,14 @@ const BusinessLayout: React.FC = () => {
                             </AnimatePresence>
                         </div>
 
-                        <div className="h-8 w-[1px] bg-slate-200"></div>
+                        <div className="hidden md:block h-8 w-[1px] bg-slate-200"></div>
 
                         <div className="relative">
                             <button
                                 onClick={() => setIsProfileOpen(!isProfileOpen)}
-                                className="flex items-center gap-3 p-1 pr-3 hover:bg-slate-100 rounded-2xl transition-all"
+                                className="flex items-center gap-2 md:gap-3 p-1 pr-2 md:pr-3 hover:bg-slate-100 rounded-2xl transition-all min-h-[44px]"
                             >
-                                <div className="w-9 h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md">
+                                <div className="w-8 md:w-9 h-8 md:h-9 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-xs md:text-sm shadow-md">
                                     {getInitials(currentUser?.displayName || 'Business')}
                                 </div>
                                 <div className="hidden lg:block text-left">
@@ -268,7 +268,7 @@ const BusinessLayout: React.FC = () => {
                                     </p>
                                     <p className="text-[10px] text-slate-500">Administrator</p>
                                 </div>
-                                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+                                <ChevronDown size={14} className={`text-slate-400 transition-transform hidden md:block ${isProfileOpen ? 'rotate-180' : ''}`} />
                             </button>
 
                             <AnimatePresence>
@@ -316,7 +316,7 @@ const BusinessLayout: React.FC = () => {
 
                         <button
                             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                            className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl"
+                            className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-xl min-h-[44px] min-w-[44px] flex items-center justify-center"
                         >
                             <Menu size={24} />
                         </button>
@@ -324,7 +324,7 @@ const BusinessLayout: React.FC = () => {
                 </header>
 
                 {/* Main Content */}
-                <main className="p-6">
+                <main className="p-3 md:p-6 lg:p-8">
                     <Outlet />
                 </main>
             </div>
@@ -336,27 +336,36 @@ const BusinessLayout: React.FC = () => {
                         initial={{ opacity: 0, x: '100%' }}
                         animate={{ opacity: 1, x: 0 }}
                         exit={{ opacity: 0, x: '100%' }}
-                        className="fixed inset-0 bg-slate-900 z-40 md:hidden pt-20 p-6 flex flex-col"
+                        className="fixed inset-0 bg-slate-900 z-40 md:hidden pt-16 md:pt-20 p-4 md:p-6 flex flex-col overflow-y-auto"
                     >
+                        {/* Close Button */}
+                        <button
+                            onClick={() => setIsMobileMenuOpen(false)}
+                            className="absolute top-4 right-4 p-3 text-white hover:bg-slate-800 rounded-xl transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
+                            aria-label="Close menu"
+                        >
+                            <X size={24} />
+                        </button>
+
                         {navItems.map((item) => (
                             <Link
                                 key={item.path}
                                 to={item.path}
                                 onClick={() => setIsMobileMenuOpen(false)}
-                                className={`flex items-center gap-4 px-6 py-4 rounded-2xl text-lg mb-2 transition-all ${isActive(item.path)
+                                className={`flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-2xl text-base md:text-lg mb-2 transition-all ${isActive(item.path)
                                     ? 'bg-emerald-600 text-white shadow-lg'
                                     : 'text-slate-400 hover:text-white'
                                     }`}
                             >
-                                <item.icon size={24} />
+                                <item.icon size={20} className="md:w-6 md:h-6" />
                                 <span className="font-bold">{item.name}</span>
                             </Link>
                         ))}
                         <button
                             onClick={handleLogout}
-                            className="flex items-center gap-4 px-6 py-4 text-red-400 mt-auto font-bold text-lg"
+                            className="flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 text-red-400 mt-auto font-bold text-base md:text-lg"
                         >
-                            <LogOut size={24} />
+                            <LogOut size={20} className="md:w-6 md:h-6" />
                             Logout
                         </button>
                     </motion.div>

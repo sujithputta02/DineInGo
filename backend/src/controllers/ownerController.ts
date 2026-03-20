@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Owner } from '../models/Owner';
 import { emailService } from '../services/emailService';
+import securityConfig from '../config/security';
 
 // Determine auth provider from request
 const getAuthProvider = (req: Request): string => {
@@ -83,6 +84,22 @@ export const registerOrLinkOwner = async (req: Request, res: Response) => {
                 });
             }
         } else {
+            // BETA ACCESS GUARD: Check if on early access list (only in beta mode)
+            if (securityConfig.betaOnly) {
+                const { EarlyAccess } = await import('../models/EarlyAccess');
+                const hasAccess = await EarlyAccess.findOne({ 
+                    email: email.toLowerCase(),
+                    userType: 'business'
+                });
+
+                if (!hasAccess) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        message: "Dino says: This email isn't on the business waitlist yet! Please join the waitlist to get beta access." 
+                    });
+                }
+            }
+
             // New owner - create account
             owner = await Owner.create({
                 uid,

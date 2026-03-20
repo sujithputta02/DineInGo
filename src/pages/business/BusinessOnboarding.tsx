@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useLocation } from 'react-router-dom';
+import { createSession } from '../../utils/sessionGuard';
 import {
   Building2,
   MapPin,
@@ -494,7 +495,9 @@ const BusinessOnboarding: React.FC = () => {
       console.log('Business deployed successfully:', result);
 
       // Redirect to business dashboard
-      window.location.href = '/business/dashboard';
+      const userParams = JSON.parse(sessionStorage.getItem('userData') || '{"uid":"temp"}');
+      const token = createSession(userParams.uid);
+      window.location.href = `/business/app/dashboard/${token}`;
     } catch (error) {
       console.error('Error deploying business:', error);
       alert('Failed to deploy business. Please try again.');
@@ -1995,7 +1998,11 @@ const BusinessOnboarding: React.FC = () => {
 
               <div className="flex gap-3">
                 <button
-                  onClick={() => window.location.href = '/business/dashboard'}
+                  onClick={() => {
+                    const userParams = JSON.parse(sessionStorage.getItem('userData') || '{"uid":"temp"}');
+                    const token = createSession(userParams.uid);
+                    window.location.href = `/business/app/dashboard/${token}`;
+                  }}
                   className="flex items-center gap-2 px-6 py-3 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 transition-all duration-200 bg-white shadow-sm"
                 >
                   Back to Dashboard

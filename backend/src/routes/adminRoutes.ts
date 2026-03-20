@@ -14,7 +14,11 @@ import {
   toggleUserStatus,
   toggleBusinessStatus,
   sendNotification,
-  getNotificationStats
+  getNotificationStats,
+  getSecurityStats,
+  getSecurityLogs,
+  getWaitlistStats,
+  sendWaitlistBroadcast
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -35,7 +39,8 @@ import {
 import { AdminOTP } from '../models/Admin';
 import { verifyAdminToken, verifySuperAdmin } from '../middleware/adminAuth';
 import { logAdminAction } from '../middleware/adminAuditLog';
-import { adminOtpLimiter, adminLoginLimiter, adminApiLimiter } from '../middleware/rateLimiter';
+import { adminOtpRequestLimiter, adminOtpVerifyLimiter } from '../middleware/adminRateLimiter';
+import { adminApiLimiter } from '../middleware/rateLimiter';
 import {
   validateAdminOtpRequest,
   validateAdminOtpVerification,
@@ -46,6 +51,7 @@ import {
   validateRemoveAdmin,
   handleValidationErrors
 } from '../middleware/inputValidation';
+import { accountLockoutCheck } from '../middleware/accountLockout';
 
 const router = express.Router();
 
@@ -55,16 +61,18 @@ router.get('/test', (req, res) => {
   res.json({ success: true, message: 'Admin routes are working' });
 });
 
-// Clear OTP records (for testing)
-router.delete('/clear-otp/:email', async (req, res) => {
-  try {
-    const { email } = req.params;
-    await AdminOTP.deleteMany({ email: email.toLowerCase() });
-    res.json({ success: true, message: 'OTP records cleared' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: 'Error clearing OTP records' });
-  }
-});
+// ⚠️ Debug route restricted to development only
+if (process.env.NODE_ENV !== 'production') {
+  router.delete('/clear-otp/:email', async (req, res) => {
+    try {
+      const { email } = req.params;
+      await AdminOTP.deleteMany({ email: email.toLowerCase() });
+      res.json({ success: true, message: 'OTP records cleared' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error clearing OTP records' });
+    }
+  });
+}
 
 // Initialize super admin on server start
 initializeSuperAdmin();
@@ -72,8 +80,8 @@ initializeSuperAdmin();
 // ============================================
 // PUBLIC ROUTES (No authentication required)
 // ============================================
-router.post('/request-otp', adminOtpLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
-router.post('/verify-otp', adminLoginLimiter, validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
+router.post('/request-otp', adminOtpRequestLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
+router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
 
 // ============================================
 // PROTECTED ROUTES (JWT authentication required)
@@ -111,6 +119,10 @@ router.get('/database-stats', adminApiLimiter, verifyAdminToken, logAdminAction,
 router.get('/api-health', adminApiLimiter, verifyAdminToken, logAdminAction, getApiHealth);
 router.get('/service-status', adminApiLimiter, verifyAdminToken, logAdminAction, getServiceStatus);
 
+// Security auditing (Super admin only)
+router.get('/security/stats', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getSecurityStats);
+router.get('/security/logs', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getSecurityLogs);
+
 // Maintenance mode routes
 router.post('/maintenance-mode', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleMaintenanceMode);
 router.get('/maintenance-status', getMaintenanceStatus); // Public route
@@ -124,5 +136,9 @@ router.post('/settings/reset', adminApiLimiter, verifyAdminToken, verifySuperAdm
 // System operations (Super admin only)
 router.post('/restart-services', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, restartServices);
 router.post('/clear-cache', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, clearCache);
+
+// Waitlist management (Super admin only for broadcast)
+router.get('/waitlist/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getWaitlistStats);
+router.post('/waitlist/broadcast', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, sendWaitlistBroadcast);
 
 export default router;

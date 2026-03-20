@@ -11,17 +11,38 @@ interface ReviewEmailData {
 }
 
 const createTransporter = () => {
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-    console.error('Email credentials not configured');
-    return null;
+  const brevoKey = process.env.BREVO_API_KEY;
+  const brevoUser = process.env.BREVO_SMTP_USER;
+  const gmailUser = process.env.EMAIL_USER;
+  const gmailPass = process.env.EMAIL_PASS;
+
+  // Primary: Brevo SMTP
+  if (brevoKey && brevoUser) {
+    console.log('Using Brevo SMTP as primary email provider');
+    return nodemailer.createTransport({
+      host: 'smtp-relay.brevo.com',
+      port: 587,
+      auth: {
+        user: brevoUser,
+        pass: brevoKey,
+      },
+    });
   }
-  return nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+
+  // Fallback: Gmail SMTP
+  if (gmailUser && gmailPass) {
+    console.warn('Falling back to Gmail SMTP for email delivery');
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: gmailUser,
+        pass: gmailPass,
+      },
+    });
+  }
+
+  console.error('CRITICAL: No email providers configured');
+  return null;
 };
 
 export interface ReservationEmailData {
@@ -720,6 +741,202 @@ export const emailService = {
       return false;
     }
   },
+
+  /**
+   * Generate specialized HTML for waitlist broadcasts
+   */
+  generateWaitlistTemplate(content: string, type: 'user' | 'business', recipientEmail?: string): string {
+    const isBusiness = type === 'business';
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    
+    // Extract name from email if not provided
+    let displayName = 'there';
+    if (recipientEmail) {
+      const namePart = recipientEmail.split('@')[0];
+      // Capitalize first letter and handle dots/underscores
+      displayName = namePart.split(/[._]/)[0].charAt(0).toUpperCase() + namePart.split(/[._]/)[0].slice(1);
+    }
+
+    // Default Content if empty
+    const defaultContent = isBusiness 
+      ? "DineInGo is more than just a management tool—it's the Operating System for the modern hospitality industry. We're building the infrastructure you need to thrive in a digital-first world."
+      : "We're crafting an experience where every meal is an adventure. From AI-powered discoveries to immersive AR menus, DineInGo is your gateway to the city's finest flavors.";
+
+    const finalContent = content && content.trim() ? content : defaultContent;
+    
+    // Features List
+    const userFeatures = [
+      { icon: '🔍', title: 'Smart Discovery', desc: 'AI-powered recommendations tailored to your unique vibe.' },
+      { icon: '🎟️', title: 'Exclusive Events', desc: 'VIP access to the city’s most anticipated dining experiences.' },
+      { icon: '📱', title: 'AR Menu Tech', desc: 'See dishes in stunning 3D before you even place your order.' },
+      { icon: '🏆', title: 'Dining Rewards', desc: 'Earn points and unlock rare achievements as you explore.' }
+    ];
+
+    const businessFeatures = [
+      { icon: '📊', title: 'Advanced Analytics', desc: 'Real-time insights into your venue’s performance and guests.' },
+      { icon: '🗓️', title: 'Seamless Bookings', desc: 'Effortless reservation management designed for busy teams.' },
+      { icon: '🚀', title: 'Growth Engine', desc: 'Targeted marketing tools to skyrocket your ROI and loyalty.' },
+      { icon: '🛠️', title: 'Full Portal Control', desc: 'Manage your menu, staff, and events from a single powerhouse.' }
+    ];
+
+    const features = isBusiness ? businessFeatures : userFeatures;
+    
+    // Branding
+    const primaryColor = isBusiness ? '#0f172a' : '#059669'; // Slate-900 for Business, Emerald-600 for User
+    const accentColor = isBusiness ? '#eab308' : '#10b981'; // Yellow-500 for Business, Emerald-500 for User
+    const instagramLink = 'https://www.instagram.com/dineingo.web/';
+    
+    // Links
+    const ctaLink = isBusiness ? `${frontendUrl}/business` : `${frontendUrl}/`;
+    const ctaText = isBusiness ? 'Explore Business Portal' : 'Discover DineInGo';
+    const tagline = isBusiness ? 'The Operating System for Modern Dining' : 'Your Personal Dining Concierge';
+    const heroTitle = isBusiness ? 'Empower Your Business' : 'Welcome to DineInGo';
+
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800;900&display=swap');
+          body { font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f8fafc; margin: 0; padding: 0; }
+          .wrapper { width: 100%; table-layout: fixed; background-color: #f8fafc; padding: 40px 0; }
+          .main { background-color: #ffffff; margin: 0 auto; width: 100%; max-width: 600px; border-spacing: 0; color: #1e293b; border-radius: 32px; overflow: hidden; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.08); }
+          .header { background: linear-gradient(135deg, ${primaryColor} 0%, #1e293b 100%); padding: 60px 40px; text-align: center; }
+          .logo-box { background: #10b981; width: 80px; height: 80px; border-radius: 20px; margin: 0 auto 24px auto; display: table; }
+          .logo-img { width: 44px; padding-top: 18px; }
+          .hero-text { color: #ffffff; font-size: 36px; font-weight: 900; margin: 0; line-height: 1.1; letter-spacing: -0.04em; }
+          .content { padding: 50px 40px; background-color: #ffffff; }
+          .tagline { display: block; color: ${accentColor}; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3em; font-size: 11px; margin-bottom: 24px; text-align: center; }
+          .greeting { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 20px; }
+          .body-text { font-size: 16px; line-height: 1.8; color: #475569; margin-bottom: 40px; }
+          
+          /* Feature Section */
+          .features-container { background-color: #f1f5f9; border-radius: 24px; padding: 30px; margin-bottom: 40px; }
+          .feature-item { margin-bottom: 24px; }
+          .feature-item:last-child { margin-bottom: 0; }
+          .feature-icon { font-size: 24px; display: table-cell; padding-right: 15px; vertical-align: top; }
+          .feature-content { display: table-cell; vertical-align: top; }
+          .feature-title { font-weight: 800; color: #0f172a; font-size: 15px; margin-bottom: 4px; }
+          .feature-desc { color: #64748b; font-size: 13px; line-height: 1.5; }
+          
+          .cta-box { text-align: center; margin-top: 40px; }
+          .cta-btn { display: inline-block; background: ${primaryColor}; color: #ffffff !important; padding: 22px 48px; border-radius: 100px; text-decoration: none; font-weight: 800; font-size: 15px; box-shadow: 0 15px 30px -5px ${primaryColor}4D; transition: transform 0.2s; }
+          
+          .footer { padding: 40px; text-align: center; background-color: #f8fafc; border-top: 1px solid #f1f5f9; }
+          .footer-text { color: #94a3b8; font-size: 12px; line-height: 1.6; margin: 0; font-weight: 500; }
+          .social-links { margin-top: 24px; }
+          .social-icon { display: inline-block; margin: 0 15px; color: ${primaryColor}; text-decoration: none; font-size: 13px; font-weight: 800; }
+        </style>
+      </head>
+      <body>
+        <div class="wrapper">
+          <table class="main" cellpadding="0" cellspacing="0">
+            <tr>
+              <td class="header">
+                <div class="logo-box">
+                  <img src="cid:${cidLogo}" alt="DineInGo" class="logo-img">
+                </div>
+                <h1 class="hero-text">${heroTitle}</h1>
+              </td>
+            </tr>
+            <tr>
+              <td class="content">
+                <span class="tagline">${tagline}</span>
+                <div class="greeting">Hello ${displayName},</div>
+                <div class="body-text">
+                  ${finalContent.replace(/\n/g, '<br/>')}
+                </div>
+                
+                <div class="features-container">
+                  <div style="font-size: 13px; font-weight: 900; color: #94a3b8; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 0.1em;">What to Expect</div>
+                  <table width="100%" cellpadding="0" cellspacing="0">
+                    ${features.map(f => `
+                      <tr>
+                        <td class="feature-item">
+                          <div style="display: table; width: 100%;">
+                            <div class="feature-icon">${f.icon}</div>
+                            <div class="feature-content">
+                              <div class="feature-title">${f.title}</div>
+                              <div class="feature-desc">${f.desc}</div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      <tr><td height="16"></td></tr>
+                    `).join('')}
+                  </table>
+                </div>
+
+                <div class="cta-box">
+                  <a href="${ctaLink}" class="cta-btn">${ctaText}</a>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td class="footer">
+                <p class="footer-text">
+                  © 2026 DineInGo Official. All rights reserved.<br>
+                  You are receiving this because you joined the elite DineInGo waitlist.
+                </p>
+                <div class="social-links">
+                  <a href="${instagramLink}" class="social-icon">Instagram</a>
+                  <a href="${frontendUrl}" class="social-icon">Website</a>
+                  <a href="${frontendUrl}/terms" class="social-icon">Terms & Privacy</a>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </div>
+      </body>
+      </html>
+    `;
+  },
+
+  /**
+   * Send a broadcast email to multiple recipients
+   */
+  async sendBroadcastEmail(recipients: string[], subject: string, html: string, type: 'user' | 'business' = 'user'): Promise<{ success: number; failed: number }> {
+    let successCount = 0;
+    let failedCount = 0;
+
+    const transporter = createTransporter();
+    if (!transporter) return { success: 0, failed: recipients.length };
+
+    const batchSize = 10;
+    for (let i = 0; i < recipients.length; i += batchSize) {
+      const batch = recipients.slice(i, i + batchSize);
+      const results = await Promise.all(
+        batch.map(async (to) => {
+          try {
+            // Generate personalized template for each recipient
+            const personalizedHtml = this.generateWaitlistTemplate(html, type, to);
+            
+            await transporter.sendMail({
+              from: `"DineInGo Official" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+              to,
+              subject,
+              html: personalizedHtml,
+              attachments: [{
+                filename: 'logo.png',
+                path: logoPath,
+                cid: cidLogo
+              }]
+            });
+            return true;
+          } catch (err) {
+            console.error(`Failed to send broadcast to ${to}:`, err);
+            return false;
+          }
+        })
+      );
+
+      results.forEach(res => res ? successCount++ : failedCount++);
+    }
+
+    return { success: successCount, failed: failedCount };
+  }
 };
 
 // Generic email sending function
@@ -735,7 +952,7 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
     if (!transporter) return false;
 
     await transporter.sendMail({
-      from: `"DineInGo" <${process.env.EMAIL_USER}>`,
+      from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
       to: options.to,
       subject: options.subject,
       html: options.html,

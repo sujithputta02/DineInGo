@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Clock } from 'lucide-react';
 import DineInGoLogo from '../components/DineInGoLogo';
+import { createSession, getSessionToken } from '../utils/sessionGuard';
 
 const AdminLoginPage: React.FC = () => {
   const [step, setStep] = useState<'email' | 'otp'>('email');
@@ -16,8 +17,10 @@ const AdminLoginPage: React.FC = () => {
 
   // Check if already logged in as admin
   useEffect(() => {
-    if (localStorage.getItem('adminToken')) {
-      navigate('/admin/dashboard');
+    const adminToken = localStorage.getItem('adminToken');
+    const sessionToken = getSessionToken();
+    if (adminToken && sessionToken) {
+      navigate(`/admin/${sessionToken}/dashboard`);
     }
   }, [navigate]);
 
@@ -34,15 +37,13 @@ const AdminLoginPage: React.FC = () => {
     setLoading(true);
     setError(null);
     setSuccess(null);
-    
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/request-otp`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/admin/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
       const data = await res.json();
-      
       if (!res.ok) {
         throw new Error(data.message || 'Failed to send OTP');
       }
@@ -63,7 +64,7 @@ const AdminLoginPage: React.FC = () => {
     setError(null);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/verify-otp`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/admin/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, otp }),
@@ -80,8 +81,11 @@ const AdminLoginPage: React.FC = () => {
       localStorage.setItem('adminRole', data.admin.role);
       localStorage.setItem('adminLoginTime', new Date().toISOString());
       
-      // Navigate to admin dashboard
-      navigate('/admin/dashboard');
+      // Generate web session token for URL obfuscation
+      const sessionToken = createSession(data.admin.email);
+      
+      // Navigate to admin dashboard with session token
+      navigate(`/admin/${sessionToken}/dashboard`);
     } catch (err: any) {
       setError(err.message || 'OTP verification failed');
     } finally {
@@ -96,7 +100,7 @@ const AdminLoginPage: React.FC = () => {
     setError(null);
     
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/admin/request-otp`, {
+      const res = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/admin/request-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),

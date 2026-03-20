@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { Business, IBusiness } from '../models/Business';
 import { Booking } from '../models/Booking';
 import mongoose from 'mongoose';
-import multer from 'multer';
+import { uploadCloud as upload } from '../config/cloudinary';
 import path from 'path';
 import fs from 'fs';
 
@@ -262,36 +262,8 @@ const getDefaultTimeSlots = () => {
   ];
 };
 
-// Configure multer for file uploads
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadDir = 'uploads/business';
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    cb(null, uploadDir);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
-  }
-});
-
-export const upload = multer({
-  storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png|gif|webp/;
-    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
-    const mimetype = allowedTypes.test(file.mimetype);
-
-    if (mimetype && extname) {
-      return cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'));
-    }
-  }
-});
+// Export the Cloudinary upload middleware directly
+export { upload };
 
 // Get all active businesses (for public dashboard)
 export const getAllBusinesses = async (req: Request, res: Response): Promise<void> => {
@@ -381,14 +353,14 @@ export const createBusiness = async (req: Request, res: Response): Promise<void>
       utilizationRate: 0
     };
 
-    // Handle file uploads
+    // Handle file uploads - using Cloudinary's path which provides the full URL
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files.thumbnail && files.thumbnail[0]) {
-        businessData.thumbnail = `/uploads/business/${files.thumbnail[0].filename}`;
+        businessData.thumbnail = files.thumbnail[0].path;
       }
       if (files.coverImage && files.coverImage[0]) {
-        businessData.coverImage = `/uploads/business/${files.coverImage[0].filename}`;
+        businessData.coverImage = files.coverImage[0].path;
       }
     }
 
@@ -533,14 +505,14 @@ export const updateBusiness = async (req: Request, res: Response): Promise<void>
 
     updateData.updatedAt = new Date();
 
-    // Handle file uploads
+    // Handle file uploads - using Cloudinary's path which provides the full URL
     if (req.files) {
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       if (files.thumbnail && files.thumbnail[0]) {
-        updateData.thumbnail = `/uploads/business/${files.thumbnail[0].filename}`;
+        updateData.thumbnail = files.thumbnail[0].path;
       }
       if (files.coverImage && files.coverImage[0]) {
-        updateData.coverImage = `/uploads/business/${files.coverImage[0].filename}`;
+        updateData.coverImage = files.coverImage[0].path;
       }
     }
 

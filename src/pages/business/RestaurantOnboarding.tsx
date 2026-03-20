@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createSession } from '../../utils/sessionGuard';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { Loader2, Upload, MapPin, DollarSign, Phone } from 'lucide-react';
@@ -104,10 +105,11 @@ const RestaurantOnboarding: React.FC = () => {
             // Backend createRestaurant just does `new Restaurant(req.body)`. So I must provide it.
             const restaurantId = formData.name.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.floor(Math.random() * 1000);
 
-            await axios.post(`${API_URL}/api/business/restaurant`, { ...payload, restaurantId });
+            await axios.post(`${API_URL}/api/v1/business/restaurant`, { ...payload, restaurantId });
 
             toast.success("Restaurant registered successfully!");
-            navigate('/business/dashboard');
+            const token = createSession(user.uid);
+            navigate(`/business/app/dashboard/${token}`);
         } catch (error: any) {
             console.error("Registration Error:", error);
             toast.error(error.response?.data?.message || "Failed to register restaurant");

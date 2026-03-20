@@ -45,5 +45,37 @@ export const indianCities: IndianCity[] = [
   { city: 'Dehradun', state: 'Uttarakhand', country: 'India', coordinates: { lat: 30.3165, lng: 78.0322 } },
   { city: 'Amritsar', state: 'Punjab', country: 'India', coordinates: { lat: 31.6340, lng: 74.8723 } },
   { city: 'Jammu', state: 'Jammu and Kashmir', country: 'India', coordinates: { lat: 32.7266, lng: 74.8570 } },
-  { city: 'Srinagar', state: 'Jammu and Kashmir', country: 'India', coordinates: { lat: 34.0837, lng: 74.7973 } }
+  { city: 'Srinagar', state: 'Jammu and Kashmir', country: 'India', coordinates: { lat: 34.0837, lng: 74.7973 } },
+  { city: 'Ludhiana', state: 'Punjab', country: 'India', coordinates: { lat: 30.9010, lng: 75.8573 } },
+  { city: 'Agra', state: 'Uttar Pradesh', country: 'India', coordinates: { lat: 27.1767, lng: 78.0081 } },
+  { city: 'Varanasi', state: 'Uttar Pradesh', country: 'India', coordinates: { lat: 25.3176, lng: 82.9739 } },
+  { city: 'Shimla', state: 'Himachal Pradesh', country: 'India', coordinates: { lat: 31.1048, lng: 77.1734 } },
+
+  // Western Cities
+  { city: 'Rajkot', state: 'Gujarat', country: 'India', coordinates: { lat: 22.3039, lng: 70.8022 } },
+  { city: 'Nashik', state: 'Maharashtra', country: 'India', coordinates: { lat: 19.9975, lng: 73.7898 } },
+  { city: 'Aurangabad', state: 'Maharashtra', country: 'India', coordinates: { lat: 19.8762, lng: 75.3433 } },
+  { city: 'Panaji', state: 'Goa', country: 'India', coordinates: { lat: 15.4909, lng: 73.8278 } },
+  { city: 'Jodhpur', state: 'Rajasthan', country: 'India', coordinates: { lat: 26.2389, lng: 73.0243 } },
+  { city: 'Udaipur', state: 'Rajasthan', country: 'India', coordinates: { lat: 24.5854, lng: 73.7125 } },
+
+  // Eastern & Central Cities
+  { city: 'Bhubaneswar', state: 'Odisha', country: 'India', coordinates: { lat: 20.2961, lng: 85.8245 } },
+  { city: 'Raipur', state: 'Chhattisgarh', country: 'India', coordinates: { lat: 21.2514, lng: 81.6296 } },
+  { city: 'Ranchi', state: 'Jharkhand', country: 'India', coordinates: { lat: 23.3441, lng: 85.3096 } },
+  { city: 'Guwahati', state: 'Assam', country: 'India', coordinates: { lat: 26.1445, lng: 91.7362 } },
+  { city: 'Gwalior', state: 'Madhya Pradesh', country: 'India', coordinates: { lat: 26.2124, lng: 78.1773 } },
+  { city: 'Jabalpur', state: 'Madhya Pradesh', country: 'India', coordinates: { lat: 23.1815, lng: 79.9864 } },
+
+  // More Southern Cities
+  { city: 'Madurai', state: 'Tamil Nadu', country: 'India', coordinates: { lat: 9.9252, lng: 78.1198 } },
+  { city: 'Tiruchirappalli', state: 'Tamil Nadu', country: 'India', coordinates: { lat: 10.7905, lng: 78.7047 } },
+  { city: 'Salem', state: 'Tamil Nadu', country: 'India', coordinates: { lat: 11.6643, lng: 78.1460 } },
+  { city: 'Warangal', state: 'Telangana', country: 'India', coordinates: { lat: 17.9689, lng: 79.5941 } },
+  { city: 'Trivandrum', state: 'Kerala', country: 'India', coordinates: { lat: 8.5241, lng: 76.9366 } },
+  { city: 'Calicut', state: 'Kerala', country: 'India', coordinates: { lat: 11.2588, lng: 75.7804 } },
+  { city: 'Hubli', state: 'Karnataka', country: 'India', coordinates: { lat: 15.3647, lng: 75.1240 } },
+  { city: 'Belgaum', state: 'Karnataka', country: 'India', coordinates: { lat: 15.8497, lng: 74.4977 } },
+  { city: 'Nellore', state: 'Andhra Pradesh', country: 'India', coordinates: { lat: 14.4426, lng: 79.9865 } },
+  { city: 'Kurnool', state: 'Andhra Pradesh', country: 'India', coordinates: { lat: 15.8281, lng: 78.0373 } }
 ]; 

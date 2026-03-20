@@ -19,6 +19,7 @@ import { storeUserData, fetchUserData } from "./dbUtils";
 import { userAPI, authOtpApi } from './services/api';
 import { sendPasswordReset } from "./authUtils";
 import socketService from './utils/socketService';
+import { createSession, getSessionToken } from './utils/sessionGuard';
 
 interface FormData {
   email: string;
@@ -72,9 +73,14 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
-        // User is signed in
-        console.log('User is signed in:', user.email);
-        navigate('/dashboard');
+        // User already signed in — reuse or create session token
+        const existingToken = getSessionToken();
+        if (existingToken) {
+          navigate(`/dashboard/${existingToken}`);
+        } else {
+          const token = createSession(user.uid);
+          navigate(`/dashboard/${token}`);
+        }
       }
     });
 
@@ -87,7 +93,8 @@ export default function LoginPage() {
 
     // Optional: Listen for user activities
     socketService.onUserActivity((data) => {
-      console.log('Real-time user activity:', data);
+      // You can add more logic here, like showing notifications
+
       // You can add more logic here, like showing notifications
     });
 
@@ -171,14 +178,10 @@ export default function LoginPage() {
 
       // Track login activity in our backend
       try {
-        console.log('Tracking login activity for user:', user.uid);
-        const response = await userAPI.loginUser(user.uid, 'email');
-        console.log('Login activity tracked successfully:', response);
-        // Set timestamp to avoid duplicate tracking on page refresh
+        await userAPI.loginUser(user.uid, 'email');
         sessionStorage.setItem('lastLoginTracked', Date.now().toString());
       } catch (error) {
         console.error('Error tracking login activity:', error);
-        // Continue with login flow even if tracking fails
       }
 
       // Fetch existing user data from Firestore first
@@ -197,7 +200,8 @@ export default function LoginPage() {
 
           // Store user data in session storage
           sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
-          navigate('/dashboard');
+          const token = createSession(user.uid);
+          navigate(`/dashboard/${token}`);
           return;
         }
       } catch (error) {
@@ -221,7 +225,8 @@ export default function LoginPage() {
       // Store user data in session storage
       sessionStorage.setItem('userData', JSON.stringify(userData));
 
-      navigate('/dashboard');
+      const token = createSession(user.uid);
+      navigate(`/dashboard/${token}`);
     } catch (error: any) {
       console.error('Login error:', {
         code: error.code,
@@ -274,18 +279,14 @@ export default function LoginPage() {
         displayName: user.displayName || user.email?.split('@')[0] || ''
       });
 
-      console.log('Google sign-in successful, photoURL:', user.photoURL);
+
 
       // Track login activity in our backend
       try {
-        console.log('Tracking Google login activity for user:', user.uid);
-        const response = await userAPI.loginUser(user.uid, 'google');
-        console.log('Google login activity tracked successfully:', response);
-        // Set timestamp to avoid duplicate tracking on page refresh
+        await userAPI.loginUser(user.uid, 'google');
         sessionStorage.setItem('lastLoginTracked', Date.now().toString());
       } catch (error) {
         console.error('Error tracking Google login activity:', error);
-        // Continue with login flow even if tracking fails
       }
 
       // Fetch existing user data from Firestore first
@@ -306,7 +307,8 @@ export default function LoginPage() {
 
           // Store user data in session storage
           sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
-          navigate('/dashboard');
+          const token = createSession(user.uid);
+          navigate(`/dashboard/${token}`);
           return;
         }
       } catch (error) {
@@ -330,7 +332,8 @@ export default function LoginPage() {
       // Store user data in session storage
       sessionStorage.setItem('userData', JSON.stringify(userData));
 
-      navigate('/dashboard');
+      const token = createSession(user.uid);
+      navigate(`/dashboard/${token}`);
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       let errorMessage = 'An error occurred during Google sign-in.';
@@ -443,29 +446,31 @@ export default function LoginPage() {
   ];
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative bg-gray-50 overflow-hidden">
-      {/* Floating Doodles */}
-      {doodleItems.map((doodle: DoodleItem, index: number) => (
-        <motion.img
-          key={index}
-          src={doodle.src}
-          className="absolute object-contain opacity-70 z-0"
-          style={{
-            ...doodle,
-            position: "absolute",
-          }}
-          animate={{
-            y: [-8, 8, -8],
-            rotate: [0, 3, -3, 0],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            delay: index * 0.2,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+    <div className="min-h-screen flex flex-col items-center justify-center relative bg-gray-50 overflow-hidden p-4 md:p-6 lg:p-8">
+      {/* Floating Doodles - Hidden on mobile */}
+      <div className="hidden md:block">
+        {doodleItems.map((doodle: DoodleItem, index: number) => (
+          <motion.img
+            key={index}
+            src={doodle.src}
+            className="absolute object-contain opacity-70 z-0"
+            style={{
+              ...doodle,
+              position: "absolute",
+            }}
+            animate={{
+              y: [-8, 8, -8],
+              rotate: [0, 3, -3, 0],
+            }}
+            transition={{
+              duration: 6,
+              repeat: Infinity,
+              delay: index * 0.2,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
 
       {/* Fixed Wave Background */}
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
@@ -493,20 +498,20 @@ export default function LoginPage() {
       </div>
 
       {/* Logo */}
-      <div className="mb-6 text-center relative z-10">
-        <h1 className="text-4xl font-bold">
+      <div className="mb-4 md:mb-6 text-center relative z-10">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
           D<span className="relative">
             i
-            <span className="absolute top-2.5 left-1.5 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-1 md:top-2 left-1 -translate-x-1/2 w-1.5 md:w-2 h-1.5 md:h-2 bg-red-500 rounded-full"></span>
           </span>neIn
           <span className="text-yellow-400">Go</span>
         </h1>
-        <p className="text-sm text-gray-600">Reserve Dining & Events</p>
+        <p className="text-xs md:text-sm text-gray-600 mt-1">Reserve Dining & Events</p>
       </div>
 
       {/* Login/Forgot Password Container */}
       <motion.div
-        className="bg-white p-8 rounded-3xl w-full max-w-md z-10 shadow-xl border border-emerald-100 relative"
+        className="bg-white p-4 md:p-6 lg:p-8 rounded-2xl md:rounded-3xl w-full max-w-md z-10 shadow-xl border border-emerald-100 relative"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
@@ -514,19 +519,19 @@ export default function LoginPage() {
         {showForgotPassword ? (
           <>
             {/* Forgot Password Form */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-4 md:mb-6">
               <button
                 onClick={() => {
                   setShowForgotPassword(false);
                   setResetEmailSent(false);
                   setResetEmail("");
                 }}
-                className="absolute left-4 top-4 text-gray-600 hover:text-gray-800"
+                className="absolute left-3 md:left-4 top-3 md:top-4 text-gray-600 hover:text-gray-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
               >
                 <ArrowLeft size={20} />
               </button>
-              <h2 className="text-2xl font-bold text-gray-800">Reset Password</h2>
-              <p className="text-sm text-gray-600 mt-2">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">Reset Password</h2>
+              <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">
                 {resetEmailSent
                   ? "Check your email for reset instructions!"
                   : "Enter your email to receive password reset instructions."}
@@ -534,7 +539,7 @@ export default function LoginPage() {
             </div>
 
             {!resetEmailSent ? (
-              <form onSubmit={handleForgotPassword} className="space-y-4">
+              <form onSubmit={handleForgotPassword} className="space-y-3 md:space-y-4">
                 {resetStep === 'email' && (
                   <motion.div
                     initial={{ x: -20, opacity: 0 }}
@@ -547,7 +552,7 @@ export default function LoginPage() {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="Email"
-                      className={`w-full p-3 rounded-full border ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                       required
                     />
                   </motion.div>
@@ -565,7 +570,7 @@ export default function LoginPage() {
                       onChange={(e) => setResetOTP(e.target.value)}
                       placeholder="Enter 6-digit OTP"
                       maxLength={6}
-                      className={`w-full p-3 rounded-full border ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center tracking-widest font-bold`}
+                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center tracking-widest font-bold`}
                       required
                     />
                   </motion.div>
@@ -582,15 +587,15 @@ export default function LoginPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="New Password"
-                      className={`w-full p-3 rounded-full border ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowNewPassword(!showNewPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                      className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-gray-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
                     >
-                      {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </motion.div>
                 )}
@@ -599,7 +604,7 @@ export default function LoginPage() {
 
                 <motion.button
                   type="submit"
-                  className="w-full bg-emerald-500 text-white py-3 rounded-full font-medium text-sm hover:bg-emerald-600 transition-colors"
+                  className="w-full bg-emerald-500 text-white py-2.5 md:py-3 rounded-full font-medium text-sm md:text-base hover:bg-emerald-600 transition-colors min-h-[44px]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   disabled={isLoading}
@@ -611,14 +616,14 @@ export default function LoginPage() {
               </form>
             ) : (
               <div className="text-center">
-                <p className="text-emerald-600 mb-4">Reset link sent successfully!</p>
+                <p className="text-emerald-600 mb-3 md:mb-4 text-sm md:text-base">Reset link sent successfully!</p>
                 <button
                   onClick={() => {
                     setShowForgotPassword(false);
                     setResetEmailSent(false);
                     setResetEmail("");
                   }}
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700"
                 >
                   Return to Login
                 </button>
@@ -628,12 +633,12 @@ export default function LoginPage() {
         ) : (
           <>
             {/* Login Form */}
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Welcome Back!</h2>
-              <p className="text-sm text-gray-600 mt-2">Sign in to continue your seamless dining experience.</p>
+            <div className="text-center mb-4 md:mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">Welcome Back!</h2>
+              <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">Sign in to continue your seamless dining experience.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
               {/* Email Input */}
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
@@ -647,7 +652,7 @@ export default function LoginPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email"
-                  className={`w-full p-3 rounded-full border ${errors.email ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                   required
                 />
                 {errors.email && <p className="text-red-500 text-xs ml-4">{errors.email}</p>}
@@ -667,15 +672,15 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Password"
-                    className={`w-full p-3 rounded-full border ${errors.password ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-gray-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
                 {errors.password && <p className="text-red-500 text-xs ml-4">{errors.password}</p>}
@@ -689,7 +694,7 @@ export default function LoginPage() {
                     setShowForgotPassword(true);
                     setResetEmail(formData.email);
                   }}
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700"
                 >
                   Forgot password?
                 </button>
@@ -698,7 +703,7 @@ export default function LoginPage() {
               {/* Login Button */}
               <motion.button
                 type="submit"
-                className="w-full bg-emerald-500 text-white py-3 rounded-full font-medium text-sm hover:bg-emerald-600 transition-colors"
+                className="w-full bg-emerald-500 text-white py-2.5 md:py-3 rounded-full font-medium text-sm md:text-base hover:bg-emerald-600 transition-colors min-h-[44px]"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
@@ -707,37 +712,38 @@ export default function LoginPage() {
               </motion.button>
 
               {/* Divider */}
-              <div className="relative py-4">
+              <div className="relative py-3 md:py-4">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-300"></div>
                 </div>
                 <div className="relative flex justify-center">
-                  <span className="bg-white px-4 text-sm text-gray-500">Or</span>
+                  <span className="bg-white px-3 md:px-4 text-xs md:text-sm text-gray-500">Or</span>
                 </div>
               </div>
 
               {/* Google Sign-In Button */}
               <motion.button
                 type="button"
-                className="w-full bg-white text-gray-700 py-3 px-4 rounded-full border border-gray-300 font-medium text-sm hover:bg-gray-50 transition-colors flex items-center justify-center"
+                className="w-full bg-white text-gray-700 py-2.5 md:py-3 px-3 md:px-4 rounded-full border border-gray-300 font-medium text-sm md:text-base hover:bg-gray-50 transition-colors flex items-center justify-center min-h-[44px]"
                 onClick={handleGoogleSignIn}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={isGoogleSigningIn}
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <svg className="w-4 md:w-5 h-4 md:h-5 mr-2" viewBox="0 0 24 24">
                   <path
                     d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
                     fill="#10B981"
                   />
                 </svg>
-                {isGoogleSigningIn ? "Signing in..." : "Sign in with Google"}
+                <span className="hidden sm:inline">{isGoogleSigningIn ? "Signing in..." : "Sign in with Google"}</span>
+                <span className="sm:hidden">{isGoogleSigningIn ? "Signing in..." : "Google"}</span>
               </motion.button>
 
               {/* Sign-Up Link */}
-              <div className="text-center mt-4">
-                <span className="text-sm text-gray-600">Don't have an account? </span>
-                <Link to="/signup" className="text-sm font-medium text-emerald-600 hover:text-emerald-700">
+              <div className="text-center mt-3 md:mt-4">
+                <span className="text-xs md:text-sm text-gray-600">Don't have an account? </span>
+                <Link to="/signup" className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700">
                   Sign Up
                 </Link>
               </div>

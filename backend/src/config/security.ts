@@ -226,6 +226,11 @@ export const securityConfig = {
       'ssn',
     ],
   },
+  
+  // ============================================
+  // RELEASE CONFIGURATION
+  // ============================================
+  betaOnly: true, // Set to false for official release to remove waitlist restriction
 };
 
 export default securityConfig;

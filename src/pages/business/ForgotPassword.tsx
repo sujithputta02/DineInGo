@@ -35,7 +35,7 @@ export default function ForgotPassword() {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_URL}/api/business/forgot-password/request`, {
+            const response = await axios.post(`${API_URL}/api/v1/business/forgot-password/request`, {
                 email,
             });
 
@@ -60,7 +60,7 @@ export default function ForgotPassword() {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_URL}/api/business/forgot-password/verify-otp`, {
+            const response = await axios.post(`${API_URL}/api/v1/business/forgot-password/verify-otp`, {
                 email,
                 otp,
             });
@@ -98,7 +98,7 @@ export default function ForgotPassword() {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_URL}/api/business/forgot-password/reset`, {
+            const response = await axios.post(`${API_URL}/api/v1/business/forgot-password/reset`, {
                 email,
                 resetToken,
                 newPassword,

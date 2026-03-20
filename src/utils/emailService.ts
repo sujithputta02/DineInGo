@@ -24,7 +24,7 @@ export const emailService = {
       });
 
       // Send email through the backend API
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/send-email/send-invoice`, {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5001'}/api/v1/send-email/send-invoice`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

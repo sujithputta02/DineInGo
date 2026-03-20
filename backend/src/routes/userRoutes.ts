@@ -15,6 +15,8 @@ import { User } from '../models/User';
 // SECURITY: Import rate limiters
 import { authLimiter, apiLimiter } from '../middleware/rateLimiter';
 import { validateUserRegistration, validateUserLogin, handleValidationErrors } from '../middleware/inputValidation';
+import { accountLockoutCheck } from '../middleware/accountLockout';
+import { recordFailedAttempt, resetFailedAttempts } from '../services/securityMonitor';
 
 const router = express.Router();
 
@@ -23,55 +25,43 @@ router.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'User API is running' });
 });
 
-// Debug endpoints
-router.get('/debug/:uid', debugUserActivities);
-router.get('/debug', async (req, res) => {
-  try {
-    const users = await User.find({}, 'uid email displayName activities');
-    const usersWithActivityCounts = users.map(user => ({
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      activityCount: user.activities ? user.activities.length : 0
-    }));
+// 🔒 Debug endpoints restricted to development only
+if (process.env.NODE_ENV !== 'production') {
+  router.get('/debug/:uid', debugUserActivities);
+  router.get('/debug', async (req, res) => {
+    try {
+      const users = await User.find({}, 'uid email displayName activities');
+      res.json({ totalUsers: users.length, serverTime: new Date().toISOString() });
+    } catch (error) {
+      res.status(500).json({ message: 'Error fetching debug information' });
+    }
+  });
+}
 
-    res.json({
-      totalUsers: users.length,
-      users: usersWithActivityCounts,
-      serverTime: new Date().toISOString()
-    });
-  } catch (error) {
-    console.error('Error fetching all users for debug:', error);
-    res.status(500).json({ message: 'Error fetching debug information' });
-  }
-});
-
-// SECURITY: Apply rate limiting to authentication endpoints
-// Custom login route for debugging
-router.post('/login', authLimiter, async (req, res) => {
+// SECURITY: Apply rate limiting + account lockout to authentication endpoints
+router.post('/login', authLimiter, accountLockoutCheck('user'), async (req, res) => {
   try {
-    console.log('Login request received:', req.body);
-    const { uid, loginSource = 'email' } = req.body;
+    const { uid, email, loginSource = 'email' } = req.body;
 
     if (!uid) {
-      console.log('Missing uid in login request');
+      if (email) await recordFailedAttempt(email, 'user', req.ip || 'unknown', req.path);
       return res.status(400).json({ message: 'User ID (uid) is required' });
     }
 
-    console.log(`Looking up user with uid: ${uid}`);
     const user = await User.findOne({ uid });
 
     if (!user) {
-      console.log(`No user found with uid: ${uid}`);
+      if (email) await recordFailedAttempt(email, 'user', req.ip || 'unknown', req.path);
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Extract request info
+    // Successful login — reset failed attempts
+    if (email) await resetFailedAttempts(email, 'user');
+
     const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
       req.socket.remoteAddress || 'Unknown IP';
 
-    // Create login activity
     const loginActivity = {
       type: 'login' as const,
       timestamp: new Date(),
@@ -80,17 +70,13 @@ router.post('/login', authLimiter, async (req, res) => {
       source: loginSource
     };
 
-    console.log('Adding login activity:', loginActivity);
-
-    // Update user with login activity
     user.lastLogin = new Date();
     user.activities.push(loginActivity);
     await user.save();
 
-    console.log('User updated with login activity');
     res.json(user);
   } catch (error) {
-    console.error('Error in custom login route:', error);
+    console.error('Error in login route:', error);
     res.status(500).json({ message: 'Error during login' });
   }
 });

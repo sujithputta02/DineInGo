@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { validateSession } from '../utils/sessionGuard';
 
 interface ProtectedAdminRouteProps {
   children: React.ReactNode;
@@ -7,6 +8,7 @@ interface ProtectedAdminRouteProps {
 
 const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) => {
   const location = useLocation();
+  const { sessionToken } = useParams<{ sessionToken: string }>();
   const adminToken = localStorage.getItem('adminToken');
   const adminLoginTime = localStorage.getItem('adminLoginTime');
 
@@ -27,9 +29,12 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) =
     }
   }, [adminToken, adminLoginTime]);
 
-  if (!adminToken) {
-    // Redirect to admin login with return url
-    return <Navigate to="/admin-login" state={{ from: location }} replace />;
+  // Validate both JWT and Obfuscated URL Session Token
+  const isSessionValid = validateSession(sessionToken);
+
+  if (!adminToken || !isSessionValid) {
+    // Security: Redirect to landing page so the secret login URL is not revealed
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;

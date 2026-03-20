@@ -23,7 +23,7 @@ const DebugTableUnblock = () => {
       if (date) params.append('date', date);
       if (time) params.append('time', time);
       
-      const url = `${API_URL}/api/bookings/debug-table/${restaurantId}/${tableId}${params.toString() ? `?${params.toString()}` : ''}`;
+      const url = `${API_URL}/api/v1/bookings/debug-table/${restaurantId}/${tableId}${params.toString() ? `?${params.toString()}` : ''}`;
       const response = await fetch(url);
       const data = await response.json();
       
@@ -45,7 +45,7 @@ const DebugTableUnblock = () => {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/bookings/manual-unblock`, {
+      const response = await fetch(`${API_URL}/api/v1/bookings/manual-unblock`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

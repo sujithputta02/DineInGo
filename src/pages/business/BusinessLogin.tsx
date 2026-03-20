@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { createSession } from '../../utils/sessionGuard';
 import { motion } from 'framer-motion';
 import { auth, signInWithEmailAndPassword, signInWithPopup, provider } from '../../firebase';
 import { toast } from 'react-toastify';
@@ -44,7 +45,8 @@ const BusinessLogin: React.FC = () => {
             }));
 
             toast.success("Login successful");
-            navigate('/business/dashboard');
+            const token = createSession(user.uid);
+            navigate(`/business/app/dashboard/${token}`);
         } catch (error: any) {
             console.error("Login Error:", error);
 
@@ -67,7 +69,7 @@ const BusinessLogin: React.FC = () => {
             const result = await signInWithPopup(auth, provider);
             const user = result.user;
 
-            const response = await axios.post(`${API_URL}/api/business/register`, {
+            const response = await axios.post(`${API_URL}/api/v1/business/register`, {
                 uid: user.uid,
                 email: user.email,
                 displayName: user.displayName || 'Business Owner',
@@ -90,7 +92,8 @@ const BusinessLogin: React.FC = () => {
                 toast.success("Login successful!");
             }
 
-            navigate('/business/dashboard');
+            const token = createSession(user.uid);
+            navigate(`/business/app/dashboard/${token}`);
 
         } catch (error: any) {
             console.error("Google Auth Error:", error);

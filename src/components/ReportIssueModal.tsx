@@ -71,7 +71,7 @@ const ReportIssueModal: React.FC<ReportIssueModalProps> = ({
       const browserInfo = navigator.userAgent;
       const deviceInfo = `${window.screen.width}x${window.screen.height}, ${navigator.platform}`;
 
-      const response = await axios.post(`${API_URL}/api/issue-reports/submit`, {
+      const response = await axios.post(`${API_URL}/api/v1/issue-reports/submit`, {
         reporterType: userType,
         reporterId: userId,
         reporterEmail: formData.reporterEmail,

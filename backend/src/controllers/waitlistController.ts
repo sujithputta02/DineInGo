@@ -4,6 +4,7 @@ import { Waitlist } from '../models/Waitlist';
 import { Business } from '../models/Business';
 import { EarlyAccess } from '../models/EarlyAccess';
 import { getIO } from '../utils/socket';
+import securityConfig from '../config/security';
 
 // Join waitlist
 export const joinWaitlist = async (req: Request, res: Response): Promise<void> => {
@@ -366,5 +367,63 @@ export const joinEarlyAccess = async (req: Request, res: Response): Promise<void
     } catch (error) {
         console.error('Error joining early access:', error);
         res.status(500).json({ success: false, message: 'Error joining early access' });
+    }
+};
+
+// Check if email has beta access (is on early access list)
+export const checkBetaAccess = async (req: Request, res: Response): Promise<void> => {
+    try {
+        const { email, type = 'user' } = req.query;
+
+        if (!email) {
+            res.status(400).json({ success: false, message: 'Email is required' });
+            return;
+        }
+
+        // Always grant access if not in beta mode
+        if (!securityConfig.betaOnly) {
+            res.status(200).json({ 
+                success: true, 
+                hasAccess: true,
+                message: 'Welcome to DineInGo!' 
+            });
+            return;
+        }
+
+        const entry = await EarlyAccess.findOne({ 
+            email: (email as string).toLowerCase(),
+            userType: type as string
+        });
+
+        if (entry) {
+            // New logic: Verify referral code if one is provided
+            const code = req.query.code as string;
+            if (code) {
+                // strict match required
+                if (entry.referralCode !== code) {
+                    res.status(400).json({ 
+                        success: false, 
+                        hasAccess: false,
+                        message: 'Invalid Referral Code. Please check the code sent to your email.' 
+                    });
+                    return;
+                }
+            }
+
+            res.status(200).json({ 
+                success: true, 
+                hasAccess: true,
+                message: 'Access granted. Welcome to the beta!' 
+            });
+        } else {
+            res.status(200).json({ 
+                success: true, 
+                hasAccess: false,
+                message: 'Email not found on the waitlist.' 
+            });
+        }
+    } catch (error) {
+        console.error('Error checking beta access:', error);
+        res.status(500).json({ success: false, message: 'Error checking beta access' });
     }
 };

@@ -67,7 +67,7 @@ const BusinessMenu: React.FC<MenuProps> = ({ restaurantId, currentMenu, onUpdate
                 updatedMenu.push(formData);
             }
 
-            await axios.put(`${API_URL}/api/business/restaurant/${restaurantId}`, {
+            await axios.put(`${API_URL}/api/v1/business/restaurant/${restaurantId}`, {
                 ownerId: user.uid,
                 menu: updatedMenu
             });
@@ -91,7 +91,7 @@ const BusinessMenu: React.FC<MenuProps> = ({ restaurantId, currentMenu, onUpdate
 
             const updatedMenu = currentMenu.filter((_, i) => i !== index);
 
-            await axios.put(`${API_URL}/api/business/restaurant/${restaurantId}`, {
+            await axios.put(`${API_URL}/api/v1/business/restaurant/${restaurantId}`, {
                 ownerId: user.uid,
                 menu: updatedMenu
             });

@@ -9,6 +9,12 @@ export interface IUserStats extends Document {
   totalBookings: number;
   totalEvents: number;
   totalPoints: number;
+  level: number;
+  tier: 'Early Hatcher' | 'Urban Raptor' | 'Apex Predator' | 'Cuisine King';
+  territory: {
+    visitedLocations: { latitude: number; longitude: number; name: string }[];
+    conqueredAreas: string[]; // List of neighborhoods/cities
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -44,6 +50,23 @@ const UserStatsSchema: Schema = new Schema({
   totalPoints: {
     type: Number,
     default: 0
+  },
+  level: {
+    type: Number,
+    default: 1
+  },
+  tier: {
+    type: String,
+    enum: ['Early Hatcher', 'Urban Raptor', 'Apex Predator', 'Cuisine King'],
+    default: 'Early Hatcher'
+  },
+  territory: {
+    visitedLocations: [{
+      latitude: Number,
+      longitude: Number,
+      name: String
+    }],
+    conqueredAreas: [String]
   }
 }, {
   timestamps: true

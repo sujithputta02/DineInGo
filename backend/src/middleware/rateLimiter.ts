@@ -1,16 +1,32 @@
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
+import { SecurityLog } from '../models/SecurityLog';
 
 /**
- * SECURITY: Rate Limiting Middleware
- * Implements IP-based and user-based rate limiting to prevent abuse
- * Follows OWASP recommendations for API rate limiting
- * Note: Using memory store for simplicity. For production, use Redis store.
+ * Helper to log security events for rate limiters
  */
+const logSecurityEvent = async (req: Request, portal: 'user' | 'business' | 'admin' | 'system', details: string) => {
+  try {
+    const forwarded = req.headers['x-forwarded-for'];
+    const ip = typeof forwarded === 'string' ? forwarded.split(',')[0].trim() : (req.socket.remoteAddress || 'unknown');
+    
+    await SecurityLog.create({
+      portal,
+      eventType: 'rate_limit_exceeded',
+      severity: portal === 'admin' ? 'medium' : 'low',
+      details,
+      ip,
+      userAgent: req.headers['user-agent'],
+      path: req.path,
+      userId: (req as any).user?.uid || (req as any).user?._id
+    });
+  } catch (err) {
+    console.error('Failed to log security event:', err);
+  }
+};
 
 /**
  * Helper function to get client IP address (IPv6 safe)
- * Extracts IP from x-forwarded-for header or socket address
  */
 const getClientIp = (req: Request): string => {
   const forwarded = req.headers['x-forwarded-for'];
@@ -35,6 +51,7 @@ export const apiLimiter = rateLimit({
     return req.path === '/health';
   },
   handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'user', 'General API rate limit reached');
     res.status(429).json({
       success: false,
       message: 'Too many requests. Please try again later.',
@@ -55,6 +72,7 @@ export const authLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'user', 'Authentication rate limit reached (failed logins?)');
     res.status(429).json({
       success: false,
       message: 'Too many login attempts. Please try again in 15 minutes.',
@@ -95,6 +113,7 @@ export const otpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'user', 'OTP request rate limit reached');
     res.status(429).json({
       success: false,
       message: 'Too many OTP requests. Please try again in 1 hour.',
@@ -163,6 +182,7 @@ export const adminOtpLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'admin', 'Admin OTP request rate limit reached');
     res.status(429).json({
       success: false,
       message: 'Too many admin OTP requests. Please try again in 1 hour.',
@@ -183,6 +203,7 @@ export const adminLoginLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'admin', 'Admin login attempt rate limit reached');
     res.status(429).json({
       success: false,
       message: 'Too many admin login attempts. Please try again in 15 minutes.',
@@ -193,12 +214,12 @@ export const adminLoginLimiter = rateLimit({
 
 /**
  * Admin API Rate Limiter
- * 50 requests per 15 minutes per IP
- * Prevents DoS attacks on admin endpoints
+ * 200 requests per 15 minutes per IP
+ * Allows for frequent admin operations and auto-refresh features
  */
 export const adminApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,
+  max: 200,
   message: 'Too many admin API requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -223,6 +244,7 @@ export const businessRegistrationLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'business', 'Business registration rate limit reached');
     res.status(429).json({
       success: false,
       message: 'Too many business registration attempts. Please try again in 1 hour.',

@@ -10,7 +10,7 @@ import {
 } from "./firebase";
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { userAPI, authOtpApi } from './services/api';
+import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
 
 interface FormData {
@@ -99,6 +99,10 @@ const SignupPage: React.FC = () => {
   const [tempFormData, setTempFormData] = useState<FormData | null>(null);
   const [resendTimer, setResendTimer] = useState(0);
   const [otpVerified, setOtpVerified] = useState(false);
+  const [showReferralInput, setShowReferralInput] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralError, setReferralError] = useState('');
+  const [googleUserToRegister, setGoogleUserToRegister] = useState<any>(null);
 
   // Store OTPs temporarily
   const [otpStore, setOtpStore] = useState<{ [email: string]: { otp: string, expiry: number } }>({});
@@ -169,9 +173,9 @@ const SignupPage: React.FC = () => {
     if (/[^A-Za-z0-9]/.test(password)) score += 1; // Has special char
 
     // Define strength levels
-    if (score <= 2) {
+    if (score < 3) {
       return { score, label: "Weak", color: "bg-red-500" };
-    } else if (score <= 4) {
+    } else if (score < 5) {
       return { score, label: "Moderate", color: "bg-yellow-500" };
     } else {
       return { score, label: "Strong", color: "bg-green-500" };
@@ -216,40 +220,11 @@ const SignupPage: React.FC = () => {
       }));
     }
 
-    // Calculate password strength
-    const strength = calculatePasswordStrength(value);
+    // Calculate password strength using consolidated logic
+    const strength = checkPasswordStrength(value);
     setPasswordStrength(strength);
   };
 
-  const calculatePasswordStrength = (password: string): PasswordStrength => {
-    let score = 0;
-    let label = '';
-    let color = '';
-
-    // Length check
-    if (password.length >= 8) score++;
-    if (password.length >= 12) score++;
-
-    // Character type checks
-    if (/[A-Z]/.test(password)) score++;
-    if (/[a-z]/.test(password)) score++;
-    if (/[0-9]/.test(password)) score++;
-    if (/[^A-Za-z0-9]/.test(password)) score++;
-
-    // Determine strength label and color
-    if (score <= 2) {
-      label = 'Weak';
-      color = 'text-red-500';
-    } else if (score <= 4) {
-      label = 'Medium';
-      color = 'text-yellow-500';
-    } else {
-      label = 'Strong';
-      color = 'text-green-500';
-    }
-
-    return { score, label, color };
-  };
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {
@@ -303,24 +278,21 @@ const SignupPage: React.FC = () => {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Create user data object
-      const userData = {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || user.email?.split('@')[0] || '',
-        name: user.displayName || user.email?.split('@')[0] || '',
-        photoURL: user.photoURL || null,
-        emailVerified: user.emailVerified
-      };
+      // BETA ACCESS GUARD: Check waitlist status
+      const accessCheck = await waitlistApi.checkAccess(user.email || '');
+      if (!accessCheck.hasAccess) {
+        toast.error("Dino says: This email isn't on the waitlist yet! Please join the waitlist to test DineInGo.");
+        // Sign out from Firebase since they don't have access
+        await auth.signOut();
+        setIsLoading(false);
+        return;
+      }
 
-      // Create user in backend
-      const savedUser = await userAPI.createUser(userData);
-
-      // Store in session storage
-      sessionStorage.setItem('userData', JSON.stringify(savedUser));
-
-      // Navigate to onboarding
-      navigate("/onboarding");
+      // Instead of immediate signup, prompt for referral code
+      setGoogleUserToRegister(user);
+      setShowReferralInput(true);
+      setIsLoading(false);
+      
     } catch (error: any) {
       console.error("Google Sign-Up failed:", error);
       let errorMessage = 'Failed to sign up with Google.';
@@ -420,34 +392,10 @@ const SignupPage: React.FC = () => {
       setOtpVerified(true);
       toast.success('Email verified successfully!');
 
-      // Create user account after OTP verification
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        tempFormData!.email,
-        tempFormData!.password
-      );
-      const user = userCredential.user;
+      // Move to Referral Code step
+      setShowOTPVerification(false);
+      setShowReferralInput(true);
 
-      // Create user data object
-      const userData = {
-        uid: user.uid,
-        email: tempFormData!.email,
-        displayName: tempFormData!.name,
-        name: tempFormData!.name,
-        photoURL: user.photoURL || null,
-        lastLogin: new Date(),
-        createdAt: new Date(),
-        emailVerified: false
-      };
-
-      // Store user data in MongoDB
-      await userAPI.createUser(userData);
-
-      // Store in session storage
-      sessionStorage.setItem('userData', JSON.stringify(userData));
-
-      // Navigate to onboarding
-      navigate("/onboarding");
     } catch (error: any) {
       console.error("Error during verification:", error);
       if (error.code === 'auth/email-already-in-use') {
@@ -472,6 +420,18 @@ const SignupPage: React.FC = () => {
 
     setIsLoading(true);
     try {
+      // BETA ACCESS GUARD: Check waitlist status before requesting OTP
+      const accessCheck = await waitlistApi.checkAccess(formData.email);
+      if (!accessCheck.hasAccess) {
+        setErrors(prev => ({
+          ...prev,
+          email: "Dino says: You're not on the waitlist yet! Please join to get beta access."
+        }));
+        toast.error("You need early access to sign up during the beta.");
+        setIsLoading(false);
+        return;
+      }
+
       // Instead of direct signup, request OTP first
       await sendOTPEmail(formData.email);
       setTempFormData(formData);
@@ -507,6 +467,81 @@ const SignupPage: React.FC = () => {
       }));
 
       toast.error(errorMessage);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyReferral = async () => {
+    if (!referralCode.trim()) {
+      setReferralError('Please enter your early access code.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const emailToCheck = googleUserToRegister ? googleUserToRegister.email : tempFormData?.email;
+      
+      // Verify the code against the waitlist
+      const verifyCheck = await waitlistApi.verifyCode(emailToCheck!, referralCode);
+      
+      if (!verifyCheck.hasAccess) {
+        setReferralError('Invalid code. Please check your waitlist email.');
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('Waitlist code verified! Creating your account...');
+
+      let userToSave;
+      let userData;
+
+      // Handle Google Registration Completion
+      if (googleUserToRegister) {
+        userToSave = googleUserToRegister;
+        userData = {
+          uid: userToSave.uid,
+          email: userToSave.email || '',
+          displayName: userToSave.displayName || userToSave.email?.split('@')[0] || '',
+          name: userToSave.displayName || userToSave.email?.split('@')[0] || '',
+          photoURL: userToSave.photoURL || null,
+          emailVerified: userToSave.emailVerified
+        };
+      } 
+      // Handle Email/Password Registration Completion
+      else {
+        const userCredential = await createUserWithEmailAndPassword(
+          auth,
+          tempFormData!.email,
+          tempFormData!.password
+        );
+        userToSave = userCredential.user;
+        userData = {
+          uid: userToSave.uid,
+          email: tempFormData!.email,
+          displayName: tempFormData!.name,
+          name: tempFormData!.name,
+          photoURL: userToSave.photoURL || null,
+          emailVerified: false // Just verified via OTP
+        };
+      }
+
+      // Create user in backend
+      const savedUser = await userAPI.createUser(userData);
+
+      // Store in session storage
+      sessionStorage.setItem('userData', JSON.stringify(savedUser));
+
+      // Clean up state
+      setGoogleUserToRegister(null);
+      setTempFormData(null);
+
+      // Navigate to onboarding
+      navigate("/onboarding");
+
+    } catch (error: any) {
+      console.error("Referral verification failed:", error);
+      setReferralError(error.response?.data?.message || 'Verification failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -570,29 +605,31 @@ const SignupPage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center relative bg-gray-50 overflow-hidden">
-      {/* Floating Doodles */}
-      {doodleItems.map((doodle, index) => (
-        <motion.img
-          key={index}
-          src={doodle.src}
-          className="absolute object-contain opacity-70 z-0"
-          style={{
-            ...doodle,
-            position: "absolute",
-          }}
-          animate={{
-            y: [-8, 8, -8],
-            rotate: [0, 3, -3, 0],
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            delay: index * 0.2,
-            ease: "easeInOut",
-          }}
-        />
-      ))}
+    <div className="min-h-screen flex flex-col items-center justify-center relative bg-gray-50 overflow-hidden p-4 md:p-6 lg:p-8">
+      {/* Floating Doodles - Hidden on mobile */}
+      <div className="hidden md:block">
+        {doodleItems.map((doodle, index) => (
+          <motion.img
+            key={index}
+            src={doodle.src}
+            className="absolute object-contain opacity-70 z-0"
+            style={{
+              ...doodle,
+              position: "absolute",
+            }}
+            animate={{
+              y: [-8, 8, -8],
+              rotate: [0, 3, -3, 0],
+            }}
+            transition={{
+              duration: 6,
+              repeat: Infinity,
+              delay: index * 0.2,
+              ease: "easeInOut",
+            }}
+          />
+        ))}
+      </div>
 
       {/* Fixed Wave Background */}
       <div className="absolute bottom-0 left-0 right-0 pointer-events-none">
@@ -622,25 +659,75 @@ const SignupPage: React.FC = () => {
       </div>
 
       {/* Logo */}
-      <div className="mb-6 text-center relative z-10">
-        <h1 className="text-4xl font-bold">
+      <div className="mb-4 md:mb-6 text-center relative z-10">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold">
           D<span className="relative">
             i
-            <span className="absolute top-2.5 left-1.5 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full"></span>
+            <span className="absolute top-1 md:top-2 left-1 -translate-x-1/2 w-1.5 md:w-2 h-1.5 md:h-2 bg-red-500 rounded-full"></span>
           </span>neIn
           <span className="text-yellow-400">Go</span>
         </h1>
-        <p className="text-sm text-gray-600">Reserve Dining & Events</p>
+        <p className="text-xs md:text-sm text-gray-600 mt-1">Join us and explore the best dining and event experiences.</p>
       </div>
 
       {/* Signup/Verification Container */}
       <motion.div
-        className="bg-white p-8 rounded-3xl w-full max-w-md z-10 shadow-xl border border-emerald-100 relative"
+        className="bg-white p-4 md:p-6 lg:p-8 rounded-2xl md:rounded-3xl w-full max-w-md z-10 shadow-xl border border-emerald-100 relative"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {showOTPVerification ? (
+        {showReferralInput ? (
+          <>
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Almost There!</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Please enter the Early Access Code we sent to your email to complete registration.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => {
+                    setReferralCode(e.target.value.toUpperCase());
+                    setReferralError('');
+                  }}
+                  placeholder="e.g. DINO-A4X2"
+                  className={`w-full p-4 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-200'} focus:outline-none focus:border-emerald-500 transition-colors uppercase`}
+                />
+                {referralError && (
+                  <p className="text-red-500 text-xs text-center font-medium mt-2">{referralError}</p>
+                )}
+              </div>
+
+              <motion.button
+                onClick={handleVerifyReferral}
+                className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={isLoading}
+              >
+                {isLoading ? "Verifying..." : "Verify Code & Start Dining"}
+              </motion.button>
+              
+              <div className="text-center">
+                <button
+                  onClick={() => {
+                    setShowReferralInput(false);
+                    setGoogleUserToRegister(null);
+                    auth.signOut(); // Ensure signed out if going back
+                  }}
+                  className="mt-4 text-sm text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  Cancel & Go Back
+                </button>
+              </div>
+            </div>
+          </>
+        ) : showOTPVerification ? (
           <>
             {/* OTP Verification View */}
             <div className="text-center mb-6">
@@ -742,12 +829,12 @@ const SignupPage: React.FC = () => {
         ) : (
           <>
             {/* Regular Signup Form */}
-            <div className="text-center mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Create Account</h2>
-              <p className="text-sm text-gray-600 mt-2">Join us and explore the best dining and event experiences.</p>
+            <div className="text-center mb-4 md:mb-6">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-800">Create Account</h2>
+              <p className="text-xs md:text-sm text-gray-600 mt-1 md:mt-2">Join us and explore the best dining and event experiences.</p>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-4">
               <motion.div
                 className="space-y-1"
                 initial={{ x: -20, opacity: 0 }}
@@ -760,7 +847,7 @@ const SignupPage: React.FC = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="Name"
-                  className={`w-full p-3 rounded-full border ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                   required
                 />
                 {errors.name && (
@@ -780,7 +867,7 @@ const SignupPage: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="Email ID"
-                  className={`w-full p-3 rounded-full border ${errors.email ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                   required
                 />
                 {errors.email && (
@@ -801,15 +888,15 @@ const SignupPage: React.FC = () => {
                     value={formData.password}
                     onChange={handlePasswordChange}
                     placeholder="Password"
-                    className={`w-full p-3 rounded-full border ${errors.password ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-gray-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
                   >
-                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
 
@@ -857,25 +944,25 @@ const SignupPage: React.FC = () => {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="Confirm Password"
-                    className={`w-full p-3 rounded-full border ${errors.confirmPassword ? 'border-red-500' : (passwordsMatch === false ? 'border-red-500' : (passwordsMatch === true ? 'border-green-500' : 'border-gray-300'))} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.confirmPassword ? 'border-red-500' : (passwordsMatch === false ? 'border-red-500' : (passwordsMatch === true ? 'border-green-500' : 'border-gray-300'))} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
                     required
                   />
                   {/* Password match indicator */}
                   {passwordsMatch !== null && (
                     <span className="absolute right-12 top-1/2 -translate-y-1/2">
                       {passwordsMatch ? (
-                        <Check size={20} className="text-green-500" />
+                        <Check size={18} className="text-green-500" />
                       ) : (
-                        <X size={20} className="text-red-500" />
+                        <X size={18} className="text-red-500" />
                       )}
                     </span>
                   )}
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500"
+                    className="absolute right-3 md:right-4 top-1/2 -translate-y-1/2 text-gray-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
                   >
-                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                    {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
 
@@ -920,39 +1007,45 @@ const SignupPage: React.FC = () => {
 
               <motion.button
                 type="submit"
-                className="w-full bg-emerald-500 text-white py-3 rounded-full font-medium text-sm hover:bg-emerald-600 transition-colors"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                className={`w-full py-2.5 md:py-3 rounded-full font-bold text-sm md:text-base transition-all duration-300 min-h-[44px] ${
+                  (passwordStrength.label === 'Strong' && passwordsMatch && formData.agreeToTerms && !isLoading)
+                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-200' 
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-70'
+                }`}
+                whileHover={passwordStrength.label === 'Strong' && passwordsMatch && formData.agreeToTerms ? { scale: 1.02 } : {}}
+                whileTap={passwordStrength.label === 'Strong' && passwordsMatch && formData.agreeToTerms ? { scale: 0.98 } : {}}
+                disabled={passwordStrength.label !== 'Strong' || !passwordsMatch || !formData.agreeToTerms || isLoading}
               >
-                Sign Up
+                {isLoading ? "Preparing..." : "Create Legendary Account"}
               </motion.button>
 
-              <div className="text-center py-2">
-                <span className="text-sm text-gray-500">Or</span>
+              <div className="text-center py-2 md:py-3">
+                <span className="text-xs md:text-sm text-gray-500">Or</span>
               </div>
 
               {/* Google Sign-Up Button */}
               <motion.button
                 type="button"
-                className="w-full bg-white text-gray-700 py-3 px-4 rounded-full border border-gray-300 font-medium text-sm hover:bg-gray-50 transition-colors flex items-center justify-center"
+                className="w-full bg-white text-gray-700 py-2.5 md:py-3 px-3 md:px-4 rounded-full border border-gray-300 font-medium text-sm md:text-base hover:bg-gray-50 transition-colors flex items-center justify-center min-h-[44px]"
                 onClick={handleGoogleSignUp}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
+                <svg className="w-4 md:w-5 h-4 md:h-5 mr-2" viewBox="0 0 24 24">
                   <path
                     d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
                     fill="#10B981"
                   />
                 </svg>
-                Sign Up With Google
+                <span className="hidden sm:inline">Sign Up With Google</span>
+                <span className="sm:hidden">Google</span>
               </motion.button>
 
-              <div className="text-center mt-4">
-                <span className="text-sm text-gray-600">Already have an account? </span>
+              <div className="text-center mt-3 md:mt-4">
+                <span className="text-xs md:text-sm text-gray-600">Already have an account? </span>
                 <Link
                   to="/login"
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700"
                   onClick={() => {
                     // Clear any existing errors when navigating to login
                     setErrors({

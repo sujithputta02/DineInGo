@@ -128,7 +128,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     if (!authUser) return;
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/profile/${authUser.uid}`);
+      const res = await fetch(`/api/v1/profile/${authUser.uid}`);
 
       if (res.status === 404) {
         // Auto-create simplified for brevity
@@ -270,7 +270,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         });
         // Also update custom backend/mongo
         const idToken = await firebaseAuth.currentUser.getIdToken();
-        const apiRes = await fetch('/api/users/update', {
+        const apiRes = await fetch('/api/v1/users/update', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
           body: JSON.stringify({ userId: authUser.uid, updates }) // Note structure

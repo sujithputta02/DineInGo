@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { Calendar, Clock, MapPin, Users, Apple, Chrome, FileText, ShoppingBag, MessageSquare, Star, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Apple, Chrome, FileText, ShoppingBag, MessageSquare, Star, Trash2, Share2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { bookingsApi } from '../services/api';
 
@@ -37,7 +37,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
     // Determine booking type and name
     const isEvent = !!(booking.eventId || booking.eventName);
     const name = booking.restaurantName || booking.eventName || booking.restaurantId?.name || booking.eventId?.title || 'Unknown';
-    const type = booking.restaurantId || booking.restaurantName ? 'Restaurant Booking' : booking.eventId || booking.eventName ? 'Event Registration' : 'Booking';
+    const type = booking.restaurantId || booking.restaurantName ? 'Restaurant Expedition' : booking.eventId || booking.eventName ? 'Event Expedition' : 'Expedition';
 
     // Parse dates
     let dateStr = booking.date;
@@ -62,8 +62,8 @@ const BookingCard: React.FC<BookingCardProps> = ({
 
     const handleCancel = async () => {
         const cancellationMessage = isEvent 
-            ? 'Are you sure you want to cancel this event registration? This cannot be undone.'
-            : 'Are you sure you want to cancel this reservation? This cannot be undone.';
+            ? 'Are you sure you want to abort this event expedition? This cannot be undone.'
+            : 'Are you sure you want to abort this reserve expedition? This cannot be undone.';
             
         if (!window.confirm(cancellationMessage)) return;
 
@@ -71,15 +71,15 @@ const BookingCard: React.FC<BookingCardProps> = ({
         try {
             await bookingsApi.cancel(booking._id || booking.id);
             const successMessage = isEvent 
-                ? 'Your event registration has been cancelled'
-                : 'Your reservation has been cancelled';
+                ? 'Your event expedition has been aborted'
+                : 'Your expedition has been aborted';
             toast.success(successMessage);
             onRefresh();
         } catch (error) {
             console.error('Error cancelling booking:', error);
             const errorMessage = isEvent
-                ? 'Failed to cancel event registration. Please try again.'
-                : 'Failed to cancel reservation. Please try again.';
+                ? 'Failed to abort event expedition. Please try again.'
+                : 'Failed to abort expedition. Please try again.';
             toast.error(errorMessage);
         } finally {
             setLocalIsCancelling(false);
@@ -92,7 +92,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
         setLocalIsDeleting(true);
         try {
             await bookingsApi.delete(booking._id || booking.id);
-            toast.success('Booking deleted successfully');
+            toast.success('Expedition deleted from history');
             onRefresh();
         } catch (error) {
             console.error('Error deleting booking:', error);
@@ -100,6 +100,19 @@ const BookingCard: React.FC<BookingCardProps> = ({
         } finally {
             setLocalIsDeleting(false);
         }
+    };
+
+    const handleWhatsAppShare = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const bookingDate = new Date(dateStr).toLocaleDateString('en-US', {
+            weekday: 'long',
+            month: 'short',
+            day: 'numeric'
+        });
+        
+        const text = `Hey! I just launched a ${type === 'Restaurant Expedition' ? 'culinary' : 'event'} expedition to *${name}* via *DineInGo*! 🦖✨\n\n📅 Date: ${bookingDate}\n⏰ Time: ${booking.time}\n👥 Pack Size: ${booking.guests || booking.numberOfGuests || 1} Raptors\n\nJoin the hunt! 🍽️`;
+        const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+        window.open(whatsappUrl, '_blank');
     };
 
     const getStatusColor = (status: string) => {
@@ -157,7 +170,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
                     <div className="flex items-center gap-6 py-3 border-y border-gray-50">
                         <div className="flex items-center text-gray-600">
                             <Users className="w-4 h-4 mr-2" />
-                            <span className="text-sm font-medium">{booking.guests || booking.numberOfGuests || 1} Guests</span>
+                            <span className="text-sm font-medium">{booking.guests || booking.numberOfGuests || 1} Raptors</span>
                         </div>
                         {booking.table && (
                             <div className="flex items-center text-gray-600">
@@ -202,7 +215,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                         className="w-full py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all font-bold active:scale-95 text-sm border border-rose-100"
                                         disabled={localIsCancelling}
                                     >
-                                        {localIsCancelling ? 'Cancelling...' : `Cancel ${isEvent ? 'Registration' : 'Reservation'}`}
+                                        {localIsCancelling ? 'Aborting...' : `Abort ${isEvent ? 'Expedition' : 'Expedition'}`}
                                     </button>
                                 ) : !isVisitCompleted && (
                                     <div className="text-center p-2 rounded-xl bg-amber-50 border border-amber-100">
@@ -254,6 +267,13 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                         <Chrome size={14} />
                                     </button>
                                 )}
+                                <button
+                                    onClick={handleWhatsAppShare}
+                                    className="p-2 bg-[#25D366] text-white rounded-lg hover:scale-110 transition-all shadow-md"
+                                    title="Share on WhatsApp"
+                                >
+                                    <MessageSquare size={14} className="fill-current" />
+                                </button>
                             </div>
 
                             <div className="flex gap-2 items-center">
