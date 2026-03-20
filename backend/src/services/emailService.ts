@@ -1075,7 +1075,7 @@ export const emailService = {
     const transporter = createTransporter();
     if (!transporter) return { success: 0, failed: recipients.length };
 
-    const batchSize = 10;
+    const batchSize = 5;
     for (let i = 0; i < recipients.length; i += batchSize) {
       const batch = recipients.slice(i, i + batchSize);
       const results = await Promise.all(
