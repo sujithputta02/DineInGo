@@ -27,7 +27,7 @@ router.post('/test', async (req, res) => {
     console.log('SMTP connection verified successfully!');
 
     const mailOptions = {
-      from: `"DineInGo Test" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+      from: `"DineInGo Test" <${process.env.EMAIL_USER}>`,
       to,
       subject: 'DineInGo System Diagnosis: Test Email',
       html: `

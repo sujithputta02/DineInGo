@@ -421,7 +421,7 @@ export const emailService = {
 
 
       const mailOptions = {
-        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: `Reservation Confirmed - ${bookingName}`,
         html: htmlBody,
@@ -494,7 +494,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
         to,
         subject: `${otp} is your ${title} code`,
         html,
@@ -561,7 +561,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo Admin" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo Admin" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: `${otp} is your Admin Portal OTP`,
         html
@@ -645,7 +645,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo Security" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo Security" <${process.env.EMAIL_USER}>`,
         to: email,
         subject: `🔐 Admin Login Alert: ${formattedTime}`,
         html
@@ -761,7 +761,7 @@ export const emailService = {
       `;
 
       await transporter.sendMail({
-        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
         to,
         subject: `Welcome to DineInGo, ${name}! 🎉`,
         html,
@@ -1108,7 +1108,7 @@ export const emailService = {
       if (!transporter) return false;
 
       await transporter.sendMail({
-        from: `"DineInGo Security" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo Security" <${process.env.EMAIL_USER}>`,
         to: alertEmail,
         subject: `🚨 DineInGo Security Alert: ${subject}`,
         html: `
@@ -1180,7 +1180,7 @@ export const emailService = {
       if (!transporter) return false;
 
       const mailOptions: any = {
-        from: `"DineInGo" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+        from: `"DineInGo" <${process.env.EMAIL_USER}>`,
         to: options.to,
         subject: options.subject,
         html: options.html,
