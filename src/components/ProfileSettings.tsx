@@ -128,7 +128,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     if (!authUser) return;
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/v1/profile/${authUser.uid}`);
+      const res = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${authUser.uid}`));
 
       if (res.status === 404) {
         // Auto-create simplified for brevity
@@ -242,7 +242,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         setIsUploading(true);
         const formDataUpload = new FormData();
         formDataUpload.append('avatar', (formData as any)._pendingAvatarBlob, 'avatar.jpg');
-        const res = await fetch(`${API_CONFIG.BASE_URL}/api/profile/${authUser.uid}/avatar`, {
+        const res = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${authUser.uid}/avatar`), {
           method: 'POST', body: formDataUpload
         });
         if (!res.ok) throw new Error('Avatar upload failed');
@@ -270,7 +270,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         });
         // Also update custom backend/mongo
         const idToken = await firebaseAuth.currentUser.getIdToken();
-        const apiRes = await fetch('/api/v1/users/update', {
+        const apiRes = await fetch(API_CONFIG.getFullUrl('/api/v1/users/update'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
           body: JSON.stringify({ userId: authUser.uid, updates }) // Note structure
