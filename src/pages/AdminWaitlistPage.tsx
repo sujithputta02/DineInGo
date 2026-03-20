@@ -26,6 +26,7 @@ interface WaitlistStats {
   contacted: number;
   emailDelivery: {
     sent: number;
+    delivered: number;
     softBounces: number;
     hardBounces: number;
     failures: number;
@@ -176,8 +177,8 @@ const AdminWaitlistPage: React.FC = () => {
       </div>
 
       {/* Email Delivery Health */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="md:col-span-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+        <div className="md:col-span-5">
           <h3 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
             Email Delivery Health
@@ -185,16 +186,24 @@ const AdminWaitlistPage: React.FC = () => {
         </div>
         <StatCard 
           icon={<CheckCircle2 className="w-6 h-6 text-emerald-600" />}
-          label="Successfully Sent"
-          value={stats?.emailDelivery?.sent || 0}
+          label="Confirmed Delivered"
+          value={stats?.emailDelivery?.delivered || 0}
           color="emerald"
+          hint="Receipt confirmed by server"
+        />
+        <StatCard 
+          icon={<Send className="w-6 h-6 text-blue-600" />}
+          label="Accepted / Sent"
+          value={stats?.emailDelivery?.sent || 0}
+          color="blue"
+          hint="In transit / Accepted"
         />
         <StatCard 
           icon={<Clock className="w-6 h-6 text-amber-600" />}
           label="Soft Bounces"
           value={stats?.emailDelivery?.softBounces || 0}
           color="amber"
-          hint="Temporary issues (e.g. Inbox Full)"
+          hint="Temporary: Mailbox full / Throttled"
         />
         <StatCard 
           icon={<AlertCircle className="w-6 h-6 text-orange-600" />}
@@ -208,7 +217,6 @@ const AdminWaitlistPage: React.FC = () => {
           label="Fatal Failures"
           value={stats?.emailDelivery?.failures || 0}
           color="red"
-          hint="System or SMTP connection errors"
         />
       </div>
 

@@ -5,7 +5,7 @@ export interface IEarlyAccess extends Document {
     userType: 'user' | 'business';
     status: 'pending' | 'contacted' | 'converted';
     referralCode?: string;
-    lastEmailStatus?: 'not_sent' | 'sent' | 'soft_bounce' | 'hard_bounce' | 'failed';
+    lastEmailStatus?: 'not_sent' | 'sent' | 'delivered' | 'soft_bounce' | 'hard_bounce' | 'failed';
     lastEmailError?: string;
     lastAttemptAt?: Date;
     emailHistory?: Array<{
@@ -43,7 +43,7 @@ const earlyAccessSchema = new Schema<IEarlyAccess>({
     },
     lastEmailStatus: {
         type: String,
-        enum: ['not_sent', 'sent', 'soft_bounce', 'hard_bounce', 'failed'],
+        enum: ['not_sent', 'sent', 'delivered', 'soft_bounce', 'hard_bounce', 'failed'],
         default: 'not_sent'
     },
     lastEmailError: String,

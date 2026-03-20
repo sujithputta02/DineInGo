@@ -1233,6 +1233,7 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
       pending, 
       contacted,
       sentCount,
+      deliveredCount,
       softBounceCount,
       hardBounceCount,
       failedCount
@@ -1243,6 +1244,7 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
       EarlyAccess.countDocuments({ status: 'pending' }),
       EarlyAccess.countDocuments({ status: 'contacted' }),
       EarlyAccess.countDocuments({ lastEmailStatus: 'sent' }),
+      EarlyAccess.countDocuments({ lastEmailStatus: 'delivered' }),
       EarlyAccess.countDocuments({ lastEmailStatus: 'soft_bounce' }),
       EarlyAccess.countDocuments({ lastEmailStatus: 'hard_bounce' }),
       EarlyAccess.countDocuments({ lastEmailStatus: 'failed' })
@@ -1270,6 +1272,7 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
         contacted,
         emailDelivery: {
           sent: sentCount,
+          delivered: deliveredCount,
           softBounces: softBounceCount,
           hardBounces: hardBounceCount,
           failures: failedCount
