@@ -25,7 +25,8 @@ const SecurityLogSchema: Schema = new Schema({
       'failed_login', 
       'auth_bypass_attempt', 
       'suspicious_activity', 
-      'rate_limit_exceeded'
+      'rate_limit_exceeded',
+      'mass_email_broadcast'
     ],
     required: true
   },

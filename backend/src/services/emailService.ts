@@ -1084,8 +1084,14 @@ export const emailService = {
             // Generate personalized template for each recipient
             const personalizedHtml = this.generateWaitlistTemplate(html, type, to);
             
+            // Determine sender based on provider
+            const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
+            const gmailSender = process.env.EMAIL_USER;
+            const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
+            const sender = isBrevo ? brevoSender : gmailSender;
+
             await transporter.sendMail({
-              from: `"DineInGo Official" <${process.env.BREVO_SMTP_USER || process.env.EMAIL_USER}>`,
+              from: `"DineInGo Official" <${sender}>`,
               to,
               subject,
               html: personalizedHtml,
