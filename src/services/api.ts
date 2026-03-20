@@ -62,7 +62,7 @@ const getAuthToken = async (): Promise<string | null> => {
  */
 const apiRequest = async (url: string, method: string = 'GET', data?: any, retries = 3) => {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
   const defaultOptions: RequestInit = {
     method,
