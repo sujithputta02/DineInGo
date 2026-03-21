@@ -57,14 +57,14 @@ const TableSelection: React.FC = () => {
         id: 'ground',
         name: 'Ground Floor',
         tables: [
-          { id: 'T1', x: 25, y: 30, seats: 2 },
-          { id: 'T2', x: 25, y: 50, seats: 2 },
-          { id: 'T3', x: 25, y: 70, seats: 2 },
-          { id: 'T4', x: 50, y: 40, seats: 4 },
-          { id: 'T5', x: 50, y: 65, seats: 4 },
-          { id: 'T6', x: 75, y: 30, seats: 6 },
-          { id: 'T7', x: 75, y: 55, seats: 2 },
-          { id: 'T8', x: 75, y: 75, seats: 4 },
+          { id: 'T1', x: 25, y: 35, seats: 2 },
+          { id: 'T2', x: 25, y: 55, seats: 2 },
+          { id: 'T3', x: 25, y: 75, seats: 2 },
+          { id: 'T4', x: 50, y: 45, seats: 4 },
+          { id: 'T5', x: 50, y: 70, seats: 4 },
+          { id: 'T6', x: 75, y: 35, seats: 6 },
+          { id: 'T7', x: 75, y: 60, seats: 2 },
+          { id: 'T8', x: 75, y: 80, seats: 4 },
         ],
         features: [
           { type: 'reception', x: 10, y: 50, width: 8, height: 15, label: 'Host' },
@@ -73,6 +73,50 @@ const TableSelection: React.FC = () => {
           { type: 'window', x: 98, y: 50, width: 2, height: 80 },
           { type: 'plant', x: 90, y: 15, width: 5, height: 5 },
           { type: 'plant', x: 90, y: 85, width: 5, height: 5 },
+        ]
+      },
+      {
+        id: 'first',
+        name: 'First Floor',
+        tables: [
+          { id: 'F1', x: 30, y: 30, seats: 4 },
+          { id: 'F2', x: 30, y: 50, seats: 4 },
+          { id: 'F3', x: 30, y: 70, seats: 4 },
+          { id: 'F4', x: 70, y: 30, seats: 2 },
+          { id: 'F5', x: 70, y: 50, seats: 2 },
+          { id: 'F6', x: 70, y: 70, seats: 2 },
+          { id: 'F7', x: 50, y: 50, seats: 8 },
+        ],
+        features: [
+          { type: 'window', x: 2, y: 50, width: 2, height: 80 },
+          { type: 'window', x: 98, y: 50, width: 2, height: 80 },
+          { type: 'bar', x: 50, y: 85, width: 30, height: 8, label: 'LOUNGE' },
+          { type: 'wall', x: 50, y: 10, width: 40, height: 2 },
+          { type: 'plant', x: 10, y: 10, width: 5, height: 5 },
+          { type: 'plant', x: 90, y: 10, width: 5, height: 5 },
+        ]
+      },
+      {
+        id: 'rooftop',
+        name: 'Rooftop',
+        tables: [
+          { id: 'R1', x: 20, y: 30, seats: 2 },
+          { id: 'R2', x: 40, y: 30, seats: 2 },
+          { id: 'R3', x: 60, y: 30, seats: 2 },
+          { id: 'R4', x: 80, y: 30, seats: 2 },
+          { id: 'R5', x: 20, y: 70, seats: 4 },
+          { id: 'R6', x: 40, y: 70, seats: 4 },
+          { id: 'R7', x: 60, y: 70, seats: 4 },
+          { id: 'R8', x: 80, y: 70, seats: 4 },
+        ],
+        features: [
+          { type: 'bar', x: 50, y: 50, width: 15, height: 15, label: 'SKY BAR' },
+          { type: 'plant', x: 10, y: 10, width: 6, height: 6 },
+          { type: 'plant', x: 90, y: 10, width: 6, height: 6 },
+          { type: 'plant', x: 10, y: 90, width: 6, height: 6 },
+          { type: 'plant', x: 90, y: 90, width: 6, height: 6 },
+          { type: 'window', x: 50, y: 2, width: 90, height: 2 }, // Open edge
+          { type: 'window', x: 50, y: 98, width: 90, height: 2 }, // Open edge
         ]
       }
     ]
