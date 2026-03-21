@@ -17,12 +17,16 @@ const MaintenancePage: React.FC = () => {
           maintenanceMessage?: string;
           estimatedEndTime?: string;
         }
-        const response = await axios.get<MaintenanceResponse>(`${API_URL}/api/v1/admin/maintenance-status`);
+        // Add timeout for status check
+        const response = await axios.get<MaintenanceResponse>(`${API_URL}/api/v1/admin/maintenance-status`, {
+          timeout: 10000 
+        });
         if (response.data.success) {
           setMaintenanceInfo(response.data);
         }
       } catch (error) {
-        console.error('Error fetching maintenance status:', error);
+        // Log locally but don't disrupt the maintenance view
+        console.warn('[DineInGo] Unable to poll maintenance status, will retry.');
       } finally {
         setLoading(false);
       }

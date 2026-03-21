@@ -29,7 +29,10 @@ const MaintenanceCheck: React.FC<MaintenanceCheckProps> = ({ children }) => {
   useEffect(() => {
     const checkMaintenanceStatus = async () => {
       try {
-        const response = await axios.get(`${API_URL}/api/v1/admin/maintenance-status`);
+        // Use a timeout to prevent long-hanging requests
+        const response = await axios.get(`${API_URL}/api/v1/admin/maintenance-status`, {
+          timeout: 5000 
+        });
         const maintenanceMode = (response.data as any).maintenanceMode;
         
         setIsInMaintenance(maintenanceMode);
@@ -44,7 +47,10 @@ const MaintenanceCheck: React.FC<MaintenanceCheckProps> = ({ children }) => {
           navigate('/', { replace: true });
         }
       } catch (error) {
-        console.error('Error checking maintenance status:', error);
+        // Silent error for maintenance check — default to allowing access if check fails
+        // This prevents "Network Error" from being disruptive to the user
+        console.warn('[DineInGo] Maintenance check heartbeat failed, assuming operational.');
+        setIsInMaintenance(false);
       } finally {
         setChecking(false);
       }

@@ -65,6 +65,7 @@ export const validateUserRegistration = [
     .normalizeEmail()
     .withMessage('Invalid email format'),
   body('password')
+    .if(body('uid').not().exists())
     .isLength({ min: 8, max: 128 })
     .withMessage('Password must be 8-128 characters')
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]/)

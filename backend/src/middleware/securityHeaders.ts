@@ -98,6 +98,8 @@ export const corsConfig = {
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:5001',
+      'https://dineingo-app-v1-0-beta.vercel.app',
+      'https://dineingo-backend.onrender.com',
       process.env.FRONTEND_URL,
       process.env.ADMIN_URL,
       process.env.CLIENT_URL
