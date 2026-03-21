@@ -615,8 +615,13 @@ const SignupPage: React.FC = () => {
       navigate("/onboarding");
 
     } catch (error: any) {
-      console.error("Referral verification failed:", error);
-      setReferralError(error.response?.data?.message || 'Verification failed. Please try again.');
+      console.error("Referral verification or User Creation failed:", error);
+      if (error.response?.data?.errors) {
+        console.error("Validation Errors:", error.response.data.errors);
+        setReferralError(`Validation failed: ${error.response.data.errors[0].message}`);
+      } else {
+        setReferralError(error.response?.data?.message || 'Verification failed. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }

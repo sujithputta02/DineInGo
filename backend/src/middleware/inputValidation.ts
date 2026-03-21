@@ -71,11 +71,17 @@ export const validateUserRegistration = [
     .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[a-zA-Z\d@$!%*?&]/)
     .withMessage('Password must contain uppercase, lowercase, number, and special character'),
   body('displayName')
+    .optional()
     .trim()
-    .isLength({ min: 2, max: 100 })
-    .withMessage('Display name must be 2-100 characters')
-    .matches(/^[a-zA-Z\s'-]+$/)
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Display name must be 1-100 characters')
+    .matches(/^[a-zA-Z0-9\s.'-]+$/)
     .withMessage('Display name contains invalid characters'),
+  body('name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 100 })
+    .withMessage('Name must be 1-100 characters'),
   body('phone')
     .optional()
     .isMobilePhone('any')
