@@ -3,6 +3,7 @@ import { Navigate, Outlet } from 'react-router-dom';
 import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { toast } from 'react-toastify';
+import { Analytics } from '@vercel/analytics/react';
 
 const CustomerRoute: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -51,7 +52,12 @@ const CustomerRoute: React.FC = () => {
         return <Navigate to="/business/businessLogin" replace />;
     }
 
-    return <Outlet />;
+    return (
+        <>
+            <Outlet />
+            <Analytics />
+        </>
+    );
 };
 
 export default CustomerRoute;

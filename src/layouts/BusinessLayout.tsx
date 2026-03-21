@@ -25,6 +25,7 @@ import DineInGoLogo from '../components/DineInGoLogo';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { getSessionToken } from '../utils/sessionGuard';
+import { Analytics } from '@vercel/analytics/react';
 
 const BusinessLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -374,6 +375,7 @@ const BusinessLayout: React.FC = () => {
                     </motion.div>
                 )}
             </AnimatePresence>
+            <Analytics />
         </div>
     );
 };
