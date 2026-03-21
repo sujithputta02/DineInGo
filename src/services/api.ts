@@ -935,7 +935,24 @@ const addUserActivity = async (uid: string, activity: any) => {
 
 export const userAPI = {
   fetchUserData: async (userId: string) => {
-    return fetchUserData(userId);
+    try {
+      // Primary: Try fetching from our backend API for consistency
+      const data = await apiRequest(`${API_URL}/api/v1/users/${userId}`);
+      return data.data || data;
+    } catch (error: any) {
+      // If 404 or network error, fallback to direct Firestore check
+      console.log(`[DineInGo] API fetch failed, falling back to Firestore for ${userId}`);
+      try {
+        return await fetchUserData(userId);
+      } catch (dbError: any) {
+        // If it's truly not found, rethrow so the frontend knows it's a new user
+        if (dbError.message?.includes('not found')) {
+          throw dbError;
+        }
+        console.error("[DineInGo] Both API and Firestore fetch failed:", dbError);
+        throw dbError;
+      }
+    }
   },
   getReviews: async (userId: string) => {
     return apiRequest(`${API_URL}/api/v1/users/${userId}/reviews`);

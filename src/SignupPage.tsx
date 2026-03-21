@@ -186,14 +186,27 @@ const SignupPage: React.FC = () => {
             }
           } else {
             // User exists in backend, they should probably be on the dashboard
-            // but let's check if they have a session token
             const token = sessionStorage.getItem('userData') ? JSON.parse(sessionStorage.getItem('userData')!).token : null;
             if (token) {
               navigate(`/dashboard/${token}`);
             }
           }
-        } catch (error) {
-          console.error("Error during session recovery:", error);
+        } catch (error: any) {
+          // If the error is "User data not found", it means this is a new Google user
+          if (error.message?.includes('not found')) {
+            console.log("SignupPage: New user detected via session recovery");
+            const accessCheck = await waitlistApi.checkAccess(user.email || '');
+            if (accessCheck.hasAccess) {
+              setGoogleUserToRegister(user);
+              setShowReferralInput(true);
+            } else {
+              await auth.signOut();
+              toast.error("Dino says: Access denied. This email is not on the waitlist.");
+            }
+          } else {
+            console.warn("Error during session recovery (network or other):", error);
+            // Don't toast for background checking errors to avoid annoyance
+          }
         } finally {
           setIsLoading(false);
         }
