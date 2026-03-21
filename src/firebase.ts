@@ -118,12 +118,27 @@ export const signInWithEmail = async (email: string, password: string) => {
   }
 };
 
-export const createUser = async (email: string, password: string) => {
+export const clearAuthSession = async () => {
   try {
-    const result = await createUserWithEmailAndPassword(auth, email, password);
-    return result;
-  } catch (error: any) {
-    console.error('User creation error:', error);
-    throw error;
+    // Attempt sign out
+    await auth.signOut().catch(() => {});
+    
+    // Clear all persistent storage that might hold corrupted tokens
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear IndexedDB for Firebase (standard names)
+    const dbs = ['firebase-heartbeat-database', 'firebase-installations-database', 'firebase-messaging-database'];
+    dbs.forEach(dbName => {
+      try {
+        indexedDB.deleteDatabase(dbName);
+      } catch (e) {}
+    });
+
+    console.log('[DineInGo] Auth session cleared');
+    return true;
+  } catch (error) {
+    console.error('[DineInGo] Error clearing auth session:', error);
+    return false;
   }
 };

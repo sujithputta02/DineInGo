@@ -45,6 +45,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsAuthenticated(false);
       }
       setLoading(false);
+    }, (error) => {
+      console.error('[DineInGo] Auth State Change Error:', error);
+      if (error.message?.includes('400') || error.message?.includes('identitytoolkit')) {
+        import('../firebase').then(m => m.clearAuthSession());
+      }
+      setLoading(false);
     });
 
     return unsubscribe;
