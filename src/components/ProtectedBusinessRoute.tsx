@@ -11,9 +11,13 @@ const ProtectedBusinessRoute: React.FC = () => {
 
     const user = JSON.parse(storedUser);
 
+    if (user.role === 'user') {
+        const token = user.token;
+        toast.info("Customers must use the User Dashboard.");
+        return <Navigate to={token ? `/dashboard/${token}` : "/login"} replace />;
+    }
+
     if (user.role !== 'owner' && user.role !== 'admin') {
-        // If logged in but not an owner, redirect to main dashboard or show error
-        // For separation, maybe just logout or redirect to login
         toast.error("Access restricted to Business Owners.");
         return <Navigate to="/business/businessLogin" replace />;
     }

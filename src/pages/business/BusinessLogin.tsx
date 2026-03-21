@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { API_CONFIG } from '../../config/api';
 import { useNavigate } from 'react-router-dom';
 import { createSession } from '../../utils/sessionGuard';
@@ -27,6 +27,18 @@ const BusinessLogin: React.FC = () => {
         email: '',
         password: ''
     });
+
+    // Handle cross-portal redirection
+    useEffect(() => {
+        const storedUser = sessionStorage.getItem('userData');
+        if (storedUser) {
+            const user = JSON.parse(storedUser);
+            if (user.role === 'user') {
+                const token = user.token;
+                navigate(token ? `/dashboard/${token}` : "/dashboard", { replace: true });
+            }
+        }
+    }, [navigate]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
