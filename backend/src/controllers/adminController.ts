@@ -1299,9 +1299,8 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
     }
 
     const query: any = {
-      // Only include those who are purely 'pending' and have no existing record of delivery/failure
-      status: 'pending',
-      lastEmailStatus: { $nin: ['delivered', 'sent', 'soft_bounce', 'hard_bounce', 'failed'] }
+      // Exclude only permanent failures to allow follow-up broadcasts
+      lastEmailStatus: { $nin: ['hard_bounce', 'failed'] }
     };
     if (targetType && targetType !== 'all') {
       query.userType = targetType;
