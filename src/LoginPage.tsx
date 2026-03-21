@@ -16,10 +16,12 @@ import {
   sendEmailVerification
 } from "./firebase";
 import { storeUserData, fetchUserData } from "./dbUtils";
-import { userAPI, authOtpApi } from './services/api';
+import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendPasswordReset } from "./authUtils";
 import socketService from './utils/socketService';
 import { createSession, getSessionToken } from './utils/sessionGuard';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 interface FormData {
   email: string;
@@ -68,6 +70,12 @@ export default function LoginPage() {
 
   const [showPassword, setShowPassword] = useState(false);
   const [isGoogleSigningIn, setIsGoogleSigningIn] = useState(false);
+
+  // Referral / Early Access State
+  const [showReferralInput, setShowReferralInput] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
+  const [referralError, setReferralError] = useState('');
+  const [googleUserToRegister, setGoogleUserToRegister] = useState<any>(null);
 
   // Check if user is already logged in
   useEffect(() => {
@@ -315,25 +323,22 @@ export default function LoginPage() {
         console.error('Error fetching user data:', error);
       }
 
-      // If no existing data, create new user data
-      const userData = {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || user.email?.split('@')[0] || '',
-        name: user.displayName || user.email?.split('@')[0] || '',
-        photoURL: user.photoURL || null,
-        lastLogin: new Date(),
-        createdAt: new Date()
-      };
+      // If no existing data, this is potentially a new user from Google
+      // BETA ACCESS GUARD: Check waitlist status
+      setIsLoading(true);
+      const accessCheck = await waitlistApi.checkAccess(user.email || '');
+      if (!accessCheck.hasAccess) {
+        toast.error("Dino says: This email isn't on the waitlist yet! Please join the waitlist to test DineInGo.");
+        await auth.signOut();
+        setIsLoading(false);
+        setIsGoogleSigningIn(false);
+        return;
+      }
 
-      // Store user data in Firestore
-      await storeUserData(userData);
-
-      // Store user data in session storage
-      sessionStorage.setItem('userData', JSON.stringify(userData));
-
-      const token = createSession(user.uid);
-      navigate(`/dashboard/${token}`);
+      // Prompt for referral code for new Google user
+      setGoogleUserToRegister(user);
+      setShowReferralInput(true);
+      setIsLoading(false);
     } catch (error: any) {
       console.error('Google sign-in error:', error);
       let errorMessage = 'An error occurred during Google sign-in.';
@@ -430,6 +435,67 @@ export default function LoginPage() {
     }
   };
 
+  const handleVerifyReferral = async () => {
+    if (!referralCode.trim()) {
+      setReferralError('Please enter your early access code.');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const user = googleUserToRegister;
+      if (!user) throw new Error("No user found to register");
+
+      // Verify the code against the waitlist
+      const verifyCheck = await waitlistApi.verifyCode(user.email!, referralCode);
+      
+      if (!verifyCheck.hasAccess) {
+        setReferralError('Invalid code. Please check your waitlist email.');
+        setIsLoading(false);
+        return;
+      }
+
+      toast.success('Waitlist code verified! Creating your account...');
+
+      const userData = {
+        uid: user.uid,
+        email: user.email || '',
+        displayName: user.displayName || user.email?.split('@')[0] || '',
+        name: user.displayName || user.email?.split('@')[0] || '',
+        photoURL: user.photoURL || null,
+        emailVerified: user.emailVerified,
+        referralCode: referralCode.trim().toUpperCase()
+      };
+
+      // Create user in backend
+      const savedUser = await userAPI.createUser(userData);
+
+      // Store user data in Firestore for session persistence
+      await storeUserData({
+        ...userData,
+        lastLogin: new Date(),
+        createdAt: new Date()
+      });
+
+      // Store in session storage
+      sessionStorage.setItem('userData', JSON.stringify(savedUser));
+
+      // Clean up state
+      setGoogleUserToRegister(null);
+      setShowReferralInput(false);
+
+      // Create session and navigate to onboarding
+      const token = createSession(user.uid);
+      navigate("/onboarding");
+
+    } catch (error: any) {
+      console.error("Referral verification failed:", error);
+      setReferralError(error.response?.data?.message || 'Verification failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Doodle items for floating animations
   const doodleItems: DoodleItem[] = [
     { src: "/images/tabledodle.png", top: "10%", left: "10%", width: "100px", delay: 0 },
@@ -509,6 +575,7 @@ export default function LoginPage() {
         <p className="text-xs md:text-sm text-gray-600 mt-1">Reserve Dining & Events</p>
       </div>
 
+      <ToastContainer position="top-right" autoClose={3000} />
       {/* Login/Forgot Password Container */}
       <motion.div
         className="bg-white p-4 md:p-6 lg:p-8 rounded-2xl md:rounded-3xl w-full max-w-md z-10 shadow-xl border border-emerald-100 relative"
@@ -516,7 +583,57 @@ export default function LoginPage() {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
       >
-        {showForgotPassword ? (
+        {showReferralInput ? (
+          <>
+            <div className="text-center mb-6">
+              <h2 className="text-2xl font-bold text-gray-800">Almost There!</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Please enter the Early Access Code we sent to your email to complete registration.
+              </p>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <input
+                  type="text"
+                  value={referralCode}
+                  onChange={(e) => {
+                    setReferralCode(e.target.value.toUpperCase());
+                    setReferralError('');
+                  }}
+                  placeholder="e.g. DINO-A4X2"
+                  className={`w-full p-4 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-200'} focus:outline-none focus:border-emerald-500 transition-colors uppercase`}
+                />
+                {referralError && (
+                  <p className="text-red-500 text-xs text-center font-medium mt-2">{referralError}</p>
+                )}
+              </div>
+
+              <motion.button
+                onClick={handleVerifyReferral}
+                className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                disabled={isLoading}
+              >
+                {isLoading ? "Verifying..." : "Verify Code & Start Dining"}
+              </motion.button>
+              
+              <div className="text-center">
+                <button
+                  onClick={() => {
+                    setShowReferralInput(false);
+                    setGoogleUserToRegister(null);
+                    auth.signOut();
+                  }}
+                  className="mt-4 text-sm text-gray-500 hover:text-gray-700 font-medium"
+                >
+                  Cancel & Go Back
+                </button>
+              </div>
+            </div>
+          </>
+        ) : showForgotPassword ? (
           <>
             {/* Forgot Password Form */}
             <div className="text-center mb-4 md:mb-6">

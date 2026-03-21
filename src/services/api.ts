@@ -914,6 +914,7 @@ export interface UserData {
   name: string;
   photoURL: string | null;
   emailVerified: boolean;
+  referralCode?: string;
 }
 
 const addUserActivity = async (uid: string, activity: any) => {
@@ -943,7 +944,8 @@ export const userAPI = {
       displayName: userData.displayName || userData.name || userData.email?.split('@')[0] || '',
       name: userData.name || userData.displayName || userData.email?.split('@')[0] || '',
       photoURL: userData.photoURL || null,
-      emailVerified: userData.emailVerified ?? false
+      emailVerified: userData.emailVerified ?? false,
+      referralCode: userData.referralCode
     };
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {

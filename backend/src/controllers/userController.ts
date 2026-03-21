@@ -17,13 +17,37 @@ const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: stri
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Incoming user creation request:', req.body);
-    const { uid, email, displayName, name, photoURL, emailVerified } = req.body;
+    const { uid, email, displayName, name, photoURL, emailVerified, referralCode } = req.body;
     if (!uid || !email || !displayName || !name) {
       console.error('Missing required fields:', { uid, email, displayName, name });
       res.status(400).json({ message: 'Missing required fields', fields: { uid, email, displayName, name } });
       return;
     }
+
     const { deviceInfo, ipAddress } = extractRequestInfo(req);
+
+    // Verify referral code if provided
+    let isEarlyAccess = false;
+    if (referralCode) {
+      const { EarlyAccess } = await import('../models/EarlyAccess');
+      const earlyAccessEntry = await EarlyAccess.findOne({ 
+        email: email.toLowerCase(),
+        referralCode: referralCode.trim().toUpperCase()
+      });
+
+      if (earlyAccessEntry) {
+        console.log(`✅ Valid referral code used for user: ${email}`);
+        isEarlyAccess = true;
+        // Mark the early access entry as converted
+        earlyAccessEntry.status = 'converted';
+        await earlyAccessEntry.save();
+      } else {
+        console.warn(`⚠️ Invalid or missing referral code provided for ${email}: ${referralCode}`);
+        // Optionally fail creation if code is required during beta
+        // res.status(403).json({ message: 'Invalid referral code or waitlist entry not found.' });
+        // return;
+      }
+    }
 
     // Check for existing user by UID first
     let existingUser = await User.findOne({ uid });
@@ -65,6 +89,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 
     const user = new User({
       ...req.body,
+      isEarlyAccess,
       lastLogin: new Date(),
       createdAt: new Date(),
       activities: [signupActivity]

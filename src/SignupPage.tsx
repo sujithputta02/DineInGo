@@ -506,7 +506,8 @@ const SignupPage: React.FC = () => {
           displayName: userToSave.displayName || userToSave.email?.split('@')[0] || '',
           name: userToSave.displayName || userToSave.email?.split('@')[0] || '',
           photoURL: userToSave.photoURL || null,
-          emailVerified: userToSave.emailVerified
+          emailVerified: userToSave.emailVerified,
+          referralCode: referralCode.trim().toUpperCase()
         };
       } 
       // Handle Email/Password Registration Completion
@@ -523,7 +524,8 @@ const SignupPage: React.FC = () => {
           displayName: tempFormData!.name,
           name: tempFormData!.name,
           photoURL: userToSave.photoURL || null,
-          emailVerified: false // Just verified via OTP
+          emailVerified: false, // Just verified via OTP
+          referralCode: referralCode.trim().toUpperCase()
         };
       }
 

@@ -50,6 +50,7 @@ export interface IUser extends Document {
   role: 'customer' | 'owner' | 'admin';
   password?: string;
   isAdmin?: boolean;
+  isEarlyAccess?: boolean;
   favorites?: string[] | any[];
 }
 
@@ -108,6 +109,7 @@ const userSchema = new Schema<IUser>({
   role: { type: String, enum: ['customer', 'owner', 'admin'], default: 'customer' },
   password: { type: String },
   isAdmin: { type: Boolean, default: false },
+  isEarlyAccess: { type: Boolean, default: false },
   favorites: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }]
 });
 
