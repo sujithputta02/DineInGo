@@ -50,6 +50,34 @@ const TableSelection: React.FC = () => {
   // Use the correct restaurantId (ObjectId) for all API calls
   const [restaurantId, setRestaurantId] = useState<string>(id || '');
 
+  // Default mock floor plan for demonstration purposes (IDs 1-6)
+  const DEFAULT_MOCK_FLOOR_PLAN = {
+    floors: [
+      {
+        id: 'ground',
+        name: 'Ground Floor',
+        tables: [
+          { id: 'T1', x: 25, y: 30, seats: 2 },
+          { id: 'T2', x: 25, y: 50, seats: 2 },
+          { id: 'T3', x: 25, y: 70, seats: 2 },
+          { id: 'T4', x: 50, y: 40, seats: 4 },
+          { id: 'T5', x: 50, y: 65, seats: 4 },
+          { id: 'T6', x: 75, y: 30, seats: 6 },
+          { id: 'T7', x: 75, y: 55, seats: 2 },
+          { id: 'T8', x: 75, y: 75, seats: 4 },
+        ],
+        features: [
+          { type: 'reception', x: 10, y: 50, width: 8, height: 15, label: 'Host' },
+          { type: 'entrance', x: 5, y: 50, width: 2, height: 10 },
+          { type: 'bar', x: 50, y: 15, width: 40, height: 10, label: 'MAIN BAR' },
+          { type: 'window', x: 98, y: 50, width: 2, height: 80 },
+          { type: 'plant', x: 90, y: 15, width: 5, height: 5 },
+          { type: 'plant', x: 90, y: 85, width: 5, height: 5 },
+        ]
+      }
+    ]
+  };
+
   // Fetch restaurant data
   useEffect(() => {
     const fetchRestaurant = async () => {
@@ -64,6 +92,10 @@ const TableSelection: React.FC = () => {
           if (restaurant.floorPlan) {
             setBusinessFloorPlan(restaurant.floorPlan);
             console.log('Business floor plan loaded:', restaurant.floorPlan);
+          } else if (['1', '2', '3', '4', '5', '6'].includes(id)) {
+            // Fallback for mock restaurants
+            setBusinessFloorPlan(DEFAULT_MOCK_FLOOR_PLAN);
+            console.log('Using default mock floor plan for ID:', id);
           }
         } else {
           setRestaurantName('Restaurant');
