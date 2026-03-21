@@ -77,9 +77,9 @@ const AdminWaitlistPage: React.FC = () => {
     fetchData();
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       const res = await adminApi.getWaitlistStats();
       if (res.success) {
         setStats(res.stats);
@@ -90,8 +90,13 @@ const AdminWaitlistPage: React.FC = () => {
       console.error('Error fetching waitlist data:', error);
       toast.error('Failed to load waitlist data');
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
+  };
+
+  const handleRefresh = async () => {
+    await fetchData(true);
+    toast.success('Data refreshed successfully');
   };
 
   const handleBroadcast = async (e: React.FormEvent) => {
@@ -195,10 +200,10 @@ const AdminWaitlistPage: React.FC = () => {
           <p className="text-gray-500 mt-1">Manage your early access community and send broadcasts.</p>
         </div>
         <button 
-          onClick={fetchData}
+          onClick={handleRefresh}
           className="flex items-center gap-2 px-4 py-2 bg-emerald-50 text-emerald-700 rounded-lg hover:bg-emerald-100 transition-colors border border-emerald-200"
         >
-          <Clock className="w-4 h-4" />
+          <RotateCcw className="w-4 h-4" />
           Refresh Data
         </button>
       </div>
