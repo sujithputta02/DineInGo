@@ -186,12 +186,30 @@ const OnboardingPage: React.FC = () => {
             }, 250);
 
             toast.success("Preferences saved! Welcome to DineInGo.");
+            
+            // Get session token for correct dashboard redirection
+            const storedUser = sessionStorage.getItem('userData');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
 
-            setTimeout(() => navigate('/dashboard'), 2000);
+            setTimeout(() => {
+                if (token) {
+                    navigate(`/dashboard/${token}`, { replace: true });
+                } else {
+                    navigate('/login', { replace: true });
+                }
+            }, 2000);
         } catch (error) {
             console.error("Error saving preferences:", error);
             toast.error("Failed to save preferences. You can update them later in settings.");
-            navigate('/dashboard');
+            
+            // Fallback redirect even on error
+            const storedUser = sessionStorage.getItem('userData');
+            const token = storedUser ? JSON.parse(storedUser).token : null;
+            if (token) {
+                navigate(`/dashboard/${token}`, { replace: true });
+            } else {
+                navigate('/login', { replace: true });
+            }
         } finally {
             setLoading(false);
         }
