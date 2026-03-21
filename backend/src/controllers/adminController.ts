@@ -1298,7 +1298,11 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Subject and content are required' });
     }
 
-    const query: any = {};
+    const query: any = {
+      // Only include those who are purely 'pending' and have no existing record of delivery/failure
+      status: 'pending',
+      lastEmailStatus: { $nin: ['delivered', 'sent', 'soft_bounce', 'hard_bounce', 'failed'] }
+    };
     if (targetType && targetType !== 'all') {
       query.userType = targetType;
     }
@@ -1408,5 +1412,115 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error sending waitlist broadcast:', error);
     res.status(500).json({ success: false, message: 'Failed to initiate broadcast' });
+  }
+};
+
+/**
+ * WAITLIST: Get all waitlist signups with pagination and filtering
+ */
+export const getWaitlistSignups = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, limit = 20, search = '', status = 'all', userType = 'all' } = req.query;
+
+    const query: any = {};
+    
+    if (search) {
+      query.email = { $regex: search, $options: 'i' };
+    }
+    
+    if (status !== 'all') {
+      if (status === 'pending') {
+        query.status = 'pending';
+      } else if (status === 'contacted') {
+        query.status = 'contacted';
+      } else if (status === 'converted') {
+        query.status = 'converted';
+      }
+    }
+
+    if (userType !== 'all') {
+      query.userType = userType;
+    }
+
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [signups, total] = await Promise.all([
+      EarlyAccess.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      EarlyAccess.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      signups,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        total,
+        hasNext: skip + Number(limit) < total,
+        hasPrev: Number(page) > 1
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching waitlist signups:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch waitlist signups' });
+  }
+};
+
+/**
+ * WAITLIST: Manually update signup status
+ */
+export const updateWaitlistStatus = async (req: Request, res: Response) => {
+  try {
+    const { id, emailStatus, generalStatus } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ success: false, message: 'ID is required' });
+    }
+
+    const updateData: any = {
+      lastAttemptAt: new Date(),
+    };
+
+    if (emailStatus) {
+      updateData.lastEmailStatus = emailStatus;
+    }
+
+    if (generalStatus) {
+      updateData.status = generalStatus;
+    }
+
+    const entry = await EarlyAccess.findByIdAndUpdate(
+      id,
+      { 
+        $set: updateData,
+        $push: {
+          emailHistory: {
+            subject: 'Manual Status Update',
+            status: emailStatus || 'updated',
+            timestamp: new Date(),
+            error: 'Updated manually by admin'
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!entry) {
+      return res.status(404).json({ success: false, message: 'Entry not found' });
+    }
+
+    res.json({
+      success: true,
+      message: 'Status updated successfully',
+      entry
+    });
+
+  } catch (error) {
+    console.error('Error updating waitlist status:', error);
+    res.status(500).json({ success: false, message: 'Failed to update waitlist status' });
   }
 };

@@ -217,4 +217,13 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+  getWaitlistSignups: (params: { page?: number; limit?: number; search?: string; status?: string; userType?: string }) => {
+    const query = new URLSearchParams(params as any).toString();
+    return adminApiRequest(`/api/v1/admin/waitlist/all?${query}`);
+  },
+  updateWaitlistStatus: (data: { id: string; emailStatus?: string; generalStatus?: string }) =>
+    adminApiRequest('/api/v1/admin/waitlist/update-status', {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
 };

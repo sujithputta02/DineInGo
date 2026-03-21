@@ -18,7 +18,9 @@ import {
   getSecurityStats,
   getSecurityLogs,
   getWaitlistStats,
-  sendWaitlistBroadcast
+  sendWaitlistBroadcast,
+  getWaitlistSignups,
+  updateWaitlistStatus
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -140,5 +142,7 @@ router.post('/clear-cache', adminApiLimiter, verifyAdminToken, verifySuperAdmin,
 // Waitlist management (Super admin only for broadcast)
 router.get('/waitlist/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getWaitlistStats);
 router.post('/waitlist/broadcast', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, sendWaitlistBroadcast);
+router.get('/waitlist/all', adminApiLimiter, verifyAdminToken, logAdminAction, getWaitlistSignups);
+router.patch('/waitlist/update-status', adminApiLimiter, verifyAdminToken, logAdminAction, updateWaitlistStatus);
 
 export default router;

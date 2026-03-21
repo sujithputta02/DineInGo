@@ -13,7 +13,12 @@ import {
   TrendingUp,
   Store,
   UserCheck,
-  LayoutDashboard
+  LayoutDashboard,
+  X,
+  ChevronLeft,
+  MoreVertical,
+  Check,
+  RotateCcw
 } from 'lucide-react';
 import { adminApi } from '../utils/adminApi';
 import { toast } from 'react-toastify';
@@ -57,6 +62,16 @@ const AdminWaitlistPage: React.FC = () => {
   const [message, setMessage] = useState('');
   const [targetType, setTargetType] = useState<'all' | 'user' | 'business'>('all');
   const [showPreview, setShowPreview] = useState(false);
+
+  // Full Waitlist Modal
+  const [showFullWaitlist, setShowFullWaitlist] = useState(false);
+  const [fullWaitlist, setFullWaitlist] = useState<Signup[]>([]);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [waitlistSearch, setWaitlistSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [typeFilter, setTypeFilter] = useState('all');
 
   useEffect(() => {
     fetchData();
@@ -110,6 +125,51 @@ const AdminWaitlistPage: React.FC = () => {
       setIsSending(false);
     }
   };
+
+  const fetchFullWaitlist = async (p = 1) => {
+    try {
+      setWaitlistLoading(true);
+      const res = await adminApi.getWaitlistSignups({
+        page: p,
+        limit: 10,
+        search: waitlistSearch,
+        status: statusFilter,
+        userType: typeFilter
+      });
+      if (res.success) {
+        setFullWaitlist(res.signups);
+        setTotalPages(res.pagination.totalPages);
+        setPage(p);
+      }
+    } catch (error) {
+      toast.error('Failed to load full waitlist');
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
+  const handleStatusUpdate = async (id: string, emailStatus: string) => {
+    try {
+      // General status becomes 'contacted' if we set an email delivery status
+      const res = await adminApi.updateWaitlistStatus({
+        id,
+        emailStatus,
+        generalStatus: 'contacted'
+      });
+
+      if (res.success) {
+        toast.success('Status updated');
+        // Refresh local data
+        if (showFullWaitlist) fetchFullWaitlist(page);
+        fetchData(); // Refresh summary stats and recent lists
+      }
+    } catch (error) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  // Filter recent signups to only show PENDING ones (that haven't been processed)
+  const pendingSignups = recentSignups.filter(s => s.status === 'pending').slice(0, 10);
 
   if (loading && !stats) {
     return (
@@ -435,12 +495,20 @@ const AdminWaitlistPage: React.FC = () => {
             <div className="p-4 border-b border-gray-50 flex items-center justify-between">
               <h2 className="text-sm font-bold flex items-center gap-2 text-gray-800 uppercase tracking-tight">
                 <Clock className="w-4 h-4 text-emerald-500" />
-                Recent Signups
+                Pending Waitlist
               </h2>
-              <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">LIVE</span>
+              <button 
+                onClick={() => {
+                  setShowFullWaitlist(true);
+                  fetchFullWaitlist(1);
+                }}
+                className="text-[10px] font-black text-emerald-600 hover:text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full transition-colors"
+              >
+                VIEW ALL
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3">
-              {recentSignups.map((signup) => (
+              {pendingSignups.map((signup) => (
                 <div 
                   key={signup._id}
                   className="p-3 rounded-xl border border-gray-50 bg-gray-50/30 hover:bg-gray-50 transition-colors group"
@@ -525,6 +593,154 @@ const AdminWaitlistPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Full Waitlist Modal */}
+      <AnimatePresence>
+        {showFullWaitlist && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl"
+            >
+              {/* Modal Header */}
+              <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Waitlist Directory</h2>
+                  <p className="text-xs text-gray-500">Manage all early access signups and their delivery status.</p>
+                </div>
+                <button 
+                  onClick={() => setShowFullWaitlist(false)}
+                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+                >
+                  <X className="w-5 h-5 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Filters */}
+              <div className="p-6 bg-white border-b border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="md:col-span-2 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input 
+                    type="text"
+                    placeholder="Search by email..."
+                    value={waitlistSearch}
+                    onChange={(e) => setWaitlistSearch(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && fetchFullWaitlist(1)}
+                    className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all text-sm"
+                  />
+                </div>
+                <select 
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm"
+                >
+                  <option value="all">All Types</option>
+                  <option value="user">Users</option>
+                  <option value="business">Businesses</option>
+                </select>
+                <button 
+                  onClick={() => fetchFullWaitlist(1)}
+                  className="bg-emerald-600 text-white rounded-xl px-4 py-2 font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                >
+                  Apply Filters
+                </button>
+              </div>
+
+              {/* Waitlist Table */}
+              <div className="flex-1 overflow-y-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
+                    <tr>
+                      <th className="px-6 py-4">Email Address</th>
+                      <th className="px-6 py-4">Type</th>
+                      <th className="px-6 py-4">Signed Up</th>
+                      <th className="px-6 py-4">Email Status</th>
+                      <th className="px-6 py-4 text-right">Manual Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {waitlistLoading ? (
+                      <tr>
+                        <td colSpan={5} className="py-20 text-center">
+                          <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto" />
+                        </td>
+                      </tr>
+                    ) : fullWaitlist.map((signup) => (
+                      <tr key={signup._id} className="hover:bg-gray-50/50 transition-colors">
+                        <td className="px-6 py-4 font-semibold text-gray-900 text-sm">{signup.email}</td>
+                        <td className="px-6 py-4">
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${
+                            signup.userType === 'user' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            {signup.userType}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-xs text-gray-500 font-medium">
+                          {new Date(signup.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase border ${
+                            signup.lastEmailStatus === 'delivered' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' :
+                            signup.lastEmailStatus === 'sent' ? 'bg-blue-50 text-blue-700 border-blue-100' :
+                            signup.lastEmailStatus === 'soft_bounce' ? 'bg-amber-50 text-amber-700 border-amber-100' :
+                            signup.lastEmailStatus === 'hard_bounce' ? 'bg-orange-50 text-orange-700 border-orange-100' :
+                            signup.lastEmailStatus === 'failed' ? 'bg-red-50 text-red-700 border-red-100' :
+                            'bg-gray-50 text-gray-500 border-gray-100'
+                          }`}>
+                            {signup.lastEmailStatus?.replace('_', ' ') || 'PENDING'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <select 
+                            onChange={(e) => handleStatusUpdate(signup._id, e.target.value)}
+                            className="text-[10px] font-bold bg-white border border-gray-200 rounded-lg px-2 py-1 outline-none cursor-pointer hover:border-emerald-500 transition-colors"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>Update Status</option>
+                            <option value="delivered">Confirmed Delivered</option>
+                            <option value="sent">Accepted / Sent</option>
+                            <option value="soft_bounce">Soft Bounce</option>
+                            <option value="hard_bounce">Hard Bounce</option>
+                            <option value="failed">Fatal Failure</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                    {!waitlistLoading && fullWaitlist.length === 0 && (
+                      <tr><td colSpan={5} className="py-20 text-center text-gray-400 italic">No entries found matching criteria</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Modal Footer (Pagination) */}
+              <div className="p-6 bg-gray-50/50 border-t border-gray-100 flex items-center justify-between">
+                <div className="text-xs font-bold text-gray-400">
+                  Page {page} of {totalPages}
+                </div>
+                <div className="flex gap-2">
+                  <button 
+                    disabled={page <= 1 || waitlistLoading}
+                    onClick={() => fetchFullWaitlist(page - 1)}
+                    className="p-2 border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-white transition-colors"
+                  >
+                    <ChevronLeft className="w-5 h-5 text-gray-600" />
+                  </button>
+                  <button 
+                    disabled={page >= totalPages || waitlistLoading}
+                    onClick={() => fetchFullWaitlist(page + 1)}
+                    className="p-2 border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-white transition-colors"
+                  >
+                    <ChevronRight className="w-5 h-5 text-gray-600" />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
