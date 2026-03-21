@@ -18,7 +18,7 @@ import {
     Shield
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { userPreferenceApi } from '../services/api';
+import { userPreferenceApi, userAPI } from '../services/api';
 import { toast } from 'react-toastify';
 
 const CUISINES = [
@@ -187,22 +187,46 @@ const OnboardingPage: React.FC = () => {
 
             toast.success("Preferences saved! Welcome to DineInGo.");
             
-            // Get session token for correct dashboard redirection
-            const storedUser = sessionStorage.getItem('userData');
-            const token = storedUser ? JSON.parse(storedUser).token : null;
-
-            setTimeout(() => {
-                if (token) {
-                    navigate(`/dashboard/${token}`, { replace: true });
-                } else {
-                    navigate('/login', { replace: true });
-                }
-            }, 2000);
+            // Fetch fresh user data including token for correct dashboard redirection
+            const freshUser = await userAPI.fetchUserData(currentUser.uid);
+            
+            if (freshUser && freshUser.token) {
+                // Update session storage with fresh data
+                sessionStorage.setItem('userData', JSON.stringify(freshUser));
+                
+                setTimeout(() => {
+                    navigate(`/dashboard/${freshUser.token}`, { replace: true });
+                }, 2000);
+            } else {
+                console.warn("Could not fetch fresh user token after onboarding");
+                // Fallback attempt with existing session if available
+                const storedUser = sessionStorage.getItem('userData');
+                const token = storedUser ? JSON.parse(storedUser).token : null;
+                
+                setTimeout(() => {
+                    if (token) {
+                        navigate(`/dashboard/${token}`, { replace: true });
+                    } else {
+                        navigate('/login', { replace: true });
+                    }
+                }, 2000);
+            }
         } catch (error) {
             console.error("Error saving preferences:", error);
-            toast.error("Failed to save preferences. You can update them later in settings.");
+            toast.error("Failed to save preferences. Redirecting to dashboard...");
             
             // Fallback redirect even on error
+            try {
+                const freshUser = await userAPI.fetchUserData(currentUser.uid);
+                if (freshUser && freshUser.token) {
+                    sessionStorage.setItem('userData', JSON.stringify(freshUser));
+                    navigate(`/dashboard/${freshUser.token}`, { replace: true });
+                    return;
+                }
+            } catch (e) {
+                console.error("Fallback fetch failed:", e);
+            }
+
             const storedUser = sessionStorage.getItem('userData');
             const token = storedUser ? JSON.parse(storedUser).token : null;
             if (token) {

@@ -40,10 +40,8 @@ import InvoiceModal from "../components/InvoiceModal";
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import BookingCard from "../components/BookingCard";
 import { useNavigate, useLocation } from "react-router-dom";
-import { doc, getDoc, setDoc, updateDoc } from "firebase/firestore";
-import { auth, db } from "../firebase";
-import { storeUserData } from "../dbUtils";
-import { bookingsApi, userPreferenceApi, normalizeImageUrl } from "../services/api";
+import { auth } from "../firebase";
+import { userAPI, bookingsApi, userPreferenceApi, normalizeImageUrl } from "../services/api";
 import { API_CONFIG } from "../config/api";
 import { toast } from "react-toastify";
 import { Location as GeoLocation, Event as AppEvent } from "../types";
@@ -59,7 +57,6 @@ import { useNotifications } from "../contexts/NotificationContext";
 import { User, LocationSettings } from "../types/user";
 import { favoritesApi } from "../services/favoritesApi";
 import socketService from "../utils/socketService";
-import API_CONFIG from "../config/api";
 import { VoiceSearchButton } from "../components/VoiceSearchButton";
 import { SustainabilityBadge } from "../components/SustainabilityBadge";
 import AchievementsSection from "../components/AchievementsSection";
@@ -77,11 +74,12 @@ interface UserData {
   email: string;
   displayName: string;
   name: string;
-  photoURL?: string | null;
+  photoURL: string | null;
   location: GeoLocation;
   createdAt: Date;
   lastLogin: Date;
   avatars?: string[];
+  emailVerified: boolean;
 }
 
 interface Restaurant {
@@ -792,6 +790,20 @@ export default function DashboardPage() {
     useState<boolean>(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+
+  // Sync userData to sessionStorage whenever it changes to ensure consistency
+  useEffect(() => {
+    if (userData && userData.uid) {
+      const storedUser = sessionStorage.getItem('userData');
+      const parsedStored = storedUser ? JSON.parse(storedUser) : {};
+      
+      // Update session storage while preserving role to prevent routing loops
+      sessionStorage.setItem('userData', JSON.stringify({
+        ...userData,
+        role: parsedStored.role || 'user' // Default to 'user' if not present
+      }));
+    }
+  }, [userData]);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [isSearchExpanded, setIsSearchExpanded] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
@@ -800,6 +812,52 @@ export default function DashboardPage() {
   const [showInvoice, setShowInvoice] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
+
+  // Defined early to avoid scope issues
+  const forceInitialsAvatar = async () => {
+    if (!userData || !userData.displayName) return;
+    try {
+      const avatarUrl = getAvatarUrl(userData.displayName);
+      setUserData({ ...userData, photoURL: avatarUrl });
+      if (auth.currentUser) {
+        await updateProfile(auth.currentUser, { photoURL: avatarUrl });
+        await auth.currentUser.getIdToken(true);
+      }
+      await userAPI.updateUser(userData.uid, { photoURL: avatarUrl });
+      toast.success("Generated avatar based on your name");
+    } catch (error) {
+      console.error("Error setting avatar:", error);
+    }
+  };
+
+  async function fetchBookingsFromAPI() {
+    if (!auth.currentUser) {
+      setBookings([]);
+      return;
+    }
+    try {
+      setIsLoading(true);
+      const fetchedBookings = await bookingsApi.getAll();
+      const bookingsArray = Array.isArray(fetchedBookings) ? fetchedBookings : [];
+      const transformedBookings = bookingsArray.map((booking: any) => ({
+        ...booking,
+        id: booking._id || booking.id,
+        date: booking.date || booking.bookingDate,
+        time: booking.time || booking.bookingTime,
+        guests: booking.guests || booking.partySize || 2,
+        status: booking.status || "pending",
+        restaurantName: booking.restaurantName || booking.businessName || booking.venueName,
+        eventName: booking.eventName,
+        type: booking.type || (booking.eventName ? "event" : "restaurant"),
+      }));
+      setBookings(transformedBookings);
+    } catch (error) {
+      console.error("Error fetching bookings:", error);
+      setBookings([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }
   const [isDetectingLocation, setIsDetectingLocation] =
     useState<boolean>(false);
   const [filteredCities, setFilteredCities] = useState(indianCities);
@@ -1109,215 +1167,77 @@ useEffect(() => {
   }
 }, [activeSection]);
 
-// Update the user auth state handling to use avatar URLs
-useEffect(() => {
 
-  setAuthLoading(true);
-
-  // Check API connectivity
-  const checkApiConnection = async () => {
-    try {
-      const { checkApiConnection } = await import("../services/api");
-      const result = await checkApiConnection();
-      if (!result.success) {
-        toast.error(
-          "Cannot connect to server. User activities may not be tracked properly.",
-        );
-      } else {
-
-      }
-    } catch (error) {
-      // Error checking API connection suppressed
-    }
-  };
-  checkApiConnection();
-
-  const unsubscribe = onAuthStateChanged(auth, async (user) => {
-    if (user) {
-      try {
-        // Track user login activity after page refresh
+  // Effect to load user data and monitor auth state
+  useEffect(() => {
+    setAuthLoading(true);
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
         try {
-          const { userAPI } = await import("../services/api");
-          // Only track login after page refresh if we're not already in a session
-          // This prevents duplicate login activities
-          if (
-            !sessionStorage.getItem("lastLoginTracked") ||
-            Date.now() -
-            parseInt(sessionStorage.getItem("lastLoginTracked") || "0") >
-            1800000
-          ) {
-            // 30 minutes
-            await userAPI.loginUser(user.uid, "refresh");
-            sessionStorage.setItem("lastLoginTracked", Date.now().toString());
-          }
-        } catch (error) {
-          console.error("Error tracking login activity on refresh:", error);
-          // Continue with session even if tracking fails
-        }
-
-        // Load profile data from MongoDB (primary source of truth)
-        try {
-          const profileRes = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${user.uid}`));
-          if (profileRes.ok) {
-            const profile = await profileRes.json();
-
-
-            // Use MongoDB data as the source of truth
-            const avatarUrl =
-              profile.currentAvatar || profile.photoURL || profile.avatarUrl;
+          const profile = await userAPI.fetchUserData(user.uid);
+          if (profile) {
+            const avatarUrl = profile.currentAvatar || profile.photoURL || profile.avatarUrl;
             const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl);
 
-            const newUserData = {
+            setUserData({
               uid: user.uid,
               email: user.email || profile.email || "",
-              displayName:
-                profile.displayName ||
-                user.displayName ||
-                user.email?.split("@")[0] ||
-                "",
-              name:
-                profile.fullName ||
-                profile.name ||
-                user.displayName ||
-                user.email?.split("@")[0] ||
-                "",
+              displayName: profile.displayName || user.displayName || "",
+              name: profile.name || profile.fullName || user.displayName || "",
               photoURL: fullAvatarUrl,
-              avatars: (profile.avatars || [])
-                .map((url: string) => API_CONFIG.getAssetUrl(url))
-                .filter(Boolean),
-              location: profile.locationSettings?.city
-                ? {
-                  city: profile.locationSettings.city,
-                  state: profile.locationSettings.state || "",
-                  country: profile.locationSettings.country || "India",
-                }
-                : defaultLocation,
+              emailVerified: user.emailVerified,
+              avatars: (profile.avatars || []).map((url: string) => API_CONFIG.getAssetUrl(url)).filter(Boolean),
+              location: profile.locationSettings?.city ? {
+                city: profile.locationSettings.city,
+                state: profile.locationSettings.state || "",
+                country: profile.locationSettings.country || "India",
+              } : defaultLocation,
               lastLogin: new Date(),
-              createdAt: profile.createdAt
-                ? new Date(profile.createdAt)
-                : new Date(),
-            };
-
-            setUserData(newUserData);
-
-            // Set language from profile
-            if (
-              profile.language &&
-              [
-                "english",
-                "hindi",
-                "tamil",
-                "kannada",
-                "telugu",
-                "malayalam",
-              ].includes(profile.language)
-            ) {
-              setLanguage(profile.language as Language);
-            }
-
-            // Sync to Firestore for backup (optional)
-            await setDoc(
-              doc(db, "users", user.uid),
-              {
-                displayName: newUserData.displayName,
-                name: newUserData.name,
-                photoURL: newUserData.photoURL,
-                email: newUserData.email,
-                updatedAt: new Date(),
-              },
-              { merge: true },
-            );
-          } else if (profileRes.status === 404) {
-            // Profile doesn't exist in MongoDB, create it
-
-            const newUserData = {
-              uid: user.uid,
-              email: user.email || "",
-              displayName:
-                user.displayName || user.email?.split("@")[0] || "",
-              name: user.displayName || user.email?.split("@")[0] || "",
-              photoURL: null,
-              location: defaultLocation,
-              lastLogin: new Date(),
-              createdAt: new Date(),
-            };
-
-            // Create profile in MongoDB
-            await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${user.uid}`), {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                uid: user.uid,
-                displayName: newUserData.displayName,
-                fullName: newUserData.name,
-                email: newUserData.email,
-                phoneNumber: "",
-                avatars: [],
-                currentAvatar: null,
-                address: {},
-              }),
+              createdAt: profile.createdAt ? new Date(profile.createdAt) : new Date(),
             });
 
-            setUserData(newUserData);
-          }
-        } catch (profileError) {
-          console.error("Error loading profile from MongoDB:", profileError);
-
-          // Fallback to Firestore if MongoDB fails
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists()) {
-            const parsedData = userDoc.data();
-            const newUserData = {
-              uid: user.uid,
-              email: user.email || parsedData.email || "",
-              displayName:
-                user.displayName ||
-                parsedData.displayName ||
-                user.email?.split("@")[0] ||
-                "",
-              name:
-                user.displayName ||
-                parsedData.name ||
-                user.email?.split("@")[0] ||
-                "",
-              photoURL:
-                parsedData.photoURL !== undefined
-                  ? parsedData.photoURL
-                  : null,
-              location: parsedData.location || defaultLocation,
-              lastLogin: new Date(),
-              createdAt: parsedData.createdAt || new Date(),
-            };
-            setUserData(newUserData);
+            if (profile.language && ["english", "hindi", "tamil", "kannada", "telugu", "malayalam"].includes(profile.language)) {
+              setLanguage(profile.language as Language);
+            }
           } else {
-            // Create new user data
-            const newUserData = {
+            const newUserData: UserData = {
               uid: user.uid,
               email: user.email || "",
-              displayName:
-                user.displayName || user.email?.split("@")[0] || "",
+              displayName: user.displayName || user.email?.split("@")[0] || "",
               name: user.displayName || user.email?.split("@")[0] || "",
-              photoURL: null,
+              photoURL: user.photoURL || null,
+              emailVerified: user.emailVerified,
               location: defaultLocation,
               lastLogin: new Date(),
               createdAt: new Date(),
             };
+            await userAPI.createUser(newUserData);
             setUserData(newUserData);
           }
+        } catch (error) {
+          console.error("Dashboard auth listener error:", error);
+          setUserData({
+            uid: user.uid,
+            email: user.email || "",
+            displayName: user.displayName || "",
+            name: user.displayName || "",
+            photoURL: user.photoURL || null,
+            emailVerified: user.emailVerified,
+            location: defaultLocation,
+            lastLogin: new Date(),
+            createdAt: new Date(),
+          });
+        } finally {
+          setAuthLoading(false);
         }
-      } catch (error) {
-        // Error in auth listener suppressed
-      } finally {
+      } else {
         setAuthLoading(false);
+        navigate("/login");
       }
-    } else {
-      setAuthLoading(false);
-      navigate("/login");
-    }
-  });
+    });
 
-  return () => unsubscribe();
-}, [navigate]);
+    return () => unsubscribe();
+  }, [navigate]);
 
 // Real-time profile updates via Socket.IO
 useEffect(() => {
@@ -1644,100 +1564,6 @@ const handleLogout = async () => {
   }
 };
 
-// Update the forceInitialsAvatar function to fix type errors
-const forceInitialsAvatar = async () => {
-  try {
-
-
-    if (!userData || !userData.displayName) {
-      console.error("No user data or display name available");
-      return;
-    }
-
-    // Generate an avatar URL
-    const avatarUrl = getAvatarUrl(userData.displayName);
-
-    // Update local state first for immediate UI feedback
-    setUserData({
-      ...userData,
-      photoURL: avatarUrl,
-    });
-
-    // Update Firebase auth profile
-    if (auth.currentUser) {
-      await updateProfile(auth.currentUser, {
-        photoURL: avatarUrl,
-      });
-      // Force token refresh to ensure changes take effect
-      await auth.currentUser.getIdToken(true);
-    }
-
-    // Update Firestore - use only the necessary fields to avoid type errors
-    await setDoc(
-      doc(db, "users", userData.uid),
-      {
-        photoURL: avatarUrl,
-        lastUpdated: new Date(),
-      },
-      { merge: true },
-    );
-
-    // Add visual feedback
-    toast.success("Generated avatar based on your name");
-  } catch (error) {
-    console.error("Error setting avatar:", error);
-  }
-};
-
-// Restored: Fetch bookings from MongoDB API
-async function fetchBookingsFromAPI() {
-  try {
-    if (!auth.currentUser) {
-      console.error("No authenticated user found");
-      setBookings([]);
-      return;
-    }
-
-    setIsLoading(true);
-
-    try {
-      // Fetch bookings from the API
-      const fetchedBookings = await bookingsApi.getAll();
-
-
-      // Ensure fetchedBookings is an array
-      const bookingsArray = Array.isArray(fetchedBookings)
-        ? fetchedBookings
-        : [];
-
-      // Transform the bookings to match the expected format
-      const transformedBookings = bookingsArray.map((booking: any) => ({
-        ...booking,
-        id: booking._id || booking.id,
-        date: booking.date || booking.bookingDate,
-        time: booking.time || booking.bookingTime,
-        guests: booking.guests || booking.partySize || 2,
-        status: booking.status || "pending",
-        restaurantName:
-          booking.restaurantName || booking.businessName || booking.venueName,
-        eventName: booking.eventName,
-        type: booking.type || (booking.eventName ? "event" : "restaurant"),
-      }));
-
-
-      setBookings(transformedBookings);
-    } catch (error: any) {
-      console.error("Error fetching bookings:", error);
-      setBookings([]);
-      toast.error("Failed to fetch bookings. Please try again later.");
-    } finally {
-      setIsLoading(false);
-    }
-  } catch (error) {
-    console.error("Error in fetchBookingsFromAPI:", error);
-    setIsLoading(false);
-  }
-}
 
 // Restored: Handle booking actions (confirm, cancel, delete)
 async function handleBookingAction(
@@ -1787,10 +1613,13 @@ const handleAvatarSelect = async (src: string | null): Promise<void> => {
       uid: userData?.uid || "",
       createdAt: userData?.createdAt || new Date(),
       lastLogin: new Date(),
+      emailVerified: userData?.emailVerified || false,
     };
 
-    // First, store the updated user data in Firestore
-    await storeUserData(updatedUserData);
+    // Update in MongoDB profile
+    await userAPI.updateUser(userData?.uid || "", {
+      photoURL: src,
+    });
 
 
     // Update Firebase auth profile
@@ -2182,6 +2011,7 @@ const renderLocationModal = () => (
                       uid: prev.uid,
                       createdAt: prev.createdAt,
                       lastLogin: new Date(),
+                      emailVerified: prev.emailVerified,
                     }
                     : null,
                 );
@@ -3434,11 +3264,7 @@ const renderSection = () => {
                   if (updates.email !== undefined)
                     firestoreUpdates.email = updates.email;
 
-                  await setDoc(
-                    doc(db, "users", auth.currentUser.uid),
-                    firestoreUpdates,
-                    { merge: true },
-                  );
+                  await userAPI.updateUser(auth.currentUser.uid, firestoreUpdates);
 
                   // Fetch the latest profile data from backend to ensure sync
                   try {
@@ -4674,3 +4500,4 @@ return (
   </>
   );
 }
+

@@ -15,7 +15,6 @@ import {
   EmailAuthProvider,
   sendEmailVerification
 } from "./firebase";
-import { storeUserData, fetchUserData } from "./dbUtils";
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendPasswordReset } from "./authUtils";
 import socketService from './utils/socketService';
@@ -77,6 +76,15 @@ export default function LoginPage() {
   const [referralError, setReferralError] = useState('');
   const [googleUserToRegister, setGoogleUserToRegister] = useState<any>(null);
 
+  // Helper to safely update session storage with explicit user role
+  const updateSessionStorage = (data: any) => {
+    const userToSave = data?.data || data;
+    sessionStorage.setItem('userData', JSON.stringify({
+      ...userToSave,
+      role: 'user'
+    }));
+  };
+
   // Check if user is already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -86,13 +94,19 @@ export default function LoginPage() {
         const storedUser = sessionStorage.getItem('userData');
         if (!storedUser) {
           try {
-            const backendUser = await fetchUserData(user.uid);
-            // If user exists, sync them to session storage
-            sessionStorage.setItem('userData', JSON.stringify(backendUser));
+            const backendUser = await userAPI.fetchUserData(user.uid);
+            if (backendUser) {
+              // If user exists, sync them to session storage
+              updateSessionStorage(backendUser);
+            } else {
+              // If backendUser is null (404), it's a new user
+              console.log("LoginPage: New user detected, redirecting to signup...");
+              navigate('/signup');
+              return;
+            }
           } catch (error) {
-            // User not found in backend or error fetching
-            console.log("LoginPage: New user detected or error verifying status, redirecting to signup...");
-            navigate('/signup');
+            console.error("LoginPage: Error verifying user status:", error);
+            // On error, let the user stay on login but maybe toast an error
             return;
           }
         }
@@ -208,9 +222,9 @@ export default function LoginPage() {
         console.error('Error tracking login activity:', error);
       }
 
-      // Fetch existing user data from Firestore first
+      // Fetch existing user data from MongoDB first
       try {
-        const existingData = await fetchUserData(user.uid);
+        const existingData = await userAPI.fetchUserData(user.uid);
         if (existingData) {
           // Update the existing data with the latest Google profile picture
           const updatedUserData = {
@@ -219,17 +233,17 @@ export default function LoginPage() {
             lastLogin: new Date()
           };
 
-          // Store the updated user data in Firestore
-          await storeUserData(updatedUserData);
+          // Store the updated user data in MongoDB via updateUser
+          await userAPI.updateUser(user.uid, updatedUserData);
 
-          // Store user data in session storage
-          sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
+          // Store user data in session storage with helper
+          updateSessionStorage(updatedUserData);
           const token = createSession(user.uid);
           navigate(`/dashboard/${token}`);
           return;
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching user data from MongoDB:', error);
       }
 
       // If no existing data, create new user data
@@ -239,15 +253,16 @@ export default function LoginPage() {
         displayName: user.displayName || user.email?.split('@')[0] || '',
         name: user.displayName || user.email?.split('@')[0] || '',
         photoURL: user.photoURL || null,
+        emailVerified: user.emailVerified,
         lastLogin: new Date(),
         createdAt: new Date()
       };
 
-      // Store user data in Firestore
-      await storeUserData(userData);
+      // Store user data in MongoDB
+      await userAPI.createUser(userData);
 
-      // Store user data in session storage
-      sessionStorage.setItem('userData', JSON.stringify(userData));
+      // Store user data in session storage with helper
+      updateSessionStorage(userData);
 
       const token = createSession(user.uid);
       navigate(`/dashboard/${token}`);
@@ -313,9 +328,9 @@ export default function LoginPage() {
         console.error('Error tracking Google login activity:', error);
       }
 
-      // Fetch existing user data from Firestore first
+      // Fetch existing user data from MongoDB first
       try {
-        const existingData = await fetchUserData(user.uid);
+        const existingData = await userAPI.fetchUserData(user.uid);
         if (existingData) {
           // Update the existing data with the latest Google profile picture
           const updatedUserData = {
@@ -326,17 +341,17 @@ export default function LoginPage() {
             lastLogin: new Date()
           };
 
-          // Store the updated user data in Firestore
-          await storeUserData(updatedUserData);
+          // Store the updated user data in MongoDB
+          await userAPI.updateUser(user.uid, updatedUserData);
 
-          // Store user data in session storage
-          sessionStorage.setItem('userData', JSON.stringify(updatedUserData));
+          // Store user data in session storage with helper
+          updateSessionStorage(updatedUserData);
           const token = createSession(user.uid);
           navigate(`/dashboard/${token}`);
           return;
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
+        console.error('Error fetching user data from MongoDB:', error);
       }
 
       // If no existing data, this is potentially a new user from Google
@@ -483,18 +498,15 @@ export default function LoginPage() {
         referralCode: referralCode.trim().toUpperCase()
       };
 
-      // Create user in backend
+      // Create user in MongoDB
       const savedUser = await userAPI.createUser(userData);
 
-      // Store user data in Firestore for session persistence
-      await storeUserData({
-        ...userData,
-        lastLogin: new Date(),
-        createdAt: new Date()
-      });
-
       // Store in session storage
-      sessionStorage.setItem('userData', JSON.stringify(savedUser));
+      const userToSave = savedUser?.data || savedUser;
+      sessionStorage.setItem('userData', JSON.stringify({
+        ...userToSave,
+        role: 'user'
+      }));
 
       // Clean up state
       setGoogleUserToRegister(null);

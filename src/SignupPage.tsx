@@ -12,7 +12,6 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
-import { fetchUserData } from "./dbUtils";
 
 interface FormData {
   name: string;
@@ -338,14 +337,12 @@ const SignupPage: React.FC = () => {
 
       // Ensure we don't already have this user in our database
       try {
-        const existingData = await fetchUserData(user.uid);
+        const existingData = await userAPI.fetchUserData(user.uid);
         if (existingData) {
           // User exists, they should be logging in instead
-          const token = sessionStorage.getItem('userData') ? JSON.parse(sessionStorage.getItem('userData')!).token : null;
-          if (token) {
-            navigate(`/dashboard/${token}`);
-            return;
-          }
+          toast.info('You already have an account. Redirecting to login...');
+          navigate('/login');
+          return;
         }
       } catch (e) {
         // User not found is fine, continue to signup flow
@@ -602,9 +599,13 @@ const SignupPage: React.FC = () => {
       }
 
       // Create user in backend
-      const savedUser = await userAPI.createUser(userData);
-
-      // Store in session storage
+      const createdUser = await userAPI.createUser(userData);
+      
+      // Store in session storage with explicit role
+      const savedUser = {
+        ...(createdUser?.data || createdUser),
+        role: 'user'
+      };
       sessionStorage.setItem('userData', JSON.stringify(savedUser));
 
       // Clean up state
