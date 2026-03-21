@@ -66,6 +66,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       existingUser.photoURL = photoURL;
       existingUser.emailVerified = emailVerified;
       existingUser.lastLogin = new Date();
+      // Apply early access status if a valid code was provided
+      if (isEarlyAccess) {
+        existingUser.isEarlyAccess = true;
+      }
       // Optionally add a login activity
       const activity: IActivity = {
         type: 'login',

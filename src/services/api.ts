@@ -1,4 +1,5 @@
 import { auth } from '../firebase';
+import { fetchUserData } from '../dbUtils';
 
 import { API_CONFIG } from '../config/api';
 const API_URL = API_CONFIG.BASE_URL;
@@ -933,6 +934,9 @@ const addUserActivity = async (uid: string, activity: any) => {
 };
 
 export const userAPI = {
+  fetchUserData: async (userId: string) => {
+    return fetchUserData(userId);
+  },
   getReviews: async (userId: string) => {
     return apiRequest(`${API_URL}/api/v1/users/${userId}/reviews`);
   },

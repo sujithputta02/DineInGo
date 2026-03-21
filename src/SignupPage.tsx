@@ -12,6 +12,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
+import { fetchUserData } from "./dbUtils";
 
 interface FormData {
   name: string;
@@ -159,6 +160,49 @@ const SignupPage: React.FC = () => {
     }
   }, [formData.confirmPassword]);
 
+  // DETECT AUTH CHANGE: Handle case where user is already logged in to Firebase but not registered in backend
+  // This is crucial for session recovery (e.g. after a redirect or refresh)
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      if (user && !showReferralInput && !showVerification && !showOTPVerification && !otpVerified) {
+        // If they are already in session storage, they are logged in
+        if (sessionStorage.getItem('userData')) return;
+
+        console.log("SignupPage: Authenticated user detected, checking backend status...");
+        
+        try {
+          setIsLoading(true);
+          const backendUser = await userAPI.fetchUserData(user.uid);
+          
+          if (!backendUser) {
+            // New user authenticated via Google but not in backend
+            const accessCheck = await waitlistApi.checkAccess(user.email || '');
+            if (accessCheck.hasAccess) {
+              setGoogleUserToRegister(user);
+              setShowReferralInput(true);
+            } else {
+              await auth.signOut();
+              toast.error("Dino says: Access denied. This email is not on the waitlist.");
+            }
+          } else {
+            // User exists in backend, they should probably be on the dashboard
+            // but let's check if they have a session token
+            const token = sessionStorage.getItem('userData') ? JSON.parse(sessionStorage.getItem('userData')!).token : null;
+            if (token) {
+              navigate(`/dashboard/${token}`);
+            }
+          }
+        } catch (error) {
+          console.error("Error during session recovery:", error);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [navigate, showReferralInput, showVerification, showOTPVerification, otpVerified]);
+
   // Function to check password strength
   const checkPasswordStrength = (password: string): PasswordStrength => {
     let score = 0;
@@ -278,6 +322,21 @@ const SignupPage: React.FC = () => {
 
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+
+      // Ensure we don't already have this user in our database
+      try {
+        const existingData = await fetchUserData(user.uid);
+        if (existingData) {
+          // User exists, they should be logging in instead
+          const token = sessionStorage.getItem('userData') ? JSON.parse(sessionStorage.getItem('userData')!).token : null;
+          if (token) {
+            navigate(`/dashboard/${token}`);
+            return;
+          }
+        }
+      } catch (e) {
+        // User not found is fine, continue to signup flow
+      }
 
       // BETA ACCESS GUARD: Check waitlist status
       const accessCheck = await waitlistApi.checkAccess(user.email || '');

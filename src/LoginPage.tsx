@@ -79,9 +79,25 @@ export default function LoginPage() {
 
   // Check if user is already logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // User already signed in — reuse or create session token
+        // DETECT NEW USER: If a user is signed in to Firebase but we have no session data,
+        // we must check if they actually exist in our database before redirecting to dashboard.
+        const storedUser = sessionStorage.getItem('userData');
+        if (!storedUser) {
+          try {
+            const backendUser = await fetchUserData(user.uid);
+            // If user exists, sync them to session storage
+            sessionStorage.setItem('userData', JSON.stringify(backendUser));
+          } catch (error) {
+            // User not found in backend or error fetching
+            console.log("LoginPage: New user detected or error verifying status, redirecting to signup...");
+            navigate('/signup');
+            return;
+          }
+        }
+
+        // Existing user path — reuse or create session token
         const existingToken = getSessionToken();
         if (existingToken) {
           navigate(`/dashboard/${existingToken}`);
