@@ -606,9 +606,13 @@ const AdminWaitlistPage: React.FC = () => {
                   </div>
                 </div>
               ))}
-              {recentSignups.length === 0 && (
-                <div className="text-center py-8 text-gray-400">
-                  <p className="text-xs">No recent signups</p>
+              {pendingSignups.length === 0 && (
+                <div className="text-center py-12 text-gray-400">
+                  <div className="bg-gray-50 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle2 className="w-6 h-6 text-emerald-200" />
+                  </div>
+                  <p className="text-xs font-bold text-gray-500">All caught up!</p>
+                  <p className="text-[10px] mt-1">No pending signups to process.</p>
                 </div>
               )}
             </div>

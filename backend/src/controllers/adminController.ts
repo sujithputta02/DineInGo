@@ -1250,8 +1250,8 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
       EarlyAccess.countDocuments({ lastEmailStatus: 'failed' })
     ]);
     
-    // Get last 10 signups
-    const recentSignups = await EarlyAccess.find({})
+    // Get last 10 PENDING signups for the quick overview
+    const recentSignups = await EarlyAccess.find({ status: 'pending' })
       .sort({ createdAt: -1 })
       .limit(10);
 
@@ -1464,6 +1464,10 @@ export const getWaitlistSignups = async (req: Request, res: Response) => {
       } else if (status === 'new_business') {
         query.status = 'pending';
         query.userType = 'business';
+      } else if (status === 'soft_bounce') {
+        query.lastEmailStatus = 'soft_bounce';
+      } else if (status === 'hard_bounce') {
+        query.lastEmailStatus = 'hard_bounce';
       }
     }
 
