@@ -61,11 +61,13 @@ const AdminWaitlistPage: React.FC = () => {
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
   const [targetType, setTargetType] = useState<'all' | 'user' | 'business'>('all');
+  const [onlyPending, setOnlyPending] = useState(true);
   const [showPreview, setShowPreview] = useState(false);
 
   // Full Waitlist Modal
   const [showFullWaitlist, setShowFullWaitlist] = useState(false);
   const [fullWaitlist, setFullWaitlist] = useState<Signup[]>([]);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [waitlistLoading, setWaitlistLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -115,7 +117,8 @@ const AdminWaitlistPage: React.FC = () => {
       const res = await adminApi.sendWaitlistBroadcast({
         subject,
         html: message, // Just pass raw message, backend wraps it in template
-        targetType
+        targetType,
+        onlyPending
       });
 
       if (res.success) {
@@ -170,6 +173,51 @@ const AdminWaitlistPage: React.FC = () => {
       }
     } catch (error) {
       toast.error('Failed to update status');
+    }
+  };
+
+  const handleSelect = (id: string) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.checked) {
+      setSelectedIds(fullWaitlist.map(s => s._id));
+    } else {
+      setSelectedIds([]);
+    }
+  };
+
+  const handleResendSelected = async () => {
+    if (selectedIds.length === 0) return;
+    if (!subject || !message) {
+      toast.warning('Please prepare a subject and message in the broadcast form first');
+      return;
+    }
+
+    const confirmResend = window.confirm(`Are you sure you want to resend this broadcast to the ${selectedIds.length} selected signups?`);
+    if (!confirmResend) return;
+
+    try {
+      setIsSending(true);
+      const res = await adminApi.sendWaitlistBroadcast({
+        subject,
+        html: message,
+        targetType: 'all', // Individual IDs override targetType in backend
+        targetIds: selectedIds
+      });
+
+      if (res.success) {
+        toast.success(res.message);
+        setSelectedIds([]);
+        fetchFullWaitlist(page);
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to resend broadcast');
+    } finally {
+      setIsSending(false);
     }
   };
 
@@ -464,6 +512,22 @@ const AdminWaitlistPage: React.FC = () => {
                     </motion.div>
                   )}
                 </AnimatePresence>
+                
+                <div className="flex items-center gap-3 p-4 bg-emerald-50/50 rounded-xl border border-emerald-100/50">
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      className="sr-only peer"
+                      checked={onlyPending}
+                      onChange={(e) => setOnlyPending(e.target.checked)}
+                    />
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                    <span className="ml-3 text-sm font-bold text-gray-700">Target only new (unsent) signups</span>
+                  </label>
+                  <p className="text-[10px] text-gray-400 italic font-medium ml-auto">
+                    {onlyPending ? '✨ Mails will only be sent to those who haven\'t been contacted yet.' : '⚠️ Mails will be sent to everyone in the segment (excluding bounces).'}
+                  </p>
+                </div>
               </div>
 
               <div className="flex items-center justify-between pt-4 border-top border-gray-50">
@@ -637,13 +701,26 @@ const AdminWaitlistPage: React.FC = () => {
                   />
                 </div>
                 <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm font-medium"
+                >
+                  <option value="all">All Statuses</option>
+                  <option value="pending">Pending Only</option>
+                  <option value="new_user">New Mails User</option>
+                  <option value="new_business">New Mails Business</option>
+                  <option value="contacted">Contacted</option>
+                  <option value="soft_bounce">Soft Bounces</option>
+                  <option value="hard_bounce">Hard Bounces</option>
+                </select>
+                <select 
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm"
+                  className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl outline-none text-sm font-medium"
                 >
-                  <option value="all">All Types</option>
-                  <option value="user">Users</option>
-                  <option value="business">Businesses</option>
+                  <option value="all">Both Types</option>
+                  <option value="user">Users Only</option>
+                  <option value="business">Businesses Only</option>
                 </select>
                 <button 
                   onClick={() => fetchFullWaitlist(1)}
@@ -658,6 +735,14 @@ const AdminWaitlistPage: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                   <thead className="sticky top-0 bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-100">
                     <tr>
+                      <th className="px-6 py-4 w-10">
+                        <input 
+                          type="checkbox" 
+                          onChange={handleSelectAll}
+                          checked={fullWaitlist.length > 0 && selectedIds.length === fullWaitlist.length}
+                          className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                        />
+                      </th>
                       <th className="px-6 py-4">Email Address</th>
                       <th className="px-6 py-4">Type</th>
                       <th className="px-6 py-4">Signed Up</th>
@@ -668,13 +753,23 @@ const AdminWaitlistPage: React.FC = () => {
                   <tbody className="divide-y divide-gray-50">
                     {waitlistLoading ? (
                       <tr>
-                        <td colSpan={5} className="py-20 text-center">
+                        <td colSpan={6} className="py-20 text-center">
                           <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full mx-auto" />
                         </td>
                       </tr>
                     ) : fullWaitlist.map((signup) => (
-                      <tr key={signup._id} className="hover:bg-gray-50/50 transition-colors">
-                        <td className="px-6 py-4 font-semibold text-gray-900 text-sm">{signup.email}</td>
+                      <tr key={signup._id} className={`hover:bg-gray-50/50 transition-colors ${selectedIds.includes(signup._id) ? 'bg-emerald-50/30' : ''}`}>
+                        <td className="px-6 py-4">
+                          <input 
+                            type="checkbox" 
+                            checked={selectedIds.includes(signup._id)}
+                            onChange={() => handleSelect(signup._id)}
+                            className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                          />
+                        </td>
+                        <td className="px-6 py-4 font-semibold text-gray-900 text-sm">
+                          {signup.email}
+                        </td>
                         <td className="px-6 py-4">
                           <span className={`text-[9px] font-black px-2 py-0.5 rounded-full uppercase tracking-tighter ${
                             signup.userType === 'user' ? 'bg-blue-100 text-blue-700' : 'bg-purple-100 text-purple-700'
@@ -714,7 +809,7 @@ const AdminWaitlistPage: React.FC = () => {
                       </tr>
                     ))}
                     {!waitlistLoading && fullWaitlist.length === 0 && (
-                      <tr><td colSpan={5} className="py-20 text-center text-gray-400 italic">No entries found matching criteria</td></tr>
+                      <tr><td colSpan={6} className="py-20 text-center text-gray-400 italic">No entries found matching criteria</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -725,21 +820,46 @@ const AdminWaitlistPage: React.FC = () => {
                 <div className="text-xs font-bold text-gray-400">
                   Page {page} of {totalPages}
                 </div>
-                <div className="flex gap-2">
-                  <button 
-                    disabled={page <= 1 || waitlistLoading}
-                    onClick={() => fetchFullWaitlist(page - 1)}
-                    className="p-2 border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-white transition-colors"
-                  >
-                    <ChevronLeft className="w-5 h-5 text-gray-600" />
-                  </button>
-                  <button 
-                    disabled={page >= totalPages || waitlistLoading}
-                    onClick={() => fetchFullWaitlist(page + 1)}
-                    className="p-2 border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-white transition-colors"
-                  >
-                    <ChevronRight className="w-5 h-5 text-gray-600" />
-                  </button>
+                <div className="flex items-center gap-4">
+                  <AnimatePresence>
+                    {selectedIds.length > 0 && (
+                      <motion.div 
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="flex items-center gap-3 pr-4 border-r border-gray-200"
+                      >
+                        <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-full">
+                          {selectedIds.length} selected
+                        </span>
+                        <button 
+                          onClick={handleResendSelected}
+                          disabled={isSending}
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white text-xs font-bold rounded-xl hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/10 disabled:opacity-50"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          Resend Broadcast
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                  
+                  <div className="flex gap-2">
+                    <button 
+                      disabled={page <= 1 || waitlistLoading}
+                      onClick={() => fetchFullWaitlist(page - 1)}
+                      className="p-2 border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-white transition-colors"
+                    >
+                      <ChevronLeft className="w-5 h-5 text-gray-600" />
+                    </button>
+                    <button 
+                      disabled={page >= totalPages || waitlistLoading}
+                      onClick={() => fetchFullWaitlist(page + 1)}
+                      className="p-2 border border-gray-200 rounded-xl disabled:opacity-30 hover:bg-white transition-colors"
+                    >
+                      <ChevronRight className="w-5 h-5 text-gray-600" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </motion.div>

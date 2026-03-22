@@ -1292,25 +1292,49 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
  */
 export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
   try {
-    const { subject, html, targetType } = req.body; // targetType: 'all', 'user', 'business'
+    const { subject, html, targetType, onlyPending, targetIds } = req.body; // targetType: 'all', 'user', 'business', onlyPending: boolean, targetIds: string[]
 
     if (!subject || !html) {
       return res.status(400).json({ success: false, message: 'Subject and content are required' });
     }
 
-    const query: any = {
-      // Exclude only permanent failures to allow follow-up broadcasts
-      lastEmailStatus: { $nin: ['hard_bounce', 'failed'] }
-    };
+    const query: any = {};
+    
+    // 1. Suppression Logic: Exclude bounces and failures by default unless specifically retrying chosen IDs
+    if (!targetIds || targetIds.length === 0) {
+      query.lastEmailStatus = { $nin: ['hard_bounce', 'soft_bounce', 'failed'] };
+      
+      if (onlyPending) {
+        query.status = 'pending';
+      }
+    } else {
+      // If targeting specific IDs, use those
+      query._id = { $in: targetIds };
+    }
+
     if (targetType && targetType !== 'all') {
       query.userType = targetType;
     }
 
-    const recipients = await EarlyAccess.find(query).select('email');
+    // Get recipients
+    let recipients = await EarlyAccess.find(query).select('email userType');
+
+    // 2. Deduplication Logic: If an email is in both, prefer Business variant to avoid double-mailing
+    if (targetType === 'all' && (!targetIds || targetIds.length === 0)) {
+      const emailMap = new Map();
+      recipients.forEach(r => {
+        const existing = emailMap.get(r.email);
+        if (!existing || (existing.userType === 'user' && r.userType === 'business')) {
+          emailMap.set(r.email, r);
+        }
+      });
+      recipients = Array.from(emailMap.values());
+    }
+
     const emailList = recipients.map(r => r.email);
 
     if (emailList.length === 0) {
-      return res.status(400).json({ success: false, message: 'No recipients found for the selected segment' });
+      return res.status(400).json({ success: false, message: 'No eligible recipients found' });
     }
 
     // Log the security event for mass mailing
@@ -1330,24 +1354,24 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
       try {
         let results: Array<{ email: string, status: string, error?: string }> = [];
 
-        if (targetType === 'all') {
-          // Send to users
-          const users = await EarlyAccess.find({ userType: 'user' }).select('email');
-          const userEmails = users.map(u => u.email);
+        if (targetType === 'all' && (!targetIds || targetIds.length === 0)) {
+          // Use deduplicated recipients list we already calculated
+          const userEmails = recipients.filter(r => r.userType === 'user').map(r => r.email);
+          const businessEmails = recipients.filter(r => r.userType === 'business').map(r => r.email);
+
           if (userEmails.length > 0) {
             const userResults = await emailService.sendBroadcastEmail(userEmails, subject, html, 'user');
             results.push(...userResults);
           }
 
-          // Send to businesses
-          const businesses = await EarlyAccess.find({ userType: 'business' }).select('email');
-          const businessEmails = businesses.map(b => b.email);
           if (businessEmails.length > 0) {
             const businessResults = await emailService.sendBroadcastEmail(businessEmails, subject, html, 'business');
             results.push(...businessResults);
           }
         } else {
-          results = await emailService.sendBroadcastEmail(emailList, subject, html, targetType as 'user' | 'business');
+          // For specific targetType or targetIds, send with appropriate template
+          const effectiveType = targetType === 'all' ? 'user' : (targetType as 'user' | 'business');
+          results = await emailService.sendBroadcastEmail(emailList, subject, html, effectiveType);
         }
 
         // Process results and update each document individually for precise tracking
@@ -1434,10 +1458,16 @@ export const getWaitlistSignups = async (req: Request, res: Response) => {
         query.status = 'contacted';
       } else if (status === 'converted') {
         query.status = 'converted';
+      } else if (status === 'new_user') {
+        query.status = 'pending';
+        query.userType = 'user';
+      } else if (status === 'new_business') {
+        query.status = 'pending';
+        query.userType = 'business';
       }
     }
 
-    if (userType !== 'all') {
+    if (userType !== 'all' && !query.userType) {
       query.userType = userType;
     }
 

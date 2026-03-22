@@ -212,7 +212,7 @@ export const adminApi = {
 
   // Waitlist management
   getWaitlistStats: () => adminApiRequest('/api/v1/admin/waitlist/stats'),
-  sendWaitlistBroadcast: (data: { subject: string; html: string; targetType: string }) =>
+  sendWaitlistBroadcast: (data: { subject: string; html: string; targetType: string; onlyPending?: boolean; targetIds?: string[] }) =>
     adminApiRequest('/api/v1/admin/waitlist/broadcast', {
       method: 'POST',
       body: JSON.stringify(data),
