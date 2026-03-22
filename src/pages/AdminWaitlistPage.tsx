@@ -79,6 +79,12 @@ const AdminWaitlistPage: React.FC = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (showFullWaitlist) {
+      fetchFullWaitlist(1);
+    }
+  }, [showFullWaitlist]);
+
   const fetchData = async (silent = false) => {
     try {
       if (!silent) setLoading(true);
@@ -594,14 +600,16 @@ const AdminWaitlistPage: React.FC = () => {
                           {signup.userType}
                         </span>
                         <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider ${
-                          signup.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                          signup.status === 'pending' ? 'bg-orange-100 text-orange-700' : 'bg-emerald-100 text-emerald-700'
                         }`}>
-                          {signup.status}
+                          {signup.status === 'pending' ? 'PENDING' : signup.status}
                         </span>
                       </div>
                     </div>
                     <p className="text-[9px] text-gray-400 font-medium whitespace-nowrap">
-                      {signup.createdAt ? new Date(signup.createdAt).toLocaleDateString() : '—'}
+                      {signup.createdAt && !isNaN(new Date(signup.createdAt).getTime()) 
+                        ? new Date(signup.createdAt).toLocaleDateString() 
+                        : 'N/A'}
                     </p>
                   </div>
                 </div>
@@ -728,9 +736,9 @@ const AdminWaitlistPage: React.FC = () => {
                 </select>
                 <button 
                   onClick={() => fetchFullWaitlist(1)}
-                  className="bg-emerald-600 text-white rounded-xl px-4 py-2 font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20"
+                  className="bg-emerald-600 text-white rounded-xl px-4 py-2 font-bold hover:bg-emerald-700 transition-all shadow-lg shadow-emerald-600/20 md:col-span-4"
                 >
-                  Apply Filters
+                  Apply Filters & Refresh
                 </button>
               </div>
 
@@ -782,7 +790,7 @@ const AdminWaitlistPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-xs text-gray-500 font-medium">
-                          {new Date(signup.createdAt).toLocaleDateString()}
+                          {signup.createdAt ? new Date(signup.createdAt).toLocaleDateString() : 'N/A'}
                         </td>
                         <td className="px-6 py-4">
                           <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase border ${
@@ -793,7 +801,7 @@ const AdminWaitlistPage: React.FC = () => {
                             signup.lastEmailStatus === 'failed' ? 'bg-red-50 text-red-700 border-red-100' :
                             'bg-gray-50 text-gray-500 border-gray-100'
                           }`}>
-                            {signup.lastEmailStatus?.replace('_', ' ') || 'PENDING'}
+                            {(!signup.lastEmailStatus || signup.lastEmailStatus === 'not_sent') ? 'PENDING' : signup.lastEmailStatus.replace('_', ' ')}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-right">
