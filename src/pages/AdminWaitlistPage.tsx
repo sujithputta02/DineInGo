@@ -47,7 +47,8 @@ interface Signup {
   lastEmailStatus?: string;
   lastEmailError?: string;
   lastAttemptAt?: string;
-  createdAt: string;
+  createdAt?: string;
+  joinedAt?: string;
 }
 
 const AdminWaitlistPage: React.FC = () => {
@@ -607,9 +608,11 @@ const AdminWaitlistPage: React.FC = () => {
                       </div>
                     </div>
                     <p className="text-[9px] text-gray-400 font-medium whitespace-nowrap">
-                      {signup.createdAt && !isNaN(new Date(signup.createdAt).getTime()) 
+                      { (signup.createdAt && !isNaN(new Date(signup.createdAt).getTime())) 
                         ? new Date(signup.createdAt).toLocaleDateString() 
-                        : 'N/A'}
+                        : (signup.joinedAt && !isNaN(new Date(signup.joinedAt).getTime()))
+                          ? new Date(signup.joinedAt).toLocaleDateString()
+                          : 'N/A' }
                     </p>
                   </div>
                 </div>
@@ -790,7 +793,11 @@ const AdminWaitlistPage: React.FC = () => {
                           </span>
                         </td>
                         <td className="px-6 py-4 text-xs text-gray-500 font-medium">
-                          {signup.createdAt ? new Date(signup.createdAt).toLocaleDateString() : 'N/A'}
+                          { (signup.createdAt && !isNaN(new Date(signup.createdAt).getTime())) 
+                            ? new Date(signup.createdAt).toLocaleDateString() 
+                            : (signup.joinedAt && !isNaN(new Date(signup.joinedAt).getTime()))
+                              ? new Date(signup.joinedAt).toLocaleDateString()
+                              : 'N/A' }
                         </td>
                         <td className="px-6 py-4">
                           <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase border ${

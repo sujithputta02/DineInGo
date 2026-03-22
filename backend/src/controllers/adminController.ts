@@ -1241,7 +1241,7 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
       EarlyAccess.countDocuments({}),
       EarlyAccess.countDocuments({ userType: 'user' }),
       EarlyAccess.countDocuments({ userType: 'business' }),
-      EarlyAccess.countDocuments({ status: 'pending' }),
+      EarlyAccess.countDocuments({ status: { $in: ['pending', null, undefined] } }),
       EarlyAccess.countDocuments({ status: 'contacted' }),
       EarlyAccess.countDocuments({ lastEmailStatus: 'sent' }),
       EarlyAccess.countDocuments({ lastEmailStatus: 'delivered' }),
@@ -1251,8 +1251,9 @@ export const getWaitlistStats = async (req: Request, res: Response) => {
     ]);
     
     // Get last 10 PENDING signups for the quick overview
-    const recentSignups = await EarlyAccess.find({ status: 'pending' })
-      .sort({ createdAt: -1 })
+    // Sort by joinedAt or createdAt to handle both schema versions
+    const recentSignups = await EarlyAccess.find({ status: { $in: ['pending', null, undefined] } })
+      .sort({ createdAt: -1, joinedAt: -1 })
       .limit(10);
 
     // Get last 10 email attempt results (excluding "sent" for noise reduction)
@@ -1302,10 +1303,14 @@ export const sendWaitlistBroadcast = async (req: Request, res: Response) => {
     
     // 1. Suppression Logic: Exclude bounces and failures by default unless specifically retrying chosen IDs
     if (!targetIds || targetIds.length === 0) {
-      query.lastEmailStatus = { $nin: ['hard_bounce', 'soft_bounce', 'failed'] };
+      // Treat missing lastEmailStatus as eligible (not_sent)
+      query.$or = [
+        { lastEmailStatus: { $nin: ['hard_bounce', 'soft_bounce', 'failed'] } },
+        { lastEmailStatus: { $exists: false } }
+      ];
       
       if (onlyPending) {
-        query.status = 'pending';
+        query.status = { $in: ['pending', null, undefined] };
       }
     } else {
       // If targeting specific IDs, use those
@@ -1453,16 +1458,16 @@ export const getWaitlistSignups = async (req: Request, res: Response) => {
     
     if (status !== 'all') {
       if (status === 'pending') {
-        query.status = 'pending';
+        query.status = { $in: ['pending', null, undefined] };
       } else if (status === 'contacted') {
         query.status = 'contacted';
       } else if (status === 'converted') {
         query.status = 'converted';
       } else if (status === 'new_user') {
-        query.status = 'pending';
+        query.status = { $in: ['pending', null, undefined] };
         query.userType = 'user';
       } else if (status === 'new_business') {
-        query.status = 'pending';
+        query.status = { $in: ['pending', null, undefined] };
         query.userType = 'business';
       } else if (status === 'soft_bounce') {
         query.lastEmailStatus = 'soft_bounce';
@@ -1479,7 +1484,7 @@ export const getWaitlistSignups = async (req: Request, res: Response) => {
 
     const [signups, total] = await Promise.all([
       EarlyAccess.find(query)
-        .sort({ createdAt: -1 })
+        .sort({ createdAt: -1, joinedAt: -1 })
         .skip(skip)
         .limit(Number(limit)),
       EarlyAccess.countDocuments(query)

@@ -5,6 +5,13 @@ export interface IEarlyAccess extends Document {
     userType: 'user' | 'business';
     status: 'pending' | 'contacted' | 'converted';
     referralCode?: string;
+    referredBy?: string | null;
+    referralCount?: number;
+    tier?: 'bronze' | 'silver' | 'gold' | 'platinum';
+    priorityScore?: number;
+    originalPosition?: number;
+    joinedAt?: Date;
+    lastReferralAt?: Date | null;
     lastEmailStatus?: 'not_sent' | 'sent' | 'delivered' | 'soft_bounce' | 'hard_bounce' | 'failed';
     lastEmailError?: string;
     lastAttemptAt?: Date;
@@ -41,6 +48,13 @@ const earlyAccessSchema = new Schema<IEarlyAccess>({
         trim: true,
         index: true
     },
+    referredBy: { type: String, default: null },
+    referralCount: { type: Number, default: 0 },
+    tier: { type: String, enum: ['bronze', 'silver', 'gold', 'platinum'], default: 'bronze' },
+    priorityScore: { type: Number, default: 0 },
+    originalPosition: { type: Number, default: 0 },
+    joinedAt: { type: Date, default: Date.now },
+    lastReferralAt: { type: Date, default: null },
     lastEmailStatus: {
         type: String,
         enum: ['not_sent', 'sent', 'delivered', 'soft_bounce', 'hard_bounce', 'failed'],
