@@ -11,8 +11,11 @@ interface User {
 
 interface AuthContextType {
   currentUser: User | null;
+  backendUser: any | null;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
+  loading: boolean;
+  isWaitlisted: boolean | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,11 +30,14 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [backendUser, setBackendUser] = useState<any | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [isWaitlisted, setIsWaitlisted] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(user => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setLoading(true);
       if (user) {
         setCurrentUser({
           uid: user.uid,
@@ -40,9 +46,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: user.photoURL
         });
         setIsAuthenticated(true);
+
+        // SYSTEMATIC SYNC: Fetch backend user data immediately
+        try {
+          const { userAPI, waitlistApi } = await import('../services/api');
+          const data = await userAPI.fetchUserData(user.uid);
+          if (data) {
+            setBackendUser(data);
+          } else {
+            // If no backend user, check waitlist status
+            const accessCheck = await waitlistApi.checkAccess(user.email || '');
+            setIsWaitlisted(accessCheck.hasAccess);
+          }
+        } catch (error) {
+          console.error('[DineInGo] Backend sync failed:', error);
+        }
       } else {
         setCurrentUser(null);
+        setBackendUser(null);
         setIsAuthenticated(false);
+        setIsWaitlisted(null);
       }
       setLoading(false);
     }, (error) => {
@@ -59,18 +82,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     await auth.signOut();
     setCurrentUser(null);
+    setBackendUser(null);
     setIsAuthenticated(false);
+    setIsWaitlisted(null);
+    sessionStorage.clear();
+    localStorage.removeItem('sessionToken');
   };
 
   const value = {
     currentUser,
+    backendUser,
     signOut,
-    isAuthenticated
+    isAuthenticated,
+    loading,
+    isWaitlisted
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 };

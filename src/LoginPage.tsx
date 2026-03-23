@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -86,44 +86,17 @@ export default function LoginPage() {
   };
 
   // Check if user is already logged in
+  // CLEANED UP: Redundant onAuthStateChanged and manual backend fetching removed.
+  // The global AuthContext and AuthGuardian now handle automatic sync and redirection.
+  
+  const location = useLocation();
+  
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // DETECT NEW USER: If a user is signed in to Firebase but we have no session data,
-        // we must check if they actually exist in our database before redirecting to dashboard.
-        const storedUser = sessionStorage.getItem('userData');
-        if (!storedUser) {
-          try {
-            const backendUser = await userAPI.fetchUserData(user.uid);
-            if (backendUser) {
-              // If user exists, sync them to session storage
-              updateSessionStorage(backendUser);
-            } else {
-              // If backendUser is null (404), it's a new user
-              console.log("LoginPage: New user detected, redirecting to signup...");
-              navigate('/signup');
-              return;
-            }
-          } catch (error) {
-            console.error("LoginPage: Error verifying user status:", error);
-            // On error, let the user stay on login but maybe toast an error
-            return;
-          }
-        }
-
-        // Existing user path — reuse or create session token
-        const existingToken = getSessionToken();
-        if (existingToken) {
-          navigate(`/dashboard/${existingToken}`);
-        } else {
-          const token = createSession(user.uid);
-          navigate(`/dashboard/${token}`);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate]);
+    // If there's an error in the location state (from AuthGuardian), show it
+    if (location.state?.error) {
+      toast.error(location.state.error);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     // Connect to socket when component mounts

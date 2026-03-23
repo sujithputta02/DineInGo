@@ -161,59 +161,8 @@ const SignupPage: React.FC = () => {
 
   // DETECT AUTH CHANGE: Handle case where user is already logged in to Firebase but not registered in backend
   // This is crucial for session recovery (e.g. after a redirect or refresh)
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user && !showReferralInput && !showVerification && !showOTPVerification && !otpVerified) {
-        // If they are already in session storage, they are logged in
-        if (sessionStorage.getItem('userData')) return;
-
-        console.log("SignupPage: Authenticated user detected, checking backend status...");
-        
-        try {
-          setIsLoading(true);
-          const backendUser = await userAPI.fetchUserData(user.uid);
-          
-          if (!backendUser) {
-            // New user authenticated via Google but not in backend
-            const accessCheck = await waitlistApi.checkAccess(user.email || '');
-            if (accessCheck.hasAccess) {
-              setGoogleUserToRegister(user);
-              setShowReferralInput(true);
-            } else {
-              await auth.signOut();
-              toast.error("Dino says: Access denied. This email is not on the waitlist.");
-            }
-          } else {
-            // User exists in backend, they should probably be on the dashboard
-            const token = sessionStorage.getItem('userData') ? JSON.parse(sessionStorage.getItem('userData')!).token : null;
-            if (token) {
-              navigate(`/dashboard/${token}`);
-            }
-          }
-        } catch (error: any) {
-          // If the error is "User data not found", it means this is a new Google user
-          if (error.message?.includes('not found')) {
-            console.log("SignupPage: New user detected via session recovery");
-            const accessCheck = await waitlistApi.checkAccess(user.email || '');
-            if (accessCheck.hasAccess) {
-              setGoogleUserToRegister(user);
-              setShowReferralInput(true);
-            } else {
-              await auth.signOut();
-              toast.error("Dino says: Access denied. This email is not on the waitlist.");
-            }
-          } else {
-            console.warn("Error during session recovery (network or other):", error);
-            // Don't toast for background checking errors to avoid annoyance
-          }
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    });
-
-    return () => unsubscribe();
-  }, [navigate, showReferralInput, showVerification, showOTPVerification, otpVerified]);
+  // CLEANED UP: Redundant onAuthStateChanged and manual backend fetching removed.
+  // The global AuthContext and AuthGuardian now handle automatic sync and redirection.
 
   // Function to check password strength
   const checkPasswordStrength = (password: string): PasswordStrength => {
