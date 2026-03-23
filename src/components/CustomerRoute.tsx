@@ -20,6 +20,9 @@ const CustomerRoute: React.FC = () => {
                     setLoading(false);
                     return;
                 }
+            } else {
+                // If NO session data, we must redirect to login for vetting
+                // BUT we wait for onAuthStateChanged to be sure we're actually logged in
             }
             setLoading(false);
         };
@@ -29,13 +32,16 @@ const CustomerRoute: React.FC = () => {
         // Also listen to auth state to be safe, though session is faster
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
-                // If we have a user, check role again if session failed
                 const storedUser = sessionStorage.getItem('userData');
                 if (storedUser) {
                     const parsed = JSON.parse(storedUser);
                     if (parsed.role === 'owner' && parsed.uid === user.uid) {
                         setShouldRedirect(true);
                     }
+                } else {
+                   // Logged in to Firebase but NO session data — DANGEROUS BYPASS
+                   console.log("CustomerRoute: Missing session data, forcing re-vetting...");
+                   setShouldRedirect(true); // Effectively force a redirect
                 }
             }
             setLoading(false);
@@ -47,9 +53,16 @@ const CustomerRoute: React.FC = () => {
     if (loading) return null; // Or a spinner
 
     if (shouldRedirect) {
-        toast.info("Registered Owners must use the Business Portal.");
-        // Redirect to login to safely generate a new session token
-        return <Navigate to="/business/businessLogin" replace />;
+        const storedUser = sessionStorage.getItem('userData');
+        const parsed = storedUser ? JSON.parse(storedUser) : null;
+        
+        if (parsed?.role === 'owner' || parsed?.role === 'admin') {
+            toast.info("Registered Owners must use the Business Portal.");
+            return <Navigate to="/business/businessLogin" replace />;
+        }
+        
+        // If it was a missing session data redirect, go to main login
+        return <Navigate to="/login" replace />;
     }
 
     return (

@@ -88,12 +88,20 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
 
       if (!response.ok) {
         const errorText = await response.text();
+        
+        // 404 Not Found is often an expected state (e.g. new user check)
+        // We should throw but NOT retry on 404s.
+        if (response.status === 404) {
+           throw new Error(`404 Not Found: ${errorText}`);
+        }
+
         console.error(`API returned ${response.status}: ${errorText}`);
         throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
       }
 
       return await response.json();
     } catch (error: any) {
+      if (error.message?.includes('404')) throw error; // Don't retry 404s
       // Clear timeout to prevent memory leaks
       clearTimeout(timeoutId);
 
