@@ -89,36 +89,18 @@ export default function LoginPage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // DETECT NEW USER: If a user is signed in to Firebase but we have no session data,
-        // we must check if they actually exist in our database before redirecting to dashboard.
+        // ONLY auto-navigate if we have the vetted session data in storage
         const storedUser = sessionStorage.getItem('userData');
-        if (!storedUser) {
-          try {
-            const backendUser = await userAPI.fetchUserData(user.uid);
-            if (backendUser) {
-              // If user exists, sync them to session storage
-              updateSessionStorage(backendUser);
-            } else {
-              // If backendUser is null (404), it's a new user
-              console.log("LoginPage: New user detected, redirecting to signup...");
-              navigate('/signup');
-              return;
-            }
-          } catch (error) {
-            console.error("LoginPage: Error verifying user status:", error);
-            // On error, let the user stay on login but maybe toast an error
+        if (storedUser) {
+          const existingToken = getSessionToken();
+          if (existingToken) {
+            navigate(`/dashboard/${existingToken}`);
             return;
           }
         }
-
-        // Existing user path — reuse or create session token
-        const existingToken = getSessionToken();
-        if (existingToken) {
-          navigate(`/dashboard/${existingToken}`);
-        } else {
-          const token = createSession(user.uid);
-          navigate(`/dashboard/${token}`);
-        }
+        
+        // If no storedUser, we stay on LoginPage and let the specific 
+        // login handlers (handleSubmit or handleGoogleSignIn) finish their vetting.
       }
     });
 
