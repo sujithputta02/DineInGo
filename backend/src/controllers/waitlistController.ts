@@ -397,10 +397,14 @@ export const checkBetaAccess = async (req: Request, res: Response): Promise<void
 
         if (entry) {
             // New logic: Verify referral code if one is provided
-            const code = req.query.code as string;
+            const code = (req.query.code as string)?.trim();
             if (code) {
-                // strict match required
-                if (entry.referralCode !== code) {
+                // Case-insensitive match for robust verification
+                const storedCode = entry.referralCode?.trim().toUpperCase();
+                const providedCode = code.toUpperCase();
+                
+                if (storedCode !== providedCode) {
+                    console.warn(`⚠️ Referral code mismatch for ${email}: Expected ${storedCode}, got ${providedCode}`);
                     res.status(400).json({ 
                         success: false, 
                         hasAccess: false,

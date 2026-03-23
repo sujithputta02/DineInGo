@@ -568,9 +568,10 @@ const SignupPage: React.FC = () => {
       const emailToCheck = googleUserToRegister ? googleUserToRegister.email : tempFormData?.email;
       
       // Verify the code against the waitlist
-      const verifyCheck = await waitlistApi.verifyCode(emailToCheck!, referralCode);
+      const trimmedCode = referralCode.trim();
+      const verifyRes = await waitlistApi.verifyCode(emailToCheck!, trimmedCode);
       
-      if (!verifyCheck.hasAccess) {
+      if (!verifyRes.hasAccess) {
         setReferralError('Invalid code. Please check your waitlist email.');
         setIsLoading(false);
         return;

@@ -1056,6 +1056,9 @@ export const emailService = {
                   <a href="${frontendUrl}" class="social-icon">Website</a>
                   <a href="${frontendUrl}/terms" class="social-icon">Terms & Privacy</a>
                 </div>
+                <div style="margin-top: 32px; padding-top: 24px; border-top: 1px solid #f1f5f9;">
+                  <a href="mailto:sec.dineingo.team@gmail.com?subject=Unsubscribe%20${recipientEmail}" style="color: #94a3b8; font-size: 11px; text-decoration: underline; font-weight: 600;">Unsubscribe from this list</a>
+                </div>
               </td>
             </tr>
           </table>
@@ -1094,7 +1097,14 @@ export const emailService = {
               from: this.getSender("DineInGo Official"),
               to,
               subject,
-              html: personalizedHtml
+              html: personalizedHtml,
+              text: personalizedHtml.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim(),
+              headers: {
+                'List-Unsubscribe': `<mailto:sec.dineingo.team@gmail.com?subject=Unsubscribe%20${to}>`,
+                'X-Entity-Ref-ID': Buffer.from(to).toString('base64'),
+                'X-Priority': '3', // Normal
+                'X-Mailer': 'DineInGo-Broadcast-Engine-v1'
+              }
             };
 
             if (fs.existsSync(logoPath)) {

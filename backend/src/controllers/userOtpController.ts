@@ -77,12 +77,23 @@ export const requestSignupOTP = async (req: Request, res: Response) => {
             verified: false,
         });
 
-        // Send OTP email (non-blocking)
-        emailService.sendOTPEmail(email, otp, 'signup').catch(err =>
-            console.error('Failed to send signup OTP email:', err)
-        );
-
-        res.status(200).json({ success: true, message: 'OTP sent successfully' });
+        // Send OTP email (now blocking for better error feedback)
+        console.log(`Sending signup OTP email to: ${email}`);
+        const emailSent = await emailService.sendOTPEmail(emailLower, otp, 'signup');
+        
+        if (emailSent) {
+            console.log(`✅ Signup OTP email sent successfully to: ${email}`);
+            return res.status(200).json({ 
+                success: true, 
+                message: 'OTP sent successfully. Please check your inbox (and spam folder).' 
+            });
+        } else {
+            console.error(`❌ Failed to send signup OTP email to: ${email}`);
+            return res.status(500).json({ 
+                success: false, 
+                message: 'Dino had trouble sending the email! Please check your email address or try again later.' 
+            });
+        }
     } catch (error) {
         console.error('Request signup OTP error:', error);
         res.status(500).json({ success: false, message: 'Failed to send OTP' });
