@@ -12,6 +12,7 @@ import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
+import { createSession, getSessionToken, updateSessionStorage } from './utils/sessionGuard';
 
 interface FormData {
   name: string;
@@ -108,6 +109,14 @@ const SignupPage: React.FC = () => {
   // Store OTPs temporarily
   const [otpStore, setOtpStore] = useState<{ [email: string]: { otp: string, expiry: number } }>({});
 
+  // CLEANUP ON MOUNT: Ensure no stale user data exists when starting a fresh signup/login flow
+  useEffect(() => {
+    // If we have a user in session but NO firebase user, it's a ghost
+    if (!auth.currentUser) {
+       sessionStorage.removeItem('userData');
+    }
+  }, []);
+
   useEffect(() => {
     if (showVerification) {
       const interval = setInterval(async () => {
@@ -160,12 +169,16 @@ const SignupPage: React.FC = () => {
   }, [formData.confirmPassword]);
 
   // DETECT AUTH CHANGE: Handle case where user is already logged in to Firebase but not registered in backend
-  // This is crucial for session recovery (e.g. after a redirect or refresh)
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
       if (user && !showReferralInput && !showVerification && !showOTPVerification && !otpVerified) {
-        // If they are already in session storage, they are logged in
-        if (sessionStorage.getItem('userData')) return;
+        // If they are already in session storage, they are logged in appropriately
+        // BUT we must check if that data matches the current UID
+        const storedUser = sessionStorage.getItem('userData');
+        if (storedUser) {
+           const parsed = JSON.parse(storedUser);
+           if (parsed.uid === user.uid) return; // All good
+        }
 
         console.log("SignupPage: Authenticated user detected, checking backend status...");
         
@@ -184,11 +197,13 @@ const SignupPage: React.FC = () => {
               toast.error("Dino says: Access denied. This email is not on the waitlist.");
             }
           } else {
-            // User exists in backend, they should probably be on the dashboard
-            const token = sessionStorage.getItem('userData') ? JSON.parse(sessionStorage.getItem('userData')!).token : null;
-            if (token) {
-              navigate(`/dashboard/${token}`);
-            }
+            // User exists in backend, они should probably be on the dashboard
+            const stored = sessionStorage.getItem('userData');
+            const token = stored ? (JSON.parse(stored).token || createSession(user.uid)) : createSession(user.uid);
+            
+            // Sync the backend data to storage
+            updateSessionStorage(backendUser);
+            navigate(`/dashboard/${token}`);
           }
         } catch (error: any) {
           // If the error is "User data not found", it means this is a new Google user

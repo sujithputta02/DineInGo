@@ -68,3 +68,18 @@ export function getSecureDashboardUrl(): string {
   if (!token) return '/login';
   return `/dashboard/${token}`;
 }
+/** Update the legacy 'userData' session storage object while preserving sensitive fields */
+export function updateSessionStorage(data: any): void {
+  const storedUser = sessionStorage.getItem('userData');
+  const parsedStored = storedUser ? JSON.parse(storedUser) : {};
+  
+  // Unwrap data if it comes from an axios response
+  const userToSave = data?.data || data;
+  
+  sessionStorage.setItem('userData', JSON.stringify({
+    ...parsedStored,
+    ...userToSave,
+    // Ensure we don't accidentally wipe the role if it's already there
+    role: userToSave.role || parsedStored.role || 'user'
+  }));
+}

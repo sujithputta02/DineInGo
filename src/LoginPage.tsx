@@ -85,6 +85,14 @@ export default function LoginPage() {
     }));
   };
 
+  // CLEANUP ON MOUNT: Ensure no stale user data exists when starting a fresh login flow
+  useEffect(() => {
+    // If we have a user in session but NO firebase user, it's a ghost
+    if (!auth.currentUser) {
+       sessionStorage.removeItem('userData');
+    }
+  }, []);
+
   // Check if user is already logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
