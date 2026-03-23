@@ -1,53 +1,55 @@
-import React from 'react';
-import { Navigate, Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
+import React, { useEffect, useState } from 'react';
+import { Navigate, Outlet } from 'react-router-dom';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth } from '../firebase';
 import { toast } from 'react-toastify';
-import { Loader2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
 const CustomerRoute: React.FC = () => {
-    const { currentUser, backendUser, loading, isWaitlisted } = useAuth();
-    const navigate = useNavigate();
+    const [loading, setLoading] = useState(true);
+    const [shouldRedirect, setShouldRedirect] = useState(false);
 
-    if (loading) return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-        <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mb-4" />
-        <h2 className="text-xl font-bold text-gray-800">Dino is checking your reservation...</h2>
-      </div>
-    );
+    useEffect(() => {
+        // Check session storage first for immediate feedback
+        const checkUserRole = () => {
+            const storedUser = sessionStorage.getItem('userData');
+            if (storedUser) {
+                const user = JSON.parse(storedUser);
+                if (user.role === 'owner') {
+                    setShouldRedirect(true);
+                    setLoading(false);
+                    return;
+                }
+            }
+            setLoading(false);
+        };
 
-    // If backend user exists but role is owner, redirect to business portal
-    if (backendUser && (backendUser.role === 'owner' || backendUser.role === 'admin')) {
+        checkUserRole();
+
+        // Also listen to auth state to be safe, though session is faster
+        const unsubscribe = onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                // If we have a user, check role again if session failed
+                const storedUser = sessionStorage.getItem('userData');
+                if (storedUser) {
+                    const parsed = JSON.parse(storedUser);
+                    if (parsed.role === 'owner' && parsed.uid === user.uid) {
+                        setShouldRedirect(true);
+                    }
+                }
+            }
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    if (loading) return null; // Or a spinner
+
+    if (shouldRedirect) {
         toast.info("Registered Owners must use the Business Portal.");
+        // Redirect to login to safely generate a new session token
         return <Navigate to="/business/businessLogin" replace />;
-    }
-
-    // SYSTEMATIC VETTING: If authenticated in Firebase but not in MongoDB
-    if (currentUser && !backendUser) {
-        // Wait for waitlist check to complete if it's currently null
-        if (isWaitlisted === null) {
-            return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-                    <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
-                    <h2 className="text-xl font-bold text-gray-800">Dino is checking your reservation...</h2>
-                </div>
-            );
-        }
-
-        // If they are explicitly not on waitlist
-        if (isWaitlisted === false) {
-            toast.error("Dino says: This email isn't on the waitlist yet!");
-            return <Navigate to="/login" state={{ error: "Unauthorized access" }} replace />;
-        }
-        // If they ARE on waitlist but no account yet, send to signup
-        if (isWaitlisted === true) {
-            return <Navigate to="/signup" replace />;
-        }
-    }
-
-    // Fallback: If no currentUser, redirect to login
-    if (!currentUser) {
-        return <Navigate to="/login" replace />;
     }
 
     return (

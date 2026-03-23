@@ -69,7 +69,6 @@ import { EntityProvider } from './contexts/EntityContext';
 import FloorPlanDesigner from './components/FloorPlanDesigner';
 import EventSeatingDesigner from './components/EventSeatingDesigner';
 import OnboardingPage from './pages/OnboardingPage';
-import AuthGuardian from './components/auth/AuthGuardian';
 import { getSessionToken } from './utils/sessionGuard';
 
 // Helper component for business dashboard redirection
@@ -121,11 +120,10 @@ const App: React.FC = () => {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <PageTitleHandler />
       <AuthProvider>
-        <AuthGuardian requireAuth={false}>
-          <UserActivityProvider>
-            <EntityProvider>
-              <NotificationProvider>
-                <MaintenanceCheck>
+        <UserActivityProvider>
+          <EntityProvider>
+            <NotificationProvider>
+              <MaintenanceCheck>
               <ToastContainer
                 position="top-center"
                 autoClose={5000}
@@ -248,7 +246,6 @@ const App: React.FC = () => {
           </NotificationProvider>
           </EntityProvider>
         </UserActivityProvider>
-        </AuthGuardian>
       </AuthProvider>
     </Router>
   );

@@ -11,11 +11,8 @@ interface User {
 
 interface AuthContextType {
   currentUser: User | null;
-  backendUser: any | null;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
-  loading: boolean;
-  isWaitlisted: boolean | null;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,14 +27,11 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [backendUser, setBackendUser] = useState<any | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
-  const [isWaitlisted, setIsWaitlisted] = useState<boolean | null>(null);
 
   useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setLoading(true);
+    const unsubscribe = auth.onAuthStateChanged(user => {
       if (user) {
         setCurrentUser({
           uid: user.uid,
@@ -46,42 +40,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: user.photoURL
         });
         setIsAuthenticated(true);
-
-        // SYSTEMATIC SYNC: Fetch backend user data immediately
-        try {
-          const { userAPI, waitlistApi } = await import('../services/api');
-          try {
-            const data = await userAPI.fetchUserData(user.uid);
-            if (data) {
-                setBackendUser(data);
-                // Sync to session storage for legacy components
-                sessionStorage.setItem('userData', JSON.stringify({
-                    ...data,
-                    uid: user.uid,
-                    role: data.role || 'user'
-                }));
-            } else {
-                // Should technically be handled by catch(404), but for safety:
-                const accessCheck = await waitlistApi.checkAccess(user.email || '');
-                setIsWaitlisted(accessCheck.hasAccess);
-            }
-          } catch (error: any) {
-            // If user not found in backend (404), it's a new user -> Check waitlist
-            if (error.message?.includes('404')) {
-                const accessCheck = await waitlistApi.checkAccess(user.email || '');
-                setIsWaitlisted(accessCheck.hasAccess);
-            } else {
-                console.error('[DineInGo] Backend fetch failed:', error);
-            }
-          }
-        } catch (error) {
-          console.error('[DineInGo] Module import failed:', error);
-        }
       } else {
         setCurrentUser(null);
-        setBackendUser(null);
         setIsAuthenticated(false);
-        setIsWaitlisted(null);
       }
       setLoading(false);
     }, (error) => {
@@ -98,25 +59,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signOut = async () => {
     await auth.signOut();
     setCurrentUser(null);
-    setBackendUser(null);
     setIsAuthenticated(false);
-    setIsWaitlisted(null);
-    sessionStorage.clear();
-    localStorage.removeItem('sessionToken');
   };
 
   const value = {
     currentUser,
-    backendUser,
     signOut,
-    isAuthenticated,
-    loading,
-    isWaitlisted
+    isAuthenticated
   };
 
   return (
     <AuthContext.Provider value={value}>
-      {children}
+      {!loading && children}
     </AuthContext.Provider>
   );
 };

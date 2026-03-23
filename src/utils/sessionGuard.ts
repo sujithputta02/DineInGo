@@ -68,14 +68,3 @@ export function getSecureDashboardUrl(): string {
   if (!token) return '/login';
   return `/dashboard/${token}`;
 }
-/** Update the legacy 'userData' session storage object while preserving sensitive fields */
-export function updateSessionStorage(data: any): void {
-  const storedUser = sessionStorage.getItem('userData');
-  const parsedStored = storedUser ? JSON.parse(storedUser) : {};
-  
-  sessionStorage.setItem('userData', JSON.stringify({
-    ...parsedStored,
-    ...data,
-    role: data.role || parsedStored.role || 'user'
-  }));
-}
