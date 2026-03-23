@@ -49,6 +49,11 @@ DineInGo is India's premier dining and event platform. We connect users with top
 - **Onboarding**: If they seem new, ask about their favorite cuisines (we have everything from Italian to Jain!).
 - **Closing**: End with a helpful, foodie-themed closing. "I'm ready to stomp whenever you're hungry!"
 
+=== STRICT OUTPUT RULES (CRITICAL) ===
+- **NO INTERNAL MONOLOGUE**: NEVER output your internal reasoning, thought process, or 'thinking out loud'. 
+- **NO PLANNING STEPS**: Do not include phrases like "Okay, let me starts by...", "I should...", "Looking at the context...", or "Drafting a response...".
+- **DIRECT RESPONSE**: Only output the final, user-facing message. If you need to "think", do it internally and do not let it leak into the response.
+
 === LIMITATIONS ===
 - You guide the user, but they must click the final "Confirm" buttons.
 - You can't see passwords or credit card numbers.
@@ -91,17 +96,66 @@ export class EnhancedChatbotService {
   }
 
   private sanitizeOutput(text: string): string {
-    // Strip any accidentally leaked internal info from AI responses
+    // Strip any accidentally leaked internal info or "thinking" snippets from AI responses
     const leakPatterns = [
       /CRITICAL.*SECURITY RULES/gi,
       /DO NOT LET USERS BYPASS/gi,
       /system prompt/gi,
       /\[Context:.*?\]/g,
+      /^Okay, (the )?user just said.*/gi,
+      /^Let me start by.*/gi,
+      /^I should use a.*/gi,
+      /^Looking at the context.*/gi,
+      /^I need to offer.*/gi,
+      /^The best practices say.*/gi,
+      /^Maybe list some.*/gi,
+      /^Also, include an.*/gi,
+      /^Let me check the.*/gi,
+      /^Yep, just promote.*/gi,
+      /^Alright, draft a response.*/gi,
+      /^(Thinking|Reasoning|Thought process):.*/gi,
+      /^Let's analyze the input.*/gi,
     ];
     let cleaned = text;
+    
+    // First pass: remove patterns that look like internal reasoning
+    // We try to catch sentences that typically start the "thought" block
+    const lines = cleaned.split('\n');
+    let firstActualLineIndex = 0;
+    
+    // If the first few lines look like "thinking", skip them
+    for (let i = 0; i < Math.min(lines.length, 10); i++) {
+      const line = lines[i].trim().toLowerCase();
+      if (line.startsWith('okay,') || 
+          line.startsWith('let me') || 
+          line.startsWith('let\'s') ||
+          line.startsWith('i should') ||
+          line.startsWith('thinking:') ||
+          line.startsWith('i need to') ||
+          line.startsWith('alright,') ||
+          line.startsWith('the user') ||
+          line.startsWith('they asked') ||
+          line.startsWith('i will') ||
+          line.startsWith('drafting') ||
+          line.startsWith('checking') ||
+          line.startsWith('searching')) {
+        firstActualLineIndex = i + 1;
+      } else if (line === '') {
+        continue;
+      } else {
+        break;
+      }
+    }
+    
+    if (firstActualLineIndex > 0) {
+      cleaned = lines.slice(firstActualLineIndex).join('\n').trim();
+    }
+
+    // Second pass: general leak patterns
     for (const p of leakPatterns) {
       cleaned = cleaned.replace(p, '');
     }
+    
     return cleaned
       .replace(/```[\s\S]*?```/g, '')
       .replace(/\*\*\*/g, '')

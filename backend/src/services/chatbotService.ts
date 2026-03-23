@@ -205,39 +205,10 @@ DineInGo is a comprehensive dining and event management platform that connects u
 - Admit when you don't know something
 - Escalate complex issues to human support
 
-**Common Scenarios:**
-
-1. **Making a Reservation:**
-   "I'd love to help you book a table! Here's how:
-   1. Browse restaurants on our homepage
-   2. Select your preferred restaurant
-   3. Choose date, time, and guests
-   4. Pick your table from the floor plan
-   5. Complete your details and confirm
-   
-   Would you like recommendations for a specific cuisine or location?"
-
-2. **Cancelling a Booking:**
-   "I can guide you through cancellation:
-   1. Go to your Dashboard
-   2. Find the booking you want to cancel
-   3. Click 'Cancel Booking'
-   4. Confirm cancellation
-   
-   Remember: Cancellations must be made at least 2 hours before your reservation time."
-
-3. **Technical Issues:**
-   "I'm sorry you're experiencing issues. Let's try to resolve this:
-   - [Provide relevant troubleshooting steps]
-   
-   If the issue persists, please contact our support team at support@dineingo.com or call +91-9876543210. They'll be happy to help!"
-
-4. **Restaurant Recommendations:**
-   "I'd be happy to suggest some great options! To give you the best recommendations, could you tell me:
-   - What type of cuisine are you interested in?
-   - What's your preferred location?
-   - Any specific occasion or dietary requirements?
-   - Your budget range?"
+=== STRICT OUTPUT RULES (CRITICAL) ===
+- **NO INTERNAL MONOLOGUE**: NEVER output your internal reasoning, thought process, or 'thinking out loud'. 
+- **NO PLANNING STEPS**: Do not include phrases like "Okay, let me starts by...", "I should...", "Looking at the context...", or "Drafting a response...".
+- **DIRECT RESPONSE**: Only output the final, user-facing message. If you need to "think", do it internally and do not let it leak into the response.
 
 Remember: You're here to make every user's dining and event experience exceptional! 🦖✨`;
 
@@ -306,7 +277,60 @@ export class ChatbotService {
    * Clean AI response from unwanted symbols and formatting
    */
   private cleanResponse(text: string): string {
-    return text
+    // Strip any accidentally leaked internal info or "thinking" snippets from AI responses
+    const filterPatterns = [
+      /^Okay, (the )?user just said.*/gi,
+      /^Let me start by.*/gi,
+      /^I should use a.*/gi,
+      /^Looking at the context.*/gi,
+      /^I need to offer.*/gi,
+      /^The best practices say.*/gi,
+      /^Maybe list some.*/gi,
+      /^Also, include an.*/gi,
+      /^Let me check the.*/gi,
+      /^Yep, just promote.*/gi,
+      /^Alright, draft a response.*/gi,
+      /^(Thinking|Reasoning|Thought process):.*/gi,
+      /^Let's analyze the input.*/gi,
+    ];
+    let cleaned = text;
+
+    // First pass: remove patterns that look like internal reasoning
+    const lines = cleaned.split('\n');
+    let firstActualLineIndex = 0;
+    
+    for (let i = 0; i < Math.min(lines.length, 10); i++) {
+      const line = lines[i].trim().toLowerCase();
+      if (line.startsWith('okay,') || 
+          line.startsWith('let me') || 
+          line.startsWith('let\'s') ||
+          line.startsWith('i should') ||
+          line.startsWith('thinking:') ||
+          line.startsWith('i need to') ||
+          line.startsWith('alright,') ||
+          line.startsWith('the user') ||
+          line.startsWith('they asked') ||
+          line.startsWith('i will') ||
+          line.startsWith('drafting') ||
+          line.startsWith('checking') ||
+          line.startsWith('searching')) {
+        firstActualLineIndex = i + 1;
+      } else if (line === '') {
+        continue;
+      } else {
+        break;
+      }
+    }
+    
+    if (firstActualLineIndex > 0) {
+      cleaned = lines.slice(firstActualLineIndex).join('\n').trim();
+    }
+
+    for (const p of filterPatterns) {
+      cleaned = cleaned.replace(p, '');
+    }
+
+    return cleaned
       // Remove markdown code blocks
       .replace(/```[\s\S]*?```/g, '')
       // Remove excessive asterisks (bold/italic markdown)
