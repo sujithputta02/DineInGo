@@ -17,6 +17,11 @@ const AuthGuardian: React.FC<AuthGuardianProps> = ({ children, requireAuth = tru
   useEffect(() => {
     if (loading) return;
 
+    // SYSTEMATIC GUARD: Do not interfere with business portal routes
+    if (location.pathname.startsWith('/business')) {
+      return;
+    }
+
     // If we require auth but user is not logged into Firebase
     if (requireAuth && !isAuthenticated) {
       if (location.pathname !== '/login' && location.pathname !== '/signup' && location.pathname !== '/') {
@@ -38,23 +43,23 @@ const AuthGuardian: React.FC<AuthGuardianProps> = ({ children, requireAuth = tru
       }
     }
 
-    // VETTING LOGIC:
-    if (isAuthenticated && !backendUser) {
-      // If they are not in the backend and NOT on waitlist
+    // VETTING LOGIC (Only for customer-facing routes):
+    if (isAuthenticated && !backendUser && !location.pathname.startsWith('/business')) {
+      // If we are still checking isWaitlisted, don't redirect yet
+      if (isWaitlisted === null) return;
+
       if (isWaitlisted === false) {
-        // Denied access - we could redirect to a specific "Join Waitlist" page
         if (location.pathname !== '/login') {
             navigate('/login', { state: { error: "Dino says: You need early access to enter!" } });
         }
       }
-      // If they ARE on waitlist but no account yet
       else if (isWaitlisted === true) {
         if (location.pathname !== '/signup' && location.pathname !== '/onboarding') {
           navigate('/signup');
         }
       }
     }
-  }, [isAuthenticated, backendUser, loading, isWaitlisted, navigate, location.pathname, requireAuth]);
+  }, [isAuthenticated, backendUser, loading, isWaitlisted, navigate, location.pathname, requireAuth, currentUser]);
 
   if (loading) {
     return (

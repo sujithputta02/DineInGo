@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { toast } from 'react-toastify';
+import { Loader2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
 const CustomerRoute: React.FC = () => {
@@ -16,13 +17,23 @@ const CustomerRoute: React.FC = () => {
     );
 
     // If backend user exists but role is owner, redirect to business portal
-    if (backendUser && backendUser.role === 'owner') {
+    if (backendUser && (backendUser.role === 'owner' || backendUser.role === 'admin')) {
         toast.info("Registered Owners must use the Business Portal.");
         return <Navigate to="/business/businessLogin" replace />;
     }
 
     // SYSTEMATIC VETTING: If authenticated in Firebase but not in MongoDB
     if (currentUser && !backendUser) {
+        // Wait for waitlist check to complete if it's currently null
+        if (isWaitlisted === null) {
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
+                    <Loader2 className="w-12 h-12 text-emerald-500 animate-spin mb-4" />
+                    <h2 className="text-xl font-bold text-gray-800">Dino is checking your reservation...</h2>
+                </div>
+            );
+        }
+
         // If they are explicitly not on waitlist
         if (isWaitlisted === false) {
             toast.error("Dino says: This email isn't on the waitlist yet!");

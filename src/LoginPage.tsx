@@ -18,7 +18,7 @@ import {
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendPasswordReset } from "./authUtils";
 import socketService from './utils/socketService';
-import { createSession, getSessionToken } from './utils/sessionGuard';
+import { createSession, getSessionToken, updateSessionStorage } from './utils/sessionGuard';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
@@ -199,46 +199,46 @@ export default function LoginPage() {
       try {
         const existingData = await userAPI.fetchUserData(user.uid);
         if (existingData) {
-          // Update the existing data with the latest Google profile picture
+          // If role is owner/admin, redirect them immediately to business portal
+          if (existingData.role === 'owner' || existingData.role === 'admin') {
+            toast.info("Registered Owners must use the Business Portal.");
+            navigate('/business/businessLogin');
+            setIsLoading(false);
+            return;
+          }
+
+          // Update the existing data with latest profile
           const updatedUserData = {
             ...existingData,
             photoURL: user.photoURL || existingData.photoURL,
             lastLogin: new Date()
           };
 
-          // Store the updated user data in MongoDB via updateUser
           await userAPI.updateUser(user.uid, updatedUserData);
-
-          // Store user data in session storage with helper
           updateSessionStorage(updatedUserData);
           const token = createSession(user.uid);
           navigate(`/dashboard/${token}`);
           return;
         }
-      } catch (error) {
+      } catch (error: any) {
+        // If not found in backend, check waitlist status
+        if (error.message?.includes('404')) {
+           const accessCheck = await waitlistApi.checkAccess(user.email || '');
+           if (!accessCheck.hasAccess) {
+             toast.error("Dino says: This email isn't on the waitlist yet!");
+             await auth.signOut();
+             setIsLoading(false);
+             return;
+           }
+           // New user on waitlist -> route to onboarding/signup
+           navigate('/onboarding');
+           return;
+        }
         console.error('Error fetching user data from MongoDB:', error);
       }
 
-      // If no existing data, create new user data
-      const userData = {
-        uid: user.uid,
-        email: user.email || '',
-        displayName: user.displayName || user.email?.split('@')[0] || '',
-        name: user.displayName || user.email?.split('@')[0] || '',
-        photoURL: user.photoURL || null,
-        emailVerified: user.emailVerified,
-        lastLogin: new Date(),
-        createdAt: new Date()
-      };
-
-      // Store user data in MongoDB
-      await userAPI.createUser(userData);
-
-      // Store user data in session storage with helper
-      updateSessionStorage(userData);
-
-      const token = createSession(user.uid);
-      navigate(`/dashboard/${token}`);
+      // Fallback for unexpected cases
+      navigate('/login');
     } catch (error: any) {
       console.error('Login error:', {
         code: error.code,
@@ -305,11 +305,18 @@ export default function LoginPage() {
       try {
         const existingData = await userAPI.fetchUserData(user.uid);
         if (existingData) {
+          // If role is owner/admin, redirect them immediately to business portal
+          if (existingData.role === 'owner' || existingData.role === 'admin') {
+            toast.info("Registered Owners must use the Business Portal.");
+            navigate('/business/businessLogin');
+            setIsGoogleSigningIn(false);
+            return;
+          }
+
           // Update the existing data with the latest Google profile picture
           const updatedUserData = {
             ...existingData,
             uid: user.uid,
-
             photoURL: user.photoURL || existingData.photoURL,
             lastLogin: new Date()
           };
@@ -323,7 +330,7 @@ export default function LoginPage() {
           navigate(`/dashboard/${token}`);
           return;
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching user data from MongoDB:', error);
       }
 

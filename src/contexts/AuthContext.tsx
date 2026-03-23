@@ -50,16 +50,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // SYSTEMATIC SYNC: Fetch backend user data immediately
         try {
           const { userAPI, waitlistApi } = await import('../services/api');
-          const data = await userAPI.fetchUserData(user.uid);
-          if (data) {
-            setBackendUser(data);
-          } else {
-            // If no backend user, check waitlist status
-            const accessCheck = await waitlistApi.checkAccess(user.email || '');
-            setIsWaitlisted(accessCheck.hasAccess);
+          try {
+            const data = await userAPI.fetchUserData(user.uid);
+            if (data) {
+                setBackendUser(data);
+                // Sync to session storage for legacy components
+                sessionStorage.setItem('userData', JSON.stringify({
+                    ...data,
+                    uid: user.uid,
+                    role: data.role || 'user'
+                }));
+            } else {
+                // Should technically be handled by catch(404), but for safety:
+                const accessCheck = await waitlistApi.checkAccess(user.email || '');
+                setIsWaitlisted(accessCheck.hasAccess);
+            }
+          } catch (error: any) {
+            // If user not found in backend (404), it's a new user -> Check waitlist
+            if (error.message?.includes('404')) {
+                const accessCheck = await waitlistApi.checkAccess(user.email || '');
+                setIsWaitlisted(accessCheck.hasAccess);
+            } else {
+                console.error('[DineInGo] Backend fetch failed:', error);
+            }
           }
         } catch (error) {
-          console.error('[DineInGo] Backend sync failed:', error);
+          console.error('[DineInGo] Module import failed:', error);
         }
       } else {
         setCurrentUser(null);
