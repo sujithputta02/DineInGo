@@ -94,7 +94,7 @@ const PrivacyPolicyPage: React.FC = () => {
                             If you have questions about this Privacy Policy, please contact us at:
                         </p>
                         <p className="mb-6">
-                            📧 <a href="mailto:sec.dinelngo.team@gmail.com" className="text-emerald-600 hover:text-emerald-700">
+                            📧 <a href="mailto:sec.dinelngo.team@gmail.com" className="text-emerald-600 hover:text-emerald-700 font-semibold transition-colors duration-200">
                                 sec.dinelngo.team@gmail.com
                             </a>
                         </p>

@@ -25,7 +25,7 @@ router.get('/search', async (req, res) => {
     // Make request to Nominatim with proper headers
     const response = await axios.get(nominatimUrl, {
       headers: {
-        'User-Agent': 'DineInGo/1.0 (contact@dinelngo.com)',
+        'User-Agent': 'DineInGo/1.0 (contact@dineingo.com)',
         'Accept': 'application/json'
       },
       timeout: 5000

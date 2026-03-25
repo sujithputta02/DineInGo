@@ -23,7 +23,7 @@ export const createTransporter = () => {
 
   // Primary: Brevo SMTP (More reliable for cloud hosting like Render/Koyeb)
   if (brevoKey && brevoUser) {
-    console.log('Using Brevo SMTP as primary email provider');
+    console.log(`[EmailService] Initializing Brevo SMTP (User: ${brevoUser})`);
     transporterInstance = nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
       port: 2525, // Using 2525 as 587 is often blocked by cloud providers like Render/Koyeb
@@ -38,13 +38,23 @@ export const createTransporter = () => {
       connectionTimeout: 10000, // 10 seconds timeout
       greetingTimeout: 10000
     });
+    
+    // Verify connection immediately
+    transporterInstance.verify((error: any) => {
+      if (error) {
+        console.error('[EmailService] Brevo SMTP Connection Error:', error);
+      } else {
+        console.log('[EmailService] Brevo SMTP Server is ready to take our messages');
+      }
+    });
+
     return transporterInstance;
   }
 
   // Fallback: Gmail SMTP
   if (gmailUser && gmailPass) {
     const cleanPass = gmailPass.trim().replace(/\s/g, '');
-    console.warn('Falling back to Gmail SMTP for email delivery');
+    console.warn(`[EmailService] Falling back to Gmail SMTP (User: ${gmailUser})`);
     transporterInstance = nodemailer.createTransport({
       service: 'gmail',
       auth: {
@@ -55,7 +65,7 @@ export const createTransporter = () => {
     return transporterInstance;
   }
 
-  console.error('CRITICAL: No email providers configured');
+  console.error('[EmailService] CRITICAL: No email providers configured (BREVO_API_KEY or EMAIL_PASS missing)');
   return null;
 };
 
@@ -1085,8 +1095,13 @@ export const emailService = {
     }
 
     const batchSize = 5;
+    const provider = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER ? 'Brevo' : 'Gmail Fallback';
+    console.log(`[EmailService] Starting broadcast of ${recipients.length} emails via ${provider}`);
+
     for (let i = 0; i < recipients.length; i += batchSize) {
       const batch = recipients.slice(i, i + batchSize);
+      console.log(`[EmailService] Processing batch ${Math.floor(i/batchSize) + 1} (${batch.length} recipients)`);
+      
       const batchResults = await Promise.all(
         batch.map(async (to) => {
           try {
@@ -1116,9 +1131,10 @@ export const emailService = {
             }
 
             const info = await transporter.sendMail(mailOptions);
+            console.log(`[EmailService] ✓ Successfully sent to ${to} (${info.messageId})`);
             return { email: to, status: 'sent' as const };
           } catch (err: any) {
-            console.error(`Failed to send broadcast to ${to}:`, err);
+            console.error(`[EmailService] ✗ Failed to send to ${to}:`, err.message);
             
             let status: 'soft_bounce' | 'hard_bounce' | 'failed' = 'failed';
             const errorMessage = err.message || 'Unknown error';
