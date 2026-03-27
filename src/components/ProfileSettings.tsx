@@ -2,7 +2,7 @@ import * as React from 'react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { User, UserAddress, LocationSettings } from '@/types/user';
-import { Loader2, User as LucideUser, X, MapPin, Globe, Moon, Sun, Camera, ChevronRight, Save, LogOut, Sliders } from 'lucide-react';
+import { Loader2, User as LucideUser, X, MapPin, Globe, Moon, Sun, Camera, ChevronRight, Save, LogOut, Sliders, Laptop } from 'lucide-react';
 import { getAuth, updateProfile, User as FirebaseUser } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import Cropper from 'react-easy-crop';
@@ -43,6 +43,8 @@ interface ProfileSettingsProps {
   availableLanguages?: { code: string; name: string }[];
   currentLanguage?: string;
   onLanguageChange?: (code: Language) => void;
+  currentTheme?: 'light' | 'dark' | 'system';
+  onThemeChange?: (theme: 'light' | 'dark' | 'system') => void;
   onToggleTheme?: () => void;
 }
 
@@ -73,6 +75,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   availableLanguages = [],
   currentLanguage = 'en',
   onLanguageChange,
+  currentTheme = 'system',
+  onThemeChange,
   onToggleTheme
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'app'>('profile');
@@ -654,26 +658,57 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                   className="space-y-6"
                 >
                   {/* Appearance */}
-                  <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
-                    <div className="flex items-center justify-between">
+                  <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex flex-col gap-6">
                       <div className="flex items-center gap-4">
                         <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-600'}`}>
-                          {isDarkMode ? <Moon size={24} /> : <Sun size={24} />}
+                          {currentTheme === 'dark' ? <Moon size={24} /> : currentTheme === 'light' ? <Sun size={24} /> : <Laptop size={24} />}
                         </div>
                         <div>
                           <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Appearance</h4>
                           <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {isDarkMode ? 'Dark Mode Active' : 'Light Mode Active'}
+                            {currentTheme === 'system' ? 'Device Mode (Follows System)' : `${currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)} Mode Active`}
                           </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={onToggleTheme}
-                        className={`relative w-14 h-8 rounded-full transition-colors ${isDarkMode ? 'bg-emerald-500' : 'bg-gray-300'}`}
-                      >
-                        <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${isDarkMode ? 'translate-x-6' : 'translate-x-0'}`} />
-                      </button>
+                      
+                      <div className="grid grid-cols-3 gap-3">
+                        <button
+                          type="button"
+                          onClick={() => onThemeChange?.('light')}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all border ${currentTheme === 'light'
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg'
+                            : isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Sun size={20} />
+                          <span className="text-xs font-bold">Light</span>
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => onThemeChange?.('dark')}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all border ${currentTheme === 'dark'
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg'
+                            : isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Moon size={20} />
+                          <span className="text-xs font-bold">Dark</span>
+                        </button>
+                        
+                        <button
+                          type="button"
+                          onClick={() => onThemeChange?.('system')}
+                          className={`flex flex-col items-center gap-2 p-4 rounded-2xl transition-all border ${currentTheme === 'system'
+                            ? 'bg-emerald-500 border-emerald-500 text-white shadow-lg'
+                            : isDarkMode ? 'bg-gray-800 border-gray-700 text-gray-400 hover:bg-gray-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                          }`}
+                        >
+                          <Laptop size={20} />
+                          <span className="text-xs font-bold">Device</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
 

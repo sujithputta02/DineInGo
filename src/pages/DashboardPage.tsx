@@ -772,9 +772,14 @@ const getPersonalizationScore = (restaurant: any, preferences: any): number => {
 };
 
 export default function DashboardPage() {
+  const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
+  });
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem("dineInGoDarkMode");
-    return saved === "true" ? true : false; // Default to light mode
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<Section>("home");
@@ -1396,18 +1401,25 @@ const handleDeleteReview = async (reviewId: string) => {
   }
 };
 
-// Save language preference to localStorage
-useEffect(() => {
-  localStorage.setItem("dineInGoLanguage", language);
-}, [language]);
-
-// Save dark mode preference to localStorage
-useEffect(() => {
-  localStorage.setItem("dineInGoDarkMode", isDarkMode.toString());
-}, [isDarkMode]);
+const handleThemeChange = (newTheme: 'light' | 'dark' | 'system') => {
+  setTheme(newTheme);
+  localStorage.setItem('theme', newTheme);
+  
+  let resolvedDarkMode: boolean;
+  if (newTheme === 'system') {
+    resolvedDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  } else {
+    resolvedDarkMode = newTheme === 'dark';
+  }
+  
+  setIsDarkMode(resolvedDarkMode);
+  document.documentElement.setAttribute('data-theme', resolvedDarkMode ? 'dark' : 'light');
+  localStorage.setItem('dineInGoDarkMode', resolvedDarkMode.toString());
+};
 
 const toggleDarkMode = () => {
-  setIsDarkMode(!isDarkMode);
+  const newTheme = isDarkMode ? 'light' : 'dark';
+  handleThemeChange(newTheme);
 };
 
 const toggleSidebar = () => {
@@ -3235,6 +3247,8 @@ const renderSection = () => {
                   : null
               }
               isDarkMode={isDarkMode}
+              currentTheme={theme}
+              onThemeChange={handleThemeChange}
               availableLanguages={availableLanguages}
               currentLanguage={language}
               onLanguageChange={handleLanguageChange}
