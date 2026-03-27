@@ -10,9 +10,9 @@ const CustomerRoute: React.FC = () => {
     const [shouldRedirect, setShouldRedirect] = useState(false);
 
     useEffect(() => {
-        // Check session storage first for immediate feedback
+        // Check localStorage first for immediate feedback
         const checkUserRole = () => {
-            const storedUser = sessionStorage.getItem('userData');
+            const storedUser = localStorage.getItem('userData');
             if (storedUser) {
                 const user = JSON.parse(storedUser);
                 if (user.role === 'owner') {
@@ -32,7 +32,7 @@ const CustomerRoute: React.FC = () => {
         // Also listen to auth state to be safe, though session is faster
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
             if (user) {
-                const storedUser = sessionStorage.getItem('userData');
+                const storedUser = localStorage.getItem('userData');
                 if (storedUser) {
                     const parsed = JSON.parse(storedUser);
                     if (parsed.role === 'owner' && parsed.uid === user.uid) {
@@ -53,7 +53,7 @@ const CustomerRoute: React.FC = () => {
     if (loading) return null; // Or a spinner
 
     if (shouldRedirect) {
-        const storedUser = sessionStorage.getItem('userData');
+        const storedUser = localStorage.getItem('userData');
         const parsed = storedUser ? JSON.parse(storedUser) : null;
         
         if (parsed?.role === 'owner' || parsed?.role === 'admin') {

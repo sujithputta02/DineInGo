@@ -13,6 +13,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
 import { createSession, getSessionToken, updateSessionStorage } from './utils/sessionGuard';
+import { trackEvent, identifyUser } from './utils/analytics';
 
 interface FormData {
   name: string;
@@ -113,7 +114,7 @@ const SignupPage: React.FC = () => {
   useEffect(() => {
     // If we have a user in session but NO firebase user, it's a ghost
     if (!auth.currentUser) {
-       sessionStorage.removeItem('userData');
+       localStorage.removeItem('userData');
     }
   }, []);
 
@@ -126,9 +127,9 @@ const SignupPage: React.FC = () => {
             clearInterval(interval);
             toast.success("Email verified successfully! Redirecting...");
 
-            const isNewUser = sessionStorage.getItem('isNewUser') === 'true';
+            const isNewUser = localStorage.getItem('isNewUser') === 'true';
             if (isNewUser) {
-              sessionStorage.removeItem('isNewUser'); // clear flag
+              localStorage.removeItem('isNewUser'); // clear flag
               navigate('/onboarding');
             } else {
               navigate('/dashboard'); // fallback for existing user
@@ -174,7 +175,7 @@ const SignupPage: React.FC = () => {
       if (user && !showReferralInput && !showVerification && !showOTPVerification && !otpVerified) {
         // If they are already in session storage, they are logged in appropriately
         // BUT we must check if that data matches the current UID
-        const storedUser = sessionStorage.getItem('userData');
+        const storedUser = localStorage.getItem('userData');
         if (storedUser) {
            const parsed = JSON.parse(storedUser);
            if (parsed.uid === user.uid) return; // All good
@@ -198,7 +199,7 @@ const SignupPage: React.FC = () => {
             }
           } else {
             // User exists in backend, они should probably be on the dashboard
-            const stored = sessionStorage.getItem('userData');
+            const stored = localStorage.getItem('userData');
             const token = stored ? (JSON.parse(stored).token || createSession(user.uid)) : createSession(user.uid);
             
             // Sync the backend data to storage
@@ -617,12 +618,20 @@ const SignupPage: React.FC = () => {
       // Create user in backend
       const createdUser = await userAPI.createUser(userData);
       
-      // Store in session storage with explicit role
+      // Store in local storage
       const savedUser = {
         ...(createdUser?.data || createdUser),
         role: 'user'
       };
-      sessionStorage.setItem('userData', JSON.stringify(savedUser));
+      localStorage.setItem('userData', JSON.stringify(savedUser));
+
+      // PostHog Tracking
+      identifyUser(savedUser.uid, { 
+        email: savedUser.email, 
+        name: savedUser.name,
+        role: savedUser.role 
+      });
+      trackEvent('signup_success', { method: googleUserToRegister ? 'google' : 'email' });
 
       // Clean up state
       setGoogleUserToRegister(null);
@@ -666,7 +675,7 @@ const SignupPage: React.FC = () => {
       setIsLoading(true);
       try {
         // Try to get the user from session storage
-        const tempUserStr = sessionStorage.getItem('tempUser');
+        const tempUserStr = localStorage.getItem('tempUser');
         if (!tempUserStr) {
           throw new Error('User session expired. Please try signing up again.');
         }

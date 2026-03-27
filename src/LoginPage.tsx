@@ -21,6 +21,7 @@ import socketService from './utils/socketService';
 import { createSession, getSessionToken } from './utils/sessionGuard';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { trackEvent, identifyUser } from './utils/analytics';
 
 interface FormData {
   email: string;
@@ -79,7 +80,7 @@ export default function LoginPage() {
   // Helper to safely update session storage with explicit user role
   const updateSessionStorage = (data: any) => {
     const userToSave = data?.data || data;
-    sessionStorage.setItem('userData', JSON.stringify({
+    localStorage.setItem('userData', JSON.stringify({
       ...userToSave,
       role: 'user'
     }));
@@ -89,7 +90,7 @@ export default function LoginPage() {
   useEffect(() => {
     // If we have a user in session but NO firebase user, it's a ghost
     if (!auth.currentUser) {
-       sessionStorage.removeItem('userData');
+       localStorage.removeItem('userData');
     }
   }, []);
 
@@ -98,7 +99,7 @@ export default function LoginPage() {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
         // ONLY auto-navigate if we have the vetted session data in storage
-        const storedUser = sessionStorage.getItem('userData');
+        const storedUser = localStorage.getItem('userData');
         if (storedUser) {
           const existingToken = getSessionToken();
           if (existingToken) {
@@ -199,7 +200,7 @@ export default function LoginPage() {
           general: "Please verify your email first. A new verification link has been sent to your email."
         });
         // Ensure we're not treating this as a new user that needs to go to the feedback form
-        sessionStorage.removeItem('isNewUser');
+        localStorage.removeItem('isNewUser');
         setIsLoading(false);
         return;
       }
@@ -207,7 +208,7 @@ export default function LoginPage() {
       // Track login activity in our backend
       try {
         await userAPI.loginUser(user.uid, 'email');
-        sessionStorage.setItem('lastLoginTracked', Date.now().toString());
+        localStorage.setItem('lastLoginTracked', Date.now().toString());
       } catch (error) {
         console.error('Error tracking login activity:', error);
       }
@@ -234,6 +235,14 @@ export default function LoginPage() {
           await userAPI.updateUser(user.uid, updatedUserData);
           updateSessionStorage(updatedUserData);
           const token = createSession(user.uid);
+          
+          // PostHog Tracking
+          identifyUser(user.uid, { 
+            email: user.email, 
+            name: updatedUserData.name,
+            role: updatedUserData.role 
+          });
+          trackEvent('login_success', { method: 'email', role: updatedUserData.role });
           navigate(`/dashboard/${token}`);
           return;
         }
@@ -313,7 +322,7 @@ export default function LoginPage() {
       // Track login activity in our backend
       try {
         await userAPI.loginUser(user.uid, 'google');
-        sessionStorage.setItem('lastLoginTracked', Date.now().toString());
+        localStorage.setItem('lastLoginTracked', Date.now().toString());
       } catch (error) {
         console.error('Error tracking Google login activity:', error);
       }
@@ -344,6 +353,14 @@ export default function LoginPage() {
           // Store user data in session storage with helper
           updateSessionStorage(updatedUserData);
           const token = createSession(user.uid);
+          
+          // PostHog Tracking
+          identifyUser(user.uid, { 
+            email: user.email, 
+            name: updatedUserData.name,
+            role: updatedUserData.role 
+          });
+          trackEvent('login_success', { method: 'google', role: updatedUserData.role });
           navigate(`/dashboard/${token}`);
           return;
         }
@@ -498,9 +515,9 @@ export default function LoginPage() {
       // Create user in MongoDB
       const savedUser = await userAPI.createUser(userData);
 
-      // Store in session storage
+      // Store in local storage
       const userToSave = savedUser?.data || savedUser;
-      sessionStorage.setItem('userData', JSON.stringify({
+      localStorage.setItem('userData', JSON.stringify({
         ...userToSave,
         role: 'user'
       }));

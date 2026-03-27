@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../firebase';
+import { clearSession } from '../utils/sessionGuard';
 
 interface User {
   uid: string;
@@ -43,12 +44,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setCurrentUser(null);
         setIsAuthenticated(false);
+        // Clear session if firebase user is gone
+        clearSession();
       }
       setLoading(false);
     }, (error) => {
       console.error('[DineInGo] Auth State Change Error:', error);
       if (error.message?.includes('400') || error.message?.includes('identitytoolkit')) {
-        import('../firebase').then(m => m.clearAuthSession());
+        auth.signOut();
+        clearSession();
       }
       setLoading(false);
     });
@@ -57,9 +61,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signOut = async () => {
-    await auth.signOut();
-    setCurrentUser(null);
-    setIsAuthenticated(false);
+    try {
+      await auth.signOut();
+      clearSession();
+      setCurrentUser(null);
+      setIsAuthenticated(false);
+    } catch (error) {
+      console.error('[AuthProvider] Error during sign out:', error);
+    }
   };
 
   const value = {

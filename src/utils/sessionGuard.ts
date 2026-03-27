@@ -13,10 +13,10 @@
  *
  * How it works:
  *  1. On login, generate a random 32-byte token (64 hex chars)
- *  2. Store the token in sessionStorage (tab-scoped, never persists)
+ *  2. Store the token in localStorage (persists across restarts)
  *  3. Navigate to /dashboard/{token}
- *  4. DashboardPage validates the URL token matches sessionStorage
- *  5. On logout or tab close, the token is wiped automatically
+ *  4. DashboardPage validates the URL token matches localStorage
+ *  5. On logout, the token is wiped manually
  */
 
 const SESSION_KEY = '__dineingo_stk__';
@@ -32,15 +32,15 @@ export function generateSessionToken(): string {
 /** Store session token tied to a specific user UID */
 export function createSession(uid: string): string {
   const token = generateSessionToken();
-  sessionStorage.setItem(SESSION_KEY, token);
-  sessionStorage.setItem(SESSION_UID_KEY, uid);
+  localStorage.setItem(SESSION_KEY, token);
+  localStorage.setItem(SESSION_UID_KEY, uid);
   return token;
 }
 
 /** Validate that the URL token matches the stored session token */
 export function validateSession(urlToken: string | undefined): boolean {
   if (!urlToken) return false;
-  const storedToken = sessionStorage.getItem(SESSION_KEY);
+  const storedToken = localStorage.getItem(SESSION_KEY);
   if (!storedToken) return false;
   // Constant-time comparison to prevent timing attacks
   if (urlToken.length !== storedToken.length) return false;
@@ -53,13 +53,14 @@ export function validateSession(urlToken: string | undefined): boolean {
 
 /** Get the current stored session token (for navigation) */
 export function getSessionToken(): string | null {
-  return sessionStorage.getItem(SESSION_KEY);
+  return localStorage.getItem(SESSION_KEY);
 }
 
 /** Clear session on logout */
 export function clearSession(): void {
-  sessionStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(SESSION_UID_KEY);
+  localStorage.removeItem(SESSION_KEY);
+  localStorage.removeItem(SESSION_UID_KEY);
+  localStorage.removeItem('userData');
 }
 
 /** Get the dashboard URL with session token embedded */
@@ -68,15 +69,15 @@ export function getSecureDashboardUrl(): string {
   if (!token) return '/login';
   return `/dashboard/${token}`;
 }
-/** Update the legacy 'userData' session storage object while preserving sensitive fields */
+/** Update the legacy 'userData' storage object while preserving sensitive fields */
 export function updateSessionStorage(data: any): void {
-  const storedUser = sessionStorage.getItem('userData');
+  const storedUser = localStorage.getItem('userData');
   const parsedStored = storedUser ? JSON.parse(storedUser) : {};
   
   // Unwrap data if it comes from an axios response
   const userToSave = data?.data || data;
   
-  sessionStorage.setItem('userData', JSON.stringify({
+  localStorage.setItem('userData', JSON.stringify({
     ...parsedStored,
     ...userToSave,
     // Ensure we don't accidentally wipe the role if it's already there

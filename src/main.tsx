@@ -15,8 +15,19 @@ window.addEventListener('error', (event) => {
   }
 }, true); // Use capture phase to catch resource errors
 
+import { PostHogProvider } from '@posthog/react';
+
+const options = {
+  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+};
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <PostHogProvider 
+      apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN} 
+      options={options}
+    >
+      <App />
+    </PostHogProvider>
   </StrictMode>
 );

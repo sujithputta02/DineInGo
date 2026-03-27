@@ -58,6 +58,7 @@ import { User, LocationSettings } from "../types/user";
 import { favoritesApi } from "../services/favoritesApi";
 import socketService from "../utils/socketService";
 import { VoiceSearchButton } from "../components/VoiceSearchButton";
+import { trackEvent } from "../utils/analytics";
 import { SustainabilityBadge } from "../components/SustainabilityBadge";
 import AchievementsSection from "../components/AchievementsSection";
 import ARMenuSection from "../components/ARMenuSection";
@@ -791,14 +792,19 @@ export default function DashboardPage() {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
 
-  // Sync userData to sessionStorage whenever it changes to ensure consistency
+  // Track active section changes
+  useEffect(() => {
+    trackEvent('view_section', { section: activeSection });
+  }, [activeSection]);
+
+  // Sync userData to localStorage whenever it changes to ensure consistency
   useEffect(() => {
     if (userData && userData.uid) {
-      const storedUser = sessionStorage.getItem('userData');
+      const storedUser = localStorage.getItem('userData');
       const parsedStored = storedUser ? JSON.parse(storedUser) : {};
       
-      // Update session storage while preserving role to prevent routing loops
-      sessionStorage.setItem('userData', JSON.stringify({
+      // Update local storage while preserving role to prevent routing loops
+      localStorage.setItem('userData', JSON.stringify({
         ...userData,
         role: parsedStored.role || 'user' // Default to 'user' if not present
       }));
@@ -1541,6 +1547,7 @@ const handleLanguageChange = async (newLanguage: Language) => {
 };
 
 const handleLogout = async () => {
+  trackEvent('logout');
   try {
     const currentUser = auth.currentUser;
     if (currentUser) {
@@ -2082,6 +2089,9 @@ const renderAvatarModal = () => {
 
 // Add search handler function
 const handleSearch = (term: string) => {
+  if (term.trim()) {
+    trackEvent('search', { term: term.trim() });
+  }
   setSearchTerm(term);
   if (term.trim() === "") {
     setFilteredRestaurants([]);

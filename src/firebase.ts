@@ -125,7 +125,6 @@ export const clearAuthSession = async () => {
     
     // Clear all persistent storage that might hold corrupted tokens
     localStorage.clear();
-    sessionStorage.clear();
     
     // Clear IndexedDB for Firebase (standard names)
     const dbs = ['firebase-heartbeat-database', 'firebase-installations-database', 'firebase-messaging-database'];

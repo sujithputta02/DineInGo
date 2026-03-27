@@ -192,7 +192,7 @@ const OnboardingPage: React.FC = () => {
             
             if (freshUser && freshUser.token) {
                 // Update session storage with fresh data
-                sessionStorage.setItem('userData', JSON.stringify(freshUser));
+                localStorage.setItem('userData', JSON.stringify(freshUser));
                 
                 setTimeout(() => {
                     navigate(`/dashboard/${freshUser.token}`, { replace: true });

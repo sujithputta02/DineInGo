@@ -12,6 +12,7 @@ import { DinoStepper } from '../components/DinoStepper';
 import EmojiPicker from '../components/EmojiPicker';
 import { isRestaurantOpen } from '../utils/openStatus';
 import { normalizeImageUrl } from '../services/api';
+import { trackEvent } from '../utils/analytics';
 
 
 const RestaurantDetails = () => {
@@ -252,6 +253,15 @@ const RestaurantDetails = () => {
       queryParams.set('date', selectedDate);
       queryParams.set('time', time);
       queryParams.set('guests', selectedGuests.toString());
+      
+      trackEvent('select_time_slot', { 
+        id, 
+        type: 'restaurant', 
+        time, 
+        date: selectedDate, 
+        guests: selectedGuests 
+      });
+
       navigate(`/restaurant/${id}/menu?${queryParams.toString()}`);
     } else {
       navigate(`/event/${id}/register`);
@@ -292,6 +302,12 @@ const RestaurantDetails = () => {
         userPhoto: user.photoURL || user.photoUrl, // Handle both casing consistent with LoginPage.tsx
         rating: newRating,
         comment: newComment,
+      });
+
+      trackEvent('submit_review', { 
+        id, 
+        rating: newRating,
+        isMock: isMockId
       });
 
       // Refresh reviews
@@ -349,6 +365,13 @@ const RestaurantDetails = () => {
         await favoritesApi.addRestaurant(user.uid, id);
         toast.success('Added to favorites');
       }
+      
+      trackEvent('toggle_favorite', { 
+        id, 
+        type, 
+        status: !isFavorite 
+      });
+
       setIsFavorite(!isFavorite);
     } catch (err) {
       console.error('Error toggling favorite:', err);

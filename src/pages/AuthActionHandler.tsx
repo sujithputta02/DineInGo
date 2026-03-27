@@ -38,8 +38,8 @@ const AuthActionHandler: React.FC = () => {
             
             // Redirect based on whether the user is new or existing
             setTimeout(() => {
-              const isNewUser = sessionStorage.getItem('isNewUser') === 'true';
-              sessionStorage.removeItem('isNewUser'); // Clean up the flag
+              const isNewUser = localStorage.getItem('isNewUser') === 'true';
+              localStorage.removeItem('isNewUser'); // Clean up the flag
               navigate(isNewUser ? '/feedback' : '/dashboard');
             }, 3000);
             break;
