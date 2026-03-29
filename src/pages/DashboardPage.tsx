@@ -797,6 +797,23 @@ export default function DashboardPage() {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
 
+  // Add listener for system theme changes when in 'system' mode
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const handleChange = () => {
+      if (theme === 'system') {
+        const isDark = mediaQuery.matches;
+        setIsDarkMode(isDark);
+        document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+        localStorage.setItem('dineInGoDarkMode', isDark.toString());
+      }
+    };
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
+
   // Track active section changes
   useEffect(() => {
     trackEvent('view_section', { section: activeSection });
