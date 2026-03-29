@@ -155,17 +155,19 @@ export const emailService = {
         to: data.to,
         subject: `Start Rating: You reviewed ${data.businessName}`,
         html,
-        attachments: [{
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }]
+        attachments: [
+          ...(fs.existsSync(logoPath) ? [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }] : [])
+        ]
       });
 
       console.log(`Review submission email sent to ${data.to}`);
       return true;
-    } catch (error) {
-      console.error('Error sending review submission email:', error);
+    } catch (error: any) {
+      console.error(`Error sending review submission email to ${data.to}:`, error.message || error);
       return false;
     }
   },
@@ -226,17 +228,19 @@ export const emailService = {
         to: data.to,
         subject: `New Reply from ${data.businessName}`,
         html,
-        attachments: [{
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }]
+        attachments: [
+          ...(fs.existsSync(logoPath) ? [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }] : [])
+        ]
       });
 
       console.log(`Reply notification email sent to ${data.to}`);
       return true;
-    } catch (error) {
-      console.error('Error sending reply notification email:', error);
+    } catch (error: any) {
+      console.error(`Error sending reply notification email to ${data.to}:`, error.message || error);
       return false;
     }
   },
@@ -300,17 +304,19 @@ export const emailService = {
         to: data.to,
         subject: `New ${ratingNum}⭐ Review on ${data.businessName}`,
         html,
-        attachments: [{
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }]
+        attachments: [
+          ...(fs.existsSync(logoPath) ? [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }] : [])
+        ]
       });
 
       console.log(`New review alert email sent to business owner at ${data.to}`);
       return true;
-    } catch (error) {
-      console.error('Error sending new review alert email:', error);
+    } catch (error: any) {
+      console.error(`Error sending new review alert email to ${data.to}:`, error.message || error);
       return false;
     }
   },
@@ -520,17 +526,19 @@ export const emailService = {
         to,
         subject: `${otp} is your ${title} code`,
         html,
-        attachments: [{
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }]
+        attachments: [
+          ...(fs.existsSync(logoPath) ? [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }] : [])
+        ]
       });
 
       console.log(`OTP email (${type}) sent to ${to}`);
       return true;
-    } catch (error) {
-      console.error('Error sending OTP email:', error);
+    } catch (error: any) {
+      console.error(`Error sending OTP email (${type}) to ${to}:`, error.message || error);
       return false;
     }
   },
@@ -787,17 +795,19 @@ export const emailService = {
         to,
         subject: `Welcome to DineInGo, ${name}! 🎉`,
         html,
-        attachments: [{
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }]
+        attachments: [
+          ...(fs.existsSync(logoPath) ? [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }] : [])
+        ]
       });
 
       console.log(`User welcome email sent to ${to}`);
       return true;
-    } catch (error) {
-      console.error('Error sending user welcome email:', error);
+    } catch (error: any) {
+      console.error(`Error sending user welcome email to ${to}:`, error.message || error);
       return false;
     }
   },
@@ -908,17 +918,19 @@ export const emailService = {
         to,
         subject: `Welcome to DineInGo for Business, ${name}! 🚀`,
         html,
-        attachments: [{
-          filename: 'logo.png',
-          path: logoPath,
-          cid: cidLogo
-        }]
+        attachments: [
+          ...(fs.existsSync(logoPath) ? [{
+            filename: 'logo.png',
+            path: logoPath,
+            cid: cidLogo
+          }] : [])
+        ]
       });
 
       console.log(`Business welcome email sent to ${to}`);
       return true;
-    } catch (error) {
-      console.error('Error sending business welcome email:', error);
+    } catch (error: any) {
+      console.error(`Error sending business welcome email to ${to}:`, error.message || error);
       return false;
     }
   },
