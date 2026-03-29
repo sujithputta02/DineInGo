@@ -98,6 +98,7 @@ export const corsConfig = {
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:5001',
+      'http://localhost:6173',
       'https://dine-in-go.vercel.app',
       'https://dineingo-backend.onrender.com',
       process.env.FRONTEND_URL,
@@ -108,10 +109,10 @@ export const corsConfig = {
     // Normalize: remove trailing slashes from all allowed origins
     const allowedOrigins = rawOrigins
       .filter(Boolean)
-      .map(url => url?.replace(/\/$/, ''));
+      .map(url => url?.replace(/\/$/, '').toLowerCase());
 
-    // Normalize: remove trailing slash from incoming origin
-    const normalizedOrigin = origin?.replace(/\/$/, '');
+    // Normalize: remove trailing slash from incoming origin and lowercase it
+    const normalizedOrigin = origin?.replace(/\/$/, '').toLowerCase();
 
     console.log(`[CORS] Request from origin: ${origin} (Normalized: ${normalizedOrigin})`);
     console.log(`[CORS] Allowed origins:`, allowedOrigins);
