@@ -2,8 +2,8 @@ import * as React from 'react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
 import { User, UserAddress, LocationSettings } from '@/types/user';
-import { Loader2, User as LucideUser, X, MapPin, Globe, Moon, Sun, Camera, ChevronRight, Save, LogOut, Sliders, Laptop } from 'lucide-react';
-import { getAuth, updateProfile, User as FirebaseUser } from 'firebase/auth';
+import { Loader2, User as LucideUser, X, MapPin, Globe, Moon, Sun, Camera, ChevronRight, Save, LogOut, Sliders, Laptop, Lock, Eye, EyeOff } from 'lucide-react';
+import { getAuth, updateProfile, updatePassword, User as FirebaseUser } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
 import Cropper from 'react-easy-crop';
 import Dialog from '@mui/material/Dialog';
@@ -14,7 +14,7 @@ import Slider from '@mui/material/Slider';
 import socketService from '../utils/socketService';
 import API_CONFIG from '../config/api';
 import { DietaryAssistant } from './DietaryAssistant';
-import { userPreferenceApi } from '../services/api';
+import { userPreferenceApi, userAPI } from '../services/api';
 
 // Type guard to check if user has Firebase Auth methods
 const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
@@ -79,7 +79,15 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   onThemeChange,
   onToggleTheme
 }) => {
-  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'app'>('profile');
+  const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'app' | 'security'>('profile');
+
+  // Change Password State
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   // State for loading and UI
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -326,6 +334,58 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
     );
   };
 
+  const handlePasswordChangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!authUser) return;
+
+    if (newPassword !== confirmPassword) {
+      toast.error('New passwords do not match');
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      toast.error('New password must be at least 8 characters long');
+      return;
+    }
+
+    try {
+      setIsChangingPassword(true);
+
+      // 1. Update in Backend Database (Verify current password)
+      const res = await userAPI.changePassword(authUser.uid, currentPassword, newPassword);
+      
+      if (!res.success) {
+        throw new Error(res.message || 'Failed to update password in database');
+      }
+
+      // 2. Update in Firebase Auth
+      const firebaseAuth = getAuth();
+      if (firebaseAuth.currentUser) {
+        try {
+          await updatePassword(firebaseAuth.currentUser, newPassword);
+        } catch (firebaseError: any) {
+          if (firebaseError.code === 'auth/requires-recent-login') {
+            toast.warning('Security: Please log out and log back in to finalize this change.');
+          } else {
+            console.error('Firebase password update failed:', firebaseError);
+            toast.error('Internal DB updated, but Firebase sync failed. Please contact support.');
+          }
+        }
+      }
+
+      toast.success('Password updated successfully');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      
+    } catch (error: any) {
+      console.error('Password change error:', error);
+      toast.error(error.message || 'Failed to change password');
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   // Cropper State
   const [cropModalOpen, setCropModalOpen] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -406,6 +466,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
             {renderTabButton('profile', 'Personal Info', <LucideUser size={18} />)}
             {renderTabButton('preferences', 'Preferences', <Sliders size={18} />)}
             {renderTabButton('app', 'App Settings', <Save size={18} />)}
+            {renderTabButton('security', 'Security', <Lock size={18} />)}
           </div>
         </div>
 
@@ -765,6 +826,131 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         <div className={`absolute top-1 left-1 w-6 h-6 bg-white rounded-full shadow-md transition-transform ${formData.locationSettings.type === 'auto' ? 'translate-x-6' : 'translate-x-0'
                           }`} />
                       </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
+              {activeTab === 'security' && (
+                <motion.div
+                  key="security"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="space-y-8"
+                >
+                  <div className="max-w-md mx-auto space-y-6">
+                    <div className="text-center md:text-left">
+                      <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Security Settings</h3>
+                      <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Keep your account safe by updating your password regularly.
+                      </p>
+                    </div>
+
+                    <form onSubmit={handlePasswordChangeSubmit} className="space-y-5">
+                      {/* Current Password */}
+                      <div className="space-y-2">
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Current Password</label>
+                        <div className="relative">
+                          <input
+                            type={showCurrentPassword ? 'text' : 'password'}
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            placeholder="••••••••"
+                            className={`w-full pl-11 pr-12 py-3.5 rounded-2xl border outline-none transition-all ${isDarkMode
+                              ? 'bg-gray-900/50 border-gray-700 text-white focus:border-red-500'
+                              : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-red-500 focus:ring-2 focus:ring-red-500/20'
+                              }`}
+                            required
+                          />
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <button
+                            type="button"
+                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            {showCurrentPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* New Password */}
+                      <div className="space-y-2">
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>New Password</label>
+                        <div className="relative">
+                          <input
+                            type={showNewPassword ? 'text' : 'password'}
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            placeholder="At least 8 characters"
+                            className={`w-full pl-11 pr-12 py-3.5 rounded-2xl border outline-none transition-all ${isDarkMode
+                              ? 'bg-gray-900/50 border-gray-700 text-white focus:border-emerald-500'
+                              : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                              }`}
+                            required
+                          />
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                          <button
+                            type="button"
+                            onClick={() => setShowNewPassword(!showNewPassword)}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                          >
+                            {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Confirm New Password */}
+                      <div className="space-y-2">
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirm New Password</label>
+                        <div className="relative">
+                          <input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            placeholder="Repeat your new password"
+                            className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border outline-none transition-all ${isDarkMode
+                              ? 'bg-gray-900/50 border-gray-700 text-white focus:border-emerald-500'
+                              : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
+                              }`}
+                            required
+                          />
+                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                        </div>
+                      </div>
+
+                      <motion.button
+                        type="submit"
+                        disabled={isChangingPassword}
+                        className="w-full mt-4 py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl font-bold shadow-xl shadow-emerald-500/20 transition-all flex items-center justify-center gap-3 disabled:bg-gray-400 disabled:shadow-none"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {isChangingPassword ? (
+                          <>
+                            <Loader2 className="animate-spin" size={20} />
+                            Updating...
+                          </>
+                        ) : (
+                          <>
+                            <Save size={20} />
+                            Update Password
+                          </>
+                        )}
+                      </motion.button>
+                    </form>
+
+                    <div className={`p-5 rounded-2xl border flex items-start gap-4 ${isDarkMode ? 'bg-amber-500/10 border-amber-500/20 text-amber-200' : 'bg-amber-50 border-amber-100 text-amber-800'
+                      }`}>
+                      <div className={`shrink-0 p-2 rounded-lg ${isDarkMode ? 'bg-amber-500/20' : 'bg-amber-200/50'}`}>
+                        <Lock size={20} className="text-amber-500" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="font-bold text-sm">Pro Tip for Dino Users</p>
+                        <p className="text-xs leading-relaxed opacity-80">
+                          For maximal security, use a unique password and avoid reusing passwords from other apps. Your password is encrypted and never stored in plain text.
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </motion.div>

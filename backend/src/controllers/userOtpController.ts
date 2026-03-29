@@ -4,6 +4,7 @@ import bcrypt from 'bcryptjs';
 import PasswordReset from '../models/PasswordReset';
 import { User } from '../models/User';
 import { sendEmail, emailService } from '../services/emailService';
+import authAdmin from '../utils/firebaseAdmin';
 import securityConfig from '../config/security';
 
 // Generate 6-digit OTP
@@ -246,13 +247,30 @@ export const resetPassword = async (req: Request, res: Response) => {
         }
 
         // Update password in MongoDB User model
-        // Note: For Firebase users, this won't change the Firebase password
-        // unless Firebase Admin SDK is integrated.
         const user = await User.findOne({ email: email.toLowerCase() });
         if (user) {
-            // We should hash the password before saving
+            // 1. Sync with Firebase Auth using Admin SDK
+            if (authAdmin) {
+                try {
+                    await authAdmin.auth().updateUser(user.uid, {
+                        password: newPassword
+                    });
+                    console.log(`[FirebaseSync] Password updated successfully for UID: ${user.uid}`);
+                } catch (firebaseError: any) {
+                    console.error(`[FirebaseSync] Failed to update Firebase password for ${user.uid}:`, firebaseError.message);
+                    // If Firebase update fails, we should NOT proceed with DB update to keep them in sync
+                    // but since this is a reset, we might want to allow it if the user was local-only (unlikely)
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: 'Failed to sync password with authentication server. Please try again.' 
+                    });
+                }
+            }
+
+            // 2. Update hashed password in MongoDB
             const salt = await bcrypt.genSalt(10);
             user.password = await bcrypt.hash(newPassword, salt);
+            user.updatedAt = new Date();
             await user.save();
         }
 

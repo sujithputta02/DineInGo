@@ -8,7 +8,8 @@ import {
   logoutUser,
   getUserActivities,
   debugUserActivities,
-  trackFriendReferral
+  trackFriendReferral,
+  changePassword
 } from '../controllers/userController';
 import { getUserReviews } from '../controllers/reviewController';
 import { User } from '../models/User';
@@ -179,6 +180,9 @@ router.post('/update', async (req: Request, res: Response) => {
     });
   }
 });
+
+// Change password endpoint
+router.post('/change-password', apiLimiter, changePassword);
 
 // User activity related endpoints
 // Original login route - commented out since we're using the custom implementation above

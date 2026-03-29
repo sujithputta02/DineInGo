@@ -95,11 +95,10 @@ export const emailService = {
    * Determine the correct sender address based on the active provider
    */
   getSender(name: string = "DineInGo"): string {
-    const brevoSender = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER;
-    const gmailSender = process.env.EMAIL_USER;
-    const isBrevo = process.env.BREVO_API_KEY && process.env.BREVO_SMTP_USER;
-    const email = isBrevo ? brevoSender : gmailSender;
-    return `"${name}" <${email}>`;
+    // ALWAYS use the verified sender address to prevent Brevo/Gmail from blocking the email
+    // This is the most common cause of the 500 error in production
+    const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || "sec.dineingo.team@gmail.com";
+    return `"${name}" <${senderEmail}>`;
   },
 
   /**

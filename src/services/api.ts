@@ -959,6 +959,9 @@ export const userAPI = {
   getReviews: async (userId: string) => {
     return apiRequest(`${API_URL}/api/v1/users/${userId}/reviews`);
   },
+  changePassword: async (uid: string, currentPassword: string, newPassword: string) => {
+    return apiRequest(`${API_URL}/api/v1/users/change-password`, 'POST', { uid, currentPassword, newPassword });
+  },
   createUser: async (userData: UserData) => {
     // Ensure all required fields are present
     const payload = {

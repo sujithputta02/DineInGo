@@ -4,6 +4,8 @@ import { UserStats } from '../models/UserStats';
 import UserNotification from '../models/UserNotification';
 import AllUserNotification from '../models/AllUserNotification';
 import { emailService } from '../services/emailService';
+import bcrypt from 'bcryptjs';
+import authAdmin from '../utils/firebaseAdmin';
 
 // Helper function to extract device and IP info
 const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: string } => {
@@ -357,5 +359,74 @@ export const trackFriendReferral = async (req: Request, res: Response): Promise<
   } catch (error) {
     console.error('Error tracking friend referral:', error);
     res.status(500).json({ message: 'Failed to track friend referral' });
+  }
+};
+
+// Change password for logged-in user
+export const changePassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { uid, currentPassword, newPassword } = req.body;
+
+    if (!uid || !currentPassword || !newPassword) {
+      res.status(400).json({ success: false, message: 'All fields are required' });
+      return;
+    }
+
+    // Find the user
+    const user = await User.findOne({ uid });
+
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found' });
+      return;
+    }
+
+    // If user has no password stored (Google user), they should only change via Google/Firebase
+    if (!user.password) {
+      res.status(400).json({ 
+        success: false, 
+        message: 'This account was created with Google. Please use Google settings to change your password.' 
+      });
+      return;
+    }
+
+    // Verify current password
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch) {
+      res.status(401).json({ success: false, message: 'Invalid current password' });
+      return;
+    }
+
+    // Validate new password strength
+    if (newPassword.length < 8) {
+      res.status(400).json({ success: false, message: 'New password must be at least 8 characters long' });
+      return;
+    }
+
+    // Hash new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Sync with Firebase Auth using Admin SDK
+    if (authAdmin) {
+      try {
+        await authAdmin.auth().updateUser(uid, {
+          password: newPassword
+        });
+        console.log(`[FirebaseSync] Password updated successfully for UID: ${uid}`);
+      } catch (firebaseError: any) {
+        console.error(`[FirebaseSync] Failed to update Firebase password for ${uid}:`, firebaseError.message);
+        // We will continue since the DB is updated and we can't easily undo the client-side Firebase change
+      }
+    }
+
+    // Update user password in MongoDB
+    user.password = hashedPassword;
+    user.updatedAt = new Date();
+    await user.save();
+
+    res.json({ success: true, message: 'Password updated successfully in DineInGo database' });
+  } catch (error) {
+    console.error('Error in changePassword:', error);
+    res.status(500).json({ success: false, message: 'Internal server error during password change' });
   }
 };
