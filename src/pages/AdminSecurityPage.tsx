@@ -24,6 +24,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { adminApi } from '../utils/adminApi';
 import SecurityVisualizer from '../components/SecurityVisualizer';
+import ThreatMap from '../components/ThreatMap';
+import SecurityScoreDial from '../components/SecurityScoreDial';
+import BlacklistManager from '../components/BlacklistManager';
+import PortalSecurityAudit from '../components/PortalSecurityAudit';
 
 interface SecurityStats {
   total: number;
@@ -56,6 +60,7 @@ const AdminSecurityPage: React.FC = () => {
   const [filterPortal, setFilterPortal] = useState<string>('');
   const [filterSeverity, setFilterSeverity] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
+  const [isScanning, setIsScanning] = useState(false);
 
   const fetchSecurityData = async (showToast = false) => {
     try {
@@ -115,10 +120,14 @@ const AdminSecurityPage: React.FC = () => {
   };
 
   const runSecurityScan = () => {
+    setIsScanning(true);
     toast.info('Initiating Universal Security Audit...');
+    
+    // Simulate deep scan duration
     setTimeout(() => {
+      setIsScanning(false);
       toast.success('System Scan Complete: No major vulnerabilities found.');
-    }, 2000);
+    }, 4000);
   };
 
   if (loading) {
@@ -144,10 +153,24 @@ const AdminSecurityPage: React.FC = () => {
         <div className="flex items-center gap-3">
           <button 
             onClick={runSecurityScan}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-all font-medium text-sm"
+            disabled={isScanning}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${
+              isScanning 
+                ? 'bg-red-600 text-white cursor-not-allowed shadow-[0_0_15px_rgba(220,38,38,0.4)]' 
+                : 'bg-slate-900 text-white hover:bg-slate-800'
+            }`}
           >
-            <ShieldCheck size={18} />
-            Run Security Audit
+            {isScanning ? (
+              <>
+                <RefreshCw size={18} className="animate-spin" />
+                Scanning...
+              </>
+            ) : (
+              <>
+                <ShieldCheck size={18} />
+                Run Security Audit
+              </>
+            )}
           </button>
           <button 
             onClick={() => fetchSecurityData(true)}
@@ -159,8 +182,18 @@ const AdminSecurityPage: React.FC = () => {
         </div>
       </div>
 
+      {/* Advanced Security Command Center Header Visuals */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div className="lg:col-span-1">
+          <SecurityScoreDial stats={stats} logs={logs} />
+        </div>
+        <div className="lg:col-span-3">
+          <ThreatMap logs={logs} />
+        </div>
+      </div>
+
       {/* Dynamic High-Tech Security Visualizer */}
-      <SecurityVisualizer logs={logs} stats={stats} />
+      <SecurityVisualizer logs={logs} stats={stats} isScanning={isScanning} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -299,66 +332,11 @@ const AdminSecurityPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Status Panel */}
-        <div className="space-y-6">
-          <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-            <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Server size={18} className="text-slate-500" />
-              Active Defenses
-            </h3>
-            <div className="space-y-4">
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Fingerprint className="text-green-600" size={16} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 leading-none mb-1">Session Obfuscation</p>
-                    <p className="text-[10px] text-slate-500">Active - Tab specific</p>
-                  </div>
-                </div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm shadow-green-500/50"></div>
-              </div>
+        {/* Status Panel (Right Column) */}
+        <div className="space-y-6 lg:col-span-1">
+          <BlacklistManager />
 
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
-                    <Lock className="text-green-600" size={16} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 leading-none mb-1">URL Masking</p>
-                    <p className="text-[10px] text-slate-500">Active - Path randomized</p>
-                  </div>
-                </div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm shadow-green-500/50"></div>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
-                    <ShieldCheck className="text-blue-600" size={16} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 leading-none mb-1">API Rate Limiting</p>
-                    <p className="text-[10px] text-slate-500">OWASP Standard Active</p>
-                  </div>
-                </div>
-                <div className="w-2 h-2 bg-blue-500 rounded-full shadow-sm shadow-blue-500/50"></div>
-              </div>
-
-              <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl opacity-60">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-slate-200 rounded-lg">
-                    <Globe className="text-slate-500" size={16} />
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-slate-900 leading-none mb-1">Geo-Fencing</p>
-                    <p className="text-[10px] text-slate-500">Disabled - Global Access</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
+          <PortalSecurityAudit />
 
           <div className="bg-slate-900 p-6 rounded-2xl text-white">
             <h3 className="font-bold mb-2 flex items-center gap-2">

@@ -209,6 +209,12 @@ export const adminApi = {
     const query = new URLSearchParams(params as any).toString();
     return adminApiRequest(`/api/v1/admin/security/logs?${query}`);
   },
+  getBlockedIPs: () => adminApiRequest('/api/v1/admin/security/blocked-ips'),
+  unblockIP: (ipAddress: string) =>
+    adminApiRequest('/api/v1/admin/security/unblock-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ipAddress }),
+    }),
 
   // Waitlist management
   getWaitlistStats: () => adminApiRequest('/api/v1/admin/waitlist/stats'),

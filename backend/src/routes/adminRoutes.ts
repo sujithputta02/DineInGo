@@ -17,6 +17,8 @@ import {
   getNotificationStats,
   getSecurityStats,
   getSecurityLogs,
+  getBlockedIPs,
+  unblockIP,
   getWaitlistStats,
   sendWaitlistBroadcast,
   getWaitlistSignups,
@@ -124,6 +126,8 @@ router.get('/service-status', adminApiLimiter, verifyAdminToken, logAdminAction,
 // Security auditing (Super admin only)
 router.get('/security/stats', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getSecurityStats);
 router.get('/security/logs', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getSecurityLogs);
+router.get('/security/blocked-ips', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getBlockedIPs);
+router.post('/security/unblock-ip', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, unblockIP);
 
 // Maintenance mode routes
 router.post('/maintenance-mode', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleMaintenanceMode);

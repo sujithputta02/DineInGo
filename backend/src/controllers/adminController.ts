@@ -12,6 +12,7 @@ import { getSystemSettings } from '../models/SystemSettings';
 import * as crypto from 'crypto';
 import { generateAdminToken } from '../middleware/adminAuth';
 import { SecurityLog } from '../models/SecurityLog';
+import BlockedIP from '../models/BlockedIP';
 import { EarlyAccess } from '../models/EarlyAccess';
 import { emailService } from '../services/emailService';
 
@@ -1192,6 +1193,62 @@ export const getSecurityStats = async (req: Request, res: Response) => {
       success: false, 
       message: 'Failed to fetch security stats'
     });
+  }
+};
+
+/**
+ * UNIVERSAL SECURITY: Get all currently blocked IPs
+ */
+export const getBlockedIPs = async (req: Request, res: Response) => {
+  try {
+    const blockedIPs = await BlockedIP.find({ isActive: true }).sort({ blockedAt: -1 });
+    res.json({
+      success: true,
+      blockedIPs
+    });
+  } catch (error) {
+    console.error('Error fetching blocked IPs:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch blocked IPs' });
+  }
+};
+
+/**
+ * UNIVERSAL SECURITY: Manually unblock an IP
+ */
+export const unblockIP = async (req: Request, res: Response) => {
+  try {
+    const { ipAddress } = req.body;
+    if (!ipAddress) {
+      return res.status(400).json({ success: false, message: 'IP address is required' });
+    }
+
+    const result = await BlockedIP.findOneAndUpdate(
+      { ipAddress },
+      { isActive: false },
+      { new: true }
+    );
+
+    if (!result) {
+      return res.status(404).json({ success: false, message: 'IP not found in blacklist' });
+    }
+
+    // Log the unblock action
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: 'IP_UNBLOCKED',
+      severity: 'medium',
+      details: `IP ${ipAddress} was manually unblocked by admin.`,
+      ip: req.ip || '127.0.0.1',
+      userId: (req as any).admin?.email
+    });
+
+    res.json({
+      success: true,
+      message: `IP ${ipAddress} unblocked successfully`
+    });
+  } catch (error) {
+    console.error('Error unblocking IP:', error);
+    res.status(500).json({ success: false, message: 'Failed to unblock IP' });
   }
 };
 

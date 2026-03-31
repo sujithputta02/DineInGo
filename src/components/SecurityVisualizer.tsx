@@ -5,9 +5,10 @@ import { Shield, ShieldAlert, ShieldCheck, Lock, Activity, Wifi, Disc, Terminal,
 interface SecurityVisualizerProps {
   logs: any[];
   stats: any | null;
+  isScanning?: boolean;
 }
 
-const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats }) => {
+const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats, isScanning = false }) => {
   const [pulseActive, setPulseActive] = useState(false);
   const [attacks, setAttacks] = useState<any[]>([]);
   const lastLogId = useRef<string | null>(null);
@@ -19,16 +20,32 @@ const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats }) 
       setPulseActive(true);
       setTimeout(() => setPulseActive(false), 1000);
 
-      // Create a simulated attack particle
       const newAttack = {
         id: Math.random().toString(36).substr(2, 9),
         angle: Math.random() * 360,
         severity: logs[0].severity,
         portal: logs[0].portal
       };
-      setAttacks(prev => [...prev, newAttack].slice(-10)); // Keep last 10
+      setAttacks(prev => [...prev, newAttack].slice(-10));
     }
   }, [logs]);
+
+  // Simulate particle storm during scanning
+  useEffect(() => {
+    let interval: any;
+    if (isScanning) {
+      interval = setInterval(() => {
+        const newAttack = {
+          id: Math.random().toString(36).substr(2, 9),
+          angle: Math.random() * 360,
+          severity: Math.random() > 0.8 ? 'critical' : 'low',
+          portal: 'system'
+        };
+        setAttacks(prev => [...prev, newAttack].slice(-20));
+      }, 100);
+    }
+    return () => clearInterval(interval);
+  }, [isScanning]);
 
   const securityLevels = [
     { id: 'L1', name: 'Session Guard', status: 'ACTIVE', color: 'bg-blue-500', icon: <Fingerprint size={12} />, desc: 'Single-tab session obfuscation' },
@@ -60,10 +77,12 @@ const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats }) 
           <motion.div 
             className="absolute w-[350px] h-[350px] rounded-full z-0"
             style={{
-              background: 'conic-gradient(from 0deg, transparent 50%, rgba(59, 130, 246, 0.1) 100%)'
+              background: isScanning 
+                ? 'conic-gradient(from 0deg, transparent 40%, rgba(239, 68, 68, 0.2) 100%)'
+                : 'conic-gradient(from 0deg, transparent 50%, rgba(59, 130, 246, 0.1) 100%)'
             }}
             animate={{ rotate: 360 }}
-            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+            transition={{ duration: isScanning ? 0.6 : 4, repeat: Infinity, ease: "linear" }}
           ></motion.div>
 
           {/* The Core Firewall Shield */}
@@ -142,15 +161,42 @@ const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats }) 
         <div className="hidden sm:block absolute top-6 left-6 font-mono text-[10px] text-blue-400/60 bg-slate-900/40 p-3 rounded-lg border border-white/5 backdrop-blur-md">
            <div className="flex items-center gap-2 mb-1">
              <Terminal size={10} />
-             <span>SEC_CMD_CENTER v1.02</span>
+             <span>{isScanning ? 'INTEGRITY_SCAN_ACTIVE' : 'SEC_CMD_CENTER v1.02'}</span>
            </div>
            <div className="space-y-1">
-             <p>UPTIME: {Math.floor(Date.now() / 10000000) % 1000}h</p>
-             <p>TRAFFIC: {stats?.total || 0}</p>
-             <p>BLOCKED: {stats?.blockedIpsCount || 0}</p>
-             <p className="text-red-400">CRITICAL: {stats?.criticalThreats || 0}</p>
+             <p>{isScanning ? 'SCAN_DEPTH: DEPTH_7 (FULL)' : `UPTIME: ${Math.floor(Date.now() / 10000000) % 1000}h`}</p>
+             <p>{isScanning ? 'STATUS: AUDITING_LAYERS...' : `TRAFFIC: ${stats?.total || 0}`}</p>
+             <p>{isScanning ? 'VERIFYING: KERNEL_INTEGRITY' : `BLOCKED: ${stats?.blockedIpsCount || 0}`}</p>
+             <p className={isScanning ? 'text-yellow-400 animate-pulse' : 'text-red-400'}>
+               {isScanning ? 'ALERT: ENGINE_OVERLOAD_PREVENTED' : `CRITICAL: ${stats?.criticalThreats || 0}`}
+             </p>
            </div>
         </div>
+
+        {/* Deep Scan Overlay */}
+        <AnimatePresence>
+          {isScanning && (
+            <motion.div 
+              initial={{ opacity: 0, scale: 1.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute z-30 pointer-events-none flex flex-col items-center"
+            >
+              <div className="bg-red-500/20 border border-red-500/50 backdrop-blur-xl px-6 py-3 rounded-xl">
+                 <div className="flex items-center gap-3">
+                   <Zap className="text-red-500 animate-bounce" size={20} />
+                   <span className="text-sm font-bold text-white tracking-widest uppercase">Deep Scan In Progress</span>
+                   <div className="flex gap-1">
+                      <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1 }} className="w-1.5 h-1.5 bg-white rounded-full" />
+                      <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.3 }} className="w-1.5 h-1.5 bg-white rounded-full" />
+                      <motion.div animate={{ opacity: [0, 1, 0] }} transition={{ repeat: Infinity, duration: 1, delay: 0.6 }} className="w-1.5 h-1.5 bg-white rounded-full" />
+                   </div>
+                 </div>
+              </div>
+              <p className="mt-4 text-[10px] font-mono text-red-400 uppercase tracking-widest bg-black/50 px-3 py-1 rounded">DO_NOT_DISCONNECT_SYSTEM_DURING_AUDIT</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* HUD Elements - Hidden on small screens */}
         <div className="hidden md:flex absolute bottom-6 right-6 flex-col items-end opacity-40">
