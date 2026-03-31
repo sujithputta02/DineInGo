@@ -8,6 +8,34 @@ DineInGo is a comprehensive full-stack restaurant and event booking platform tha
 
 ---
 
+# 🚀 Early Access & Testing (Beta V-1.0)
+
+Join our exclusive **Beta V-1.0** testing phase! Experience the future of dining before everyone else.
+
+### 🔗 Quick Links
+- **Early Access Portal**: [https://dine-in-go-early-access.vercel.app](https://dine-in-go-early-access.vercel.app)
+- **Main Application**: [https://dine-in-go.vercel.app](https://dine-in-go.vercel.app)
+- **Business Portal**: [https://dine-in-go.vercel.app/business](https://dine-in-go.vercel.app/business)
+
+### 📝 Access Steps
+To test the application, you must be on our early access list. Follow these steps:
+
+1. **Join the Early Access List**:
+   - Go to the [Early Access Portal](https://dine-in-go-early-access.vercel.app).
+   - **Foodies**: Select the "Foodie" option if you are a user.
+   - **Businesses**: Select the "Venue" option to register as a business.
+2. **Receive Stomp Code**: After selection, you will receive a unique **Stomp Code**. Keep this safe as it is required for access.
+3. **Sign Up / Login**:
+   - Open the [DineInGo App](https://dine-in-go.vercel.app) (or [Business Portal](https://dine-in-go.vercel.app/business) for venues).
+   - If you are a new user, sign up with **Google** or manually verify your **Email**.
+4. **Verify Early Access**:
+   - Enter your **Stomp Code** when prompted to verify your early access status.
+5. **Explore the Dashboard**:
+   - Once verified, you will gain access to the dashboard to test all features.
+
+---
+
+
 ## � What's New inn V1.0 Beta
 
 ### 🔐 Enterprise-Grade Security
@@ -506,6 +534,8 @@ Found a security vulnerability? Please report it responsibly:
 ---
 
 ## 🧪 Beta Testing
+
+To participate in the Beta V-1.0 testing phase, please follow the [Access Steps](#-access-steps) at the top of this document.
 
 ### What to Test
 - Restaurant discovery and search functionality
