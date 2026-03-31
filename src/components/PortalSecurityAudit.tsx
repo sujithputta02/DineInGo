@@ -54,53 +54,78 @@ const PortalSecurityAudit: React.FC = () => {
       </div>
 
       {/* Audit Grid */}
-      <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="p-5 grid grid-cols-1 xl:grid-cols-3 gap-5">
         {auditData.map((portal) => (
           <div 
             key={portal.name}
-            className={`p-4 rounded-xl border border-slate-100 bg-slate-50/50 flex flex-col`}
+            className="p-5 rounded-2xl border border-slate-100 bg-slate-50/40 flex flex-col hover:border-emerald-200/50 hover:bg-white transition-all duration-300 group shadow-sm hover:shadow-md"
           >
-            <div className="flex items-center gap-2 mb-4">
-              <div className={`p-1.5 rounded-lg bg-${portal.color}-100 text-${portal.color}-600`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`p-2.5 rounded-xl bg-white shadow-sm border border-slate-100 text-slate-700 group-hover:text-emerald-600 transition-colors`}>
                 {portal.icon}
               </div>
-              <h4 className="text-[11px] font-bold text-slate-800 uppercase tracking-tight">{portal.name}</h4>
+              <div className="flex flex-col">
+                <h4 className="text-[12px] font-bold text-slate-900 uppercase tracking-tight leading-none">{portal.name}</h4>
+                <span className="text-[8px] text-slate-400 font-medium uppercase mt-1">Status: Operational</span>
+              </div>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
               {portal.checks.map((check) => (
-                <div key={check.name} className="flex items-center justify-between">
-                  <div className="flex flex-col">
-                    <span className="text-[9px] font-mono text-slate-500 leading-none mb-0.5">{check.name}</span>
-                    <span className="text-[7px] text-slate-400 uppercase tracking-tighter">Verified_v3.2</span>
+                <div key={check.name} className="flex items-center justify-between group/item">
+                  <div className="flex flex-col max-w-[70%]">
+                    <span className="text-[10px] font-mono font-bold text-slate-600 group-hover/item:text-slate-900 transition-colors truncate">
+                      {check.name}
+                    </span>
+                    <span className="text-[7px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Verified_v3.2</span>
                   </div>
-                  <div className="flex items-center gap-1 text-emerald-600">
-                    <CheckCircle2 size={10} />
-                    <span className="text-[8px] font-bold">PASS</span>
+                  
+                  <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
+                    <motion.div
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
+                      <CheckCircle2 size={10} className="text-emerald-500" />
+                    </motion.div>
+                    <span className="text-[9px] font-black text-emerald-600 tracking-tighter">PASS</span>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-               <span className="text-[8px] text-slate-500 font-medium">Portal Status</span>
-               <div className="flex gap-0.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
-                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
+            <div className="mt-8 pt-4 border-t border-slate-100/60 flex items-center justify-between">
+               <span className="text-[9px] text-slate-400 font-bold uppercase tracking-tight">Portal Health</span>
+               <div className="flex gap-1">
+                  {[1, 2, 3].map((i) => (
+                    <motion.div 
+                      key={i}
+                      animate={{ opacity: [0.4, 1, 0.4] }}
+                      transition={{ duration: 2, delay: i * 0.3, repeat: Infinity }}
+                      className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]"
+                    />
+                  ))}
                </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Footer Log */}
-      <div className="bg-slate-900 p-3 flex items-center justify-between">
-         <div className="flex items-center gap-2">
-            <Shield size={14} className="text-blue-400" />
-            <span className="text-[9px] font-mono text-slate-400">AUDIT_TOKEN: f8x-92km-77p</span>
+      {/* Footer Audit Tape */}
+      <div className="bg-slate-950 p-4 flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-white/5">
+         <div className="flex items-center gap-3">
+            <div className="bg-blue-500/10 p-1 rounded border border-blue-500/20">
+               <Shield size={14} className="text-blue-400" />
+            </div>
+            <div className="flex flex-col">
+               <span className="text-[8px] font-mono text-slate-500 uppercase leading-none">Security_Token_Manifest</span>
+               <span className="text-[10px] font-mono text-blue-400 font-bold tracking-wider">f8x-92km-77p-AUDIT</span>
+            </div>
          </div>
-         <span className="text-[9px] font-mono text-slate-500 italic">LAST_UNIVERSAL_CHECK: {new Date().toLocaleTimeString()}</span>
+         
+         <div className="flex flex-col items-end">
+            <span className="text-[8px] font-mono text-slate-500 uppercase leading-none">Last_Sync_Timestamp</span>
+            <span className="text-[10px] font-mono text-slate-300">{new Date().toLocaleTimeString()} (UTC+5:30)</span>
+         </div>
       </div>
     </div>
   );

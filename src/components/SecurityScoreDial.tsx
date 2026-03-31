@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ShieldAlert, Zap } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Zap, Activity } from 'lucide-react';
 
 interface SecurityScoreDialProps {
   stats: any | null;
@@ -12,19 +12,10 @@ const SecurityScoreDial: React.FC<SecurityScoreDialProps> = ({ stats, logs }) =>
     if (!stats) return 100;
     
     let baseScore = 100;
-    
-    // Penalize for critical threats
     baseScore -= (stats.criticalThreats || 0) * 15;
-    
-    // Penalize for recent events (last 24h)
     baseScore -= (stats.last24h || 0) * 0.5;
-    
-    // Small penalty for each log entry (volume stress)
     baseScore -= (logs.length || 0) * 0.1;
-    
-    // Boost for active defenses (simulated)
-    baseScore += 5; // Rate limiting bonus
-    baseScore += 5; // Encryption bonus
+    baseScore += 10; // High-Defense baseline
     
     return Math.max(0, Math.min(100, Math.round(baseScore)));
   }, [stats, logs]);
@@ -35,80 +26,115 @@ const SecurityScoreDial: React.FC<SecurityScoreDialProps> = ({ stats, logs }) =>
     return '#ef4444'; // Red
   };
 
-  const getStatus = (s: number) => {
-    if (s > 80) return 'SECURE';
-    if (s > 50) return 'VULNERABLE';
-    return 'CRITICAL';
-  };
-
   const circumference = 2 * Math.PI * 45;
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <div className="flex flex-col items-center justify-center bg-slate-900/40 p-6 rounded-2xl border border-slate-800/50 backdrop-blur-sm relative overflow-hidden">
-      <div className="relative w-40 h-40 flex items-center justify-center">
-        {/* Background Circle */}
-        <svg className="w-full h-full -rotate-90">
-          <circle
-            cx="80"
-            cy="80"
-            r="45"
-            stroke="currentColor"
-            strokeWidth="8"
-            fill="transparent"
-            className="text-slate-800"
-          />
-          {/* Animated Score Progress */}
-          <motion.circle
-            cx="80"
-            cy="80"
-            r="45"
-            stroke={getColor(score)}
-            strokeWidth="8"
-            strokeLinecap="round"
-            fill="transparent"
-            strokeDasharray={circumference}
-            initial={{ strokeDashoffset: circumference }}
-            animate={{ strokeDashoffset }}
-            transition={{ duration: 2, ease: "easeOut" }}
-          />
-        </svg>
+    <div className="flex flex-col items-center justify-center bg-slate-950 p-7 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden group h-full min-h-[280px]">
+      
+      {/* 1. Animated Hexagonal Grid Background */}
+      <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{
+        backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 20 L10 0 L30 0 L40 20 L30 40 L10 40 Z' fill='none' stroke='%23ffffff' stroke-width='1'/%3E%3C/svg%3E")`,
+        backgroundSize: '30px 30px'
+      }}>
+        <motion.div 
+          animate={{ x: [0, -30, 0], y: [0, -30, 0] }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="w-full h-full"
+        />
+      </div>
 
-        {/* Score Display */}
-        <div className="absolute flex flex-col items-center">
-          <motion.span 
-            className="text-3xl font-bold text-white font-mono"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            {score}
-          </motion.span>
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-1">Integrity Score</span>
+      {/* 2. Visual "Ghost" Pulse Rings */}
+      <motion.div 
+        animate={{ scale: [1, 1.5], opacity: [0.1, 0] }}
+        transition={{ duration: 3, repeat: Infinity }}
+        className="absolute w-40 h-40 rounded-full border border-emerald-500/20"
+      />
+
+      <div className="relative z-10 flex flex-col items-center">
+        {/* The Dial */}
+        <div className="relative w-44 h-44 flex items-center justify-center">
+          <svg className="w-full h-full -rotate-90">
+            <defs>
+              <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor={getColor(score)} stopOpacity="0.2" />
+                <stop offset="100%" stopColor={getColor(score)} />
+              </linearGradient>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <circle
+              cx="88"
+              cy="88"
+              r="45"
+              stroke="rgba(255,255,255,0.05)"
+              strokeWidth="10"
+              fill="transparent"
+            />
+            <motion.circle
+              cx="88"
+              cy="88"
+              r="45"
+              stroke="url(#scoreGradient)"
+              strokeWidth="10"
+              strokeLinecap="round"
+              fill="transparent"
+              strokeDasharray={circumference}
+              initial={{ strokeDashoffset: circumference }}
+              animate={{ strokeDashoffset }}
+              transition={{ duration: 2, ease: "easeOut" }}
+              filter="url(#glow)"
+            />
+          </svg>
+
+          {/* Central Data */}
+          <div className="absolute flex flex-col items-center">
+            <motion.div 
+              animate={{ opacity: [0.7, 1, 0.7] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-4xl font-black text-white font-mono tracking-tighter"
+            >
+              {score}
+            </motion.div>
+            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Integrity_Score</span>
+          </div>
         </div>
 
-        {/* Glow Effect */}
-        <div className="absolute inset-0 bg-slate-400 opacity-[0.03] blur-3xl pointer-events-none"></div>
+        {/* Status Badge */}
+        <div className="mt-4 flex flex-col items-center">
+          <div className={`px-4 py-1.5 rounded-full border flex items-center gap-2 ${
+            score > 80 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
+            score > 50 ? 'bg-amber-500/10 border-amber-500/30 text-amber-400' :
+            'bg-red-500/10 border-red-500/30 text-red-400'
+          }`}>
+            <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+              {score > 80 ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
+            </motion.div>
+            <span className="text-[10px] font-black uppercase tracking-widest leading-none">
+              {score > 80 ? 'System Secure' : score > 50 ? 'Vulnerable' : 'Breach Risk'}
+            </span>
+          </div>
+          
+          {/* Sub-Data Text */}
+          <div className="mt-4 text-center opacity-40 group-hover:opacity-100 transition-opacity duration-500">
+             <div className="flex items-center gap-1.5 justify-center text-[8px] font-mono text-slate-400">
+               <Activity size={10} className="text-emerald-500" />
+               <span className="uppercase tracking-widest">{score > 80 ? 'Kernel Integrity 1.0.2 Passed' : 'Anomaly Detected'}</span>
+             </div>
+          </div>
+        </div>
       </div>
 
-      <div className="mt-4 flex flex-col items-center gap-2">
-         <div className={`flex items-center gap-2 px-3 py-1 rounded-full border border-opacity-20 ${
-           score > 80 ? 'bg-emerald-500/10 border-emerald-500 text-emerald-500' :
-           score > 50 ? 'bg-amber-500/10 border-amber-500 text-amber-500' :
-           'bg-red-500/10 border-red-500 text-red-500'
-         }`}>
-            {score > 80 ? <ShieldCheck size={14} /> : score > 50 ? <Zap size={14} /> : <ShieldAlert size={14} />}
-            <span className="text-[10px] font-bold uppercase tracking-tighter">{getStatus(score)}</span>
-         </div>
-         <p className="text-[10px] text-slate-500 font-medium text-center px-4">
-           {score > 80 ? 'Optimal system performance detected.' : score > 50 ? 'Minor anomalies under investigation.' : 'Immediate attention required.'}
-         </p>
+      {/* Modern Data Readouts Corners */}
+      <div className="absolute top-4 left-4 text-[7px] font-mono text-white/20 select-none uppercase tracking-widest">
+        DineInGo_Def_Sys_v2
       </div>
-
-      {/* Decorative Matrix Text */}
-      <div className="absolute top-2 right-2 opacity-10 pointer-events-none">
-        <p className="text-[6px] font-mono leading-none">SYS_CHECK_01_PASS</p>
-        <p className="text-[6px] font-mono leading-none">AUTH_SYNC_OK</p>
-        <p className="text-[6px] font-mono leading-none">DEFN_ACTIVE</p>
+      <div className="absolute bottom-4 right-4 text-[7px] font-mono text-white/20 select-none uppercase tracking-widest">
+        CRC_{Math.random().toString(36).substr(2, 5).toUpperCase()}
       </div>
     </div>
   );
