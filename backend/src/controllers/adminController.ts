@@ -107,7 +107,7 @@ export const requestAdminOTP = async (req: Request, res: Response) => {
 // Verify OTP and login
 export const verifyAdminOTP = async (req: Request, res: Response) => {
   try {
-    const { email, otp } = req.body;
+    const { email, otp, timezone } = req.body;
 
     if (!email || !otp) {
       return res.status(400).json({ 
@@ -200,6 +200,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       admin.lastLogin = new Date();
       admin.loginAttempts = 0; // Reset failed attempts
       admin.lockUntil = undefined; // Remove lock
+      if (timezone) admin.timezone = timezone;
       await admin.save();
     }
 
@@ -208,7 +209,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
 
     // Send login notification email (non-blocking)
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-    sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress).catch(err => 
+    sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress, timezone || admin?.timezone).catch(err => 
       console.error('Failed to send login notification:', err)
     );
 
@@ -337,8 +338,8 @@ export const addAdmin = async (req: Request, res: Response) => {
 };
 
 // Send login notification email to admin (wrapper)
-const sendLoginNotificationEmail = async (email: string, loginTime: Date, ipAddress?: string): Promise<boolean> => {
-  return emailService.sendAdminLoginNotificationEmail(email, loginTime, ipAddress);
+const sendLoginNotificationEmail = async (email: string, loginTime: Date, ipAddress?: string, timezone?: string): Promise<boolean> => {
+  return emailService.sendAdminLoginNotificationEmail(email, loginTime, ipAddress, timezone);
 };
 
 // Send welcome email (wrapper)

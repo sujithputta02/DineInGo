@@ -19,7 +19,7 @@ const extractRequestInfo = (req: Request): { deviceInfo: string; ipAddress: stri
 export const createUser = async (req: Request, res: Response): Promise<void> => {
   try {
     console.log('Incoming user creation request:', req.body);
-    const { uid, email, displayName, name, photoURL, emailVerified, referralCode } = req.body;
+    const { uid, email, displayName, name, photoURL, emailVerified, referralCode, timezone } = req.body;
     if (!uid || !email || !displayName || !name) {
       console.error('Missing required fields:', { uid, email, displayName, name });
       res.status(400).json({ message: 'Missing required fields', fields: { uid, email, displayName, name } });
@@ -72,6 +72,9 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       if (isEarlyAccess) {
         existingUser.isEarlyAccess = true;
       }
+      if (timezone) {
+        existingUser.timezone = timezone;
+      }
       // Optionally add a login activity
       const activity: IActivity = {
         type: 'login',
@@ -98,6 +101,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       isEarlyAccess,
       lastLogin: new Date(),
       createdAt: new Date(),
+      timezone: timezone || 'Asia/Kolkata',
       activities: [signupActivity]
     });
     await user.save();
@@ -160,7 +164,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
 // User login
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { uid, loginSource = 'email' } = req.body;
+    const { uid, loginSource = 'email', timezone } = req.body;
     const { deviceInfo, ipAddress } = extractRequestInfo(req);
 
     const loginActivity: IActivity = {
@@ -175,6 +179,7 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       { uid },
       {
         lastLogin: new Date(),
+        timezone: timezone || undefined,
         $push: { activities: loginActivity }
       },
       { new: true }

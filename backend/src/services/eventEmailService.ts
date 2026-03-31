@@ -162,11 +162,12 @@ export const generateEventPassPDF = async (booking: EventBooking): Promise<Buffe
         .fillColor('#000000')
         .font('Helvetica');
 
-      doc.text(`Date: ${new Date(booking.date).toLocaleDateString('en-US', {
+      doc.text(`Date: ${new Date(booking.date).toLocaleDateString('en-IN', {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
+        timeZone: 'Asia/Kolkata'
       })}`, 70, currentY);
 
       currentY += 20;
@@ -260,11 +261,12 @@ export const generateEventPassPDF = async (booking: EventBooking): Promise<Buffe
  * Generate HTML Email for Event Confirmation
  */
 export const generateEventConfirmationHTML = (booking: EventBooking): string => {
-  const eventDate = new Date(booking.date).toLocaleDateString('en-US', {
+  const eventDate = new Date(booking.date).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'Asia/Kolkata'
   });
 
   return `
@@ -384,7 +386,7 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
         const mailOptions: any = {
           from: emailService.getSender("DineInGo Events"),
           to: email,
-          subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString()}`,
+          subject: `🎉 Event Pass: ${booking.eventName || 'Your Event'} - ${new Date(booking.date).toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`,
           html: htmlBody,
           attachments: [
             {
@@ -421,11 +423,12 @@ export const sendEventConfirmationEmail = async (booking: EventBooking): Promise
  */
 export const generateCancellationHTML = (booking: EventBooking, isEvent: boolean = false): string => {
   const bookingName = booking.eventName || booking.restaurantName || 'your booking';
-  const bookingDate = new Date(booking.date).toLocaleDateString('en-US', {
+  const bookingDate = new Date(booking.date).toLocaleDateString('en-IN', {
     weekday: 'long',
     year: 'numeric',
     month: 'long',
-    day: 'numeric'
+    day: 'numeric',
+    timeZone: 'Asia/Kolkata'
   });
 
   return `

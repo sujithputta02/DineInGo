@@ -52,6 +52,7 @@ export interface IUser extends Document {
   isAdmin?: boolean;
   isEarlyAccess?: boolean;
   favorites?: string[] | any[];
+  timezone?: string;
 }
 
 // Add interface for static methods
@@ -110,7 +111,8 @@ const userSchema = new Schema<IUser>({
   password: { type: String },
   isAdmin: { type: Boolean, default: false },
   isEarlyAccess: { type: Boolean, default: false },
-  favorites: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }]
+  favorites: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }],
+  timezone: { type: String, default: 'Asia/Kolkata' }
 });
 
 // Static method to log activities for a user

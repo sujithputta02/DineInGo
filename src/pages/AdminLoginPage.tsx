@@ -68,7 +68,11 @@ const AdminLoginPage: React.FC = () => {
       const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ 
+          email, 
+          otp,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+        }),
       });
       const data = await res.json();
       

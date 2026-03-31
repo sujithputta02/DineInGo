@@ -23,6 +23,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import { adminApi } from '../utils/adminApi';
+import SecurityVisualizer from '../components/SecurityVisualizer';
 
 interface SecurityStats {
   total: number;
@@ -157,6 +158,9 @@ const AdminSecurityPage: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Dynamic High-Tech Security Visualizer */}
+      <SecurityVisualizer logs={logs} stats={stats} />
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

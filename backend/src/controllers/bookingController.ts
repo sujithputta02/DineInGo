@@ -152,7 +152,7 @@ const generateInvoicePdfBuffer = async (bookingData: any): Promise<Buffer> => {
 
       doc.font('Helvetica-Bold').text('INVOICE DETAILS:', 400, 110, { align: 'left' });
       doc.font('Helvetica').text(`Invoice #: ${invoiceNumber}`, 400, 122);
-      doc.text(`Date: ${new Date().toLocaleDateString('en-IN')}`, 400, 134);
+      doc.text(`Date: ${new Date().toLocaleDateString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 400, 134);
       doc.fillColor(status === 'CANCELLED' ? '#ef4444' : '#10b981')
         .font('Helvetica-Bold')
         .text(`Status: ${status}`, 400, 146);

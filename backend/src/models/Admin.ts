@@ -9,6 +9,7 @@ export interface IAdmin extends Document {
   lastLogin?: Date;
   loginAttempts: number;
   lockUntil?: Date;
+  timezone?: string;
 }
 
 export interface IAdminOTP extends Document {
@@ -55,6 +56,10 @@ const AdminSchema = new Schema<IAdmin>({
   },
   lockUntil: {
     type: Date
+  },
+  timezone: {
+    type: String,
+    default: 'Asia/Kolkata'
   }
 });
 

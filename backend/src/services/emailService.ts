@@ -607,7 +607,7 @@ export const emailService = {
   /**
    * Send security alert for admin portal login
    */
-  async sendAdminLoginNotificationEmail(email: string, loginTime: Date, ipAddress?: string): Promise<boolean> {
+  async sendAdminLoginNotificationEmail(email: string, loginTime: Date, ipAddress?: string, timezone?: string): Promise<boolean> {
     try {
       const transporter = createTransporter();
       if (!transporter) return false;
@@ -616,14 +616,16 @@ export const emailService = {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
+        timeZone: timezone || 'Asia/Kolkata'
       });
       
       const formattedTime = loginTime.toLocaleTimeString('en-US', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
-        timeZoneName: 'short'
+        timeZoneName: 'short',
+        timeZone: timezone || 'Asia/Kolkata'
       });
 
       const html = `
@@ -1193,7 +1195,7 @@ export const emailService = {
             <h2 style="color:#ff4444;">🚨 Security Alert — DineInGo</h2>
             <pre style="color:#eee;">${body}</pre>
             <hr style="border:1px solid #333;"/>
-            <p style="color:#888;">This is an automated alert from DineInGo Security Monitor.<br/>Time: ${new Date().toISOString()}</p>
+            <p style="color:#888;">This is an automated alert from DineInGo Security Monitor.<br/>Time (IST): ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}</p>
           </div>
         `
       };

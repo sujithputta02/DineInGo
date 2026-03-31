@@ -971,7 +971,8 @@ export const userAPI = {
       name: userData.name || userData.displayName || userData.email?.split('@')[0] || '',
       photoURL: userData.photoURL || null,
       emailVerified: userData.emailVerified ?? false,
-      referralCode: userData.referralCode
+      referralCode: userData.referralCode,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     };
     let lastError;
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
@@ -1036,7 +1037,11 @@ export const userAPI = {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ uid, loginSource }),
+          body: JSON.stringify({ 
+            uid, 
+            loginSource,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+          }),
         });
 
         if (!response.ok) {
