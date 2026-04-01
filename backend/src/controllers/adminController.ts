@@ -272,7 +272,7 @@ export const getAdmins = async (req: Request, res: Response) => {
 // Add new admin (only for super admin)
 export const addAdmin = async (req: Request, res: Response) => {
   try {
-    const { email } = req.body;
+    const { email, role } = req.body;
 
     if (!email) {
       return res.status(400).json({ 
@@ -309,7 +309,7 @@ export const addAdmin = async (req: Request, res: Response) => {
     // Create new admin
     const newAdmin = await Admin.create({
       email: email.toLowerCase(),
-      role: 'admin',
+      role: role || 'admin',
       isActive: true,
       addedBy: req.admin!.email
     });

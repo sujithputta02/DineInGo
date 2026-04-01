@@ -361,9 +361,9 @@ export const validateAddAdmin = [
     .normalizeEmail()
     .isLength({ max: 255 })
     .withMessage('Email must not exceed 255 characters')
-    .trim()
-    .escape(),
-  body('role')
+    .trim(),
+    body('role')
+    .optional()
     .isIn(['admin', 'super_admin'])
     .withMessage('Role must be either admin or super_admin'),
 ];
