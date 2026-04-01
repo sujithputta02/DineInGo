@@ -126,8 +126,9 @@ const AdminUsersPage: React.FC = () => {
         toast.success(`Generating secure Ghost Session for ${user.displayName || user.email}...`);
         
         // Open a new tab for the impersonated session
-        // We pass the token and target path in the URL
-        const impersonateUrl = `/auth/impersonate?token=${data.token}&uid=${user._id}&role=${user.role}`;
+        // We pass the token and full user context so the handler can pre-seed the session
+        const encodedUser = encodeURIComponent(JSON.stringify(data.user));
+        const impersonateUrl = `/auth/impersonate?token=${data.token}&user=${encodedUser}`;
         window.open(impersonateUrl, '_blank');
       } else {
         toast.error(data.message || 'Failed to generate impersonation token');

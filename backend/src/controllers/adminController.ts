@@ -1756,7 +1756,13 @@ export const impersonateUser = async (req: Request, res: Response) => {
       success: true,
       message: 'Impersonation token generated',
       token: customToken,
-      user: responseUser
+      user: {
+        _id: targetEntity._id,
+        uid: targetEntity.uid,
+        email: targetEntity.email,
+        displayName: (targetEntity as any).name || (targetEntity as any).displayName || targetEntity.email,
+        role: (targetEntity as any).role || 'owner'
+      }
     });
   } catch (error) {
     console.error('Error impersonating user:', error);
