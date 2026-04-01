@@ -37,7 +37,6 @@ export const adminApiRequest = async (
   
   if (!token || isTokenExpired()) {
     clearAdminSession();
-    window.location.href = '/admin-login';
     throw new Error('Session expired. Please login again.');
   }
 
@@ -58,7 +57,6 @@ export const adminApiRequest = async (
     // Handle token expiration
     if (response.status === 401 && data.expired) {
       clearAdminSession();
-      window.location.href = '/admin-login';
       throw new Error('Session expired. Please login again.');
     }
 

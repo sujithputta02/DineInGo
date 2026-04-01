@@ -26,12 +26,10 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) =
       }
     }
     
-    // Give useParams a moment to settle during a hard refresh
-    const timer = setTimeout(() => setIsInitializing(false), 500);
+    // Give useParams and hydration a moment to settle during a hard refresh
+    const timer = setTimeout(() => setIsInitializing(false), 800);
     return () => clearTimeout(timer);
   }, [adminToken, adminLoginTime]);
-
-  const isSessionValid = validateSession(sessionToken);
 
   if (isInitializing) {
     return (
@@ -41,9 +39,11 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) =
     );
   }
 
+  // After initialization, we check the session validity
+  const isSessionValid = validateSession(sessionToken);
+
   if (!adminToken || !isSessionValid) {
-    // SECURITY: Redirect to the secret portal path, not the landing page, to maintain UX
-    // But only if they were trying to access /admin. Otherwise, drop them at the landing page for security.
+    // SECURITY: Redirect to the secret portal path if session is invalid or missing
     return <Navigate to="/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9" replace />;
   }
 
