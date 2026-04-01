@@ -93,15 +93,6 @@ const AdminDashboard: React.FC = () => {
   }, [loading, isInitialLoad]);
 
   useEffect(() => {
-    // Check admin authentication
-    const adminToken = localStorage.getItem('adminToken');
-    const adminEmail = localStorage.getItem('adminEmail');
-    
-    if (!adminToken || !adminEmail) {
-      navigate('/admin-login');
-      return;
-    }
-
     // Initialize Socket.IO connection
     const newSocket = io(API_CONFIG.BASE_URL);
     setSocket(newSocket);

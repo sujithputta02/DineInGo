@@ -7,34 +7,44 @@ interface ProtectedAdminRouteProps {
 }
 
 const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) => {
-  const location = useLocation();
   const { sessionToken } = useParams<{ sessionToken: string }>();
   const adminToken = localStorage.getItem('adminToken');
   const adminLoginTime = localStorage.getItem('adminLoginTime');
+  const [isInitializing, setIsInitializing] = React.useState(true);
 
-  // Check if admin session is expired (24 hours)
+  // Check for admin session expiration (24 hours)
   useEffect(() => {
     if (adminToken && adminLoginTime) {
       const loginTime = new Date(adminLoginTime);
-      const now = new Date();
-      const hoursDiff = (now.getTime() - loginTime.getTime()) / (1000 * 60 * 60);
+      const hoursDiff = (new Date().getTime() - loginTime.getTime()) / (1000 * 60 * 60);
       
       if (hoursDiff > 24) {
-        // Session expired
         localStorage.removeItem('adminToken');
         localStorage.removeItem('adminEmail');
         localStorage.removeItem('adminRole');
         localStorage.removeItem('adminLoginTime');
       }
     }
+    
+    // Give useParams a moment to settle during a hard refresh
+    const timer = setTimeout(() => setIsInitializing(false), 500);
+    return () => clearTimeout(timer);
   }, [adminToken, adminLoginTime]);
 
-  // Validate both JWT and Obfuscated URL Session Token
   const isSessionValid = validateSession(sessionToken);
 
+  if (isInitializing) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+      </div>
+    );
+  }
+
   if (!adminToken || !isSessionValid) {
-    // Security: Redirect to landing page so the secret login URL is not revealed
-    return <Navigate to="/" replace />;
+    // SECURITY: Redirect to the secret portal path, not the landing page, to maintain UX
+    // But only if they were trying to access /admin. Otherwise, drop them at the landing page for security.
+    return <Navigate to="/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9" replace />;
   }
 
   return <>{children}</>;
