@@ -205,37 +205,22 @@ export default function LoginPage() {
         return;
       }
 
-      // Track login activity in our backend
+      // 🛡️ IRON GATE: Step 1 - Bond Identity & Fetch Data in ONE call
+      // We pass the email directly from the form for the fallback lookup
       try {
-        await userAPI.loginUser(user.uid, 'email');
-        localStorage.setItem('lastLoginTracked', Date.now().toString());
-      } catch (error) {
-        console.error('Error tracking login activity:', error);
-      }
+        const loginResponse = await userAPI.loginUser(user.uid, 'email', formData.email);
+        const updatedUserData = loginResponse.data || loginResponse;
+        const token = loginResponse.token || localStorage.getItem('sessionToken') || '';
 
-      // Fetch existing user data from MongoDB first
-      try {
-        const existingData = await userAPI.fetchUserData(user.uid);
-        if (existingData) {
+        if (updatedUserData) {
           // If role is owner/admin, redirect them immediately to business portal
-          if (existingData.role === 'owner' || existingData.role === 'admin') {
+          if (updatedUserData.role === 'owner' || updatedUserData.role === 'admin') {
             toast.info("Registered Owners must use the Business Portal.");
             navigate('/business/businessLogin');
             setIsLoading(false);
             return;
           }
 
-          // Update the existing data with latest profile
-          const updatedUserData = {
-            ...existingData,
-            photoURL: user.photoURL || existingData.photoURL,
-            lastLogin: new Date()
-          };
-
-          await userAPI.updateUser(user.uid, updatedUserData);
-          updateSessionStorage(updatedUserData);
-          const token = createSession(user.uid);
-          
           // PostHog Tracking
           identifyUser(user.uid, { 
             email: user.email, 
@@ -245,7 +230,6 @@ export default function LoginPage() {
           trackEvent('login_success', { method: 'email', role: updatedUserData.role });
           
           // 🛡️ IRON GATE: Smart Routing
-          // Only send them to onboarding if they haven't finished it in our DB
           if (updatedUserData.onboardingCompleted) {
             navigate(`/dashboard/${token}`);
           } else {
@@ -267,7 +251,7 @@ export default function LoginPage() {
            navigate('/signup');
            return;
         }
-        console.error('Error fetching user data from MongoDB:', error);
+        console.error('Error in Iron Gate manual login:', error);
       }
 
       // Fallback for unexpected cases
@@ -326,41 +310,21 @@ export default function LoginPage() {
 
 
 
-      // Track login activity in our backend
+      // 🛡️ IRON GATE: Step 1 - Bond Identity & Fetch Data in ONE call
+      // We pass the email directly from the Google result for fallback lookup
       try {
-        await userAPI.loginUser(user.uid, 'google');
-        localStorage.setItem('lastLoginTracked', Date.now().toString());
-      } catch (error) {
-        console.error('Error tracking Google login activity:', error);
-      }
+        const loginResponse = await userAPI.loginUser(user.uid, 'google', user.email || '');
+        const updatedUserData = loginResponse.data || loginResponse;
+        const token = loginResponse.token || localStorage.getItem('sessionToken') || '';
 
-      // Fetch existing user data from MongoDB first
-      try {
-        const existingData = await userAPI.fetchUserData(user.uid);
-        if (existingData) {
-          // If role is owner/admin, redirect them immediately to business portal
-          if (existingData.role === 'owner' || existingData.role === 'admin') {
+        if (updatedUserData) {
+          if (updatedUserData.role === 'owner' || updatedUserData.role === 'admin') {
             toast.info("Registered Owners must use the Business Portal.");
             navigate('/business/businessLogin');
             setIsGoogleSigningIn(false);
             return;
           }
 
-          // Update the existing data with the latest Google profile picture
-          const updatedUserData = {
-            ...existingData,
-            uid: user.uid,
-            photoURL: user.photoURL || existingData.photoURL,
-            lastLogin: new Date()
-          };
-
-          // Store the updated user data in MongoDB
-          await userAPI.updateUser(user.uid, updatedUserData);
-
-          // Store user data in session storage with helper
-          updateSessionStorage(updatedUserData);
-          const token = createSession(user.uid);
-          
           // PostHog Tracking
           identifyUser(user.uid, { 
             email: user.email, 
@@ -378,7 +342,7 @@ export default function LoginPage() {
           return;
         }
       } catch (error: any) {
-        console.error('Error fetching user data from MongoDB:', error);
+        console.error('Error in Google Iron Gate login:', error);
         // 💎 IRON GATE: Only proceed to "New User" flow if lookup explicitly fails with 404
         if (!error.message?.includes('404')) {
           toast.error("Dino says: Our server is a bit sleepy. Please try again!");

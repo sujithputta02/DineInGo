@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { User, IActivity } from '../models/User';
 import { UserStats } from '../models/UserStats';
+import { UserPreference } from '../models/UserPreference';
 import UserNotification from '../models/UserNotification';
 import AllUserNotification from '../models/AllUserNotification';
 import { emailService } from '../services/emailService';
@@ -205,6 +206,16 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
+    // 🛡️ AUTO-SEAL LOGIC: Proactively mark veteran accounts as onboarding complete
+    if (user.onboardingCompleted === false) {
+      // Check if they have preferences or activity history
+      const hasPrefs = await UserPreference.exists({ userId: user.uid });
+      if (hasPrefs || user.activities.length > 5) {
+        console.log(`[IronGate] Veteran Identity Detected! Auto-sealing onboarding for: ${user.email}`);
+        user.onboardingCompleted = true;
+      }
+    }
+
     // Update login status and activity
     user.lastLogin = new Date();
     if (timezone) user.timezone = timezone;
@@ -302,6 +313,18 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
 
     const user = await User.findOne({ uid: id });
     if (!user) {
+      // 🛡️ IRON GATE: Step 2 - Fallback to Email if UID lookup fails
+      // This catches users who signed up with Email but are logging in with Google (different UIDs)
+      const email = req.query.email as string;
+      if (email) {
+        const fallbackUser = await User.findOne({ email: email.toLowerCase() });
+        if (fallbackUser) {
+          fallbackUser.uid = id;
+          await fallbackUser.save();
+          res.json(fallbackUser);
+          return;
+        }
+      }
       res.status(404).json({ message: 'User not found' });
       return;
     }

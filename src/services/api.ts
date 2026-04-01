@@ -1042,11 +1042,11 @@ export const userAPI = {
     throw new Error(handleApiError(lastError));
   },
 
-  loginUser: async (uid: string, loginSource: string = 'email') => {
+  loginUser: async (uid: string, loginSource: string = 'email', email?: string) => {
     // This is a public endpoint but we send the payload directly
     return apiRequest(`${API_URL}/api/v1/users/login`, 'POST', { 
       uid, 
-      email: auth.currentUser?.email || '', 
+      email: email || auth.currentUser?.email || '', 
       loginSource,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     });
