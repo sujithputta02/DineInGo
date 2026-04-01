@@ -61,7 +61,7 @@ const AdminSchema = new Schema<IAdmin>({
     type: Date
   },
   timezone: {
-    type: String,
+    type: Schema.Types.String,
     default: 'Asia/Kolkata'
   },
   permissions: {
