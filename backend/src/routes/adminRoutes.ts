@@ -19,6 +19,7 @@ import {
   getSecurityLogs,
   getBlockedIPs,
   unblockIP,
+  blockIP,
   getWaitlistStats,
   sendWaitlistBroadcast,
   getWaitlistSignups,
@@ -128,6 +129,7 @@ router.get('/security/stats', adminApiLimiter, verifyAdminToken, verifySuperAdmi
 router.get('/security/logs', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getSecurityLogs);
 router.get('/security/blocked-ips', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getBlockedIPs);
 router.post('/security/unblock-ip', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, unblockIP);
+router.post('/security/block-ip', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, blockIP);
 
 // Maintenance mode routes
 router.post('/maintenance-mode', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleMaintenanceMode);
