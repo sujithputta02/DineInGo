@@ -1,32 +1,30 @@
-# SECURITY: DineInGo Platinum Tier Certification 💎🛡️
+# SECURITY: Industry Standard References 🛡️🏛️
 
-This document outlines the security architecture and defensive measures implemented for the DineInGo platform. As of **April 2026**, the system is certified as **Platinum Tier** and follows Industry-Standard best practices for data integrity and identity protection.
+This document provides general security references and industry-standard frameworks used for the development and security posture of the DineInGo platform.
 
-## 🏆 Security Pillars
+## 🏛️ Security Framework References
 
-### 👮‍♂️ 1. Identity Guard (Auth Integrity)
-Every request to the Customer, Business, and Admin APIs is cryptographically verified.
-- **Firebase Identity Verification**: Backend uses `firebase-admin` to proof every request's digital signature via `userAuth.ts`.
-- **Isolated Admin Auth**: Administrative portal uses a decoupled JWT + OTP (One-Time Password) system with a **15-minute brute-force lockout**.
-- **Ghost Login Protection**: Impersonation is strictly restricted to Super Admins or delegated trusted admins, with immediate automated session termination (20 mins).
+DineInGo architecture and security measures align with the following global security benchmarks:
 
-### 🔒 2. Data Integrity (Logic Isolation)
-- **Mass Assignment Prevention**: All controllers (`userController`, `restaurantController`) use strict **Field Whitelisting**. Prohibited fields like `isAdmin` or `rating` are ignored if sent from the client.
-- **Ownership Guard**: User-to-User isolation is enforced. A user can **only** interact with data matching their verified `uid`.
-- **NoSQL Injection Guard**: Global `mongoSanitize` middleware prevents operator injection attacks.
+### 1. OWASP Top 10 (2021)
+The industry standard for web application security. We prioritize the mitigation of the top critical risks defined in this framework.
+- **Reference**: [OWASP Top 10 Official Documentation](https://owasp.org/www-project-top-ten/)
 
-### 🛰️ 3. Infrastructure Shield (Perimeter Defense)
-- **Strict CSP**: Content Security Policy blocks XSS and unauthorized data injection.
-- **HSTS Enforcement**: Forces HTTPS connection for all users, including subdomains.
-- **Permissions-Policy**: Disables sensitive browser features (Camera, Microphone) unless explicitly required for business logic.
+### 2. OWASP ASVS (Application Security Verification Standard)
+A comprehensive list of security requirements and controls for designing, developing, and testing secure web applications.
+- **Reference**: [OWASP ASVS Project](https://owasp.org/www-project-application-security-verification-standard/)
 
-### ⚡ 4. Resource Protection (Anti-Abuse)
-- **Strict AI Limiter**: Prevents Gemini-powered routes from resource exhaustion attacks (3 req/min).
-- **Security Audit Logs**: Real-time logging of all security events (`impersonation_start`, `failed_login`, `rate_limit_exceeded`) into the `SecurityLog` collection.
+### 3. NIST Cybersecurity Framework (CSF)
+A set of guidelines for mitigating organizational cybersecurity risks, published by the U.S. National Institute of Standards and Technology.
+- **Reference**: [NIST CSF Official Site](https://www.nist.gov/cyberframework)
+
+### 4. CWE (Common Weakness Enumeration)
+A community-developed list of common software and hardware security weaknesses.
+- **Reference**: [CWE List](https://cwe.mitre.org/)
 
 ---
 
 ## 🛡️ Responsible Disclosure
-If you discover a security vulnerability in this project, please report it immediately via the official security contact.
+If you discover a security vulnerability, please report it immediately via the official security contact for professional review and remediation.
 
 **DineInGo: Secure by Design. Battle-Ready.** 🚀🛡️💎
