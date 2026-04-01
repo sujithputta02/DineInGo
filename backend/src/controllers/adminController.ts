@@ -239,24 +239,36 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
 // Get all admins (only for super admin)
 export const getAdmins = async (req: Request, res: Response) => {
   try {
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
     // Admin is already verified by middleware (verifySuperAdmin)
     // req.admin contains the authenticated admin's data
     
-    const admins = await Admin.find({}, { 
-      email: 1, 
-      role: 1, 
-      isActive: 1, 
-      addedBy: 1, 
-      createdAt: 1, 
-      lastLogin: 1 
-    }).sort({ createdAt: -1 });
+    const [admins, totalCount] = await Promise.all([
+      Admin.find({}, { 
+        email: 1, 
+        role: 1, 
+        isActive: 1, 
+        addedBy: 1, 
+        createdAt: 1, 
+        lastLogin: 1 
+      }).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Admin.countDocuments({})
+    ]);
 
     const settings = await getSystemSettings();
 
     res.json({ 
       success: true, 
       admins,
-      totalCount: admins.length,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(totalCount / Number(limit)),
+        totalCount,
+        hasNext: skip + Number(limit) < totalCount,
+        hasPrev: Number(page) > 1
+      },
       maxAdmins: settings.maxAdmins
     });
 

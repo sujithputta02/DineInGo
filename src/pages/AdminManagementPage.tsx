@@ -15,9 +15,19 @@ import {
   Plus,
   RefreshCw,
   Crown,
-  Ghost
+  Ghost,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { adminApi } from '../utils/adminApi';
+
+interface Pagination {
+  currentPage: number;
+  totalPages: number;
+  totalCount: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}
 
 interface Admin {
   email: string;
@@ -42,6 +52,8 @@ const AdminManagementPage: React.FC = () => {
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [maxAdmins, setMaxAdmins] = useState(5);
   const [totalCount, setTotalCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
   const [showCapacityModal, setShowCapacityModal] = useState(false);
   const [newMaxAdmins, setNewMaxAdmins] = useState(5);
 
@@ -55,17 +67,21 @@ const AdminManagementPage: React.FC = () => {
       return;
     }
     loadAdmins();
-  }, [navigate, currentAdminRole]);
+  }, [navigate, currentAdminRole, currentPage]);
 
   const loadAdmins = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const data = await adminApi.getAdmins();
+      const data = await adminApi.getAdmins({
+        page: currentPage,
+        limit: 10
+      });
 
       setAdmins(data.admins);
-      setTotalCount(data.totalCount);
+      setPagination(data.pagination);
+      setTotalCount(data.pagination.totalCount);
       setMaxAdmins(data.maxAdmins);
       setNewMaxAdmins(data.maxAdmins);
     } catch (err: any) {
@@ -552,6 +568,68 @@ const AdminManagementPage: React.FC = () => {
             </div>
           ))}
         </div>
+
+        {/* Pagination */}
+        {pagination && pagination.totalPages > 1 && (
+          <div className="p-4 sm:p-6 border-t border-slate-200 bg-slate-50/50">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="text-sm text-slate-500 font-medium">
+                Showing <span className="text-slate-900">{(pagination.currentPage - 1) * 10 + 1}</span> to{' '}
+                <span className="text-slate-900">
+                  {Math.min(pagination.currentPage * 10, pagination.totalCount)}
+                </span>{' '}
+                of <span className="text-slate-900">{pagination.totalCount}</span> admins
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    if (pagination.hasPrev) {
+                      setCurrentPage(prev => prev - 1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  disabled={!pagination.hasPrev}
+                  className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-all shadow-sm"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+
+                <div className="flex items-center gap-1.5">
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => {
+                        setCurrentPage(page);
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                      }}
+                      className={`w-9 h-9 rounded-xl text-sm font-semibold transition-all ${
+                        pagination.currentPage === page
+                          ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => {
+                    if (pagination.hasNext) {
+                      setCurrentPage(prev => prev + 1);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }
+                  }}
+                  disabled={!pagination.hasNext}
+                  className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-all shadow-sm"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {admins.length === 0 && (
           <div className="text-center py-12">

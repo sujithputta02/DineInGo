@@ -17,7 +17,9 @@ import {
   CheckCircle,
   Clock,
   RefreshCw,
-  LogIn
+  LogIn,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { createSession } from '../utils/sessionGuard';
@@ -180,6 +182,87 @@ const AdminUsersPage: React.FC = () => {
     );
   };
 
+  const PaginationControls = () => {
+    if (!pagination || pagination.totalPages <= 1) return null;
+
+    const renderPageNumbers = () => {
+      const pages = [];
+      const { currentPage, totalPages } = pagination;
+      
+      // Determine range of pages to show
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = Math.min(totalPages, startPage + 4);
+      
+      if (endPage - startPage < 4) {
+        startPage = Math.max(1, endPage - 4);
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        pages.push(
+          <button
+            key={i}
+            onClick={() => {
+              setCurrentPage(i);
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`w-10 h-10 rounded-xl text-sm font-semibold transition-all ${
+              currentPage === i
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30 ring-2 ring-blue-500 ring-offset-2'
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+            }`}
+          >
+            {i}
+          </button>
+        );
+      }
+      return pages;
+    };
+
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-12 pb-8">
+        <div className="text-sm text-slate-500 font-medium">
+          Showing <span className="text-slate-900">{(pagination.currentPage - 1) * 20 + 1}</span> to{' '}
+          <span className="text-slate-900">
+            {Math.min(pagination.currentPage * 20, pagination.totalUsers)}
+          </span>{' '}
+          of <span className="text-slate-900">{pagination.totalUsers}</span> users
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              if (pagination.hasPrev) {
+                setCurrentPage(prev => prev - 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            disabled={!pagination.hasPrev}
+            className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white transition-all"
+          >
+            <ChevronLeft size={20} />
+          </button>
+
+          <div className="flex items-center gap-2">
+            {renderPageNumbers()}
+          </div>
+
+          <button
+            onClick={() => {
+              if (pagination.hasNext) {
+                setCurrentPage(prev => prev + 1);
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+            disabled={!pagination.hasNext}
+            className="p-2.5 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-white transition-all"
+          >
+            <ChevronRight size={20} />
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   const UserCard = ({ user }: { user: User }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -321,6 +404,8 @@ const AdminUsersPage: React.FC = () => {
           <h3 className="text-lg font-semibold text-slate-900 mb-2">No users found</h3>
         </div>
       )}
+
+      <PaginationControls />
     </div>
   );
 };

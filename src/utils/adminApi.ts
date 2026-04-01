@@ -116,7 +116,10 @@ export const adminApi = {
   getNotificationStats: () => adminApiRequest('/api/v1/admin/notification-stats'),
 
   // Admin team management (Super admin only)
-  getAdmins: () => adminApiRequest('/api/v1/admin/list'),
+  getAdmins: (params: { page?: number; limit?: number } = {}) => {
+    const query = new URLSearchParams(params as any).toString();
+    return adminApiRequest(`/api/v1/admin/list?${query}`);
+  },
   addAdmin: (email: string) =>
     adminApiRequest('/api/v1/admin/add', {
       method: 'POST',
