@@ -14,6 +14,7 @@ interface AuthContextType {
   currentUser: User | null;
   signOut: () => Promise<void>;
   isAuthenticated: boolean;
+  isInitialized: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -30,6 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(user => {
@@ -50,6 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       setLoading(false);
+      setIsInitialized(true);
     }, (error) => {
       console.error('[DineInGo] Auth State Change Error:', error);
       if (error.message?.includes('400') || error.message?.includes('identitytoolkit')) {
@@ -59,6 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
       setLoading(false);
+      setIsInitialized(true);
     });
 
     return unsubscribe;
@@ -78,13 +82,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     currentUser,
     signOut,
-    isAuthenticated
+    isAuthenticated,
+    isInitialized
   };
 
   return (
     <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
+
   );
 };
 

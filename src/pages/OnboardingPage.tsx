@@ -203,7 +203,7 @@ const OnboardingPage: React.FC = () => {
             } else {
                 console.warn("Could not fetch fresh user token after onboarding");
                 // Fallback attempt with existing session if available
-                const storedUser = sessionStorage.getItem('userData');
+                const storedUser = localStorage.getItem('userData');
                 const token = storedUser ? JSON.parse(storedUser).token : null;
                 
                 setTimeout(() => {
@@ -222,7 +222,7 @@ const OnboardingPage: React.FC = () => {
             try {
                 const freshUser = await userAPI.fetchUserData(currentUser.uid);
                 if (freshUser && freshUser.token) {
-                    sessionStorage.setItem('userData', JSON.stringify(freshUser));
+                    localStorage.setItem('userData', JSON.stringify(freshUser));
                     navigate(`/dashboard/${freshUser.token}`, { replace: true });
                     return;
                 }
@@ -230,7 +230,7 @@ const OnboardingPage: React.FC = () => {
                 console.error("Fallback fetch failed:", e);
             }
 
-            const storedUser = sessionStorage.getItem('userData');
+            const storedUser = localStorage.getItem('userData');
             const token = storedUser ? JSON.parse(storedUser).token : null;
             if (token) {
                 navigate(`/dashboard/${token}`, { replace: true });

@@ -1,73 +1,48 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../firebase';
 import { toast } from 'react-toastify';
 import { Analytics } from '@vercel/analytics/react';
 import GhostBanner from './GhostBanner';
+import { useAuth } from '../contexts/AuthContext';
 
 const CustomerRoute: React.FC = () => {
-    const [loading, setLoading] = useState(true);
-    const [shouldRedirect, setShouldRedirect] = useState(false);
+    const { currentUser, isInitialized } = useAuth();
+    const storedUser = localStorage.getItem('userData');
+    
+    // While initializing Firebase, show nothing or a light loader to prevent flicker
+    if (!isInitialized) return null;
 
-    useEffect(() => {
-        // Check localStorage first for immediate feedback
-        const checkUserRole = () => {
-            const storedUser = localStorage.getItem('userData');
-            if (storedUser) {
-                const user = JSON.parse(storedUser);
-                if (user.role === 'owner') {
-                    setShouldRedirect(true);
-                    setLoading(false);
-                    return;
-                }
-            } else {
-                // If NO session data, we must redirect to login for vetting
-                // BUT we wait for onAuthStateChanged to be sure we're actually logged in
-            }
-            setLoading(false);
-        };
-
-        checkUserRole();
-
-        // Also listen to auth state to be safe, though session is faster
-        const unsubscribe = onAuthStateChanged(auth, async (user) => {
-            if (user) {
-                const storedUser = localStorage.getItem('userData');
-                if (storedUser) {
-                    const parsed = JSON.parse(storedUser);
-                    if (parsed.role === 'owner' && parsed.uid === user.uid) {
-                        setShouldRedirect(true);
-                    }
-                } else {
-                   // Logged in to Firebase but NO session data — DANGEROUS BYPASS
-                   console.log("CustomerRoute: Missing session data, forcing re-vetting...");
-                   setShouldRedirect(true); // Effectively force a redirect
-                }
-            }
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
-
-    if (loading) return null; // Or a spinner
-
-    if (shouldRedirect) {
-        const storedUser = localStorage.getItem('userData');
-        const parsed = storedUser ? JSON.parse(storedUser) : null;
-        
-        if (parsed?.role === 'owner' || parsed?.role === 'admin') {
-            toast.info("Registered Owners must use the Business Portal.");
-            return <Navigate to="/business/businessLogin" replace />;
-        }
-        
-        // If it was a missing session data redirect, go to main login
+    // 1. 🛡️ IRON GATE: No Identity -> Force Login
+    if (!currentUser) {
+        console.log("CustomerRoute: No Firebase identity detected.");
         return <Navigate to="/login" replace />;
     }
 
-    const userDataRaw = localStorage.getItem('userData');
-    const isGhosting = userDataRaw ? JSON.parse(userDataRaw).impersonated : false;
+    // 2. 🛡️ SESSION GATE: No vetted session data -> Force Re-Vetting
+    if (!storedUser) {
+        console.log("CustomerRoute: Missing session data, forcing re-vetting...");
+        return <Navigate to="/login" replace />;
+    }
+
+    const parsedUser = JSON.parse(storedUser);
+
+    // 3. 🛡️ ROLE GATE: Owners/Admins belong in the Business Portal
+    if (parsedUser.role === 'owner' || parsedUser.role === 'admin' || parsedUser.isAdmin) {
+        // Only redirect if they aren't purposely impersonated (ghosting)
+        if (!parsedUser.impersonated) {
+            toast.info("Registered Owners must use the Business Portal.");
+            return <Navigate to="/business/businessLogin" replace />;
+        }
+    }
+
+    // 4. 🛡️ CONSISTENCY GATE: Check for identity mismatch (Stale Session Protection)
+    if (parsedUser.uid !== currentUser.uid) {
+        console.warn("CustomerRoute: Identity mismatch (Stale Session) detected!");
+        localStorage.removeItem('userData');
+        return <Navigate to="/login" replace />;
+    }
+
+    const isGhosting = parsedUser.impersonated || false;
 
     return (
         <div className={isGhosting ? 'pt-10' : ''}>
@@ -79,3 +54,4 @@ const CustomerRoute: React.FC = () => {
 };
 
 export default CustomerRoute;
+
