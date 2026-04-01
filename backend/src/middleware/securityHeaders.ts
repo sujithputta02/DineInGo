@@ -15,25 +15,24 @@ import helmet from 'helmet';
  * Configure Helmet for security headers
  */
 export const securityHeaders = helmet({
-  // Content Security Policy
+  // Content Security Policy: Strict configuration for production
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net'],
+      scriptSrc: ["'self'", "'unsafe-inline'", 'cdn.jsdelivr.net', 'https://www.gstatic.com', 'https://apis.google.com'],
       styleSrc: ["'self'", "'unsafe-inline'", 'fonts.googleapis.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'],
       fontSrc: ["'self'", 'fonts.gstatic.com'],
-      connectSrc: ["'self'", 'https:', 'ws:', 'wss:'],
-      frameSrc: ["'none'"],
+      connectSrc: ["'self'", 'https:', 'ws:', 'wss:', 'https://*.firebaseio.com', 'https://*.googleapis.com'],
+      frameSrc: ["'self'", 'https://*.firebaseapp.com'],
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
-      childSrc: ["'none'"],
+      upgradeInsecureRequests: [],
     },
   },
   
-  // Prevent clickjacking attacks
+  // Prevent clickjacking attacks: Only allow our own site to frame content
   frameguard: {
-    action: 'deny',
+    action: 'sameorigin',
   },
   
   // Prevent MIME type sniffing
@@ -42,55 +41,56 @@ export const securityHeaders = helmet({
   // Enable XSS protection
   xssFilter: true,
   
-  // Enforce HTTPS
+  // Enforce HTTPS across all subdomains for 1 year
   hsts: {
-    maxAge: 31536000, // 1 year
+    maxAge: 31536000, 
     includeSubDomains: true,
     preload: true,
   },
   
-  // Disable referrer policy
+  // Referrer Policy: Send origin only on cross-origin requests
   referrerPolicy: {
     policy: 'strict-origin-when-cross-origin',
   },
   
-  // Allow cross-origin resource loading (required for images on Vercel)
+  // Allow cross-origin resource loading for images (Cloudinary/Vercel compatibility)
   crossOriginResourcePolicy: { 
     policy: 'cross-origin' 
   },
-} as any);
+});
 
 /**
  * Custom security headers middleware
+ * Adds additional protections not covered by default Helmet
  */
 export const customSecurityHeaders = (req: Request, res: Response, next: NextFunction) => {
   // Prevent browsers from MIME-sniffing
   res.setHeader('X-Content-Type-Options', 'nosniff');
   
-  // Prevent clickjacking
-  res.setHeader('X-Frame-Options', 'DENY');
+  // Security Policy for Browser Features (Camera, Mic, etc.)
+  // We only allow Geolocation as it's needed for restaurant discovery
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), interest-cohort=()');
   
-  // Enable XSS protection
-  res.setHeader('X-XSS-Protection', '1; mode=block');
+  // Ensure strict transport for older browsers
+  if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+  }
   
-  // Disable client-side caching for sensitive data
+  // Disable client-side caching for sensitive API data
   res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   
-  // Remove server information
+  // Remove server/tech stack information to prevent fingerprinting
   res.removeHeader('Server');
   res.removeHeader('X-Powered-By');
-  
-  // Add custom security headers
-  res.setHeader('X-Content-Security-Policy', "default-src 'self'");
   
   next();
 };
 
 /**
  * CORS configuration
- * Restrict cross-origin requests
+ * Strictly whitelist allowed origins
  */
 export const corsConfig = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
@@ -100,33 +100,29 @@ export const corsConfig = {
       'http://localhost:5001',
       'http://localhost:6173',
       'https://dine-in-go.vercel.app',
+      'https://dineingo-beta.vercel.app',
       'https://dineingo-backend.onrender.com',
       process.env.FRONTEND_URL,
       process.env.ADMIN_URL,
-      process.env.CLIENT_URL
+      process.env.BUSINESS_URL
     ];
 
-    // Normalize: remove trailing slashes from all allowed origins
     const allowedOrigins = rawOrigins
       .filter(Boolean)
       .map(url => url?.replace(/\/$/, '').toLowerCase());
 
-    // Normalize: remove trailing slash from incoming origin and lowercase it
     const normalizedOrigin = origin?.replace(/\/$/, '').toLowerCase();
-
-    console.log(`[CORS] Request from origin: ${origin} (Normalized: ${normalizedOrigin})`);
-    console.log(`[CORS] Allowed origins:`, allowedOrigins);
 
     if (!origin || allowedOrigins.includes(normalizedOrigin)) {
       callback(null, true);
     } else {
-      console.warn(`[CORS] Blocked origin: ${origin}`);
-      callback(new Error('Not allowed by CORS'));
+      console.warn(`[CORS] Security violation: Blocked request from ${origin}`);
+      callback(new Error('Restricted by CORS Policy'));
     }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Admin-Token'],
   maxAge: 86400, // 24 hours
 };
 

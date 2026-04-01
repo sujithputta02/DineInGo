@@ -1,13 +1,14 @@
 import express, { Request, Response } from 'express';
 import { aiRecommendationService } from '../services/aiRecommendationService';
+import { strictAiLimiter } from '../middleware/rateLimiter';
 
 const router = express.Router();
 
 /**
- * GET /api/v1/recommendations/ai
+ * POST /api/v1/recommendations/ai
  * AI-powered reasoning for recommendations
  */
-router.post('/ai', async (req: Request, res: Response) => {
+router.post('/ai', strictAiLimiter, async (req: Request, res: Response) => {
   try {
     const { userId, items, userContext, language, refresh } = req.body;
 

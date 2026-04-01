@@ -192,6 +192,31 @@ export const adminOtpLimiter = rateLimit({
 });
 
 /**
+ * Strict Rate Limiter for AI/Chatbot Endpoints
+ * 3 requests per minute per IP/User
+ * Prevents AI resource exhaustion and billing abuse
+ */
+export const strictAiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 3,
+  message: 'AI request limit reached. Please wait a moment before sending more messages.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req: Request) => {
+    // Use user ID if authenticated, otherwise use IP
+    return (req as any).user?.uid || (req as any).user?._id || getClientIp(req);
+  },
+  handler: (req: Request, res: Response) => {
+    logSecurityEvent(req, 'system', 'AI strict rate limit reached - Budget Protection triggered');
+    res.status(429).json({
+      success: false,
+      message: 'Too many AI requests. Please wait a minute.',
+      retryAfter: (req as any).rateLimit?.resetTime
+    });
+  }
+});
+
+/**
  * Admin Login Rate Limiter
  * 5 requests per 15 minutes per IP
  * Prevents brute force attacks on admin login
@@ -309,5 +334,6 @@ export default {
   adminApiLimiter,
   businessRegistrationLimiter,
   businessApiLimiter,
-  businessUpdateLimiter
+  businessUpdateLimiter,
+  strictAiLimiter
 };

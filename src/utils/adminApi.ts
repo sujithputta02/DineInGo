@@ -132,6 +132,11 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ adminEmail }),
     }),
+  toggleImpersonationPermission: (adminEmail: string) =>
+    adminApiRequest('/api/v1/admin/toggle-impersonation-permission', {
+      method: 'PATCH',
+      body: JSON.stringify({ adminEmail }),
+    }),
   updateMaxAdmins: (maxAdmins: number) =>
     adminApiRequest('/api/v1/admin/update-max-admins', {
       method: 'PATCH',

@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { auth } from '../firebase';
 import { toast } from 'react-toastify';
 import DineInGoLogo from '../components/DineInGoLogo';
+import GhostBanner from '../components/GhostBanner';
 import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { getSessionToken } from '../utils/sessionGuard';
@@ -35,6 +36,9 @@ const BusinessLayout: React.FC = () => {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    const userDataRaw = localStorage.getItem('userData');
+    const isGhosting = userDataRaw ? JSON.parse(userDataRaw).impersonated : false;
 
     const sessionToken = getSessionToken();
 
@@ -72,9 +76,10 @@ const BusinessLayout: React.FC = () => {
     };
 
     return (
-        <div className="min-h-screen bg-slate-50 flex">
+        <div className={`min-h-screen bg-slate-50 flex ${isGhosting ? 'pt-12 sm:pt-10' : ''}`}>
+            <GhostBanner />
             {/* Sidebar for Desktop */}
-            <aside className="hidden md:flex flex-col w-64 bg-slate-900 text-white fixed h-full z-20">
+            <aside className={`hidden md:flex flex-col w-64 bg-slate-900 text-white fixed h-full z-20 transition-all duration-300 ${isGhosting ? 'top-10 sm:top-10 h-[calc(100%-40px)]' : 'top-0'}`}>
                 <div className="p-4 md:p-6 border-b border-slate-800 flex flex-col gap-1">
                     <Link to={`/business/app/dashboard/${sessionToken}`} className="flex items-center gap-2">
                         <DineInGoLogo size="small" color="#ffffff" />
@@ -130,7 +135,7 @@ const BusinessLayout: React.FC = () => {
             {/* Main Content Area */}
             <div className="flex-1 md:ml-64 flex flex-col">
                 {/* Top Header */}
-                <header className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-2 md:py-4 flex items-center justify-between">
+                <header className={`sticky z-10 bg-white/80 backdrop-blur-md border-b border-slate-200 px-3 md:px-6 py-2 md:py-4 flex items-center justify-between transition-all duration-300 ${isGhosting ? 'top-10' : 'top-0'}`}>
                     {/* Search / Breadcrumbs placeholder */}
                     <div className="hidden lg:flex items-center gap-3 bg-slate-100 px-4 py-2 rounded-2xl w-64 xl:w-96 border border-slate-200">
                         <Search size={18} className="text-slate-400 font-bold" />
@@ -270,7 +275,9 @@ const BusinessLayout: React.FC = () => {
                                     <p className="text-xs font-bold text-slate-900 leading-tight">
                                         {currentUser?.displayName || 'Business Owner'}
                                     </p>
-                                    <p className="text-[10px] text-slate-500">Administrator</p>
+                                    <p className={`text-[10px] font-bold ${isGhosting ? 'text-red-500' : 'text-slate-500'}`}>
+                                        {isGhosting ? 'Ghost Session' : 'Administrator'}
+                                    </p>
                                 </div>
                                 <ChevronDown size={14} className={`text-slate-400 transition-transform hidden md:block ${isProfileOpen ? 'rotate-180' : ''}`} />
                             </button>

@@ -10,6 +10,9 @@ export interface IAdmin extends Document {
   loginAttempts: number;
   lockUntil?: Date;
   timezone?: string;
+  permissions: {
+    canImpersonate: boolean;
+  };
 }
 
 export interface IAdminOTP extends Document {
@@ -58,8 +61,13 @@ const AdminSchema = new Schema<IAdmin>({
     type: Date
   },
   timezone: {
-    type: String,
     default: 'Asia/Kolkata'
+  },
+  permissions: {
+    canImpersonate: {
+      type: Boolean,
+      default: false
+    }
   }
 });
 

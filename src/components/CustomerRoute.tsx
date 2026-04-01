@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { auth } from '../firebase';
 import { toast } from 'react-toastify';
 import { Analytics } from '@vercel/analytics/react';
+import GhostBanner from './GhostBanner';
 
 const CustomerRoute: React.FC = () => {
     const [loading, setLoading] = useState(true);
@@ -65,11 +66,15 @@ const CustomerRoute: React.FC = () => {
         return <Navigate to="/login" replace />;
     }
 
+    const userDataRaw = localStorage.getItem('userData');
+    const isGhosting = userDataRaw ? JSON.parse(userDataRaw).impersonated : false;
+
     return (
-        <>
+        <div className={isGhosting ? 'pt-10' : ''}>
+            <GhostBanner />
             <Outlet />
             <Analytics />
-        </>
+        </div>
     );
 };
 

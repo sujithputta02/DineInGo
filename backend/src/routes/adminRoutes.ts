@@ -25,7 +25,8 @@ import {
   getWaitlistSignups,
   updateWaitlistStatus,
   triggerForceRefresh,
-  impersonateUser
+  impersonateUser,
+  toggleImpersonationPermission
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -105,7 +106,7 @@ router.get('/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getAdmin
 // User management
 router.get('/users', adminApiLimiter, verifyAdminToken, logAdminAction, getAllUsers);
 router.patch('/users/toggle-status', adminApiLimiter, verifyAdminToken, logAdminAction, validateAdminUserStatusToggle, handleValidationErrors, toggleUserStatus);
-router.post('/users/:id/impersonate', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, impersonateUser);
+router.post('/users/:id/impersonate', adminApiLimiter, verifyAdminToken, logAdminAction, impersonateUser);
 
 // Business management
 router.get('/businesses', adminApiLimiter, verifyAdminToken, logAdminAction, getAllBusinesses);
@@ -120,6 +121,7 @@ router.get('/list', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdmi
 router.post('/add', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, validateAddAdmin, handleValidationErrors, addAdmin);
 router.delete('/remove', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, validateRemoveAdmin, handleValidationErrors, removeAdmin);
 router.patch('/toggle-status', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleAdminStatus);
+router.patch('/toggle-impersonation-permission', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleImpersonationPermission);
 router.patch('/update-max-admins', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, updateMaxAdmins);
 
 // System health routes

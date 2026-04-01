@@ -65,11 +65,15 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+  // SECURITY: Get Firebase ID Token for identity verification
+  const token = await getAuthToken();
+  
   const defaultOptions: RequestInit = {
     method,
     headers: {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
     },
     signal: controller.signal,
     mode: 'cors',
@@ -355,9 +359,15 @@ export const businessApi = {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for file uploads
 
+    // SECURITY: Get Auth Token for business creation
+    const token = await getAuthToken();
+
     try {
       const response = await fetch(`${API_URL}/api/v1/business`, {
         method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         body: formData,
         signal: controller.signal,
         mode: 'cors',
@@ -438,9 +448,15 @@ export const businessApi = {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for file uploads
 
+    // SECURITY: Get Auth Token for business update
+    const token = await getAuthToken();
+
     try {
       const response = await fetch(`${API_URL}/api/v1/business/${id}`, {
         method: 'PUT',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
         body: formData,
         signal: controller.signal,
         mode: 'cors',

@@ -26,6 +26,7 @@ import { adminApi } from '../utils/adminApi';
 
 interface User {
   _id: string;
+  uid: string; // Firebase UID
   displayName: string;
   name: string;
   email: string;
@@ -52,6 +53,26 @@ const AdminUsersPage: React.FC = () => {
   const [pagination, setPagination] = useState<Pagination | null>(null);
   const [socket, setSocket] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [activeGhostUid, setActiveGhostUid] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Check for active ghost session every few seconds
+    const checkGhost = () => {
+      const userDataRaw = localStorage.getItem('userData');
+      if (userDataRaw) {
+        const userData = JSON.parse(userDataRaw);
+        if (userData.impersonated) {
+          setActiveGhostUid(userData.uid);
+          return;
+        }
+      }
+      setActiveGhostUid(null);
+    };
+
+    checkGhost();
+    const interval = setInterval(checkGhost, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     // Initialize Socket.IO connection
@@ -64,7 +85,6 @@ const AdminUsersPage: React.FC = () => {
     // Set up real-time listeners
     newSocket.on('userStatusChanged', (data) => {
       console.log('User status changed:', data);
-      // Update the user in the list
       setUsers(prev => prev.map(user => 
         user._id === data.userId 
           ? { ...user, role: data.isActive ? 'customer' : 'admin' }
@@ -102,16 +122,11 @@ const AdminUsersPage: React.FC = () => {
     try {
       setActionLoading(userId);
       const data = await adminApi.toggleUserStatus(userId);
-      
       if (data.success) {
-        // Update will be handled by socket event
         console.log('User status updated:', data.message);
-      } else {
-        alert(data.message || 'Failed to update user status');
       }
     } catch (error: any) {
-      console.error('Error toggling user status:', error);
-      alert(error.message || 'Failed to update user status');
+      toast.error(error.message || 'Failed to update user status');
     } finally {
       setActionLoading(null);
     }
@@ -124,9 +139,6 @@ const AdminUsersPage: React.FC = () => {
       
       if (data.success) {
         toast.success(`Generating secure Ghost Session for ${user.displayName || user.email}...`);
-        
-        // Open a new tab for the impersonated session
-        // We pass the token and full user context so the handler can pre-seed the session
         const encodedUser = encodeURIComponent(JSON.stringify(data.user));
         const impersonateUrl = `/auth/impersonate?token=${data.token}&user=${encodedUser}`;
         window.open(impersonateUrl, '_blank');
@@ -134,50 +146,38 @@ const AdminUsersPage: React.FC = () => {
         toast.error(data.message || 'Failed to generate impersonation token');
       }
     } catch (error: any) {
-      console.error('Error during Ghost Login:', error);
       toast.error(error.message || 'Failed to initiate Ghost Login');
     } finally {
       setActionLoading(null);
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setCurrentPage(1);
-    loadUsers();
-  };
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   const getStatusBadge = (user: User) => {
-    const isActive = user.role !== 'admin';
-    if (isActive) {
+    const isCurrentlyGhosted = activeGhostUid === user.uid;
+    
+    if (isCurrentlyGhosted) {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-bold bg-purple-600 text-white rounded-full animate-pulse shadow-lg shadow-purple-500/20">
+          <Clock size={12} className="animate-spin-slow" />
+          Active Ghost
+        </span>
+      );
+    }
+
+    if (user.role !== 'admin') {
       return (
         <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
           <CheckCircle size={12} />
           Active
         </span>
       );
-    } else {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-          <AlertTriangle size={12} />
-          Inactive
-        </span>
-      );
     }
+    return (
+      <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+        <AlertTriangle size={12} />
+        Inactive
+      </span>
+    );
   };
 
   const UserCard = ({ user }: { user: User }) => (
@@ -193,7 +193,7 @@ const AdminUsersPage: React.FC = () => {
           </div>
           <div>
             <h3 className="font-semibold text-slate-900">{user.displayName || user.name || 'No Name'}</h3>
-            <p className="text-sm text-slate-600">{user.email}</p>
+            <p className="text-sm text-slate-600 truncate max-w-[150px]">{user.email}</p>
           </div>
         </div>
         {getStatusBadge(user)}
@@ -208,14 +208,8 @@ const AdminUsersPage: React.FC = () => {
         )}
         <div className="flex items-center gap-2 text-sm text-slate-600">
           <Calendar size={14} />
-          <span>Joined {formatDate(user.createdAt)}</span>
+          <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
         </div>
-        {user.lastLogin && (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <Clock size={14} />
-            <span>Last login {formatDate(user.lastLogin)}</span>
-          </div>
-        )}
       </div>
 
       <div className="flex gap-2">
@@ -228,23 +222,20 @@ const AdminUsersPage: React.FC = () => {
               : 'bg-green-100 text-green-700 hover:bg-green-200'
           } disabled:opacity-50`}
         >
-          {actionLoading === user._id ? (
-            <RefreshCw size={14} className="animate-spin" />
-          ) : user.role !== 'admin' ? (
-            <UserX size={14} />
-          ) : (
-            <UserCheck size={14} />
-          )}
           {user.role !== 'admin' ? 'Deactivate' : 'Activate'}
         </button>
         <button
           onClick={() => handleGhostLogin(user)}
-          disabled={actionLoading === user._id}
-          className="px-3 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
-          title="Ghost Login (Impersonate)"
+          disabled={actionLoading === user._id || activeGhostUid === user.uid}
+          className={`px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${
+            activeGhostUid === user.uid 
+              ? 'bg-purple-600 text-white shadow-inner ring-2 ring-purple-400' 
+              : 'bg-slate-900 text-white hover:bg-slate-800'
+          }`}
+          title={activeGhostUid === user.uid ? "Ghosting session active" : "Ghost Login"}
         >
-          <LogIn size={14} className="text-blue-400" />
-          <span className="hidden sm:inline">Ghost</span>
+          <LogIn size={14} className={activeGhostUid === user.uid ? "text-white" : "text-blue-400"} />
+          <span className="hidden sm:inline">{activeGhostUid === user.uid ? 'Active' : 'Ghost'}</span>
         </button>
         <button className="px-3 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors">
           <Eye size={14} />
@@ -255,7 +246,6 @@ const AdminUsersPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
@@ -279,9 +269,8 @@ const AdminUsersPage: React.FC = () => {
         </button>
       </div>
 
-      {/* Filters */}
       <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-        <form onSubmit={handleSearch} className="flex flex-col sm:flex-row gap-4">
+        <form onSubmit={(e) => { e.preventDefault(); loadUsers(); }} className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
@@ -290,7 +279,7 @@ const AdminUsersPage: React.FC = () => {
                 placeholder="Search users by name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-10 pr-4 py-3 border border-slate-300 rounded-xl outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
@@ -298,7 +287,7 @@ const AdminUsersPage: React.FC = () => {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-4 py-3 border border-slate-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="px-4 py-3 border border-slate-300 rounded-xl outline-none"
             >
               <option value="all">All Users</option>
               <option value="active">Active Only</option>
@@ -307,7 +296,7 @@ const AdminUsersPage: React.FC = () => {
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
               <Filter size={16} />
               Filter
@@ -316,57 +305,20 @@ const AdminUsersPage: React.FC = () => {
         </form>
       </div>
 
-      {/* Users Grid */}
       {loading ? (
         <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-slate-600">Loading users...</p>
-          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
         </div>
       ) : users.length > 0 ? (
-        <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {users.map((user) => (
-              <UserCard key={user._id} user={user} />
-            ))}
-          </div>
-
-          {/* Pagination */}
-          {pagination && pagination.totalPages > 1 && (
-            <div className="flex items-center justify-between bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-              <div className="text-sm text-slate-600">
-                Showing page {pagination.currentPage} of {pagination.totalPages}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={!pagination.hasPrev}
-                  className="px-4 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Previous
-                </button>
-                <button
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={!pagination.hasNext}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
-        </>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {users.map((user) => (
+            <UserCard key={user._id} user={user} />
+          ))}
+        </div>
       ) : (
         <div className="text-center py-12">
           <Users className="mx-auto text-slate-400 mb-4" size={48} />
           <h3 className="text-lg font-semibold text-slate-900 mb-2">No users found</h3>
-          <p className="text-slate-600">
-            {searchTerm || statusFilter !== 'all' 
-              ? 'Try adjusting your search or filter criteria'
-              : 'No users have registered yet'
-            }
-          </p>
         </div>
       )}
     </div>

@@ -88,7 +88,7 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       return;
     }
 
-    // Create new user (signup)
+    // Create new user (signup) activity
     const signupActivity: IActivity = {
       type: 'signup',
       timestamp: new Date(),
@@ -96,14 +96,24 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
       ipAddress
     };
 
-    const user = new User({
-      ...req.body,
-      isEarlyAccess,
-      lastLogin: new Date(),
-      createdAt: new Date(),
+    // SECURITY: Whitelist allowed fields for user creation (Mass Assignment protection)
+    const allowedFields = {
+      uid,
+      email,
+      displayName,
+      name,
+      photoURL: photoURL || '',
+      emailVerified: emailVerified || false,
       timezone: timezone || 'Asia/Kolkata',
+      createdAt: new Date(),
+      lastLogin: new Date(),
+      isEarlyAccess, // This is set by our server logic above, not directly from req.body
+      isAdmin: false, // Default to false, can only be changed by Super Admin via dedicated route
+      points: 0,
       activities: [signupActivity]
-    });
+    };
+
+    const user = new User(allowedFields);
     await user.save();
 
     // Send welcome notification to the new user
@@ -229,10 +239,27 @@ export const logoutUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// Get user by ID
+// Get user by ID (Ownership Protected)
 export const getUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await User.findOne({ uid: req.params.id });
+    const { id } = req.params;
+    const requester = (req as any).user;
+
+    // SECURITY: Ownership Check
+    // A user can only fetch their own profile unless they are an admin
+    if (requester.uid !== id) {
+      // Check if requester is an admin (this would be handled by middleware, but adding a check here for extra safety)
+      const admin = await User.findOne({ uid: requester.uid, isAdmin: true });
+      if (!admin) {
+        res.status(403).json({ 
+          success: false, 
+          message: 'Access Denied: You can only view your own profile.' 
+        });
+        return;
+      }
+    }
+
+    const user = await User.findOne({ uid: id });
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
@@ -244,14 +271,40 @@ export const getUser = async (req: Request, res: Response): Promise<void> => {
   }
 };
 
-// Update user
+// Update user (Ownership Protected)
 export const updateUser = async (req: Request, res: Response): Promise<void> => {
   try {
+    const { id } = req.params;
+    const requester = (req as any).user;
+    
+    // SECURITY: Ownership Check
+    if (requester.uid !== id) {
+      res.status(403).json({ 
+        success: false, 
+        message: 'Access Denied: You cannot modify another user\'s profile.' 
+      });
+      return;
+    }
+    
+    // SECURITY: Strictly whitelist allowed fields for user self-updates
+    // This prevents users from escalating their own privileges (e.g. setting isAdmin: true)
+    const allowedUpdates: any = {};
+    const whitelist = ['displayName', 'name', 'photoURL', 'timezone', 'phoneNumber', 'bio', 'preferences'];
+    
+    whitelist.forEach(field => {
+      if (req.body[field] !== undefined) {
+        allowedUpdates[field] = req.body[field];
+      }
+    });
+
+    allowedUpdates.updatedAt = new Date();
+
     const user = await User.findOneAndUpdate(
-      { uid: req.params.id },
-      { ...req.body },
-      { new: true }
+      { uid: id },
+      { $set: allowedUpdates },
+      { new: true, runValidators: true }
     );
+    
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;
@@ -263,10 +316,22 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// Delete user
+// Delete user (Ownership Protected)
 export const deleteUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const user = await User.findOneAndDelete({ uid: req.params.id });
+    const { id } = req.params;
+    const requester = (req as any).user;
+
+    // SECURITY: Ownership Check
+    if (requester.uid !== id) {
+      res.status(403).json({ 
+        success: false, 
+        message: 'Access Denied: You can only delete your own account.' 
+      });
+      return;
+    }
+
+    const user = await User.findOneAndDelete({ uid: id });
     if (!user) {
       res.status(404).json({ message: 'User not found' });
       return;

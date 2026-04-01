@@ -1704,6 +1704,25 @@ export const triggerForceRefresh = async (req: Request, res: Response) => {
 export const impersonateUser = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // 1. SECURITY: Check if actor has permission to ghost
+    const actorEmail = req.admin?.email;
+    const actorAdmin = await Admin.findOne({ email: actorEmail });
+    
+    if (!actorAdmin) {
+      return res.status(403).json({ success: false, message: 'Admin record not found' });
+    }
+
+    const hasPermission = actorAdmin.role === 'super_admin' || 
+                          actorAdmin.permissions?.canImpersonate === true;
+
+    if (!hasPermission) {
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Unauthorized: Ghosting is restricted to Super Admins or delegated trusted admins.' 
+      });
+    }
+
     const user = await User.findById(id);
     const owner = await Owner.findById(id);
 
@@ -1767,5 +1786,61 @@ export const impersonateUser = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error impersonating user:', error);
     res.status(500).json({ success: false, message: 'Failed to impersonate user' });
+  }
+};
+
+/**
+ * ADMIN: Toggle Ghosting Permission for an admin (Super Admin only)
+ */
+export const toggleImpersonationPermission = async (req: Request, res: Response) => {
+  try {
+    const { adminEmail } = req.body;
+    const requesterEmail = req.admin?.email;
+
+    // 1. Double check requester is Super Admin
+    const requester = await Admin.findOne({ email: requesterEmail });
+    if (!requester || requester.role !== 'super_admin') {
+      return res.status(403).json({ success: false, message: 'Only Super Admins can delegate ghosting powers.' });
+    }
+
+    // 2. Find target admin
+    const targetAdmin = await Admin.findOne({ email: adminEmail });
+    if (!targetAdmin) {
+      return res.status(404).json({ success: false, message: 'Target admin not found' });
+    }
+
+    if (targetAdmin.role === 'super_admin') {
+       return res.status(400).json({ success: false, message: 'Super Admins always have ghosting powers.' });
+    }
+
+    // 3. Toggle permission
+    const currentStatus = targetAdmin.permissions?.canImpersonate || false;
+    targetAdmin.permissions = {
+      ...targetAdmin.permissions,
+      canImpersonate: !currentStatus
+    };
+
+    await targetAdmin.save();
+
+    // 4. Log the permission change
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: 'permission_change',
+      severity: 'medium',
+      details: `Super Admin ${requesterEmail} ${!currentStatus ? 'GRANTED' : 'REVOKED'} ghosting permission for ${adminEmail}`,
+      ip: req.ip || 'unknown',
+      userAgent: req.headers['user-agent'],
+      userId: requesterEmail
+    });
+
+    res.json({
+      success: true,
+      message: `Ghosting permission ${!currentStatus ? 'granted to' : 'revoked from'} ${adminEmail}`,
+      canImpersonate: !currentStatus
+    });
+
+  } catch (error) {
+    console.error('Error toggling impersonation permission:', error);
+    res.status(500).json({ success: false, message: 'Failed to update background permission' });
   }
 };

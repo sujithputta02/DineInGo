@@ -75,7 +75,27 @@ export const getRestaurantById = async (req: Request, res: Response) => {
 // Create new restaurant
 export const createRestaurant = async (req: Request, res: Response) => {
   try {
-    const restaurant = new Restaurant(req.body);
+    // SECURITY: Whitelist allowed fields for restaurant creation
+    const { name, description, address, cuisine, images, operatingHours, contact, location } = req.body;
+    
+    const restaurant = new Restaurant({
+      name,
+      description,
+      address,
+      cuisine,
+      images,
+      operatingHours,
+      contact,
+      location,
+      isPublished: false, // Default to unpublished until review
+      rating: 0,
+      reviewCount: 0,
+      sustainability: {
+        score: 0,
+        tags: []
+      }
+    });
+    
     await restaurant.save();
 
     res.status(201).json({
@@ -96,9 +116,27 @@ export const createRestaurant = async (req: Request, res: Response) => {
 export const updateRestaurant = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    
+    // SECURITY: Strictly whitelist allowed fields for restaurant updates
+    // This prevents owners from spoofing their own ratings or sustainability scores
+    const allowedUpdates: any = {};
+    const whitelist = [
+      'name', 'description', 'address', 'cuisine', 'images', 
+      'operatingHours', 'contact', 'location', 'amenities', 
+      'menuCategories', 'seatingAreas'
+    ];
+    
+    whitelist.forEach(field => {
+      if (req.body[field] !== undefined) {
+        allowedUpdates[field] = req.body[field];
+      }
+    });
+
+    allowedUpdates.updatedAt = new Date();
+
     const restaurant = await Restaurant.findByIdAndUpdate(
       id,
-      req.body,
+      { $set: allowedUpdates },
       { new: true, runValidators: true }
     );
 

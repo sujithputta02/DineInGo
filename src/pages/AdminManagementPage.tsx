@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   UserPlus,
   Users,
@@ -14,7 +14,8 @@ import {
   AlertTriangle,
   Plus,
   RefreshCw,
-  Crown
+  Crown,
+  Ghost
 } from 'lucide-react';
 import { adminApi } from '../utils/adminApi';
 
@@ -25,6 +26,9 @@ interface Admin {
   addedBy: string;
   createdAt: string;
   lastLogin?: string;
+  permissions?: {
+    canImpersonate: boolean;
+  };
 }
 
 const AdminManagementPage: React.FC = () => {
@@ -124,6 +128,22 @@ const AdminManagementPage: React.FC = () => {
       await loadAdmins();
     } catch (err: any) {
       setError(err.message || 'Failed to update admin status');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleToggleGhostPermission = async (adminEmail: string) => {
+    setActionLoading(`ghost-${adminEmail}`);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const data = await adminApi.toggleImpersonationPermission(adminEmail);
+      setSuccess(data.message);
+      await loadAdmins();
+    } catch (err: any) {
+      setError(err.message || 'Failed to update ghosting permission');
     } finally {
       setActionLoading(null);
     }
@@ -395,27 +415,31 @@ const AdminManagementPage: React.FC = () => {
       </div>
 
       {/* Notifications */}
-      {error && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700"
-        >
-          <AlertTriangle size={16} />
-          <span className="font-medium">{error}</span>
-        </motion.div>
-      )}
+      <AnimatePresence>
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700"
+          >
+            <AlertTriangle size={16} />
+            <span className="font-medium">{error}</span>
+          </motion.div>
+        )}
 
-      {success && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700"
-        >
-          <CheckCircle size={16} />
-          <span className="font-medium">{success}</span>
-        </motion.div>
-      )}
+        {success && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700"
+          >
+            <CheckCircle size={16} />
+            <span className="font-medium">{success}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Admin List */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -445,6 +469,11 @@ const AdminManagementPage: React.FC = () => {
                       }`}>
                         {admin.isActive ? 'Active' : 'Inactive'}
                       </span>
+                      {admin.permissions?.canImpersonate && (
+                         <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">
+                           <Ghost size={10} /> Trusted Ghost
+                         </span>
+                      )}
                     </div>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-xs sm:text-sm text-slate-500">
                       <div className="flex items-center gap-1">
@@ -484,6 +513,28 @@ const AdminManagementPage: React.FC = () => {
                         'Activate'
                       )}
                     </button>
+
+                    {/* Delegation Toggle */}
+                    <button
+                      onClick={() => handleToggleGhostPermission(admin.email)}
+                      disabled={actionLoading === `ghost-${admin.email}`}
+                      title={admin.permissions?.canImpersonate ? "Revoke Ghost Privilege" : "Deputize for Ghosting"}
+                      className={`flex-1 sm:flex-initial px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                        admin.permissions?.canImpersonate
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                      } disabled:opacity-50 flex items-center justify-center gap-1.5`}
+                    >
+                      {actionLoading === `ghost-${admin.email}` ? (
+                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mx-auto" />
+                      ) : (
+                        <>
+                          <Ghost size={14} className={admin.permissions?.canImpersonate ? 'animate-bounce' : ''} />
+                          <span className="hidden lg:inline">{admin.permissions?.canImpersonate ? 'Deputized' : 'Deputize'}</span>
+                        </>
+                      )}
+                    </button>
+
                     <button
                       onClick={() => handleRemoveAdmin(admin.email)}
                       disabled={actionLoading === admin.email}

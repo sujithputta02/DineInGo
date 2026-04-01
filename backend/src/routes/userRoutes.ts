@@ -13,9 +13,11 @@ import {
 } from '../controllers/userController';
 import { getUserReviews } from '../controllers/reviewController';
 import { User } from '../models/User';
-// SECURITY: Import rate limiters
+
+// SECURITY: Import Identity Guard and Rate Limiters
+import { verifyUserToken } from '../middleware/userAuth';
 import { authLimiter, apiLimiter } from '../middleware/rateLimiter';
-import { validateUserRegistration, validateUserLogin, handleValidationErrors } from '../middleware/inputValidation';
+import { validateUserRegistration, handleValidationErrors } from '../middleware/inputValidation';
 import { accountLockoutCheck } from '../middleware/accountLockout';
 import { recordFailedAttempt, resetFailedAttempts } from '../services/securityMonitor';
 
@@ -39,7 +41,14 @@ if (process.env.NODE_ENV !== 'production') {
   });
 }
 
-// SECURITY: Apply rate limiting + account lockout to authentication endpoints
+// ============================================
+// PUBLIC ROUTES
+// ============================================
+
+// SECURITY: User Registration (Self-Signup)
+router.post('/', authLimiter, validateUserRegistration, handleValidationErrors, createUser);
+
+// SECURITY: Authentication (Login)
 router.post('/login', authLimiter, accountLockoutCheck('user'), async (req: Request, res: Response) => {
   try {
     const { uid, email, loginSource = 'email' } = req.body;
@@ -82,116 +91,22 @@ router.post('/login', authLimiter, accountLockoutCheck('user'), async (req: Requ
   }
 });
 
-// SECURITY: Apply rate limiting and validation to user creation
-router.post('/', authLimiter, validateUserRegistration, handleValidationErrors, createUser);
-router.get('/:id', apiLimiter, getUser);
-router.put('/:id', apiLimiter, updateUser);
-router.delete('/:id', apiLimiter, deleteUser);
+// ============================================
+// PROTECTED ROUTES (Identity Verification Required)
+// ============================================
 
-// Profile update endpoint (used by ProfileSettings component)
-router.post('/update', async (req: Request, res: Response) => {
-  try {
-    console.log('Profile update request received:', req.body);
-    const { userId, updates } = req.body;
+// Profile management
+router.get('/:id', apiLimiter, verifyUserToken, getUser);
+router.put('/:id', apiLimiter, verifyUserToken, updateUser);
+router.delete('/:id', apiLimiter, verifyUserToken, deleteUser);
 
-    if (!userId) {
-      console.log('Missing userId in update request');
-      return res.status(400).json({ message: 'User ID is required' });
-    }
+// Activity and Social
+router.get('/:id/activities', apiLimiter, verifyUserToken, getUserActivities);
+router.get('/:userId/reviews', apiLimiter, verifyUserToken, getUserReviews);
+router.post('/refer-friend', apiLimiter, verifyUserToken, trackFriendReferral);
 
-    if (!updates) {
-      console.log('Missing updates in request');
-      return res.status(400).json({ message: 'Updates are required' });
-    }
+// Security
+router.post('/change-password', authLimiter, verifyUserToken, changePassword);
+router.post('/logout', verifyUserToken, logoutUser);
 
-    console.log(`Updating user with uid: ${userId}`);
-
-    // Prepare the update object
-    const updateData: any = {
-      updatedAt: new Date()
-    };
-
-    // Add all provided fields to the update
-    if (updates.displayName !== undefined) updateData.displayName = updates.displayName;
-    if (updates.name !== undefined) updateData.name = updates.name;
-    if (updates.phoneNumber !== undefined) updateData.phoneNumber = updates.phoneNumber;
-    if (updates.photoURL !== undefined) updateData.photoURL = updates.photoURL;
-    if (updates.address !== undefined) updateData.address = updates.address;
-    if (updates.locationSettings !== undefined) updateData.locationSettings = updates.locationSettings;
-    if (updates.avatars !== undefined) updateData.avatars = updates.avatars;
-    if (updates.currentAvatar !== undefined) updateData.currentAvatar = updates.currentAvatar;
-
-    // Find and update the user in MongoDB
-    const user = await User.findOneAndUpdate(
-      { uid: userId },
-      { $set: updateData },
-      { new: true, runValidators: true }
-    );
-
-    if (!user) {
-      console.log(`No user found with uid: ${userId}`);
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    console.log('User profile updated successfully in MongoDB');
-
-    // Emit socket event for real-time updates
-    const io = req.app.get('io');
-    if (io) {
-      io.emit('profile_updated', {
-        uid: userId,
-        profile: {
-          displayName: user.displayName,
-          fullName: user.name,
-          name: user.name,
-          phoneNumber: user.phoneNumber,
-          photoURL: user.photoURL,
-          currentAvatar: user.currentAvatar || user.photoURL,
-          avatarUrl: user.photoURL,
-          avatars: user.avatars || [],
-          address: user.address
-        }
-      });
-      console.log('Socket.IO event emitted for profile update');
-    }
-
-    res.json({
-      success: true,
-      message: 'Profile updated successfully in MongoDB',
-      user: {
-        uid: user.uid,
-        email: user.email,
-        displayName: user.displayName,
-        name: user.name,
-        phoneNumber: user.phoneNumber,
-        photoURL: user.photoURL,
-        currentAvatar: user.currentAvatar || user.photoURL,
-        avatars: user.avatars || [],
-        address: user.address,
-        locationSettings: user.locationSettings
-      }
-    });
-  } catch (error) {
-    console.error('Error updating user profile:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Error updating user profile',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-  }
-});
-
-// Change password endpoint
-router.post('/change-password', apiLimiter, changePassword);
-
-// User activity related endpoints
-// Original login route - commented out since we're using the custom implementation above
-// router.post('/login', loginUser);
-router.post('/logout', logoutUser);
-router.get('/:id/activities', getUserActivities);
-router.get('/:userId/reviews', getUserReviews);
-
-// Friend referral tracking
-router.post('/refer-friend', trackFriendReferral);
-
-export default router; 
+export default router;
