@@ -20,6 +20,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { userPreferenceApi, userAPI } from '../services/api';
 import { toast } from 'react-toastify';
+import { persistUserSession, getSessionToken } from '../utils/sessionGuard';
 
 const CUISINES = [
     { id: 'indian', name: 'Indian', icon: '🥘', color: 'from-orange-500/20 to-red-500/20' },
@@ -193,18 +194,21 @@ const OnboardingPage: React.FC = () => {
             // Fetch fresh user data including token for correct dashboard redirection
             const freshUser = await userAPI.fetchUserData(currentUser.uid);
             
-            if (freshUser && freshUser.token) {
-                // Update session storage with fresh data
-                localStorage.setItem('userData', JSON.stringify(freshUser));
+            if (freshUser) {
+                // atomicaly update session tokens and user data 
+                const token = persistUserSession(freshUser, currentUser.uid);
                 
                 setTimeout(() => {
-                    navigate(`/dashboard/${freshUser.token}`, { replace: true });
+                    if (token) {
+                        navigate(`/dashboard/${token}`, { replace: true });
+                    } else {
+                        navigate('/login', { replace: true });
+                    }
                 }, 2000);
             } else {
                 console.warn("Could not fetch fresh user token after onboarding");
                 // Fallback attempt with existing session if available
-                const storedUser = localStorage.getItem('userData');
-                const token = storedUser ? JSON.parse(storedUser).token : null;
+                const token = getSessionToken();
                 
                 setTimeout(() => {
                     if (token) {
@@ -221,17 +225,16 @@ const OnboardingPage: React.FC = () => {
             // Fallback redirect even on error
             try {
                 const freshUser = await userAPI.fetchUserData(currentUser.uid);
-                if (freshUser && freshUser.token) {
-                    localStorage.setItem('userData', JSON.stringify(freshUser));
-                    navigate(`/dashboard/${freshUser.token}`, { replace: true });
+                if (freshUser) {
+                    const token = persistUserSession(freshUser, currentUser.uid);
+                    navigate(`/dashboard/${token}`, { replace: true });
                     return;
                 }
             } catch (e) {
                 console.error("Fallback fetch failed:", e);
             }
 
-            const storedUser = localStorage.getItem('userData');
-            const token = storedUser ? JSON.parse(storedUser).token : null;
+            const token = getSessionToken();
             if (token) {
                 navigate(`/dashboard/${token}`, { replace: true });
             } else {

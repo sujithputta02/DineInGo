@@ -69,13 +69,21 @@ export function getSecureDashboardUrl(): string {
   if (!token) return '/login';
   return `/dashboard/${token}`;
 }
+/** Save both user data and session info in one atomic step */
+export function persistUserSession(userData: any, uid: string): string {
+  const token = createSession(uid);
+  updateSessionStorage(userData);
+  return token;
+}
+
 /** Update the legacy 'userData' storage object while preserving sensitive fields */
 export function updateSessionStorage(data: any): void {
-  const storedUser = localStorage.getItem('userData');
-  const parsedStored = storedUser ? JSON.parse(storedUser) : {};
-  
   // Unwrap data if it comes from an axios response
   const userToSave = data?.data || data;
+  
+  // Get existing data to merge, but don't let it override the new vetted data
+  const storedUser = localStorage.getItem('userData');
+  const parsedStored = storedUser ? JSON.parse(storedUser) : {};
   
   localStorage.setItem('userData', JSON.stringify({
     ...parsedStored,

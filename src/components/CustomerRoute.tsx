@@ -4,13 +4,25 @@ import { toast } from 'react-toastify';
 import { Analytics } from '@vercel/analytics/react';
 import GhostBanner from './GhostBanner';
 import { useAuth } from '../contexts/AuthContext';
+import { useParams } from 'react-router-dom';
+import { validateSession } from '../utils/sessionGuard';
 
 const CustomerRoute: React.FC = () => {
     const { currentUser, isInitialized } = useAuth();
+    const { sessionToken } = useParams<{ sessionToken: string }>();
     const storedUser = localStorage.getItem('userData');
     
     // While initializing Firebase, show nothing or a light loader to prevent flicker
     if (!isInitialized) return null;
+
+    // 🛡️ SECURITY GATE: URL Token Validation (Only if a token is present in the route)
+    // This ensures that the randomized token in /dashboard/:token stays consistent 
+    // with the one generated during the last successful login.
+    if (sessionToken && !validateSession(sessionToken)) {
+        console.error("CustomerRoute: URL Session Token Mismatch / Invalid");
+        toast.error("Session expired or invalid link. Please login again.");
+        return <Navigate to="/login" replace />;
+    }
 
     // 1. 🛡️ IRON GATE: No Identity -> Force Login
     if (!currentUser) {

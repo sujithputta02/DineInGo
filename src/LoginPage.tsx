@@ -18,7 +18,7 @@ import {
 import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendPasswordReset } from "./authUtils";
 import socketService from './utils/socketService';
-import { createSession, getSessionToken } from './utils/sessionGuard';
+import { persistUserSession, getSessionToken, createSession } from './utils/sessionGuard';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { trackEvent, identifyUser } from './utils/analytics';
@@ -202,7 +202,6 @@ export default function LoginPage() {
       try {
         const loginResponse = await userAPI.loginUser(user.uid, 'email', formData.email);
         const updatedUserData = loginResponse.data || loginResponse;
-        const token = loginResponse.token || localStorage.getItem('sessionToken') || '';
 
         if (updatedUserData) {
           // If role is owner/admin, redirect them immediately to business portal
@@ -221,16 +220,15 @@ export default function LoginPage() {
           });
           trackEvent('login_success', { method: 'email', role: updatedUserData.role });
           
-          // 🛡️ SECURITY FIX: Persist session before navigating
-          updateSessionStorage(updatedUserData);
-          if (token) localStorage.setItem('sessionToken', token);
+          // 🛡️ SECURITY FIX: Persist brand-new randomized session on every login
+          const token = persistUserSession(updatedUserData, user.uid);
           
           // 🛡️ IRON GATE: Smart Routing
           if (updatedUserData.onboardingCompleted) {
             if (token) {
               navigate(`/dashboard/${token}`);
             } else {
-              console.warn("No session token found, falling back to onboarding check");
+              console.error("Critical: Session creation failed! Falling back to onboarding.");
               navigate('/onboarding');
             }
           } else {
@@ -316,7 +314,6 @@ export default function LoginPage() {
       try {
         const loginResponse = await userAPI.loginUser(user.uid, 'google', user.email || '');
         const updatedUserData = loginResponse.data || loginResponse;
-        const token = loginResponse.token || localStorage.getItem('sessionToken') || '';
 
         if (updatedUserData) {
           if (updatedUserData.role === 'owner' || updatedUserData.role === 'admin') {
@@ -334,16 +331,15 @@ export default function LoginPage() {
           });
           trackEvent('login_success', { method: 'google', role: updatedUserData.role });
           
-          // 🛡️ SECURITY FIX: Persist session before navigating
-          updateSessionStorage(updatedUserData);
-          if (token) localStorage.setItem('sessionToken', token);
+          // 🛡️ SECURITY FIX: Persist brand-new randomized session on every login
+          const token = persistUserSession(updatedUserData, user.uid);
           
           // 🛡️ IRON GATE: Smart Routing
           if (updatedUserData.onboardingCompleted) {
             if (token) {
               navigate(`/dashboard/${token}`);
             } else {
-              console.warn("No session token found, falling back to onboarding check");
+              console.error("Critical: Session creation failed! Falling back to onboarding.");
               navigate('/onboarding');
             }
           } else {
@@ -528,7 +524,7 @@ export default function LoginPage() {
       setShowReferralInput(false);
 
       // Create session and navigate to onboarding
-      const token = createSession(user.uid);
+      const token = persistUserSession(savedUser, user.uid);
       navigate("/onboarding");
 
     } catch (error: any) {
