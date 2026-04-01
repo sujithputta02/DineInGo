@@ -34,9 +34,9 @@ const AdminSchema = new Schema<IAdmin>({
     match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
   },
   role: {
-    type: mongoose.Schema.Types.String,
+    type: String,
     enum: ['super_admin', 'admin'],
-    default: () => 'admin'
+    default: 'admin'
   },
   isActive: {
     type: Boolean,
@@ -61,8 +61,8 @@ const AdminSchema = new Schema<IAdmin>({
     type: Date
   },
   timezone: {
-    type: mongoose.Schema.Types.String,
-    default: () => 'Asia/Kolkata'
+    type: String,
+    default: 'Asia/Kolkata'
   },
   permissions: {
     canImpersonate: {

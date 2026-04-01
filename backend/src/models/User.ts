@@ -114,7 +114,7 @@ const userSchema = new Schema<IUser>({
   isEarlyAccess: { type: Boolean, default: false },
   onboardingCompleted: { type: Boolean, default: false },
   favorites: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }],
-  timezone: { type: mongoose.Schema.Types.String, default: () => 'Asia/Kolkata' }
+  timezone: { type: String, default: 'Asia/Kolkata' }
 });
 
 // Static method to log activities for a user
