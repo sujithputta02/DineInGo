@@ -23,6 +23,7 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) =
         localStorage.removeItem('adminEmail');
         localStorage.removeItem('adminRole');
         localStorage.removeItem('adminLoginTime');
+        import('../utils/sessionGuard').then(module => module.clearSession());
       }
     }
     

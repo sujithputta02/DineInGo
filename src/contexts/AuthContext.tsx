@@ -44,15 +44,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setCurrentUser(null);
         setIsAuthenticated(false);
-        // Clear session if firebase user is gone
-        clearSession();
+        // Clear session if firebase user is gone and not an admin
+        if (!localStorage.getItem('adminToken')) {
+          clearSession();
+        }
       }
       setLoading(false);
     }, (error) => {
       console.error('[DineInGo] Auth State Change Error:', error);
       if (error.message?.includes('400') || error.message?.includes('identitytoolkit')) {
         auth.signOut();
-        clearSession();
+        if (!localStorage.getItem('adminToken')) {
+          clearSession();
+        }
       }
       setLoading(false);
     });

@@ -73,6 +73,7 @@ const AdminLayout: React.FC = () => {
     localStorage.removeItem('adminEmail');
     localStorage.removeItem('adminRole');
     localStorage.removeItem('adminLoginTime');
+    import('../utils/sessionGuard').then(module => module.clearSession());
     toast.success('Logged out successfully');
     navigate('/');
   };
