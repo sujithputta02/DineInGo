@@ -1055,6 +1055,7 @@ export const userAPI = {
           },
           body: JSON.stringify({ 
             uid, 
+            email: auth.currentUser?.email || '', // Pass email for Iron Gate fallback lookup
             loginSource,
             timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
           }),
@@ -1343,6 +1344,9 @@ export const userAPI = {
   },
   getFavorites: async (userId: string) => {
     return apiRequest(`${API_URL}/api/v1/business/favorites/${userId}`);
+  },
+  updateOnboardingStatus: async (userId: string, completed: boolean) => {
+    return apiRequest(`${API_URL}/api/v1/users/${userId}/onboarding`, 'PATCH', { completed });
   },
 };
 

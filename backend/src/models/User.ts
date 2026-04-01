@@ -51,6 +51,7 @@ export interface IUser extends Document {
   password?: string;
   isAdmin?: boolean;
   isEarlyAccess?: boolean;
+  onboardingCompleted?: boolean;
   favorites?: string[] | any[];
   timezone?: string;
 }
@@ -111,6 +112,7 @@ const userSchema = new Schema<IUser>({
   password: { type: String },
   isAdmin: { type: Boolean, default: false },
   isEarlyAccess: { type: Boolean, default: false },
+  onboardingCompleted: { type: Boolean, default: false },
   favorites: [{ type: Schema.Types.ObjectId, ref: 'Restaurant' }],
   timezone: { type: String, default: 'Asia/Kolkata' }
 });

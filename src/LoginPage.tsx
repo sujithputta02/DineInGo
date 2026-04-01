@@ -243,7 +243,14 @@ export default function LoginPage() {
             role: updatedUserData.role 
           });
           trackEvent('login_success', { method: 'email', role: updatedUserData.role });
-          navigate(`/dashboard/${token}`);
+          
+          // 🛡️ IRON GATE: Smart Routing
+          // Only send them to onboarding if they haven't finished it in our DB
+          if (updatedUserData.onboardingCompleted) {
+            navigate(`/dashboard/${token}`);
+          } else {
+            navigate('/onboarding');
+          }
           return;
         }
       } catch (error: any) {
@@ -361,11 +368,23 @@ export default function LoginPage() {
             role: updatedUserData.role 
           });
           trackEvent('login_success', { method: 'google', role: updatedUserData.role });
-          navigate(`/dashboard/${token}`);
+          
+          // 🛡️ IRON GATE: Smart Routing
+          if (updatedUserData.onboardingCompleted) {
+            navigate(`/dashboard/${token}`);
+          } else {
+            navigate('/onboarding');
+          }
           return;
         }
       } catch (error: any) {
         console.error('Error fetching user data from MongoDB:', error);
+        // 💎 IRON GATE: Only proceed to "New User" flow if lookup explicitly fails with 404
+        if (!error.message?.includes('404')) {
+          toast.error("Dino says: Our server is a bit sleepy. Please try again!");
+          setIsGoogleSigningIn(false);
+          return;
+        }
       }
 
       // If no existing data, this is potentially a new user from Google

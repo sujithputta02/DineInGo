@@ -9,7 +9,8 @@ import {
   getUserActivities,
   debugUserActivities,
   trackFriendReferral,
-  changePassword
+  changePassword,
+  updateOnboardingStatus
 } from '../controllers/userController';
 import { getUserReviews } from '../controllers/reviewController';
 import { User } from '../models/User';
@@ -49,47 +50,7 @@ if (process.env.NODE_ENV !== 'production') {
 router.post('/', authLimiter, validateUserRegistration, handleValidationErrors, createUser);
 
 // SECURITY: Authentication (Login)
-router.post('/login', authLimiter, accountLockoutCheck('user'), async (req: Request, res: Response) => {
-  try {
-    const { uid, email, loginSource = 'email' } = req.body;
-
-    if (!uid) {
-      if (email) await recordFailedAttempt(email, 'user', req.ip || 'unknown', req.path);
-      return res.status(400).json({ message: 'User ID (uid) is required' });
-    }
-
-    const user = await User.findOne({ uid });
-
-    if (!user) {
-      if (email) await recordFailedAttempt(email, 'user', req.ip || 'unknown', req.path);
-      return res.status(404).json({ message: 'User not found' });
-    }
-
-    // Successful login — reset failed attempts
-    if (email) await resetFailedAttempts(email, 'user');
-
-    const deviceInfo = req.headers['user-agent'] || 'Unknown Device';
-    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0].trim() ||
-      req.socket.remoteAddress || 'Unknown IP';
-
-    const loginActivity = {
-      type: 'login' as const,
-      timestamp: new Date(),
-      deviceInfo,
-      ipAddress,
-      source: loginSource
-    };
-
-    user.lastLogin = new Date();
-    user.activities.push(loginActivity);
-    await user.save();
-
-    res.json(user);
-  } catch (error) {
-    console.error('Error in login route:', error);
-    res.status(500).json({ message: 'Error during login' });
-  }
-});
+router.post('/login', authLimiter, accountLockoutCheck('user'), loginUser);
 
 // ============================================
 // PROTECTED ROUTES (Identity Verification Required)
@@ -98,6 +59,7 @@ router.post('/login', authLimiter, accountLockoutCheck('user'), async (req: Requ
 // Profile management
 router.get('/:id', apiLimiter, verifyUserToken, getUser);
 router.put('/:id', apiLimiter, verifyUserToken, updateUser);
+router.patch('/:id/onboarding', apiLimiter, verifyUserToken, updateOnboardingStatus);
 router.delete('/:id', apiLimiter, verifyUserToken, deleteUser);
 
 // Activity and Social

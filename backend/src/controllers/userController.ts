@@ -171,10 +171,10 @@ export const createUser = async (req: Request, res: Response): Promise<void> => 
   }
 };
 
-// User login
+// User login with ID Linking & Email Fallback
 export const loginUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { uid, loginSource = 'email', timezone } = req.body;
+    const { uid, email, loginSource = 'email', timezone } = req.body;
     const { deviceInfo, ipAddress } = extractRequestInfo(req);
 
     const loginActivity: IActivity = {
@@ -182,16 +182,57 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       timestamp: new Date(),
       deviceInfo,
       ipAddress,
-      source: loginSource // Track login source (google, email, etc.)
+      source: loginSource
     };
 
+    // 🛡️ IRON GATE: Step 1 - Try lookup by UID
+    let user = await User.findOne({ uid });
+
+    // 🛡️ IRON GATE: Step 2 - Fallback to Email if UID lookup fails
+    // This catches users who signed up with Email but are logging in with Google (different UIDs)
+    if (!user && email) {
+      console.log(`[IronGate] UID ${uid} not found. Attempting Email Fallback for: ${email}`);
+      user = await User.findOne({ email: email.toLowerCase() });
+      
+      if (user) {
+        console.log(`[IronGate] Identity Bonded! Linking UID ${uid} to existing account: ${email}`);
+        user.uid = uid; // 🔗 Bond the new UID to the existing record
+      }
+    }
+
+    if (!user) {
+      res.status(404).json({ message: 'User not found in DineInGo database.' });
+      return;
+    }
+
+    // Update login status and activity
+    user.lastLogin = new Date();
+    if (timezone) user.timezone = timezone;
+    user.activities.push(loginActivity);
+    await user.save();
+
+    res.json(user);
+  } catch (error) {
+    console.error('Error during Iron Gate login:', error);
+    res.status(500).json({ message: 'Internal Server Error during login verification.' });
+  }
+};
+
+// Update Onboarding Status
+export const updateOnboardingStatus = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { completed } = req.body;
+    const requester = (req as any).user;
+
+    if (requester.uid !== id) {
+      res.status(403).json({ message: 'Access Denied: Cannot modify another user\'s status.' });
+      return;
+    }
+
     const user = await User.findOneAndUpdate(
-      { uid },
-      {
-        lastLogin: new Date(),
-        timezone: timezone || undefined,
-        $push: { activities: loginActivity }
-      },
+      { uid: id },
+      { $set: { onboardingCompleted: completed } },
       { new: true }
     );
 
@@ -200,10 +241,10 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    res.json(user);
+    res.json({ success: true, onboardingCompleted: user.onboardingCompleted });
   } catch (error) {
-    console.error('Error during login:', error);
-    res.status(500).json({ message: 'Error during login' });
+    console.error('Error updating onboarding status:', error);
+    res.status(500).json({ message: 'Error updating onboarding status' });
   }
 };
 

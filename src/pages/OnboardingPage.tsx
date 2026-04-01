@@ -166,6 +166,9 @@ const OnboardingPage: React.FC = () => {
                 notificationSettings: notifications
             });
 
+            // 🛡️ IRON GATE: Mark onboarding as officially complete in DB
+            await userAPI.updateOnboardingStatus(currentUser.uid, true);
+
             // Trigger premium confetti
             const duration = 5 * 1000;
             const animationEnd = Date.now() + duration;
