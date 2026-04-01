@@ -490,10 +490,18 @@ export default function LoginPage() {
           email: user.email,
           displayName: user.displayName || user.email?.split('@')[0] || ''
         });
+
+        // 🛡️ SECURITY FIX: Call backend logout API BEFORE Firebase sign-out
+        // This ensures the token is still valid for the protected route
+        await userAPI.logoutUser(user.uid, 'manual');
       }
 
-      // Perform actual logout
+      // Perform actual Firebase logout
       await auth.signOut();
+      
+      // Clear local storage safely
+      localStorage.removeItem('userData');
+      localStorage.removeItem('sessionToken');
     } catch (error) {
       console.error('Logout error:', error);
     }

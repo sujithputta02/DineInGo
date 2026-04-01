@@ -1043,158 +1043,18 @@ export const userAPI = {
   },
 
   loginUser: async (uid: string, loginSource: string = 'email') => {
-    let lastError;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        // Use the full URL to ensure the correct endpoint is being hit
-        const response = await fetch(`${API_URL}/api/v1/users/login`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          body: JSON.stringify({ 
-            uid, 
-            email: auth.currentUser?.email || '', // Pass email for Iron Gate fallback lookup
-            loginSource,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
-          }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          // If user not found, try to fetch the user by ID as a fallback
-          if (response.status === 404) {
-            // Get the current user from Firebase auth
-            const user = auth.currentUser;
-            if (!user) {
-              throw new Error('No authenticated user found');
-            }
-
-            // Create a timestamp for the login activity
-            const timestamp = new Date().toISOString();
-
-            // Create or update the user with login activity data
-            const userData = {
-              uid: user.uid,
-              email: user.email || '',
-              displayName: user.displayName || user.email?.split('@')[0] || '',
-              name: user.displayName || user.email?.split('@')[0] || '',
-              photoURL: user.photoURL,
-              emailVerified: user.emailVerified,
-              lastLogin: timestamp,
-              // Include login source in the user data for tracking
-              loginSource
-            };
-
-            // Use the createUser endpoint which handles both creation and updates
-            const createResponse = await fetch(`${API_URL}/api/v1/users`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify(userData),
-            });
-
-            if (!createResponse.ok) {
-              const createErrorData = await createResponse.json().catch(() => ({}));
-              throw new Error(createErrorData.message || `Server error during fallback: ${createResponse.status}`);
-            }
-
-            return createResponse.json();
-          }
-
-          throw new Error(errorData.message || `Server error: ${response.status}`);
-        }
-
-        return response.json();
-      } catch (error: any) {
-        console.error(`Login attempt ${attempt + 1} failed:`, error);
-        lastError = error;
-
-        if (attempt < MAX_RETRIES - 1) {
-          await wait(RETRY_DELAY * (attempt + 1));
-        }
-      }
-    }
-
-    throw new Error(handleApiError(lastError));
+    // This is a public endpoint but we send the payload directly
+    return apiRequest(`${API_URL}/api/v1/users/login`, 'POST', { 
+      uid, 
+      email: auth.currentUser?.email || '', 
+      loginSource,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+    });
   },
 
   logoutUser: async (uid: string, logoutSource: string = 'manual') => {
-    let lastError;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/users/logout`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ uid, logoutSource }),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          // If user not found, try to create/update user, then retry logout
-          if (response.status === 404) {
-            const user = auth.currentUser;
-            if (!user) {
-              throw new Error('No authenticated user found');
-            }
-            const timestamp = new Date().toISOString();
-            const userData = {
-              uid: user.uid,
-              email: user.email || '',
-              displayName: user.displayName || user.email?.split('@')[0] || '',
-              name: user.displayName || user.email?.split('@')[0] || '',
-              photoURL: user.photoURL,
-              emailVerified: user.emailVerified,
-              lastLogin: timestamp,
-              logoutSource
-            };
-            // Create or update user
-            const createResponse = await fetch(`${API_URL}/api/v1/users`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-              },
-              body: JSON.stringify(userData),
-            });
-            if (!createResponse.ok) {
-              const createErrorData = await createResponse.json().catch(() => ({}));
-              throw new Error(createErrorData.message || `Server error during fallback: ${createResponse.status}`);
-            }
-            // Retry logout after creating/updating user
-            const retryResponse = await fetch(`${API_URL}/api/v1/users/logout`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ uid, logoutSource }),
-            });
-            if (!retryResponse.ok) {
-              const retryErrorData = await retryResponse.json().catch(() => ({}));
-              throw new Error(retryErrorData.message || `Server error during retry logout: ${retryResponse.status}`);
-            }
-            return retryResponse.json();
-          }
-          throw new Error(errorData.message || `Server error: ${response.status}`);
-        }
-
-        return response.json();
-      } catch (error: any) {
-        console.error(`Logout attempt ${attempt + 1} failed:`, error);
-        lastError = error;
-
-        if (attempt < MAX_RETRIES - 1) {
-          await wait(RETRY_DELAY * (attempt + 1));
-        }
-      }
-    }
-
-    throw new Error(handleApiError(lastError));
+    // 🛡️ PROTECTED: Uses apiRequest to include Authorization header
+    return apiRequest(`${API_URL}/api/v1/users/logout`, 'POST', { uid, logoutSource });
   },
 
   getUserActivities: async (uid: string) => {
@@ -1223,86 +1083,18 @@ export const userAPI = {
   },
 
   getUser: async (uid: string) => {
-    let lastError;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/users/${uid}`);
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Server error: ${response.status}`);
-        }
-
-        return response.json();
-      } catch (error: any) {
-        console.error(`Attempt ${attempt + 1} failed:`, error);
-        lastError = error;
-
-        if (attempt < MAX_RETRIES - 1) {
-          await wait(RETRY_DELAY * (attempt + 1));
-        }
-      }
-    }
-
-    throw new Error(handleApiError(lastError));
+    // 🛡️ PROTECTED: Uses apiRequest to include Authorization header
+    return apiRequest(`${API_URL}/api/v1/users/${uid}`);
   },
 
   updateUser: async (uid: string, userData: Partial<UserData>) => {
-    let lastError;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/users/${uid}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(userData),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Server error: ${response.status}`);
-        }
-
-        return response.json();
-      } catch (error: any) {
-        console.error(`Attempt ${attempt + 1} failed:`, error);
-        lastError = error;
-
-        if (attempt < MAX_RETRIES - 1) {
-          await wait(RETRY_DELAY * (attempt + 1));
-        }
-      }
-    }
-
-    throw new Error(handleApiError(lastError));
+    // 🛡️ PROTECTED: Uses apiRequest to include Authorization header
+    return apiRequest(`${API_URL}/api/v1/users/${uid}`, 'PUT', userData);
   },
 
   deleteUser: async (uid: string) => {
-    let lastError;
-    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      try {
-        const response = await fetch(`${API_URL}/api/v1/users/${uid}`, {
-          method: 'DELETE',
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          throw new Error(errorData.message || `Server error: ${response.status}`);
-        }
-
-        return response.json();
-      } catch (error: any) {
-        console.error(`Attempt ${attempt + 1} failed:`, error);
-        lastError = error;
-
-        if (attempt < MAX_RETRIES - 1) {
-          await wait(RETRY_DELAY * (attempt + 1));
-        }
-      }
-    }
-
-    throw new Error(handleApiError(lastError));
+    // 🛡️ PROTECTED: Uses apiRequest to include Authorization header
+    return apiRequest(`${API_URL}/api/v1/users/${uid}`, 'DELETE');
   },
 
   resetPassword: async (email: string) => {
