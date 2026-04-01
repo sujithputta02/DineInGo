@@ -1257,20 +1257,33 @@ export const unblockIP = async (req: Request, res: Response) => {
  */
 export const getSecurityLogs = async (req: Request, res: Response) => {
   try {
-    const { portal, eventType, severity, limit = 50 } = req.query;
+    const { portal, eventType, severity, page = 1, limit = 50 } = req.query;
     const query: any = {};
 
     if (portal) query.portal = portal;
     if (eventType) query.eventType = eventType;
     if (severity) query.severity = severity;
 
-    const logs = await SecurityLog.find(query)
-      .sort({ timestamp: -1 })
-      .limit(Number(limit));
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [logs, total] = await Promise.all([
+      SecurityLog.find(query)
+        .sort({ timestamp: -1 })
+        .skip(skip)
+        .limit(Number(limit)),
+      SecurityLog.countDocuments(query)
+    ]);
 
     res.json({
       success: true,
-      logs
+      logs,
+      pagination: {
+        total,
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        hasNext: skip + Number(limit) < total,
+        hasPrev: Number(page) > 1
+      }
     });
 
   } catch (error) {

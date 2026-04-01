@@ -61,24 +61,39 @@ const AdminSecurityPage: React.FC = () => {
   const [filterSeverity, setFilterSeverity] = useState<string>('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [isScanning, setIsScanning] = useState(false);
+  const [activeTab, setActiveTab] = useState<'live' | 'archive'>('live');
+  const [archivePage, setArchivePage] = useState(1);
+  const [paginationData, setPaginationData] = useState<any>(null);
 
   const fetchSecurityData = async (showToast = false) => {
     try {
       if (showToast) setRefreshing(true);
       
+      const params: any = {
+        portal: filterPortal || undefined,
+        severity: filterSeverity || undefined,
+      };
+
+      if (activeTab === 'live') {
+        params.limit = 100;
+        params.page = 1;
+      } else {
+        params.limit = 20;
+        params.page = archivePage;
+      }
+
       const [statsData, logsData] = await Promise.all([
         adminApi.getSecurityStats(),
-        adminApi.getSecurityLogs({ 
-          portal: filterPortal || undefined, 
-          severity: filterSeverity || undefined,
-          limit: 100 
-        })
+        adminApi.getSecurityLogs(params)
       ]);
 
       if (statsData.success) setStats(statsData.stats);
-      if (logsData.success) setLogs(logsData.logs);
+      if (logsData.success) {
+        setLogs(logsData.logs);
+        if (logsData.pagination) setPaginationData(logsData.pagination);
+      }
 
-      if (showToast) toast.success('Security data refreshed');
+      if (showToast) toast.success(`Security ${activeTab} data refreshed`);
     } catch (error) {
       console.error('Error fetching security data:', error);
       if (showToast) toast.error('Failed to update security data');
@@ -90,7 +105,7 @@ const AdminSecurityPage: React.FC = () => {
 
   useEffect(() => {
     fetchSecurityData();
-  }, [filterPortal, filterSeverity]);
+  }, [filterPortal, filterSeverity, activeTab, archivePage]);
 
   useEffect(() => {
     let interval: any;
@@ -251,10 +266,38 @@ const AdminSecurityPage: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm">
             <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                <Terminal size={18} className="text-slate-500" />
-                Live Security Audit Feed
-              </h3>
+              <div className="flex items-center gap-4">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                  <Terminal size={18} className="text-slate-500" />
+                  Security Audit System
+                </h3>
+                <div className="flex bg-slate-100 p-1 rounded-lg">
+                  {['live', 'archive'].map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => {
+                        setFilterPortal('');
+                        setFilterSeverity('');
+                        setLogs([]); // Reset logs when switching
+                        setActiveTab(tab as 'live' | 'archive');
+                        setArchivePage(1);
+                      }}
+                      className={`px-4 py-1.5 rounded-md text-[10px] font-bold uppercase tracking-wider transition-all ${
+                        activeTab === tab 
+                          ? 'bg-white text-slate-900 shadow-sm' 
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {tab === 'live' ? (
+                        <span className="flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-red-600 animate-pulse"></span>
+                          Live Monitor
+                        </span>
+                      ) : 'Audit Archive'}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <select 
                   value={filterPortal}
@@ -280,58 +323,121 @@ const AdminSecurityPage: React.FC = () => {
               </div>
             </div>
             
-            <div className="overflow-x-auto">
-              <table className="w-full text-left">
-                <thead className="bg-slate-50/50 text-slate-500 text-[10px] uppercase font-bold tracking-widest border-b border-slate-50">
-                  <tr>
-                    <th className="px-6 py-4">Event</th>
-                    <th className="px-6 py-4">IP Address</th>
-                    <th className="px-6 py-4">Portal</th>
-                    <th className="px-6 py-4">Severity</th>
-                    <th className="px-6 py-4">Time</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-50">
-                  {logs.length === 0 ? (
+            <div className="overflow-x-auto min-h-[400px]">
+              <AnimatePresence mode="wait">
+                <motion.table 
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="w-full text-left"
+                >
+                  <thead className="bg-slate-50/50 text-slate-500 text-[10px] uppercase font-bold tracking-widest border-b border-slate-100">
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-slate-400">
-                        <ShieldCheck className="mx-auto mb-2 opacity-20" size={40} />
-                        No security threats detected in the current filter.
-                      </td>
+                      <th className="px-6 py-4">Security Event</th>
+                      <th className="px-6 py-4">IP Address</th>
+                      <th className="px-6 py-4">Access Point</th>
+                      <th className="px-6 py-4">Priority</th>
+                      <th className="px-6 py-4">Occurrence [T-Stamp]</th>
                     </tr>
-                  ) : (
-                    logs.map((log) => (
-                      <tr key={log._id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="px-6 py-4">
-                          <div className="flex flex-col">
-                            <span className="font-bold text-slate-800">{log.eventType.replace(/_/g, ' ').toUpperCase()}</span>
-                            <span className="text-[10px] text-slate-400 truncate max-w-[200px]">{log.details}</span>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {logs.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-24 text-center text-slate-400">
+                          <div className="flex flex-col items-center">
+                            <ShieldCheck className="mb-3 opacity-20" size={48} />
+                            <p className="font-medium">No {activeTab} logs found.</p>
+                            <p className="text-[10px] uppercase mt-1">System status: All clear</p>
                           </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <code className="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-600 font-medium">{log.ip}</code>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter ${getPortalBadge(log.portal)}`}>
-                            {log.portal}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter ${getSeverityColor(log.severity)}`}>
-                            {log.severity}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-slate-400 text-xs">
-                          {new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : (
+                      logs.map((log) => (
+                        <tr key={log._id} className="hover:bg-slate-50/50 transition-colors group">
+                          <td className="px-6 py-4">
+                            <div className="flex flex-col">
+                              <span className="font-bold text-slate-800 group-hover:text-red-600 transition-colors">
+                                {log.eventType.replace(/_/g, ' ').toUpperCase()}
+                              </span>
+                              <span className="text-[10px] text-slate-400 truncate max-w-[220px] font-mono">{log.details}</span>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4">
+                            <code className="text-[11px] bg-slate-950 text-slate-300 px-2.5 py-1 rounded-lg font-mono border border-white/5">
+                              {log.ip}
+                            </code>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter ${getPortalBadge(log.portal)}`}>
+                              {log.portal}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-tighter ${getSeverityColor(log.severity)}`}>
+                              {log.severity}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 text-slate-500 font-mono text-[10px]">
+                            {new Date(log.timestamp).toLocaleString('en-US', {
+                              month: 'short',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: true
+                            })}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </motion.table>
+              </AnimatePresence>
             </div>
+
+            {/* Archive Pagination */}
+            {activeTab === 'archive' && paginationData && paginationData.totalPages > 1 && (
+              <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-xs text-slate-500 font-medium tracking-tight">
+                  Displaying historical records {((archivePage - 1) * 20) + 1} to {Math.min(archivePage * 20, paginationData.total)}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    disabled={archivePage === 1}
+                    onClick={() => setArchivePage(p => p - 1)}
+                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <RefreshCw size={14} className="rotate-180" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                    {Array.from({ length: Math.min(5, paginationData.totalPages) }, (_, i) => {
+                      const pageNum = i + 1;
+                      return (
+                        <button
+                          key={pageNum}
+                          onClick={() => setArchivePage(pageNum)}
+                          className={`w-7 h-7 rounded-lg text-[10px] font-bold transition-all ${
+                            archivePage === pageNum 
+                              ? 'bg-slate-900 text-white shadow-md' 
+                              : 'bg-white border border-slate-200 text-slate-600 hover:border-slate-400'
+                          }`}
+                        >
+                          {pageNum}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <button
+                    disabled={!paginationData.hasNext}
+                    onClick={() => setArchivePage(p => p + 1)}
+                    className="p-1.5 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                  >
+                    <RefreshCw size={14} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -344,18 +450,18 @@ const AdminSecurityPage: React.FC = () => {
               <Info size={18} className="text-red-500" />
               Security Ops Tip
             </h3>
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-slate-400 leading-relaxed font-medium">
               DineInGo uses "Fail-to-Ban" technology. If an IP fails OTP verification 5 times, it is automatically blocked system-wide for 15 minutes to prevent AI-powered brute force attacks.
             </p>
             <div className="mt-4 flex items-center gap-2">
-              <label className="flex items-center gap-2 text-[10px] text-slate-500 cursor-pointer">
+              <label className="flex items-center gap-2 text-[10px] text-slate-500 cursor-pointer font-bold uppercase tracking-wider">
                 <input 
                   type="checkbox" 
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="rounded bg-slate-800 border-slate-700 text-red-600" 
+                  className="rounded bg-slate-800 border-slate-700 text-red-600 focus:ring-0" 
                 />
-                Auto-refresh Stats
+                Auto-ping Active Monitor
               </label>
             </div>
           </div>
