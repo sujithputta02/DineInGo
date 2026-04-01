@@ -1253,6 +1253,54 @@ export const unblockIP = async (req: Request, res: Response) => {
 };
 
 /**
+ * UNIVERSAL SECURITY: Manually block an IP
+ */
+export const blockIP = async (req: Request, res: Response) => {
+  try {
+    const { ipAddress, reason = 'Manual block by admin' } = req.body;
+    if (!ipAddress) {
+      return res.status(400).json({ success: false, message: 'IP address is required' });
+    }
+
+    // Check if already blocked
+    const existing = await BlockedIP.findOne({ ipAddress, isActive: true });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'IP is already blocked' });
+    }
+
+    // Create or update block
+    await BlockedIP.findOneAndUpdate(
+      { ipAddress },
+      { 
+        isActive: true, 
+        reason, 
+        blockedBy: (req as any).admin?.email || 'system_admin',
+        blockedAt: new Date()
+      },
+      { upsert: true, new: true }
+    );
+
+    // Log the block action
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: 'IP_BLOCKED_MANUAL',
+      severity: 'high',
+      details: `IP ${ipAddress} was manually blocked by admin. Reason: ${reason}`,
+      ip: ipAddress,
+      userId: (req as any).admin?.email
+    });
+
+    res.json({
+      success: true,
+      message: `IP ${ipAddress} has been blacklisted.`
+    });
+  } catch (error) {
+    console.error('Error blocking IP:', error);
+    res.status(500).json({ success: false, message: 'Failed to block IP' });
+  }
+};
+
+/**
  * UNIVERSAL SECURITY: Get security logs with filtering
  */
 export const getSecurityLogs = async (req: Request, res: Response) => {

@@ -215,6 +215,11 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify({ ipAddress }),
     }),
+  blockIP: (ipAddress: string, reason: string) =>
+    adminApiRequest('/api/v1/admin/security/block-ip', {
+      method: 'POST',
+      body: JSON.stringify({ ipAddress, reason }),
+    }),
 
   // Waitlist management
   getWaitlistStats: () => adminApiRequest('/api/v1/admin/waitlist/stats'),

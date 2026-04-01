@@ -28,6 +28,7 @@ import ThreatMap from '../components/ThreatMap';
 import SecurityScoreDial from '../components/SecurityScoreDial';
 import BlacklistManager from '../components/BlacklistManager';
 import PortalSecurityAudit from '../components/PortalSecurityAudit';
+import SecurityTerminal from '../components/SecurityTerminal';
 
 interface SecurityStats {
   total: number;
@@ -64,6 +65,8 @@ const AdminSecurityPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'live' | 'archive'>('live');
   const [archivePage, setArchivePage] = useState(1);
   const [paginationData, setPaginationData] = useState<any>(null);
+  const [isAdminSuper] = useState(() => localStorage.getItem('adminRole') === 'super_admin');
+  const [showTerminal, setShowTerminal] = useState(false);
 
   const fetchSecurityData = async (showToast = false) => {
     try {
@@ -170,6 +173,19 @@ const AdminSecurityPage: React.FC = () => {
           <p className="text-slate-500 text-sm">Real-time threat monitoring and defense auditing across all DineInGo portals.</p>
         </div>
         <div className="flex items-center gap-3">
+          {isAdminSuper && (
+            <button
+              onClick={() => setShowTerminal(!showTerminal)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${
+                showTerminal 
+                  ? 'bg-emerald-600 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' 
+                  : 'bg-slate-900 text-white hover:bg-slate-800'
+              }`}
+            >
+              <Terminal size={18} />
+              {showTerminal ? 'Close Console' : 'Master CLI'}
+            </button>
+          )}
           <button 
             onClick={runSecurityScan}
             disabled={isScanning}
@@ -204,7 +220,11 @@ const AdminSecurityPage: React.FC = () => {
       {/* Advanced Security Command Center Header Visuals */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
-          <SecurityScoreDial stats={stats} logs={logs} />
+          {isAdminSuper && showTerminal ? (
+            <SecurityTerminal onCommandExecuted={() => fetchSecurityData(false)} />
+          ) : (
+            <SecurityScoreDial stats={stats} logs={logs} />
+          )}
         </div>
         <div className="lg:col-span-3">
           <ThreatMap logs={logs} />
