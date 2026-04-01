@@ -73,7 +73,7 @@ import OnboardingPage from './pages/OnboardingPage';
 import { getSessionToken } from './utils/sessionGuard';
 import socketService from './utils/socketService';
 import { toast } from 'react-toastify';
-import { FeatureFlagProvider } from './contexts/FeatureFlagContext';
+import { FeatureFlagProvider, useFeatureFlags } from './contexts/FeatureFlagContext';
 
 // Helper component for business dashboard redirection
 const BusinessDashboardRedirect = () => {
@@ -82,6 +82,25 @@ const BusinessDashboardRedirect = () => {
     return <Navigate to={`/business/app/dashboard/${token}`} replace />;
   }
   return <Navigate to="/business/businessLogin" replace />;
+};
+
+// Guard component for Feature Flags
+const FeatureRouteGuard: React.FC<{ 
+  feature: 'arMenus' | 'preOrders' | 'events' | 'waitlist';
+  children: React.ReactNode;
+}> = ({ feature, children }) => {
+  const { isEnabled, loading } = useFeatureFlags();
+  
+  if (loading) return null;
+  
+  if (!isEnabled(feature)) {
+    toast.warning(`This feature is currently under maintenance.`, {
+      toastId: `feature-disabled-${feature}`
+    });
+    return <Navigate to="/" replace />;
+  }
+  
+  return <>{children}</>;
 };
 
 // Custom hook to set the document title based on the current route
@@ -197,7 +216,14 @@ const App: React.FC = () => {
                 <Route path="/auth/impersonate" element={<ImpersonationHandler />} />
                 <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route path="/check-in/:bookingId" element={<CheckInPage />} />
-                <Route path="/ar-experience/:bookingId" element={<ARMenuPage />} />
+                <Route 
+                  path="/ar-experience/:bookingId" 
+                  element={
+                    <FeatureRouteGuard feature="arMenus">
+                      <ARMenuPage />
+                    </FeatureRouteGuard>
+                  } 
+                />
 
                 {/* Customer Protected Routes (Redirect Owners to Business) */}
                 <Route element={<CustomerRoute />}>
@@ -209,7 +235,14 @@ const App: React.FC = () => {
                   <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
                   <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
                   <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
-                  <Route path="/events" element={<EventsPage />} />
+                  <Route 
+                    path="/events" 
+                    element={
+                      <FeatureRouteGuard feature="events">
+                        <EventsPage />
+                      </FeatureRouteGuard>
+                    } 
+                  />
                   <Route path="/event/:id/register" element={<EventRegistration />} />
                   <Route path="/event/:id/preview" element={<EventPreview />} />
                 </Route>
@@ -263,10 +296,30 @@ const App: React.FC = () => {
                     <Route path="manage/:id" element={<ManageRestaurant />} />
                     <Route path="restaurants" element={<OwnerDashboard />} />
                     <Route path="menu" element={<DigitalMenuEditor />} />
-                    <Route path="waitlist" element={<WaitlistManagement />} />
-                    <Route path="waitlist" element={<WaitlistManagement />} />
-                    <Route path="pre-orders" element={<PreOrderManagement />} />
-                    <Route path="events" element={<EventsManagement />} />
+                    <Route 
+                      path="waitlist" 
+                      element={
+                        <FeatureRouteGuard feature="waitlist">
+                          <WaitlistManagement />
+                        </FeatureRouteGuard>
+                      } 
+                    />
+                    <Route 
+                      path="pre-orders" 
+                      element={
+                        <FeatureRouteGuard feature="preOrders">
+                          <PreOrderManagement />
+                        </FeatureRouteGuard>
+                      } 
+                    />
+                    <Route 
+                      path="events" 
+                      element={
+                        <FeatureRouteGuard feature="events">
+                          <EventsManagement />
+                        </FeatureRouteGuard>
+                      } 
+                    />
 
                     {/* Legacy routes for backward compatibility */}
                     <Route path="legacy-onboarding" element={<RestaurantOnboarding />} />

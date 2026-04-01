@@ -69,6 +69,7 @@ import { isRestaurantOpen } from "../utils/openStatus";
 import DinoDailyMorsels from "../components/DinoDailyMorsels";
 import { PremiumRestaurantCard } from "../components/PremiumRestaurantCard";
 import { PremiumEventCard } from "../components/PremiumEventCard";
+import { useFeatureFlags } from "../contexts/FeatureFlagContext";
 
 interface UserData {
   uid: string;
@@ -796,6 +797,8 @@ export default function DashboardPage() {
     useState<boolean>(false);
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
+
+  const { isEnabled } = useFeatureFlags();
 
   // Add listener for system theme changes when in 'system' mode
   useEffect(() => {
@@ -3690,6 +3693,10 @@ const renderSection = () => {
         />
       );
     case "ar-menu":
+      if (!isEnabled('arMenus')) {
+        setActiveSection('home');
+        return null;
+      }
       return (
         <ARMenuSection
           isDarkMode={isDarkMode}
@@ -3997,7 +4004,11 @@ return (
                 label: translations[language].settings,
                 icon: <Settings className="w-5 h-5" />,
               },
-            ].map(({ id, label, icon }) => (
+            ].filter(item => {
+              if (item.id === 'ar-menu') return isEnabled('arMenus');
+              if (item.id === 'events') return isEnabled('events');
+              return true;
+            }).map(({ id, label, icon }) => (
               <button
                 key={id}
                 onClick={() => {

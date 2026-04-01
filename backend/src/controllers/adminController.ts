@@ -1717,18 +1717,46 @@ export const impersonateUser = async (req: Request, res: Response) => {
     let customToken = '';
     try {
       if (targetEntity.uid) {
-        const { admin } = require('../utils/firebaseAdmin');
-        customToken = await admin.auth().createCustomToken(targetEntity.uid);
+        const { auth } = await import('../utils/firebaseAdmin');
+        if (auth) {
+          customToken = await auth.createCustomToken(targetEntity.uid);
+          
+          // SECURITY: Log the impersonation event for audit purposes
+          const adminEmail = req.admin?.email || 'Unknown Admin';
+          const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+          const targetRole = (targetEntity as any).role || 'owner';
+          
+          await SecurityLog.create({
+            portal: 'admin',
+            eventType: 'impersonation_start',
+            severity: 'high',
+            details: `Admin ${adminEmail} started Ghost Session for ${targetRole}: ${targetEntity.email} (${targetEntity.uid})`,
+            ip: String(ipAddress),
+            userAgent: req.headers['user-agent'],
+            path: req.path,
+            userId: req.admin?.email // Store who did it
+          });
+          
+          console.log(`[Ghost Login] Custom token generated for ${targetEntity.email}`);
+        } else {
+          console.warn("[Ghost Login] Firebase Auth not initialized. Token generation skipped.");
+        }
+      } else {
+        console.warn(`[Ghost Login] Target entity ${id} has no Firebase UID. Cannot generate token.`);
       }
     } catch (firebaseErr: any) {
-      console.warn("Could not generate firebase custom token for Ghost Login:", firebaseErr.message);
+      console.error("CRITICAL: Ghost Login token generation failed:", firebaseErr.message);
     }
     
+    // Add role to response if missing (for frontend redirection)
+    const responseUser = targetEntity.toObject();
+    if (!responseUser.role) responseUser.role = 'owner';
+
     res.json({
       success: true,
       message: 'Impersonation token generated',
-      token: customToken, // Front-end can decide how to use it
-      user: targetEntity
+      token: customToken,
+      user: responseUser
     });
   } catch (error) {
     console.error('Error impersonating user:', error);

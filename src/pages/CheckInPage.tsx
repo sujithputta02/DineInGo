@@ -17,11 +17,13 @@ import { toast } from 'react-toastify';
 import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { API_CONFIG } from '../config/api';
+import { useFeatureFlags } from '../contexts/FeatureFlagContext';
 
 const CheckInPage: React.FC = () => {
     const { bookingId } = useParams<{ bookingId: string }>();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    const { isEnabled } = useFeatureFlags();
 
     const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
     const [booking, setBooking] = useState<any>(null);
@@ -112,25 +114,27 @@ const CheckInPage: React.FC = () => {
                 {/* Feature Cards */}
                 <div className="grid grid-cols-1 gap-4">
                     {/* AR Menu Card */}
-                    <motion.button
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => navigate(`/ar-experience/${bookingId}`)}
-                        className="group relative overflow-hidden p-6 bg-white/5 border border-white/10 rounded-3xl text-left backdrop-blur-xl transition-all hover:bg-white/10"
-                    >
-                        <div className="flex items-start justify-between">
-                            <div>
-                                <div className="p-3 bg-purple-500/20 rounded-2xl mb-4 border border-purple-500/30 group-hover:scale-110 transition-transform">
-                                    <Camera className="w-6 h-6 text-purple-400" />
+                    {isEnabled('arMenus') && (
+                        <motion.button
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => navigate(`/ar-experience/${bookingId}`)}
+                            className="group relative overflow-hidden p-6 bg-white/5 border border-white/10 rounded-3xl text-left backdrop-blur-xl transition-all hover:bg-white/10"
+                        >
+                            <div className="flex items-start justify-between">
+                                <div>
+                                    <div className="p-3 bg-purple-500/20 rounded-2xl mb-4 border border-purple-500/30 group-hover:scale-110 transition-transform">
+                                        <Camera className="w-6 h-6 text-purple-400" />
+                                    </div>
+                                    <h3 className="text-xl font-bold mb-1">Launch AR Menu</h3>
+                                    <p className="text-sm text-gray-400">See your dishes in 3D before they arrive.</p>
                                 </div>
-                                <h3 className="text-xl font-bold mb-1">Launch AR Menu</h3>
-                                <p className="text-sm text-gray-400">See your dishes in 3D before they arrive.</p>
+                                <ArrowRight className="w-6 h-6 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all" />
                             </div>
-                            <ArrowRight className="w-6 h-6 text-white/30 group-hover:text-white group-hover:translate-x-1 transition-all" />
-                        </div>
-                        {/* Visual Flare */}
-                        <div className="absolute bottom-[-20%] right-[-10%] w-32 h-32 bg-purple-500/10 blur-3xl rounded-full" />
-                    </motion.button>
+                            {/* Visual Flare */}
+                            <div className="absolute bottom-[-20%] right-[-10%] w-32 h-32 bg-purple-500/10 blur-3xl rounded-full" />
+                        </motion.button>
+                    )}
 
                     {/* Dietary Assistant Card */}
                     <motion.button
