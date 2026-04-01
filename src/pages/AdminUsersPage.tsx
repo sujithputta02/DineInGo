@@ -56,6 +56,9 @@ const AdminUsersPage: React.FC = () => {
   const [socket, setSocket] = useState<any>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [activeGhostUid, setActiveGhostUid] = useState<string | null>(null);
+  const [isGhostModalOpen, setIsGhostModalOpen] = useState(false);
+  const [selectedUserForGhost, setSelectedUserForGhost] = useState<User | null>(null);
+  const [ghostDuration, setGhostDuration] = useState(20);
 
   useEffect(() => {
     // Check for active ghost session every few seconds
@@ -75,6 +78,37 @@ const AdminUsersPage: React.FC = () => {
     const interval = setInterval(checkGhost, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  const handleGhostLogin = async (user: User) => {
+    setSelectedUserForGhost(user);
+    setIsGhostModalOpen(true);
+  };
+
+  const confirmGhostLogin = async () => {
+    if (!selectedUserForGhost) return;
+    
+    try {
+      setActionLoading(selectedUserForGhost._id);
+      setIsGhostModalOpen(false);
+      
+      const data = await adminApi.impersonateUser(selectedUserForGhost._id);
+      
+      if (data.success) {
+        toast.success(`Generating ${ghostDuration}m Ghost Session for ${selectedUserForGhost.displayName || selectedUserForGhost.email}...`);
+        const encodedUser = encodeURIComponent(JSON.stringify(data.user));
+        // Pass duration in query param
+        const impersonateUrl = `/auth/impersonate?token=${data.token}&user=${encodedUser}&duration=${ghostDuration}`;
+        window.open(impersonateUrl, '_blank');
+      } else {
+        toast.error(data.message || 'Failed to generate impersonation token');
+      }
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to initiate Ghost Login');
+    } finally {
+      setActionLoading(null);
+      setSelectedUserForGhost(null);
+    }
+  };
 
   useEffect(() => {
     // Initialize Socket.IO connection
@@ -134,25 +168,66 @@ const AdminUsersPage: React.FC = () => {
     }
   };
 
-  const handleGhostLogin = async (user: User) => {
-    try {
-      setActionLoading(user._id);
-      const data = await adminApi.impersonateUser(user._id);
-      
-      if (data.success) {
-        toast.success(`Generating secure Ghost Session for ${user.displayName || user.email}...`);
-        const encodedUser = encodeURIComponent(JSON.stringify(data.user));
-        const impersonateUrl = `/auth/impersonate?token=${data.token}&user=${encodedUser}`;
-        window.open(impersonateUrl, '_blank');
-      } else {
-        toast.error(data.message || 'Failed to generate impersonation token');
-      }
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to initiate Ghost Login');
-    } finally {
-      setActionLoading(null);
-    }
-  };
+  const GhostDurationModal = () => (
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <motion.div 
+        initial={{ scale: 0.9, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="bg-white rounded-3xl shadow-2xl p-8 max-w-sm w-full border border-slate-100"
+      >
+        <div className="flex items-center gap-4 mb-6">
+          <div className="p-3 bg-purple-100 text-purple-600 rounded-2xl">
+            <Clock size={24} />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-slate-900">Ghost Session</h3>
+            <p className="text-sm text-slate-500 font-medium">Set surveillance duration</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-3">
+            <div className="flex justify-between items-end">
+              <label className="text-sm font-bold text-slate-700 uppercase tracking-wider">Duration</label>
+              <span className="text-2xl font-black text-purple-600 font-mono">{ghostDuration}m</span>
+            </div>
+            <input 
+              type="range" 
+              min="5" 
+              max="20" 
+              step="1" 
+              value={ghostDuration}
+              onChange={(e) => setGhostDuration(parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-purple-600"
+            />
+            <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase">
+              <span>5 Mins</span>
+              <span>20 Mins</span>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 italic text-xs text-slate-500">
+            Note: You will be automatically logged out when the timer expires for security purposes.
+          </div>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setIsGhostModalOpen(false)}
+              className="flex-1 px-4 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-sm hover:bg-slate-200 transition-all"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={confirmGhostLogin}
+              className="flex-1 px-4 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-all shadow-lg"
+            >
+              Start Ghosting
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
 
   const getStatusBadge = (user: User) => {
     const isCurrentlyGhosted = activeGhostUid === user.uid;
@@ -406,6 +481,7 @@ const AdminUsersPage: React.FC = () => {
       )}
 
       <PaginationControls />
+      {isGhostModalOpen && <GhostDurationModal />}
     </div>
   );
 };

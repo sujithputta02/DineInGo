@@ -22,7 +22,10 @@ const ImpersonationHandler: React.FC = () => {
 
       try {
         const userData = JSON.parse(decodeURIComponent(userRaw));
-        console.log(`[Ghost Login] Initiating secure session for: ${userData.email}`);
+        const durationMins = parseInt(searchParams.get('duration') || '20');
+        const durationMs = durationMins * 60 * 1000;
+        
+        console.log(`[Ghost Login] Initiating secure ${durationMins}m session for: ${userData.email}`);
         
         // 1. Sign in with the Custom Token
         await signInWithCustomToken(auth, token);
@@ -35,7 +38,8 @@ const ImpersonationHandler: React.FC = () => {
         localStorage.setItem('userData', JSON.stringify({
           ...userData,
           impersonated: true,
-          startTime: new Date().toISOString()
+          startTime: new Date().toISOString(),
+          sessionLimitMs: durationMs
         }));
 
         // 4. Give the AuthProvider 100ms to catch up with the login state
