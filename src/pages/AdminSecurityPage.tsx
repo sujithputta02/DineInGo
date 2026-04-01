@@ -195,6 +195,9 @@ const AdminSecurityPage: React.FC = () => {
       {/* Dynamic High-Tech Security Visualizer */}
       <SecurityVisualizer logs={logs} stats={stats} isScanning={isScanning} />
 
+      {/* Universal Portal Security Audit (Now Full-Width Hero Row) */}
+      <PortalSecurityAudit />
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
@@ -242,9 +245,9 @@ const AdminSecurityPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content Area */}
+      {/* Main Content Area: Feed and Status Panels */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Threat Feed */}
+        {/* Threat Feed (Left/2/3) */}
         <div className="lg:col-span-2 space-y-4">
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm">
             <div className="p-4 border-b border-slate-50 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -332,11 +335,9 @@ const AdminSecurityPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Status Panel (Right Column) */}
+        {/* Status Panel (Right Column/1/3) */}
         <div className="space-y-6 lg:col-span-1">
           <BlacklistManager />
-
-          <PortalSecurityAudit />
 
           <div className="bg-slate-900 p-6 rounded-2xl text-white">
             <h3 className="font-bold mb-2 flex items-center gap-2">
