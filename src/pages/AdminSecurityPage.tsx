@@ -77,10 +77,10 @@ const AdminSecurityPage: React.FC = () => {
       if (activeTab === 'live') {
         params.limit = 100;
         params.page = 1;
-        // Only show logs from the last 60 minutes in the Live view
-        const oneHourAgo = new Date();
-        oneHourAgo.setMinutes(oneHourAgo.getMinutes() - 60);
-        params.since = oneHourAgo.toISOString();
+        // Only show logs from the last 24 hours in the Live view
+        const oneDayAgo = new Date();
+        oneDayAgo.setHours(oneDayAgo.getHours() - 24);
+        params.since = oneDayAgo.toISOString();
       } else {
         params.limit = 20;
         params.page = archivePage;
