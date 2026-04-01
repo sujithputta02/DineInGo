@@ -61,6 +61,7 @@ const AdminSchema = new Schema<IAdmin>({
     type: Date
   },
   timezone: {
+    type: String,
     default: 'Asia/Kolkata'
   },
   permissions: {
