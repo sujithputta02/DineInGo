@@ -229,6 +229,10 @@ export default function LoginPage() {
           });
           trackEvent('login_success', { method: 'email', role: updatedUserData.role });
           
+          // 🛡️ SECURITY FIX: Persist session before navigating
+          updateSessionStorage(updatedUserData);
+          if (token) localStorage.setItem('sessionToken', token);
+          
           // 🛡️ IRON GATE: Smart Routing
           if (updatedUserData.onboardingCompleted) {
             navigate(`/dashboard/${token}`);
@@ -332,6 +336,10 @@ export default function LoginPage() {
             role: updatedUserData.role 
           });
           trackEvent('login_success', { method: 'google', role: updatedUserData.role });
+          
+          // 🛡️ SECURITY FIX: Persist session before navigating
+          updateSessionStorage(updatedUserData);
+          if (token) localStorage.setItem('sessionToken', token);
           
           // 🛡️ IRON GATE: Smart Routing
           if (updatedUserData.onboardingCompleted) {
