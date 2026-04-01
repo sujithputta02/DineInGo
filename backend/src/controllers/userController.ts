@@ -192,12 +192,26 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     // 🛡️ IRON GATE: Step 2 - Fallback to Email if UID lookup fails
     // This catches users who signed up with Email but are logging in with Google (different UIDs)
     if (!user && email) {
-      console.log(`[IronGate] UID ${uid} not found. Attempting Email Fallback for: ${email}`);
+      console.log(`[IronGate] Identity lookup (UID: ${uid}) failed. Attempting Email Fallback: ${email}`);
       user = await User.findOne({ email: email.toLowerCase() });
       
       if (user) {
-        console.log(`[IronGate] Identity Bonded! Linking UID ${uid} to existing account: ${email}`);
-        user.uid = uid; // 🔗 Bond the new UID to the existing record
+        const oldUid = user.uid;
+        console.log(`[IronGate] Identity Bonded! Linking new UID ${uid} to existing account: ${email} (Old UID: ${oldUid})`);
+        
+        // 🔗 Bond the new UID to the existing record
+        user.uid = uid; 
+
+        // 🔗 DATA MIGRATION: Ensure their preferences follow them to the new UID
+        try {
+          await UserPreference.findOneAndUpdate(
+            { userId: oldUid },
+            { $set: { userId: uid } }
+          );
+          console.log(`[IronGate] Successfully migrated preferences from ${oldUid} to ${uid}`);
+        } catch (prefError) {
+          console.error(`[IronGate] Failed to migrate preferences:`, prefError);
+        }
       }
     }
 
@@ -207,14 +221,16 @@ export const loginUser = async (req: Request, res: Response): Promise<void> => {
     }
 
     // 🛡️ AUTO-SEAL LOGIC: Proactively mark veteran accounts as onboarding complete
-    if (user.onboardingCompleted === false) {
-      // Check if they have preferences or activity history
+    // We check if onboardingCompleted is falsy (catches false, null, undefined)
+    if (!user.onboardingCompleted) {
+      // Check if they have preferences or ANY activity history beyond a single signup
       const hasPrefs = await UserPreference.exists({ userId: user.uid });
-      if (hasPrefs || user.activities.length > 5) {
+      if (hasPrefs || user.activities.length > 2) {
         console.log(`[IronGate] Veteran Identity Detected! Auto-sealing onboarding for: ${user.email}`);
         user.onboardingCompleted = true;
       }
     }
+
 
     // Update login status and activity
     user.lastLogin = new Date();
