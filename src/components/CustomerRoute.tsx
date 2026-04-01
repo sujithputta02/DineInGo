@@ -15,15 +15,6 @@ const CustomerRoute: React.FC = () => {
     // While initializing Firebase, show nothing or a light loader to prevent flicker
     if (!isInitialized) return null;
 
-    // 🛡️ SECURITY GATE: URL Token Validation (Only if a token is present in the route)
-    // This ensures that the randomized token in /dashboard/:token stays consistent 
-    // with the one generated during the last successful login.
-    if (sessionToken && !validateSession(sessionToken)) {
-        console.error("CustomerRoute: URL Session Token Mismatch / Invalid");
-        toast.error("Session expired or invalid link. Please login again.");
-        return <Navigate to="/login" replace />;
-    }
-
     // 1. 🛡️ IRON GATE: No Identity -> Force Login
     if (!currentUser) {
         console.log("CustomerRoute: No Firebase identity detected.");
@@ -33,6 +24,16 @@ const CustomerRoute: React.FC = () => {
     // 2. 🛡️ SESSION GATE: No vetted session data -> Force Re-Vetting
     if (!storedUser) {
         console.log("CustomerRoute: Missing session data, forcing re-vetting...");
+        return <Navigate to="/login" replace />;
+    }
+
+    // 🛡️ SECURITY GATE: URL Token Validation (Only if a token is present in the route)
+    // This ensures that the randomized token in /dashboard/:token stays consistent 
+    // with the one generated during the last successful login.
+    // We only do this check if the user is already authenticated to avoid noise for guest/expired links.
+    if (sessionToken && !validateSession(sessionToken)) {
+        console.warn("CustomerRoute: URL Token Mismatch or Outdated Link detected.");
+        toast.error("Security Session mismatch. Please login again.");
         return <Navigate to="/login" replace />;
     }
 
@@ -57,7 +58,7 @@ const CustomerRoute: React.FC = () => {
     const isGhosting = parsedUser.impersonated || false;
 
     return (
-        <div className={isGhosting ? 'pt-10' : ''}>
+        <div className={isGhosting ? 'pt-12' : ''}>
             <GhostBanner />
             <Outlet />
             <Analytics />
