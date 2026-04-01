@@ -1825,12 +1825,14 @@ export const toggleImpersonationPermission = async (req: Request, res: Response)
        return res.status(400).json({ success: false, message: 'Super Admins always have ghosting powers.' });
     }
 
-    // 3. Toggle permission (use Mongoose-safe method to avoid subdoc spread issues)
+    // 3. Toggle permission using findOneAndUpdate to avoid re-validating unchanged fields
     const currentStatus = targetAdmin.permissions?.canImpersonate || false;
-    targetAdmin.set('permissions.canImpersonate', !currentStatus);
-    targetAdmin.markModified('permissions');
 
-    await targetAdmin.save();
+    await Admin.findOneAndUpdate(
+      { email: adminEmail },
+      { $set: { 'permissions.canImpersonate': !currentStatus } },
+      { new: true, runValidators: false }
+    );
 
     // 4. Log the permission change
     await SecurityLog.create({
