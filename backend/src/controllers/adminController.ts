@@ -1257,12 +1257,13 @@ export const unblockIP = async (req: Request, res: Response) => {
  */
 export const getSecurityLogs = async (req: Request, res: Response) => {
   try {
-    const { portal, eventType, severity, page = 1, limit = 50 } = req.query;
+    const { portal, eventType, severity, page = 1, limit = 50, since } = req.query;
     const query: any = {};
 
     if (portal) query.portal = portal;
     if (eventType) query.eventType = eventType;
     if (severity) query.severity = severity;
+    if (since) query.timestamp = { $gte: new Date(since as string) };
 
     const skip = (Number(page) - 1) * Number(limit);
 

@@ -205,7 +205,7 @@ export const adminApi = {
   
   // Security auditing
   getSecurityStats: () => adminApiRequest('/api/v1/admin/security/stats'),
-  getSecurityLogs: (params: { portal?: string; eventType?: string; severity?: string; limit?: number; page?: number }) => {
+  getSecurityLogs: (params: { portal?: string; eventType?: string; severity?: string; limit?: number; page?: number; since?: string }) => {
     const query = new URLSearchParams(params as any).toString();
     return adminApiRequest(`/api/v1/admin/security/logs?${query}`);
   },

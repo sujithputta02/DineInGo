@@ -27,6 +27,25 @@ const ThreatMap: React.FC<ThreatMapProps> = ({ logs }) => {
     }));
   }, [logs]);
 
+  // Color helpers for severity
+  const getSeverityClassName = (sev: string) => {
+    switch(sev) {
+      case 'critical': return 'text-red-500';
+      case 'high': return 'text-orange-500';
+      case 'medium': return 'text-yellow-500';
+      default: return 'text-emerald-500';
+    }
+  };
+
+  const getSeverityBorderName = (sev: string) => {
+    switch(sev) {
+      case 'critical': return 'border-red-500';
+      case 'high': return 'border-orange-500';
+      case 'medium': return 'border-yellow-500';
+      default: return 'border-emerald-500';
+    }
+  };
+
   return (
     <div className="relative w-full aspect-[21/9] lg:aspect-[2/1] bg-slate-950 rounded-3xl border border-white/5 shadow-2xl overflow-hidden group min-h-[300px]">
       
@@ -81,21 +100,22 @@ const ThreatMap: React.FC<ThreatMapProps> = ({ logs }) => {
             className="absolute z-20 flex items-center justify-center -translate-x-1/2 -translate-y-1/2"
             style={{ left: threat.x, top: threat.y }}
           >
-            <div className={`relative ${threat.severity === 'critical' ? 'text-red-500' : 'text-emerald-500'}`}>
+            <div className={`relative ${getSeverityClassName(threat.severity)}`}>
                <Target size={14} className="animate-pulse" />
                
                {/* Metadata Label */}
                <div className="absolute top-4 left-4 bg-black/80 backdrop-blur-md px-2 py-1 rounded border border-white/10 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                   <p className="text-[7px] font-mono font-bold leading-none uppercase">ID_{threat.id.substr(0,4)}</p>
                   <p className="text-[9px] font-mono leading-none mt-1">{threat.ip}</p>
+                  <p className="text-[6px] font-bold uppercase mt-1 opacity-70 tracking-widest">{threat.severity}</p>
                </div>
             </div>
             
-            {/* Ping Wave */}
+            {/* Dynamic Severity-Based Ping Wave */}
             <motion.div
               animate={{ scale: [1, 3], opacity: [0.5, 0] }}
               transition={{ duration: 2, repeat: Infinity }}
-              className={`absolute w-4 h-4 rounded-full border ${threat.severity === 'critical' ? 'border-red-500' : 'border-emerald-500'}`}
+              className={`absolute w-4 h-4 rounded-full border ${getSeverityBorderName(threat.severity)}`}
             />
           </motion.div>
         ))}
