@@ -42,8 +42,8 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       default: '+1 (555) 123-4567',
     },
     timezone: {
-      type: Schema.Types.String,
-      default: 'Asia/Kolkata'
+      type: mongoose.Schema.Types.String,
+      default: () => 'Asia/Kolkata'
     },
     currency: {
       type: String,
