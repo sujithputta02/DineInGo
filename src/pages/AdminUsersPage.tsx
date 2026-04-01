@@ -16,8 +16,11 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  RefreshCw
+  RefreshCw,
+  LogIn
 } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { createSession } from '../utils/sessionGuard';
 import io from 'socket.io-client';
 import { adminApi } from '../utils/adminApi';
 
@@ -109,6 +112,29 @@ const AdminUsersPage: React.FC = () => {
     } catch (error: any) {
       console.error('Error toggling user status:', error);
       alert(error.message || 'Failed to update user status');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleGhostLogin = async (user: User) => {
+    try {
+      setActionLoading(user._id);
+      const data = await adminApi.impersonateUser(user._id);
+      
+      if (data.success) {
+        toast.success(`Generating secure Ghost Session for ${user.displayName || user.email}...`);
+        
+        // Open a new tab for the impersonated session
+        // We pass the token and target path in the URL
+        const impersonateUrl = `/auth/impersonate?token=${data.token}&uid=${user._id}&role=${user.role}`;
+        window.open(impersonateUrl, '_blank');
+      } else {
+        toast.error(data.message || 'Failed to generate impersonation token');
+      }
+    } catch (error: any) {
+      console.error('Error during Ghost Login:', error);
+      toast.error(error.message || 'Failed to initiate Ghost Login');
     } finally {
       setActionLoading(null);
     }
@@ -209,6 +235,15 @@ const AdminUsersPage: React.FC = () => {
             <UserCheck size={14} />
           )}
           {user.role !== 'admin' ? 'Deactivate' : 'Activate'}
+        </button>
+        <button
+          onClick={() => handleGhostLogin(user)}
+          disabled={actionLoading === user._id}
+          className="px-3 py-2 bg-slate-900 text-white rounded-xl hover:bg-slate-800 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+          title="Ghost Login (Impersonate)"
+        >
+          <LogIn size={14} className="text-blue-400" />
+          <span className="hidden sm:inline">Ghost</span>
         </button>
         <button className="px-3 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors">
           <Eye size={14} />

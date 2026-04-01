@@ -86,6 +86,10 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify({ userId }),
     }),
+  impersonateUser: (userId: string) =>
+    adminApiRequest(`/api/v1/admin/users/${userId}/impersonate`, {
+      method: 'POST',
+    }),
 
   // Business management
   getBusinesses: (params: { page?: number; limit?: number; search?: string; status?: string }) => {
@@ -177,6 +181,10 @@ export const adminApi = {
     adminApiRequest('/api/v1/admin/clear-cache', {
       method: 'POST',
     }),
+  forceRefresh: () =>
+    adminApiRequest('/api/v1/admin/force-refresh', {
+      method: 'POST',
+    }),
 
   // Reports
   generateReport: (data: { startDate: string; endDate: string; reportType: string }) =>
@@ -235,4 +243,6 @@ export const adminApi = {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+  getFeatureFlags: () => 
+    fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/feature-flags`).then(res => res.json()),
 };

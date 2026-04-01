@@ -23,7 +23,9 @@ import {
   getWaitlistStats,
   sendWaitlistBroadcast,
   getWaitlistSignups,
-  updateWaitlistStatus
+  updateWaitlistStatus,
+  triggerForceRefresh,
+  impersonateUser
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -39,7 +41,8 @@ import {
   getSettings,
   updateSettings,
   updateSingleSetting,
-  resetSettings
+  resetSettings,
+  getFeatureFlags
 } from '../controllers/platformSettingsController';
 import { AdminOTP } from '../models/Admin';
 import { verifyAdminToken, verifySuperAdmin } from '../middleware/adminAuth';
@@ -102,6 +105,7 @@ router.get('/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getAdmin
 // User management
 router.get('/users', adminApiLimiter, verifyAdminToken, logAdminAction, getAllUsers);
 router.patch('/users/toggle-status', adminApiLimiter, verifyAdminToken, logAdminAction, validateAdminUserStatusToggle, handleValidationErrors, toggleUserStatus);
+router.post('/users/:id/impersonate', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, impersonateUser);
 
 // Business management
 router.get('/businesses', adminApiLimiter, verifyAdminToken, logAdminAction, getAllBusinesses);
@@ -134,6 +138,7 @@ router.post('/security/block-ip', adminApiLimiter, verifyAdminToken, verifySuper
 // Maintenance mode routes
 router.post('/maintenance-mode', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleMaintenanceMode);
 router.get('/maintenance-status', getMaintenanceStatus); // Public route
+router.get('/feature-flags', getFeatureFlags); // Public route
 
 // Platform settings routes
 router.get('/settings', adminApiLimiter, verifyAdminToken, logAdminAction, getSettings);
@@ -144,6 +149,7 @@ router.post('/settings/reset', adminApiLimiter, verifyAdminToken, verifySuperAdm
 // System operations (Super admin only)
 router.post('/restart-services', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, restartServices);
 router.post('/clear-cache', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, clearCache);
+router.post('/force-refresh', adminApiLimiter, verifyAdminToken, logAdminAction, triggerForceRefresh);
 
 // Waitlist management (Super admin only for broadcast)
 router.get('/waitlist/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getWaitlistStats);

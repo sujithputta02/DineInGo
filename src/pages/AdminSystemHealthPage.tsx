@@ -247,6 +247,25 @@ const AdminSystemHealthPage: React.FC = () => {
     }
   };
 
+  const handleForceAppRefresh = async () => {
+    if (!confirm('WARNING: This will force ALL active Beta testers browsers to immediately reload and clear their cache. Continue?')) {
+      return;
+    }
+    
+    setRefreshing(true);
+    try {
+      const data = await adminApi.forceRefresh();
+      if (data.success) {
+        toast.info('Force refresh signal sent globally to all testers');
+      }
+    } catch (error) {
+      console.error('Error triggering force refresh:', error);
+      toast.error('Failed to trigger force refresh');
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const formatUptime = (seconds: number) => {
     const days = Math.floor(seconds / 86400);
     const hours = Math.floor((seconds % 86400) / 3600);
@@ -400,7 +419,16 @@ const AdminSystemHealthPage: React.FC = () => {
               className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 text-sm sm:text-base"
             >
               <RefreshCw className={`w-4 h-4 sm:w-5 sm:h-5 ${refreshing ? 'animate-spin' : ''}`} />
-              Force Refresh
+              Refresh Stats
+            </button>
+            
+            <button
+              onClick={handleForceAppRefresh}
+              disabled={refreshing}
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-red-600 hover:bg-red-700 text-white shadow-[0_0_15px_rgba(220,38,38,0.5)] rounded-lg font-bold transition-all disabled:opacity-50 text-sm sm:text-base col-span-1 sm:col-span-2 lg:col-span-4 mt-2 border border-red-500"
+            >
+              <Activity className="w-5 h-5 animate-pulse" />
+              FORCE GLOBAL APP RELOAD (CACHE CLEAR)
             </button>
           </div>
         </div>

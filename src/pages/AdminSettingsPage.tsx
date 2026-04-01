@@ -19,7 +19,8 @@ import {
   FileText,
   Image,
   Clock,
-  AlertCircle
+  AlertCircle,
+  ToggleLeft
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { adminApi } from '../utils/adminApi';
@@ -43,6 +44,12 @@ interface PlatformSettings {
   apiRateLimit?: boolean;
   maintenanceMode: boolean;
   maintenanceMessage: string;
+  featureFlags: {
+    arMenus: boolean;
+    preOrders: boolean;
+    events: boolean;
+    waitlist: boolean;
+  };
 }
 
 const AdminSettingsPage: React.FC = () => {
@@ -69,6 +76,12 @@ const AdminSettingsPage: React.FC = () => {
     apiRateLimit: true,
     maintenanceMode: false,
     maintenanceMessage: '',
+    featureFlags: {
+      arMenus: true,
+      preOrders: true,
+      events: true,
+      waitlist: true,
+    },
   });
 
   const API_URL = API_CONFIG.BASE_URL;
@@ -130,6 +143,7 @@ const AdminSettingsPage: React.FC = () => {
     { id: 'booking', name: 'Booking', icon: Calendar },
     { id: 'security', name: 'Security', icon: Shield },
     { id: 'notifications', name: 'Notifications', icon: Bell },
+    { id: 'beta', name: 'Beta Flags', icon: ToggleLeft },
   ];
 
   const handleSave = async () => {
@@ -152,17 +166,45 @@ const AdminSettingsPage: React.FC = () => {
   };
 
   // Real-time update for individual settings (like toggles)
-  const handleToggleChange = async (key: string, value: boolean) => {
-    // Optimistic update
-    setSettings((prev) => ({ ...prev, [key]: value }));
+  const handleToggleChange = async (key: string, value: boolean, isFlag: boolean = false) => {
+    // URL or Nested Key handling
+    if (isFlag) {
+      setSettings(prev => ({
+        ...prev,
+        featureFlags: {
+          ...prev.featureFlags,
+          [key]: value
+        }
+      }));
 
-    try {
-      await adminApi.updateSingleSetting(key, value);
-    } catch (error) {
-      console.error('Error updating setting:', error);
-      // Revert on error
-      setSettings((prev) => ({ ...prev, [key]: !value }));
-      toast.error('Failed to update setting');
+      try {
+        await adminApi.updateSingleSetting('featureFlags', {
+          ...settings.featureFlags,
+          [key]: value
+        });
+      } catch (error) {
+        console.error('Error updating feature flag:', error);
+        setSettings(prev => ({
+          ...prev,
+          featureFlags: {
+            ...prev.featureFlags,
+            [key]: !value
+          }
+        }));
+        toast.error('Failed to update feature flag');
+      }
+    } else {
+      // Optimistic update
+      setSettings((prev) => ({ ...prev, [key]: value }));
+
+      try {
+        await adminApi.updateSingleSetting(key, value);
+      } catch (error) {
+        console.error('Error updating setting:', error);
+        // Revert on error
+        setSettings((prev) => ({ ...prev, [key]: !value }));
+        toast.error('Failed to update setting');
+      }
     }
   };
 
@@ -564,6 +606,85 @@ const AdminSettingsPage: React.FC = () => {
                           className="sr-only peer"
                         />
                         <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Beta Feature Flags */}
+              {activeTab === 'beta' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">Beta Feature Flags</h2>
+                    <p className="text-gray-500 mb-6 font-medium text-red-600 flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4" />
+                      DANGER ZONE: Disabling these features affects ALL users in real-time.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
+                      <div>
+                        <p className="font-semibold text-slate-900">AR Experience (Menu)</p>
+                        <p className="text-sm text-slate-500">Toggle Augmented Reality menus globally</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.featureFlags.arMenus}
+                          onChange={(e) => handleToggleChange('arMenus', e.target.checked, true)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
+                      <div>
+                        <p className="font-semibold text-slate-900">Pre-Order Engine</p>
+                        <p className="text-sm text-slate-500">Toggle food pre-ordering capability</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.featureFlags.preOrders}
+                          onChange={(e) => handleToggleChange('preOrders', e.target.checked, true)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
+                      <div>
+                        <p className="font-semibold text-slate-900">Events & Guestlist</p>
+                        <p className="text-sm text-slate-500">Toggle global events booking system</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.featureFlags.events}
+                          onChange={(e) => handleToggleChange('events', e.target.checked, true)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                      </label>
+                    </div>
+
+                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
+                      <div>
+                        <p className="font-semibold text-slate-900">Universal Waitlist</p>
+                        <p className="text-sm text-slate-500">Toggle public waitlist registrations</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={settings.featureFlags.waitlist}
+                          onChange={(e) => handleToggleChange('waitlist', e.target.checked, true)}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
                       </label>
                     </div>
                   </div>

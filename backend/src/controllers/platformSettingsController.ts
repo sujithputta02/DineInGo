@@ -185,3 +185,26 @@ export const resetSettings = async (req: Request, res: Response) => {
     });
   }
 };
+
+// Get only feature flags (Public endpoint for frontend)
+export const getFeatureFlags = async (req: Request, res: Response) => {
+  try {
+    const settings = await getPlatformSettings();
+    
+    res.json({
+      success: true,
+      flags: settings.featureFlags || {
+        arMenus: true,
+        preOrders: true,
+        events: true,
+        waitlist: true
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching feature flags:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch feature flags'
+    });
+  }
+};

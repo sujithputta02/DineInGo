@@ -17,6 +17,12 @@ export interface IPlatformSettings extends Document {
   twoFactorAuth: boolean;
   sessionTimeout: number;
   apiRateLimit: boolean;
+  featureFlags: {
+    arMenus: boolean;
+    preOrders: boolean;
+    events: boolean;
+    waitlist: boolean;
+  };
   updatedBy: string;
   updatedAt: Date;
 }
@@ -92,6 +98,12 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
     apiRateLimit: {
       type: Boolean,
       default: true,
+    },
+    featureFlags: {
+      arMenus: { type: Boolean, default: true },
+      preOrders: { type: Boolean, default: true },
+      events: { type: Boolean, default: true },
+      waitlist: { type: Boolean, default: true },
     },
     updatedBy: {
       type: String,

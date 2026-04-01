@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Admin, AdminOTP } from '../models/Admin';
 import { User } from '../models/User';
+import { Owner } from '../models/Owner';
 import { Business } from '../models/Business';
 import { Booking } from '../models/Booking';
 import Notification from '../models/Notification';
@@ -1680,5 +1681,57 @@ export const updateWaitlistStatus = async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating waitlist status:', error);
     res.status(500).json({ success: false, message: 'Failed to update waitlist status' });
+  }
+};
+export const triggerForceRefresh = async (req: Request, res: Response) => {
+  try {
+    const io = req.app.get('io') || require('../utils/socket').getIO();
+    io.emit('admin:force_client_refresh', {
+      timestamp: Date.now(),
+      reason: 'admin_forced_refresh'
+    });
+    
+    res.json({
+      success: true,
+      message: 'Force refresh signal broadcasted to all users'
+    });
+  } catch (error) {
+    console.error('Error triggering force refresh:', error);
+    res.status(500).json({ success: false, message: 'Failed to broadcast force refresh' });
+  }
+};
+
+export const impersonateUser = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+    const owner = await Owner.findById(id);
+
+    // Prefer User, fallback to Owner
+    const targetEntity = user || owner;
+    if (!targetEntity) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Try to mint a custom firebase token for Ghost Login
+    let customToken = '';
+    try {
+      if (targetEntity.uid) {
+        const { admin } = require('../utils/firebaseAdmin');
+        customToken = await admin.auth().createCustomToken(targetEntity.uid);
+      }
+    } catch (firebaseErr: any) {
+      console.warn("Could not generate firebase custom token for Ghost Login:", firebaseErr.message);
+    }
+    
+    res.json({
+      success: true,
+      message: 'Impersonation token generated',
+      token: customToken, // Front-end can decide how to use it
+      user: targetEntity
+    });
+  } catch (error) {
+    console.error('Error impersonating user:', error);
+    res.status(500).json({ success: false, message: 'Failed to impersonate user' });
   }
 };
