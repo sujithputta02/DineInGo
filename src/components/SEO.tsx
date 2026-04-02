@@ -46,6 +46,7 @@ const SEO: React.FC<SEOProps> = ({
 
       {/* Search Engine Verification */}
       <meta name="google-site-verification" content="48CMPDSRmR5N-sjGbP5OlnFHhuikcw3XYsPhRI7Ctcc" />
+      <meta name="google-site-verification" content="BMpd1amFjj5-utNNTbYNrqvyDnWwHaP78O7Iu1ZraQE" />
       {/* <meta name="msvalidate.01" content="YOUR_BING_VERIFICATION_CODE" /> */}
     </Helmet>
   );
