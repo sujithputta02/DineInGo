@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import SEO from "./components/SEO";
 
 interface DoodleProps {
   type: 'plate' | 'fork' | 'star' | 'chair' | 'wave' | 'ticket';
@@ -492,6 +493,11 @@ export default function LandingPage() {
 
   return (
     <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", backgroundColor: glassStyles.colors.bg, color: glassStyles.colors.black, overflow: "hidden" }}>
+      <SEO 
+        title="DineInGo - India's First Interactive Dining & Events Platform"
+        description="DineInGo is the ultimate platform for effortless dining and event reservations. Find the best restaurants, book exact tables, and manage your waitlists seamlessly."
+        keywords="dining, reservations, events, table booking, food, restaurants, waitlist, interactive floor plan, DineInGo"
+      />
       {/* Hero Section with Parallax and Liquid Glass Theme */}
       <div
         style={{

@@ -74,6 +74,7 @@ import { getSessionToken } from './utils/sessionGuard';
 import socketService from './utils/socketService';
 import { toast } from 'react-toastify';
 import { FeatureFlagProvider, useFeatureFlags } from './contexts/FeatureFlagContext';
+import SEO from './components/SEO';
 
 // Helper component for business dashboard redirection
 const BusinessDashboardRedirect = () => {
@@ -103,39 +104,8 @@ const FeatureRouteGuard: React.FC<{
   return <>{children}</>;
 };
 
-// Custom hook to set the document title based on the current route
-function usePageTitle() {
-  const location = useLocation();
-
-  useEffect(() => {
-    let title = 'DineInGo';
-    if (location.pathname === '/') title = 'DineInGo - Reserve Dining & Events';
-    else if (location.pathname.startsWith('/login')) title = 'Login | DineInGo';
-    else if (location.pathname.startsWith('/signup')) title = 'Sign Up | DineInGo';
-    else if (location.pathname.startsWith('/dashboard')) title = 'Dashboard | DineInGo';
-    else if (location.pathname.startsWith('/restaurant/') && location.pathname.endsWith('/menu')) title = 'Menu | DineInGo';
-    else if (location.pathname.startsWith('/restaurant/') && location.pathname.endsWith('/preview')) title = 'Reservation Preview | DineInGo';
-    else if (location.pathname.startsWith('/restaurant/') && location.pathname.endsWith('/table-selection')) title = 'Table Selection | DineInGo';
-    else if (location.pathname.startsWith('/restaurant/') && location.pathname.endsWith('/reservation')) title = 'Reservation Details | DineInGo';
-    else if (location.pathname.startsWith('/restaurant/')) title = 'Restaurant Details | DineInGo';
-    else if (location.pathname.startsWith('/event/') && location.pathname.endsWith('/preview')) title = 'Event Registration Preview | DineInGo';
-    else if (location.pathname.startsWith('/event/') && location.pathname.endsWith('/register')) title = 'Event Registration | DineInGo';
-    else if (location.pathname.startsWith('/events')) title = 'Events | DineInGo';
-    else if (location.pathname.startsWith('/terms')) title = 'Terms & Conditions | DineInGo';
-    else if (location.pathname.startsWith('/feedback')) title = 'Feedback | DineInGo';
-    else if (location.pathname.startsWith('/debug')) title = 'Debug | DineInGo';
-    else if (location.pathname.startsWith('/auth/action')) title = 'Auth Action | DineInGo';
-    else if (location.pathname.startsWith('/admin/notifications')) title = 'Admin Notifications | DineInGo';
-    else if (location.pathname.startsWith('/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9')) title = 'Admin Portal | DineInGo';
-    else if (location.pathname.includes('/security')) title = 'Security Command Center | DineInGo';
-    document.title = title;
-  }, [location]);
-}
-
-// New component to call usePageTitle inside Router context
-function PageTitleHandler() {
-  usePageTitle();
-
+// Page content handler for socket connection
+function AppSocketHandler() {
   useEffect(() => {
     // Connect socket on mount
     socketService.connect();
@@ -164,7 +134,8 @@ function PageTitleHandler() {
 const App: React.FC = () => {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <PageTitleHandler />
+      <SEO />
+      <AppSocketHandler />
       <AuthProvider>
         <FeatureFlagProvider>
         <UserActivityProvider>

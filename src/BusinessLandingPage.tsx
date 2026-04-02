@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
+import SEO from "./components/SEO";
 
 export default function BusinessLandingPage() {
     const [scrollY, setScrollY] = useState(0);
@@ -86,6 +87,12 @@ export default function BusinessLandingPage() {
 
     return (
         <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", overflow: "hidden" }}>
+            <SEO 
+                title="DineInGo for Business - The Ultimate Restaurant Management System"
+                description="Empower your restaurant with DineInGo's smart reservations, interactive floor plans, and real-time analytics. Join 500+ partners today."
+                keywords="restaurant management, table reservation system, restaurant analytics, event management, digital floor plan, DineInGo Business"
+                url="https://dineingo.com/business"
+            />
             {/* Hero Section */}
             <section
                 style={{

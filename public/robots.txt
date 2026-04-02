@@ -1,0 +1,37 @@
+# DineInGo Robots.txt
+
+User-agent: *
+Allow: /
+Allow: /business
+Allow: /restaurant/
+Allow: /events
+Allow: /login
+Allow: /signup
+Allow: /business/businessLogin
+Allow: /business/businessSignup
+Allow: /privacy
+Allow: /terms
+
+# User Portal
+Disallow: /dashboard/
+Disallow: /onboarding
+
+# Business Portal
+Disallow: /business/app/
+
+# Admin Portal (High Security)
+Disallow: /admin/
+Disallow: /portal-secure-dino-*
+
+# Miscellaneous
+Disallow: /check-in/
+Disallow: /ar-experience/
+Disallow: /auth/action
+Disallow: /auth/impersonate
+Disallow: /feedback
+Disallow: /debug-unblock
+Disallow: /test-floor-designer
+Disallow: /test-event-designer
+
+# Sitemap
+Sitemap: https://dine-in-go.vercel.app/sitemap.xml
