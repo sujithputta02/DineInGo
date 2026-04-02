@@ -12,8 +12,8 @@ interface SEOProps {
 
 const SEO: React.FC<SEOProps> = ({
   title = 'DineInGo - Reserve Dining & Events',
-  description = 'DineInGo is the ultimate platform for effortless dining and event reservations. Find the best restaurants, book tables, and manage your events seamlessly.',
-  keywords = 'dining, reservations, events, restaurants, book table, waitlist, DineInGo',
+  description = 'DineInGo - India\'s first truly interactive restaurant and event booking platform. Reserve exact tables with real-time floor plans, manage waitlists, and discover top-tier dining experiences.',
+  keywords = 'DineInGo, restaurant reservations India, book exact table, real-time floor plan, event booking app, waitlist management system, table booking Mumbai, table booking Bangalore, restaurant management software',
   image = '/images/Di logo.svg',
   url = 'https://dine-in-go.vercel.app',
   type = 'website',

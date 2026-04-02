@@ -88,10 +88,10 @@ export default function BusinessLandingPage() {
     return (
         <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", overflow: "hidden" }}>
             <SEO 
-                title="DineInGo for Business - The Ultimate Restaurant Management System"
-                description="Empower your restaurant with DineInGo's smart reservations, interactive floor plans, and real-time analytics. Join 500+ partners today."
-                keywords="restaurant management, table reservation system, restaurant analytics, event management, digital floor plan, DineInGo Business"
-                url="https://dineingo.com/business"
+                title="DineInGo for Business - Scale Your Restaurant with Smart Bookings"
+                description="Empower your restaurant with DineInGo's smart reservations, interactive floor plans, and real-time analytics. Join 500+ partners to boost bookings and revenue."
+                keywords="restaurant management software, waitlist system for restaurants, digital table management, boost restaurant revenue, restaurant analytics India, digital floor plan builder"
+                url="https://dine-in-go.vercel.app/business"
             />
             {/* Hero Section */}
             <section

@@ -494,9 +494,9 @@ export default function LandingPage() {
   return (
     <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", backgroundColor: glassStyles.colors.bg, color: glassStyles.colors.black, overflow: "hidden" }}>
       <SEO 
-        title="DineInGo - India's First Interactive Dining & Events Platform"
-        description="DineInGo is the ultimate platform for effortless dining and event reservations. Find the best restaurants, book exact tables, and manage your waitlists seamlessly."
-        keywords="dining, reservations, events, table booking, food, restaurants, waitlist, interactive floor plan, DineInGo"
+        title="DineInGo - India's First Real-Time Table & Event Selector"
+        description="DineInGo - The ultimate platform for effortless dining and event reservations in India. Book exact tables with real-time floor plans, manage waitlists, and discover top restaurants."
+        keywords="DineInGo, restaurant reservations India, book exact table, real-time floor plan, event booking app, table booking Mumbai, table booking Bangalore, interactive restaurant map"
       />
       {/* Hero Section with Parallax and Liquid Glass Theme */}
       <div
