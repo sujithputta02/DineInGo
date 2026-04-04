@@ -18,6 +18,7 @@ window.addEventListener('error', (event) => {
 import { PostHogProvider } from '@posthog/react';
 import { HelmetProvider } from 'react-helmet-async';
 import * as amplitude from '@amplitude/unified';
+import ReactGA from 'react-ga4';
 
 // Initialize Amplitude Analytics & Session Replay
 if (typeof window !== 'undefined') {
@@ -29,6 +30,11 @@ if (typeof window !== 'undefined') {
       "sampleRate": 1
     }
   });
+
+  // Initialize Google Analytics (GA4)
+  ReactGA.initialize('G-234CB1C58K');
+  // Initial pageview tracking
+  ReactGA.send({ hitType: "pageview", page: window.location.pathname });
 }
 
 const options = {
