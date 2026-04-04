@@ -75,6 +75,7 @@ import socketService from './utils/socketService';
 import { toast } from 'react-toastify';
 import { FeatureFlagProvider, useFeatureFlags } from './contexts/FeatureFlagContext';
 import SEO from './components/SEO';
+import AnalyticsTracker from './components/AnalyticsTracker';
 
 // Helper component for business dashboard redirection
 const BusinessDashboardRedirect = () => {
@@ -135,6 +136,7 @@ const App: React.FC = () => {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <SEO />
+      <AnalyticsTracker />
       <AppSocketHandler />
       <AuthProvider>
         <FeatureFlagProvider>
