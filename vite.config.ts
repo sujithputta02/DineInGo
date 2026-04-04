@@ -72,6 +72,23 @@ export default defineConfig({
   ],
   build: {
     chunkSizeWarningLimit: 5000,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('firebase')) return 'vendor-firebase';
+            if (id.includes('@mui')) return 'vendor-mui';
+            if (id.includes('framer-motion')) return 'vendor-framer';
+            if (id.includes('recharts')) return 'vendor-recharts';
+            if (id.includes('leaflet')) return 'vendor-leaflet';
+            if (id.includes('lucide-react')) return 'vendor-lucide';
+            if (id.includes('mixpanel-browser') || id.includes('amplitude') || id.includes('posthog')) return 'vendor-analytics';
+            if (id.includes('react') || id.includes('react-dom') || id.includes('react-router-dom')) return 'vendor-core';
+            return 'vendor';
+          }
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
