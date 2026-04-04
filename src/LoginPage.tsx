@@ -22,6 +22,7 @@ import { persistUserSession, getSessionToken, createSession } from './utils/sess
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { trackEvent, identifyUser } from './utils/analytics';
+import mixpanel from 'mixpanel-browser';
 
 interface FormData {
   email: string;
@@ -220,6 +221,13 @@ export default function LoginPage() {
           });
           trackEvent('login_success', { method: 'email', role: updatedUserData.role });
           
+          // Mixpanel Tracking
+          mixpanel.track('Sign In', {
+            'user_id': user.uid,
+            'login_method': 'email',
+            'success': true
+          });
+          
           // 🛡️ SECURITY FIX: Persist brand-new randomized session on every login
           const token = persistUserSession(updatedUserData, user.uid);
           
@@ -330,6 +338,13 @@ export default function LoginPage() {
             role: updatedUserData.role 
           });
           trackEvent('login_success', { method: 'google', role: updatedUserData.role });
+          
+          // Mixpanel Tracking
+          mixpanel.track('Sign In', {
+            'user_id': user.uid,
+            'login_method': 'google',
+            'success': true
+          });
           
           // 🛡️ SECURITY FIX: Persist brand-new randomized session on every login
           const token = persistUserSession(updatedUserData, user.uid);

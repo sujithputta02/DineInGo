@@ -14,6 +14,7 @@ import { userAPI, authOtpApi, waitlistApi } from './services/api';
 import { sendVerificationEmail } from "./authUtils";
 import { createSession, getSessionToken, updateSessionStorage } from './utils/sessionGuard';
 import { trackEvent, identifyUser } from './utils/analytics';
+import mixpanel from 'mixpanel-browser';
 
 interface FormData {
   name: string;
@@ -632,6 +633,13 @@ const SignupPage: React.FC = () => {
         role: savedUser.role 
       });
       trackEvent('signup_success', { method: googleUserToRegister ? 'google' : 'email' });
+      
+      // Mixpanel Tracking
+      mixpanel.track('Sign Up', {
+        'user_id': savedUser.uid,
+        'email': savedUser.email,
+        'signup_method': googleUserToRegister ? 'google' : 'email'
+      });
 
       // Clean up state
       setGoogleUserToRegister(null);

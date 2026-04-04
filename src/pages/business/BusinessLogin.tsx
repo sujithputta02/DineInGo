@@ -8,6 +8,7 @@ import { toast } from 'react-toastify';
 import { Loader2, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import DineInGoLogo from '../../components/DineInGoLogo';
+import mixpanel from 'mixpanel-browser';
 
 const API_URL = API_CONFIG.BASE_URL;
 
@@ -57,6 +58,14 @@ const BusinessLogin: React.FC = () => {
                 role: 'owner'
             }));
 
+            // Mixpanel Tracking
+            mixpanel.track('Sign In', {
+                'user_id': user.uid,
+                'login_method': 'email',
+                'portal': 'business',
+                'success': true
+            });
+
             toast.success("Login successful");
             const token = createSession(user.uid);
             navigate(`/business/app/dashboard/${token}`);
@@ -94,6 +103,14 @@ const BusinessLogin: React.FC = () => {
                 email: user.email,
                 role: 'owner'
             }));
+
+            // Mixpanel Tracking
+            mixpanel.track('Sign In', {
+                'user_id': user.uid,
+                'login_method': 'google',
+                'portal': 'business',
+                'success': true
+            });
 
             // Check if account was linked
             const data = response.data as RegisterResponse;

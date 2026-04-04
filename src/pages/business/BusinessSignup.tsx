@@ -9,6 +9,7 @@ import { Loader2, ArrowRight } from 'lucide-react';
 import axios from 'axios';
 import DineInGoLogo from '../../components/DineInGoLogo';
 import { waitlistApi } from '../../services/api';
+import mixpanel from 'mixpanel-browser';
 
 const API_URL = API_CONFIG.BASE_URL;
 
@@ -121,6 +122,15 @@ const BusinessSignup: React.FC = () => {
             }));
 
             toast.success("Welcome to DineInGo Business!");
+            
+            // Mixpanel Tracking
+            mixpanel.track('Sign Up', {
+                'user_id': user.uid,
+                'email': user.email,
+                'signup_method': 'email',
+                'portal': 'business'
+            });
+
             navigate('/business/onboarding');
         } catch (error: any) {
             console.error("Owner Registration Error:", error);
@@ -183,6 +193,14 @@ const BusinessSignup: React.FC = () => {
                 email: googleUserToRegister.email,
                 role: 'owner'
             }));
+
+            // Mixpanel Tracking
+            mixpanel.track('Sign Up', {
+                'user_id': googleUserToRegister.uid,
+                'email': googleUserToRegister.email,
+                'signup_method': 'google',
+                'portal': 'business'
+            });
 
             // Check if account was linked
             const data = response.data as RegisterResponse;

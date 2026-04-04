@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth } from '../firebase';
 import { clearSession } from '../utils/sessionGuard';
+import mixpanel from 'mixpanel-browser';
 
 interface User {
   uid: string;
@@ -43,9 +44,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           photoURL: user.photoURL
         });
         setIsAuthenticated(true);
+        
+        // Mixpanel Identification
+        mixpanel.identify(user.uid);
+        mixpanel.people.set({
+          '$email': user.email,
+          '$name': user.displayName,
+          '$last_login': new Date().toISOString()
+        });
       } else {
         setCurrentUser(null);
         setIsAuthenticated(false);
+        // Mixpanel Reset
+        mixpanel.reset();
         // Clear session if firebase user is gone and not an admin
         if (!localStorage.getItem('adminToken')) {
           clearSession();

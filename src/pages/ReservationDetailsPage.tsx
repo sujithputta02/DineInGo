@@ -9,6 +9,7 @@ import { bookingsApi } from '../services/api';
 import { walletService } from '../services/walletService';
 import { toast } from 'react-toastify';
 import { DinoStepper } from '../components/DinoStepper';
+import mixpanel from 'mixpanel-browser';
 
 const ReservationDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -203,6 +204,24 @@ const ReservationDetailsPage: React.FC = () => {
             userId: user.uid
           });
         }
+        
+        // Mixpanel Tracking
+        mixpanel.track('Purchase', {
+          'item_id': restaurant?.id || id,
+          'item_name': restaurant?.name || searchParams.get('restaurantName') || searchParams.get('eventName'),
+          'item_type': type,
+          'amount': getTotalPrice() || parseFloat(searchParams.get('eventPrice') || '0'),
+          'currency': 'INR',
+          'guests': bookingData.guests,
+          'date': bookingData.date,
+          'time': bookingData.time
+        });
+
+        mixpanel.track('Conversion', {
+          'type': 'booking',
+          'category': type
+        });
+
         // Show success overlay
         setShowSuccess(true);
         // Redirect to dashboard after a delay

@@ -59,6 +59,7 @@ import { favoritesApi } from "../services/favoritesApi";
 import socketService from "../utils/socketService";
 import { VoiceSearchButton } from "../components/VoiceSearchButton";
 import { trackEvent } from "../utils/analytics";
+import mixpanel from "mixpanel-browser";
 import { SustainabilityBadge } from "../components/SustainabilityBadge";
 import AchievementsSection from "../components/AchievementsSection";
 import ARMenuSection from "../components/ARMenuSection";
@@ -2123,6 +2124,12 @@ const renderAvatarModal = () => {
 const handleSearch = (term: string) => {
   if (term.trim()) {
     trackEvent('search', { term: term.trim() });
+    
+    // Mixpanel Tracking
+    mixpanel.track('Search', {
+      'search_query': term.trim(),
+      'results_count': (filteredRestaurants.length + filteredEvents.length)
+    });
   }
   setSearchTerm(term);
   if (term.trim() === "") {

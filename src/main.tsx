@@ -19,6 +19,18 @@ import { PostHogProvider } from '@posthog/react';
 import { HelmetProvider } from 'react-helmet-async';
 import * as amplitude from '@amplitude/unified';
 import ReactGA from 'react-ga4';
+import mixpanel from 'mixpanel-browser';
+
+// Initialize Mixpanel
+if (typeof window !== 'undefined') {
+  mixpanel.init("1b02561abd137a1e4d6d44a3e3f50657", {
+    debug: true,
+    track_pageview: true,
+    persistence: "localStorage",
+    autocapture: true,
+    record_sessions_percent: 100,
+  });
+}
 
 // Initialize Amplitude Analytics & Session Replay
 if (typeof window !== 'undefined') {

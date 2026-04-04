@@ -44,6 +44,7 @@
     "jspdf": "^3.0.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.331.0",
+    "mixpanel-browser": "^2.77.0",
     "mongodb": "^6.16.0",
     "mongoose": "^8.1.0",
     "multer": "^2.0.1",
