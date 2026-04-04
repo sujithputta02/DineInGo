@@ -18,6 +18,7 @@ const AnalyticsTracker: React.FC = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const portal = getPortal();
+      console.log(`[Analytics] Initializing Page View tracking for portal: ${portal}`);
       
       // Mixpanel Page View Tracking
       mixpanel.track('Page View', {
@@ -31,7 +32,7 @@ const AnalyticsTracker: React.FC = () => {
         hitType: "pageview", 
         page: location.pathname + location.search 
       });
-      console.debug(`[Analytics] Tracked Pageview (${portal}): ${location.pathname}${location.search}`);
+      console.log(`[Analytics] Tracked Pageview (${portal}): ${location.pathname}${location.search}`);
     }
   }, [location]);
 
@@ -71,7 +72,7 @@ const AnalyticsTracker: React.FC = () => {
           value: 1
         });
 
-        console.debug(`[Analytics] Tracked Interaction (${portal}): ${type} - "${text}"`);
+        console.log(`[Analytics] Tracked Interaction (${portal}): ${type} - "${text}"`);
       }
     };
 

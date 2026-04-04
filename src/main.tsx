@@ -28,7 +28,8 @@ if (typeof window !== 'undefined') {
     track_pageview: true,
     persistence: "localStorage",
     autocapture: true,
-    record_sessions_percent: 100,
+    // @ts-ignore
+    record_sessions: true,
   });
 }
 
@@ -56,8 +57,8 @@ const options = {
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <HelmetProvider>
-      <PostHogProvider 
-        apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN} 
+      <PostHogProvider
+        apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN}
         options={options}
       >
         <App />
