@@ -17,6 +17,19 @@ window.addEventListener('error', (event) => {
 
 import { PostHogProvider } from '@posthog/react';
 import { HelmetProvider } from 'react-helmet-async';
+import * as amplitude from '@amplitude/unified';
+
+// Initialize Amplitude Analytics & Session Replay
+if (typeof window !== 'undefined') {
+  amplitude.initAll('57e82f94c4aee277dbc5b94ca3c3c36b', {
+    "analytics": {
+      "autocapture": true
+    },
+    "sessionReplay": {
+      "sampleRate": 1
+    }
+  });
+}
 
 const options = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
