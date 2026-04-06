@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../config/api';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Trash2, Loader } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
 import { toast } from 'react-toastify';
@@ -321,7 +322,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 <span>•</span>
                 <span>Press Enter to send</span>
                 <span>•</span>
-                <a href="#privacy" className="hover:text-emerald-500 transition-colors underline decoration-gray-200">Privacy Policy</a>
+                <Link to="/privacy" className="hover:text-emerald-500 transition-colors underline decoration-gray-200">Privacy Policy</Link>
               </div>
             </div>
           </div>
