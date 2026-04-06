@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Store, Wine, X, ChevronRight } from 'lucide-react';
 import { getRestaurantById } from '../services/restaurantService';
@@ -30,6 +30,121 @@ interface Floor {
   tables: string[];
   layout: TableData[];
   features: FeatureData[];
+}
+
+// Module-level sub-components — must NOT be inside TableSelection to avoid Vite TDZ errors
+function FeatureRenderer({ feature }: { feature: any }) {
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    left: `${feature.x}%`,
+    top: `${feature.y}%`,
+    width: `${feature.width}%`,
+    height: `${feature.height}%`,
+    transform: `translate(-50%, -50%)`,
+  };
+
+  switch (feature.type) {
+    case 'reception':
+      return (
+        <div style={style} className="flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl">
+          <Store size={14} className="text-amber-500 mb-1" />
+          <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{feature.label}</span>
+        </div>
+      );
+    case 'window':
+      return (
+        <div style={style} className="bg-cyan-900/20 border border-cyan-500/30 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent"></div>
+          <div className="w-full h-[1px] bg-cyan-500/20 absolute top-1/3"></div>
+          <div className="w-full h-[1px] bg-cyan-500/20 absolute top-2/3"></div>
+        </div>
+      );
+    case 'entrance':
+      return (
+        <div style={style} className="flex flex-col items-center justify-end pb-1 border-b-4 border-emerald-500">
+          <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-[0.2em]">ENTRANCE</span>
+        </div>
+      );
+    case 'bar':
+      return (
+        <div style={style} className="bg-slate-800 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-slate-900">
+          <Wine size={14} className="text-purple-400 mr-2" />
+          <span className="text-purple-200 text-xs font-bold tracking-widest uppercase">{feature.label}</span>
+        </div>
+      );
+    case 'plant':
+      return (
+        <div style={style} className="bg-emerald-900/50 rounded-full border border-emerald-800/50 flex items-center justify-center">
+          <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+        </div>
+      );
+    case 'wall':
+      return (
+        <div style={style} className="bg-slate-800 border-x border-slate-700 shadow-inner"></div>
+      );
+    default:
+      return null;
+  }
+}
+
+function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTables, onTableSelect }: {
+  tableData: any;
+  selectedTable: string | null;
+  unavailableTables: string[];
+  loadingTables: boolean;
+  onTableSelect: (id: string) => void;
+}) {
+  const isSelected = selectedTable === tableData.id;
+  const isUnavailable = Array.isArray(unavailableTables) && unavailableTables.includes(tableData.id);
+
+  let bgGradient = "";
+  let borderColor = "";
+  let textColor = "";
+
+  if (isUnavailable) {
+    bgGradient = "bg-slate-900";
+    borderColor = "border-slate-800";
+    textColor = "text-slate-700";
+  } else if (isSelected) {
+    bgGradient = "bg-emerald-500";
+    borderColor = "border-emerald-400";
+    textColor = "text-white";
+  } else {
+    bgGradient = "bg-gradient-to-br from-slate-600 to-slate-800";
+    borderColor = "border-slate-500";
+    textColor = "text-slate-300";
+  }
+
+  return (
+    <div
+      className="absolute flex items-center justify-center transition-all duration-300"
+      style={{ left: `${tableData.x}%`, top: `${tableData.y}%`, transform: 'translate(-50%, -50%)', zIndex: 10 }}
+    >
+      {Array.from({ length: tableData.seats }).map((_: unknown, i: number) => {
+        const angle = (i * (360 / tableData.seats)) * (Math.PI / 180);
+        const radius = 60;
+        return (
+          <div
+            key={`chair-indicator-${tableData.id}-${i}`}
+            className={`absolute w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-slate-600'} opacity-40`}
+            style={{ top: `${50 + (radius * Math.sin(angle))}%`, left: `${50 + (radius * Math.cos(angle))}%`, transform: 'translate(-50%, -50%)' }}
+          />
+        );
+      })}
+      <button
+        onClick={() => onTableSelect(tableData.id)}
+        disabled={isUnavailable || loadingTables}
+        className={`relative flex items-center justify-center border-t-2 border-b-4 ${borderColor} ${bgGradient} ${textColor}
+          shadow-lg transition-all active:scale-95 active:border-b-0 active:translate-y-1
+          w-12 md:w-16 h-12 md:h-16 rounded-lg`}
+      >
+        <div className="flex flex-col items-center leading-none">
+          <span className="font-bold text-sm md:text-base drop-shadow-md">{tableData.id}</span>
+          {tableData.seats > 0 && <span className="text-[9px] opacity-60 mt-0.5">{tableData.seats}</span>}
+        </div>
+      </button>
+    </div>
+  );
 }
 
 const TableSelection: React.FC = () => {
@@ -398,127 +513,6 @@ const TableSelection: React.FC = () => {
     setSelectedTable(table);
   };
 
-  // Feature Renderer Component
-  const FeatureRenderer = ({ feature }: { feature: any }) => {
-    const style: React.CSSProperties = {
-      position: 'absolute',
-      left: `${feature.x}%`,
-      top: `${feature.y}%`,
-      width: `${feature.width}%`,
-      height: `${feature.height}%`,
-      transform: `translate(-50%, -50%)`,
-    };
-
-    switch (feature.type) {
-      case 'reception':
-        return (
-          <div style={style} className="flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl">
-            <Store size={14} className="text-amber-500 mb-1" />
-            <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{feature.label}</span>
-          </div>
-        );
-      case 'window':
-        return (
-          <div style={style} className="bg-cyan-900/20 border border-cyan-500/30 backdrop-blur-sm flex items-center justify-center overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent"></div>
-            <div className="w-full h-[1px] bg-cyan-500/20 absolute top-1/3"></div>
-            <div className="w-full h-[1px] bg-cyan-500/20 absolute top-2/3"></div>
-          </div>
-        );
-      case 'entrance':
-        return (
-          <div style={style} className="flex flex-col items-center justify-end pb-1 border-b-4 border-emerald-500">
-            <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-[0.2em]">ENTRANCE</span>
-          </div>
-        );
-      case 'bar':
-        return (
-          <div style={style} className="bg-slate-800 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-slate-900">
-            <Wine size={14} className="text-purple-400 mr-2" />
-            <span className="text-purple-200 text-xs font-bold tracking-widest uppercase">{feature.label}</span>
-          </div>
-        );
-      case 'plant':
-        return (
-          <div style={style} className="bg-emerald-900/50 rounded-full border border-emerald-800/50 flex items-center justify-center">
-            <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
-          </div>
-        );
-      case 'wall':
-        return (
-          <div style={style} className="bg-slate-800 border-x border-slate-700 shadow-inner"></div>
-        );
-      default:
-        return null;
-    }
-  };
-
-  // Table Renderer Component
-  const TableRenderer = ({ tableData }: { tableData: any }) => {
-    const isSelected = selectedTable === tableData.id;
-    const isUnavailable = isTableUnavailable(tableData.id);
-
-    let bgGradient = "";
-    let borderColor = "";
-    let textColor = "";
-
-    if (isUnavailable) {
-      bgGradient = "bg-slate-900";
-      borderColor = "border-slate-800";
-      textColor = "text-slate-700";
-    } else if (isSelected) {
-      bgGradient = "bg-emerald-500";
-      borderColor = "border-emerald-400";
-      textColor = "text-white";
-    } else {
-      bgGradient = "bg-gradient-to-br from-slate-600 to-slate-800";
-      borderColor = "border-slate-500";
-      textColor = "text-slate-300";
-    }
-
-    return (
-      <div
-        className="absolute flex items-center justify-center transition-all duration-300"
-        style={{
-          left: `${tableData.x}%`,
-          top: `${tableData.y}%`,
-          transform: 'translate(-50%, -50%)',
-          zIndex: 10
-        }}
-      >
-        {/* Chair indicators */}
-        {Array.from({ length: tableData.seats }).map((_, i) => {
-          const angle = (i * (360 / tableData.seats)) * (Math.PI / 180);
-          const radius = 60;
-          return (
-            <div
-              key={`chair-indicator-${tableData.id}-${i}`}
-              className={`absolute w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-500' : 'bg-slate-600'} opacity-40`}
-              style={{
-                top: `${50 + (radius * Math.sin(angle))}%`,
-                left: `${50 + (radius * Math.cos(angle))}%`,
-                transform: 'translate(-50%, -50%)'
-              }}
-            />
-          );
-        })}
-
-        <button
-          onClick={() => handleTableSelect(tableData.id)}
-          disabled={isUnavailable || loadingTables}
-          className={`relative flex items-center justify-center border-t-2 border-b-4 ${borderColor} ${bgGradient} ${textColor}
-            shadow-lg transition-all active:scale-95 active:border-b-0 active:translate-y-1
-            w-12 md:w-16 h-12 md:h-16 rounded-lg`}
-        >
-          <div className="flex flex-col items-center leading-none">
-            <span className="font-bold text-sm md:text-base drop-shadow-md">{tableData.id}</span>
-            {tableData.seats > 0 && <span className="text-[9px] opacity-60 mt-0.5">{tableData.seats}</span>}
-          </div>
-        </button>
-      </div>
-    );
-  };
-
   return (
     <div className={`flex flex-col h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-gray-50 text-gray-800'}`}>
       {/* Header */}
@@ -573,8 +567,15 @@ const TableSelection: React.FC = () => {
             ))}
 
             {/* Tables Layer */}
-            {activeFloor?.layout.map(table => (
-              <TableRenderer key={table.id} tableData={table} />
+            {activeFloor?.layout.map((table: any) => (
+              <TableRenderer 
+                key={table.id} 
+                tableData={table}
+                selectedTable={selectedTable}
+                unavailableTables={unavailableTables}
+                loadingTables={loadingTables}
+                onTableSelect={handleTableSelect}
+              />
             ))}
           </div>
 

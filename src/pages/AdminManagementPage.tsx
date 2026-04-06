@@ -41,6 +41,139 @@ interface Admin {
   };
 }
 
+interface AdminManagementPageModalProps {
+  totalCount: number;
+  maxAdmins: number;
+  error: string | null;
+  actionLoading: string | null;
+  newAdminEmail: string;
+  setNewAdminEmail: (v: string) => void;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+const AddAdminModal = React.memo(function AddAdminModal({
+  totalCount, maxAdmins, error, actionLoading, newAdminEmail, setNewAdminEmail, onClose, onSubmit
+}: AdminManagementPageModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 border-b border-slate-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <UserPlus className="text-blue-600" size={20} />
+              Add New Admin
+            </h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 text-2xl leading-none">×</button>
+          </div>
+        </div>
+        <form onSubmit={onSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Email Address</label>
+            <input
+              type="email"
+              value={newAdminEmail}
+              onChange={(e) => setNewAdminEmail(e.target.value)}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+              placeholder="admin@example.com"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
+              <div className="text-xs sm:text-sm text-blue-800">
+                <p className="font-medium mb-1">Admin Limit: {totalCount}/{maxAdmins}</p>
+                <p>The new admin will receive a welcome email with login instructions.</p>
+              </div>
+            </div>
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
+              <AlertTriangle size={16} className="flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">{error}</span>
+            </div>
+          )}
+          <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
+            <button type="button" onClick={onClose} className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm">Cancel</button>
+            <button type="submit" disabled={actionLoading === 'add' || !newAdminEmail || totalCount >= maxAdmins}
+              className="flex-1 bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+              {actionLoading === 'add' ? (<><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />Adding...</>) : (<><Plus size={16} />Add Admin</>)}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+});
+
+interface CapacityModalProps {
+  totalCount: number;
+  error: string | null;
+  actionLoading: string | null;
+  newMaxAdmins: number;
+  setNewMaxAdmins: (v: number) => void;
+  onClose: () => void;
+  onSubmit: (e: React.FormEvent) => void;
+}
+
+const CapacityModal = React.memo(function CapacityModal({
+  totalCount, error, actionLoading, newMaxAdmins, setNewMaxAdmins, onClose, onSubmit
+}: CapacityModalProps) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
+      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6 border-b border-slate-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
+              <Shield className="text-purple-600" size={20} />
+              Update Admin Capacity
+            </h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-2 text-2xl leading-none">×</button>
+          </div>
+        </div>
+        <form onSubmit={onSubmit} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
+          <div>
+            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Maximum Admins</label>
+            <input
+              type="number"
+              min={totalCount}
+              value={newMaxAdmins}
+              onChange={(e) => setNewMaxAdmins(parseInt(e.target.value))}
+              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm"
+              required
+              autoFocus
+            />
+          </div>
+          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 sm:p-4">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="text-purple-600 mt-0.5 flex-shrink-0" size={16} />
+              <div className="text-xs sm:text-sm text-purple-800">
+                <p className="font-medium mb-1">Current: {totalCount} active admins</p>
+                <p>You can only set the capacity to {totalCount} or higher.</p>
+              </div>
+            </div>
+          </div>
+          {error && (
+            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
+              <AlertTriangle size={16} className="flex-shrink-0" />
+              <span className="text-xs sm:text-sm font-medium">{error}</span>
+            </div>
+          )}
+          <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
+            <button type="button" onClick={onClose} className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm">Cancel</button>
+            <button type="submit" disabled={actionLoading === 'capacity' || newMaxAdmins < totalCount}
+              className="flex-1 bg-purple-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+              {actionLoading === 'capacity' ? (<><div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />Updating...</>) : (<><Shield size={16} />Update Capacity</>)}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+});
+
 const AdminManagementPage: React.FC = () => {
   const navigate = useNavigate();
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -184,170 +317,6 @@ const AdminManagementPage: React.FC = () => {
       setActionLoading(null);
     }
   };
-
-  const AddAdminModal = React.memo(() => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-4 sm:p-6 border-b border-slate-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <UserPlus className="text-blue-600" size={20} />
-              Add New Admin
-            </h2>
-            <button
-              onClick={() => setShowAddModal(false)}
-              className="text-slate-400 hover:text-slate-600 p-2 text-2xl leading-none"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleAddAdmin} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
-              Email Address
-            </label>
-            <input
-              type="email"
-              value={newAdminEmail}
-              onChange={(e) => setNewAdminEmail(e.target.value)}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
-              placeholder="admin@example.com"
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 sm:p-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="text-blue-600 mt-0.5 flex-shrink-0" size={16} />
-              <div className="text-xs sm:text-sm text-blue-800">
-                <p className="font-medium mb-1">Admin Limit: {totalCount}/{maxAdmins}</p>
-                <p>The new admin will receive a welcome email with login instructions.</p>
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
-              <AlertTriangle size={16} className="flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">{error}</span>
-            </div>
-          )}
-
-          <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(false)}
-              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={actionLoading === 'add' || !newAdminEmail || totalCount >= maxAdmins}
-              className="flex-1 bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-            >
-              {actionLoading === 'add' ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                  Adding...
-                </>
-              ) : (
-                <>
-                  <Plus size={16} />
-                  Add Admin
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  ));
-
-  const CapacityModal = React.memo(() => (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-4 sm:p-6 border-b border-slate-200">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 flex items-center gap-2">
-              <Shield className="text-purple-600" size={20} />
-              Update Admin Capacity
-            </h2>
-            <button
-              onClick={() => setShowCapacityModal(false)}
-              className="text-slate-400 hover:text-slate-600 p-2 text-2xl leading-none"
-            >
-              ×
-            </button>
-          </div>
-        </div>
-
-        <form onSubmit={handleUpdateCapacity} className="p-4 sm:p-6 space-y-3 sm:space-y-4">
-          <div>
-            <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">
-              Maximum Admins
-            </label>
-            <input
-              type="number"
-              min={totalCount}
-              value={newMaxAdmins}
-              onChange={(e) => setNewMaxAdmins(parseInt(e.target.value))}
-              className="w-full px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none text-sm"
-              required
-              autoFocus
-            />
-          </div>
-
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 sm:p-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="text-purple-600 mt-0.5 flex-shrink-0" size={16} />
-              <div className="text-xs sm:text-sm text-purple-800">
-                <p className="font-medium mb-1">Current: {totalCount} active admins</p>
-                <p>You can only set the capacity to {totalCount} or higher.</p>
-              </div>
-            </div>
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700">
-              <AlertTriangle size={16} className="flex-shrink-0" />
-              <span className="text-xs sm:text-sm font-medium">{error}</span>
-            </div>
-          )}
-
-          <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
-            <button
-              type="button"
-              onClick={() => setShowCapacityModal(false)}
-              className="flex-1 px-3 sm:px-4 py-2 sm:py-3 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors font-medium text-sm"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={actionLoading === 'capacity' || newMaxAdmins < totalCount}
-              className="flex-1 bg-purple-600 text-white px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
-            >
-              {actionLoading === 'capacity' ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                  Updating...
-                </>
-              ) : (
-                <>
-                  <Shield size={16} />
-                  Update Capacity
-                </>
-              )}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  ));
 
   if (loading) {
     return (
@@ -640,8 +609,25 @@ const AdminManagementPage: React.FC = () => {
         )}
       </div>
 
-      {showAddModal && <AddAdminModal />}
-      {showCapacityModal && <CapacityModal />}
+      {showAddModal && <AddAdminModal
+        totalCount={totalCount}
+        maxAdmins={maxAdmins}
+        error={error}
+        actionLoading={actionLoading}
+        newAdminEmail={newAdminEmail}
+        setNewAdminEmail={setNewAdminEmail}
+        onClose={() => setShowAddModal(false)}
+        onSubmit={handleAddAdmin}
+      />}
+      {showCapacityModal && <CapacityModal
+        totalCount={totalCount}
+        error={error}
+        actionLoading={actionLoading}
+        newMaxAdmins={newMaxAdmins}
+        setNewMaxAdmins={setNewMaxAdmins}
+        onClose={() => setShowCapacityModal(false)}
+        onSubmit={handleUpdateCapacity}
+      />}
     </div>
   );
 };

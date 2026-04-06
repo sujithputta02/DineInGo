@@ -64,6 +64,41 @@ interface AnalyticsData {
   }>;
 }
 
+// Module-level component — must NOT be inside AdminAnalyticsPage to avoid Vite TDZ error
+const AnalyticsStatCard = ({ 
+  title, 
+  value, 
+  growth, 
+  icon: Icon, 
+  color 
+}: { 
+  title: string; 
+  value: string | number; 
+  growth: number; 
+  icon: any; 
+  color: string;
+}) => (
+  <motion.div
+    initial={{ opacity: 0, y: 20 }}
+    animate={{ opacity: 1, y: 0 }}
+    className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+  >
+    <div className="flex items-start justify-between mb-4">
+      <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${color}-100`}>
+        <Icon className={`text-${color}-600`} size={24} />
+      </div>
+      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+        growth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+      }`}>
+        {growth >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+        {Math.abs(growth)}%
+      </div>
+    </div>
+    <h3 className="text-sm font-medium text-slate-600 mb-1">{title}</h3>
+    <p className="text-3xl font-bold text-slate-900">{value}</p>
+  </motion.div>
+);
+
 const AdminAnalyticsPage: React.FC = () => {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -120,40 +155,6 @@ const AdminAnalyticsPage: React.FC = () => {
       setLoading(false);
     }
   };
-
-  const StatCard = ({ 
-    title, 
-    value, 
-    growth, 
-    icon: Icon, 
-    color 
-  }: { 
-    title: string; 
-    value: string | number; 
-    growth: number; 
-    icon: any; 
-    color: string;
-  }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${color}-100`}>
-          <Icon className={`text-${color}-600`} size={24} />
-        </div>
-        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-          growth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-        }`}>
-          {growth >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-          {Math.abs(growth)}%
-        </div>
-      </div>
-      <h3 className="text-sm font-medium text-slate-600 mb-1">{title}</h3>
-      <p className="text-3xl font-bold text-slate-900">{value}</p>
-    </motion.div>
-  );
 
   if (loading) {
     return (
@@ -217,28 +218,28 @@ const AdminAnalyticsPage: React.FC = () => {
 
       {/* Overview Stats */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
+        <AnalyticsStatCard
           title="Total Users"
           value={analytics.overview.totalUsers.toLocaleString()}
           growth={analytics.overview.userGrowth}
           icon={Users}
           color="blue"
         />
-        <StatCard
+        <AnalyticsStatCard
           title="Total Businesses"
           value={analytics.overview.totalBusinesses.toLocaleString()}
           growth={analytics.overview.businessGrowth}
           icon={Building2}
           color="purple"
         />
-        <StatCard
+        <AnalyticsStatCard
           title="Total Revenue"
           value={`₹${analytics.overview.totalRevenue.toLocaleString()}`}
           growth={analytics.overview.revenueGrowth}
           icon={DollarSign}
           color="green"
         />
-        <StatCard
+        <AnalyticsStatCard
           title="Total Bookings"
           value={analytics.overview.totalBookings.toLocaleString()}
           growth={analytics.overview.bookingGrowth}

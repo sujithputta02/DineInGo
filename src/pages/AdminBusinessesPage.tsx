@@ -39,6 +39,87 @@ interface Pagination {
   hasPrev: boolean;
 }
 
+// Module-level component — must NOT be inside AdminBusinessesPage to avoid Vite TDZ error
+function BusinessCard({ business, actionLoading, onToggleStatus }: { 
+  business: Business; 
+  actionLoading: string | null;
+  onToggleStatus: (id: string) => void;
+}) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+  };
+
+  const getStatusBadge = (business: Business) => {
+    if (business.status === 'draft') {
+      return (<span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full"><Clock size={12} />Pending</span>);
+    } else if (business.status === 'active') {
+      return (<span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full"><CheckCircle size={12} />Active</span>);
+    } else {
+      return (<span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full"><AlertTriangle size={12} />Paused</span>);
+    }
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
+            {business.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <h3 className="font-semibold text-slate-900">{business.name}</h3>
+            <p className="text-sm text-slate-600">Owner ID: {business.ownerId}</p>
+          </div>
+        </div>
+        {getStatusBadge(business)}
+      </div>
+
+      <div className="space-y-2 mb-4">
+        {business.locationData?.address && (
+          <div className="flex items-center gap-2 text-sm text-slate-600">
+            <MapPin size={14} />
+            <span>{[business.locationData.city, business.locationData.state].filter(Boolean).join(', ')}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2 text-sm text-slate-600">
+          <Calendar size={14} />
+          <span>Registered {formatDate(business.createdAt)}</span>
+        </div>
+      </div>
+
+      <div className="flex gap-2">
+        <button
+          onClick={() => onToggleStatus(business._id)}
+          disabled={actionLoading === business._id}
+          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+            business.status === 'active'
+              ? 'bg-red-100 text-red-700 hover:bg-red-200'
+              : 'bg-green-100 text-green-700 hover:bg-green-200'
+          } disabled:opacity-50`}
+        >
+          {actionLoading === business._id ? (
+            <RefreshCw size={14} className="animate-spin" />
+          ) : business.status === 'active' ? (
+            <Shield size={14} />
+          ) : (
+            <CheckCircle size={14} />
+          )}
+          {business.status === 'active' ? 'Deactivate' : 'Activate'}
+        </button>
+        <button className="px-3 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors">
+          <Eye size={14} />
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
 const AdminBusinessesPage: React.FC = () => {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,100 +202,6 @@ const AdminBusinessesPage: React.FC = () => {
     setCurrentPage(page);
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const getStatusBadge = (business: Business) => {
-    if (business.status === 'draft') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full">
-          <Clock size={12} />
-          Pending
-        </span>
-      );
-    } else if (business.status === 'active') {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-green-100 text-green-800 rounded-full">
-          <CheckCircle size={12} />
-          Active
-        </span>
-      );
-    } else {
-      return (
-        <span className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
-          <AlertTriangle size={12} />
-          Paused
-        </span>
-      );
-    }
-  };
-
-  const BusinessCard = ({ business }: { business: Business }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all"
-    >
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
-            {business.name.charAt(0).toUpperCase()}
-          </div>
-          <div>
-            <h3 className="font-semibold text-slate-900">{business.name}</h3>
-            <p className="text-sm text-slate-600">Owner ID: {business.ownerId}</p>
-          </div>
-        </div>
-        {getStatusBadge(business)}
-      </div>
-
-      <div className="space-y-2 mb-4">
-        {business.locationData?.address && (
-          <div className="flex items-center gap-2 text-sm text-slate-600">
-            <MapPin size={14} />
-            <span>
-              {[business.locationData.city, business.locationData.state].filter(Boolean).join(', ')}
-            </span>
-          </div>
-        )}
-        <div className="flex items-center gap-2 text-sm text-slate-600">
-          <Calendar size={14} />
-          <span>Registered {formatDate(business.createdAt)}</span>
-        </div>
-      </div>
-
-      <div className="flex gap-2">
-        <button
-          onClick={() => handleToggleBusinessStatus(business._id)}
-          disabled={actionLoading === business._id}
-          className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
-            business.status === 'active'
-              ? 'bg-red-100 text-red-700 hover:bg-red-200'
-              : 'bg-green-100 text-green-700 hover:bg-green-200'
-          } disabled:opacity-50`}
-        >
-          {actionLoading === business._id ? (
-            <RefreshCw size={14} className="animate-spin" />
-          ) : business.status === 'active' ? (
-            <Shield size={14} />
-          ) : (
-            <CheckCircle size={14} />
-          )}
-          {business.status === 'active' ? 'Deactivate' : 'Activate'}
-        </button>
-        <button className="px-3 py-2 border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors">
-          <Eye size={14} />
-        </button>
-      </div>
-    </motion.div>
-  );
 
   return (
     <div className="space-y-8">
@@ -292,7 +279,7 @@ const AdminBusinessesPage: React.FC = () => {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {businesses.map((business) => (
-              <BusinessCard key={business._id} business={business} />
+              <BusinessCard key={business._id} business={business} actionLoading={actionLoading} onToggleStatus={handleToggleBusinessStatus} />
             ))}
           </div>
 

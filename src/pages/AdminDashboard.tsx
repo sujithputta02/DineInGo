@@ -65,6 +65,96 @@ interface ChartData {
   revenue: number;
 }
 
+// --- Module-level sub-components (must be outside AdminDashboard to avoid TDZ errors during Vite bundling) ---
+
+const StatCard = React.memo(function StatCard({ title, value, change, icon: Icon, color = 'emerald' }: any) {
+  return (
+  <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
+    <div className="flex items-center justify-between mb-3 md:mb-4">
+      <div className={`p-2.5 sm:p-3 rounded-xl bg-${color}-100`}>
+        <Icon className={`text-${color}-600`} size={20} />
+      </div>
+      {change && (
+        <div className={`flex items-center gap-1 text-[10px] sm:text-sm font-bold ${
+          change > 0 ? 'text-green-600' : 'text-red-600'
+        }`}>
+          {change > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+          {Math.abs(change)}%
+        </div>
+      )}
+    </div>
+    <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
+    <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{title}</p>
+  </div>
+  );
+});
+
+function ActivityFeedItem({ activity }: { activity: ActivityItem }) {
+  const getActivityIcon = (type: string) => {
+    switch (type) {
+      case 'user_signup': return <UserPlus size={16} className="text-blue-600" />;
+      case 'business_created': return <Building2 size={16} className="text-purple-600" />;
+      case 'booking_made': return <Calendar size={16} className="text-green-600" />;
+      case 'payment_failed': return <AlertTriangle size={16} className="text-red-600" />;
+      case 'notification_sent': return <MessageSquare size={16} className="text-yellow-600" />;
+      default: return <Activity size={16} className="text-slate-600" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'success': return 'bg-green-100 text-green-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800';
+      case 'error': return 'bg-red-100 text-red-800';
+      case 'inactive': return 'bg-slate-100 text-slate-800';
+      default: return 'bg-slate-100 text-slate-800';
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors">
+      <div className="p-2 bg-slate-100 rounded-lg">
+        {getActivityIcon(activity.type)}
+      </div>
+      <div className="flex-1">
+        <p className="text-sm font-medium text-slate-900">{activity.user}</p>
+        {activity.business && (
+          <p className="text-xs text-slate-500">at {activity.business}</p>
+        )}
+        <p className="text-xs text-slate-500">{activity.time}</p>
+      </div>
+      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(activity.status)}`}>
+        {activity.status}
+      </span>
+    </div>
+  );
+}
+
+const AdminClock = React.memo(function AdminClock({ currentTime }: { currentTime: Date }) {
+  return (
+  <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl shadow-lg">
+    <div className="text-center">
+      <div className="text-2xl font-bold font-mono tracking-wider transition-opacity duration-100">
+        {currentTime.toLocaleTimeString('en-US', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit',
+          hour12: true 
+        })}
+      </div>
+      <div className="text-xs font-medium opacity-90 mt-1">
+        {currentTime.toLocaleDateString('en-US', { 
+          weekday: 'short',
+          year: 'numeric', 
+          month: 'short', 
+          day: 'numeric' 
+        })}
+      </div>
+    </div>
+  </div>
+  );
+});
+
 function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -161,99 +251,10 @@ function AdminDashboard() {
     loadDashboardData();
   };
 
-  const StatCard = React.memo(function StatCard({ title, value, change, icon: Icon, color = 'emerald' }: any) {
-    return (
-    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
-      <div className="flex items-center justify-between mb-3 md:mb-4">
-        <div className={`p-2.5 sm:p-3 rounded-xl bg-${color}-100`}>
-          <Icon className={`text-${color}-600`} size={20} />
-        </div>
-        {change && (
-          <div className={`flex items-center gap-1 text-[10px] sm:text-sm font-bold ${
-            change > 0 ? 'text-green-600' : 'text-red-600'
-          }`}>
-            {change > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-            {Math.abs(change)}%
-          </div>
-        )}
-      </div>
-      <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
-      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{title}</p>
-    </div>
-    );
-  });
-
-  function ActivityItem({ activity }: { activity: ActivityItem }) {
-    const getActivityIcon = (type: string) => {
-      switch (type) {
-        case 'user_signup': return <UserPlus size={16} className="text-blue-600" />;
-        case 'business_created': return <Building2 size={16} className="text-purple-600" />;
-        case 'booking_made': return <Calendar size={16} className="text-green-600" />;
-        case 'payment_failed': return <AlertTriangle size={16} className="text-red-600" />;
-        case 'notification_sent': return <MessageSquare size={16} className="text-yellow-600" />;
-        default: return <Activity size={16} className="text-slate-600" />;
-      }
-    };
-
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'success': return 'bg-green-100 text-green-800';
-        case 'pending': return 'bg-yellow-100 text-yellow-800';
-        case 'error': return 'bg-red-100 text-red-800';
-        case 'inactive': return 'bg-slate-100 text-slate-800';
-        default: return 'bg-slate-100 text-slate-800';
-      }
-    };
-
-    return (
-      <div className="flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors">
-        <div className="p-2 bg-slate-100 rounded-lg">
-          {getActivityIcon(activity.type)}
-        </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-slate-900">{activity.user}</p>
-          {activity.business && (
-            <p className="text-xs text-slate-500">at {activity.business}</p>
-          )}
-          <p className="text-xs text-slate-500">{activity.time}</p>
-        </div>
-        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(activity.status)}`}>
-          {activity.status}
-        </span>
-      </div>
-    );
-  }
-
   const userDistribution = stats ? [
     { name: 'Active Users', value: stats.activeUsers, color: '#10b981' },
     { name: 'Inactive Users', value: stats.totalUsers - stats.activeUsers, color: '#64748b' }
   ] : [];
-
-  // Memoized Clock Component to prevent re-renders
-  const Clock = React.memo(function Clock() {
-    return (
-    <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl shadow-lg">
-      <div className="text-center">
-        <div className="text-2xl font-bold font-mono tracking-wider transition-opacity duration-100">
-          {currentTime.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit',
-            hour12: true 
-          })}
-        </div>
-        <div className="text-xs font-medium opacity-90 mt-1">
-          {currentTime.toLocaleDateString('en-US', { 
-            weekday: 'short',
-            year: 'numeric', 
-            month: 'short', 
-            day: 'numeric' 
-          })}
-        </div>
-      </div>
-    </div>
-    );
-  });
 
   if (loading) {
     return (
@@ -292,7 +293,7 @@ function AdminDashboard() {
         <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
           {/* Real-time Clock - Hidden on very small screens if needed, or made compact */}
           <div className="flex-1 xs:flex-none">
-            <Clock />
+            <AdminClock currentTime={currentTime} />
           </div>
           <div className="flex gap-2 w-full xs:w-auto">
             <button 
@@ -513,7 +514,7 @@ function AdminDashboard() {
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {recentActivity.length > 0 ? (
               recentActivity.map((activity) => (
-                <ActivityItem key={activity.id} activity={activity} />
+                <ActivityFeedItem key={activity.id} activity={activity} />
               ))
             ) : (
               <p className="text-slate-500 text-center py-8">No recent activity</p>
