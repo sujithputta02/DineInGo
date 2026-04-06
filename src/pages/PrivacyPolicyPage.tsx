@@ -79,17 +79,26 @@ const PrivacyPolicyPage: React.FC = () => {
                             We implement reasonable security measures to protect your data. However, no method of transmission over the internet is 100% secure, and we cannot guarantee absolute security.
                         </p>
 
-                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">5. Your Choices</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">5. AI Features & Administrative Diagnostics</h3>
+                        <p className="mb-6">
+                            To ensure a seamless, high-quality experience, we utilize specialized support tools:
+                        </p>
+                        <ul className="list-disc pl-6 mb-6">
+                            <li><strong>AI Virtual Assistant (Dino):</strong> Our platform features an AI chatbot, Dino, designed to answer queries and provide reservation guidance. Your chat inputs are securely processed by third-party AI models to generate responses. While Dino is built to be a helpful culinary companion, it is an automated AI and may occasionally make mistakes.</li>
+                            <li><strong>Assisted Support Verification:</strong> In rare cases where you experience complex technical issues, our authorized administrative team may temporarily simulate your session environment. This "diagnostic viewing" allows our experts to see the exact issue you are facing to resolve it faster. This heavily-restricted process never exposes your passwords or payment details and is rigorously logged for security oversight.</li>
+                        </ul>
+
+                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">6. Your Choices</h3>
                         <p className="mb-6">
                             You may access, update, or request deletion of your personal information by contacting us. You can also unsubscribe from marketing communications at any time.
                         </p>
 
-                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">6. Updates to This Policy</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">7. Updates to This Policy</h3>
                         <p className="mb-6">
                             We may update this Privacy Policy from time to time. Changes will be posted on this page with an updated effective date.
                         </p>
 
-                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">7. Contact Us</h3>
+                        <h3 className="text-xl font-semibold text-gray-800 mt-6 mb-4">8. Contact Us</h3>
                         <p className="mb-6">
                             If you have questions about this Privacy Policy, please contact us at:
                         </p>

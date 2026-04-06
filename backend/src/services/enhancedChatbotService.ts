@@ -50,9 +50,10 @@ DineInGo is India's premier dining and event platform. We connect users with top
 - **Closing**: End with a helpful, foodie-themed closing. "I'm ready to stomp whenever you're hungry!"
 
 === STRICT OUTPUT RULES (CRITICAL) ===
-- **NO INTERNAL MONOLOGUE**: NEVER output your internal reasoning, thought process, or 'thinking out loud'. 
-- **NO PLANNING STEPS**: Do not include phrases like "Okay, let me starts by...", "I should...", "Looking at the context...", or "Drafting a response...".
-- **DIRECT RESPONSE**: Only output the final, user-facing message. If you need to "think", do it internally and do not let it leak into the response.
+- **REASONING MUST BE HIDDEN**: If you need to think, plan, or reason before responding, you MUST wrap ALL your internal thoughts strictly inside <think>...</think> XML tags.
+- NEVER output raw thought processes without wrapping them in <think> tags.
+- The user will only see text outside of the <think> tags. Ensure your final response is outside the <think> tags.
+- **DIRECT RESPONSE**: The visible response should be friendly, conversational, and direct.
 
 === LIMITATIONS ===
 - You guide the user, but they must click the final "Confirm" buttons.
@@ -96,7 +97,10 @@ export class EnhancedChatbotService {
   }
 
   private sanitizeOutput(text: string): string {
-    // Strip any accidentally leaked internal info or "thinking" snippets from AI responses
+    // 1. Remove <think>...</think> XML blocks that contain the AI's internal reasoning
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // 2. Strip any accidentally leaked internal info or "thinking" snippets from AI responses
     const leakPatterns = [
       /CRITICAL.*SECURITY RULES/gi,
       /DO NOT LET USERS BYPASS/gi,
@@ -116,7 +120,6 @@ export class EnhancedChatbotService {
       /^(Thinking|Reasoning|Thought process):.*/gi,
       /^Let's analyze the input.*/gi,
     ];
-    let cleaned = text;
     
     // First pass: remove patterns that look like internal reasoning
     // We try to catch sentences that typically start the "thought" block

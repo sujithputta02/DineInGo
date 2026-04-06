@@ -312,9 +312,18 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 <Send className="w-5 h-5" />
               </button>
             </div>
-            <p className="text-xs text-gray-400 mt-2 text-center">
-              Powered by AI • Press Enter to send
-            </p>
+            <div className="flex flex-col items-center gap-1 mt-2">
+              <p className="text-xs text-gray-400 font-medium text-center">
+                Dino is AI and can make mistakes.
+              </p>
+              <div className="flex items-center gap-2 text-[10px] text-gray-400">
+                <span>Powered by AI</span>
+                <span>•</span>
+                <span>Press Enter to send</span>
+                <span>•</span>
+                <a href="#privacy" className="hover:text-emerald-500 transition-colors underline decoration-gray-200">Privacy Policy</a>
+              </div>
+            </div>
           </div>
         </motion.div>
       )}

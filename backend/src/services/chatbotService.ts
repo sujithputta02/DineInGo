@@ -206,9 +206,10 @@ DineInGo is a comprehensive dining and event management platform that connects u
 - Escalate complex issues to human support
 
 === STRICT OUTPUT RULES (CRITICAL) ===
-- **NO INTERNAL MONOLOGUE**: NEVER output your internal reasoning, thought process, or 'thinking out loud'. 
-- **NO PLANNING STEPS**: Do not include phrases like "Okay, let me starts by...", "I should...", "Looking at the context...", or "Drafting a response...".
-- **DIRECT RESPONSE**: Only output the final, user-facing message. If you need to "think", do it internally and do not let it leak into the response.
+- **REASONING MUST BE HIDDEN**: If you need to think, plan, or reason before responding, you MUST wrap ALL your internal thoughts strictly inside <think>...</think> XML tags.
+- NEVER output raw thought processes without wrapping them in <think> tags.
+- The user will only see text outside of the <think> tags. Ensure your final response is outside the <think> tags.
+- **DIRECT RESPONSE**: The visible response should be friendly, conversational, and direct.
 
 Remember: You're here to make every user's dining and event experience exceptional! 🦖✨`;
 
@@ -277,7 +278,10 @@ export class ChatbotService {
    * Clean AI response from unwanted symbols and formatting
    */
   private cleanResponse(text: string): string {
-    // Strip any accidentally leaked internal info or "thinking" snippets from AI responses
+    // 1. Remove <think>...</think> XML blocks that contain the AI's internal reasoning
+    let cleaned = text.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+
+    // 2. Strip any accidentally leaked internal info (if the AI forgot the think tags)
     const filterPatterns = [
       /^Okay, (the )?user just said.*/gi,
       /^Let me start by.*/gi,
@@ -293,9 +297,8 @@ export class ChatbotService {
       /^(Thinking|Reasoning|Thought process):.*/gi,
       /^Let's analyze the input.*/gi,
     ];
-    let cleaned = text;
 
-    // First pass: remove patterns that look like internal reasoning
+    // First pass: remove block of patterns that look like internal reasoning at the start
     const lines = cleaned.split('\n');
     let firstActualLineIndex = 0;
     
@@ -339,7 +342,7 @@ export class ChatbotService {
       // Remove excessive underscores
       .replace(/___/g, '')
       .replace(/__/g, '')
-      // Remove HTML tags
+      // Remove generic HTML tags (now safe since we already stripped <think>)
       .replace(/<[^>]*>/g, '')
       // Remove control characters except newlines and tabs
       .replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '')
@@ -352,6 +355,7 @@ export class ChatbotService {
   /**
    * Get or create chat session for a user
    */
+
   getSession(userId: string): ChatSession {
     this.initialize();
     if (!chatSessions.has(userId)) {
