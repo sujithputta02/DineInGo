@@ -174,7 +174,7 @@ const CapacityModal = React.memo(function CapacityModal({
   );
 });
 
-const AdminManagementPage: React.FC = () => {
+function AdminManagementPage() {
   const navigate = useNavigate();
   const [admins, setAdmins] = useState<Admin[]>([]);
   const [loading, setLoading] = useState(true);
@@ -630,6 +630,6 @@ const AdminManagementPage: React.FC = () => {
       />}
     </div>
   );
-};
+}
 
 export default AdminManagementPage;

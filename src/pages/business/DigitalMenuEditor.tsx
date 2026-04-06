@@ -40,7 +40,7 @@ interface MenuItem {
 const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'halal', 'kosher', 'keto', 'paleo', 'organic'];
 const ALLERGENS = ['nuts', 'peanuts', 'dairy', 'eggs', 'soy', 'wheat', 'shellfish', 'fish', 'sesame'];
 
-const DigitalMenuEditor: React.FC = () => {
+function DigitalMenuEditor() {
     const { currentUser } = useAuth();
     const [categories, setCategories] = useState<Category[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
@@ -647,6 +647,6 @@ const DigitalMenuEditor: React.FC = () => {
             </AnimatePresence>
         </div>
     );
-};
+}
 
 export default DigitalMenuEditor;

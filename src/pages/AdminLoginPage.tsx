@@ -6,7 +6,7 @@ import DineInGoLogo from '../components/DineInGoLogo';
 import { createSession, getSessionToken } from '../utils/sessionGuard';
 import { API_CONFIG } from '../config/api';
 
-const AdminLoginPage: React.FC = () => {
+function AdminLoginPage() {
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
@@ -372,6 +372,6 @@ const AdminLoginPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminLoginPage;

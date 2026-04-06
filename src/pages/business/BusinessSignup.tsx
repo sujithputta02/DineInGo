@@ -21,7 +21,7 @@ interface RegisterResponse {
     isNewAccount?: boolean;
 }
 
-const BusinessSignup: React.FC = () => {
+function BusinessSignup() {
     const navigate = useNavigate();
     const [isLoading, setIsLoading] = useState(false);
     const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -481,6 +481,6 @@ const BusinessSignup: React.FC = () => {
             </div>
         </div>
     );
-};
+}
 
 export default BusinessSignup;

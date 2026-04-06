@@ -701,7 +701,7 @@ const defaultLocation: GeoLocation = {
 };
 
 // Add formatTimestamp function
-const formatTimestamp = (timestamp: Date): string => {
+function formatTimestamp(timestamp: Date): string {
   const now = new Date();
   const diff = now.getTime() - timestamp.getTime();
   const minutes = Math.floor(diff / 60000);
@@ -717,11 +717,11 @@ const formatTimestamp = (timestamp: Date): string => {
   } else {
     return "Just now";
   }
-};
+}
 // Fallback avatar generation has been moved to InitialsAvatar component
 
 // Add this function for generating fallback avatar URLs
-const getAvatarUrl = (name: string | null | undefined): string => {
+function getAvatarUrl(name: string | null | undefined): string {
   if (!name || name.trim() === "") {
     name = "User";
   }
@@ -729,10 +729,10 @@ const getAvatarUrl = (name: string | null | undefined): string => {
   // Use ui-avatars.com API to generate avatar
   const formattedName = encodeURIComponent(name.trim());
   return `https://ui-avatars.com/api/?name=${formattedName}&background=random&color=fff&size=200`;
-};
+}
 
 // Helper to calculate personalization score for a restaurant
-const getPersonalizationScore = (restaurant: any, preferences: any): number => {
+function getPersonalizationScore(restaurant: any, preferences: any): number {
   let score = 0;
 
   if (!preferences) return 0;
@@ -771,7 +771,7 @@ const getPersonalizationScore = (restaurant: any, preferences: any): number => {
   }
 
   return score;
-};
+}
 
 export default function DashboardPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {

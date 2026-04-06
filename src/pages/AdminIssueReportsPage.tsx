@@ -18,7 +18,7 @@ import {
 import { toast } from 'react-toastify';
 import { adminApi } from '../utils/adminApi';
 
-const AdminIssueReportsPage: React.FC = () => {
+function AdminIssueReportsPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [issueReports, setIssueReports] = useState<any[]>([]);
@@ -428,6 +428,6 @@ const AdminIssueReportsPage: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default AdminIssueReportsPage;

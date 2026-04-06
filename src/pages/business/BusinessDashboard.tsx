@@ -118,7 +118,7 @@ interface DashboardData {
   stats: DashboardStats;
 }
 
-const StarRating = ({ rating, size = 16, className = "" }: { rating: number | string, size?: number, className?: string }) => {
+function StarRating({ rating, size = 16, className = "" }: { rating: number | string, size?: number, className?: string }) {
   const numericRating = typeof rating === 'string' ? parseFloat(rating) : rating;
   const fullStars = Math.floor(numericRating);
   const hasHalfStar = numericRating % 1 >= 0.5;
@@ -135,19 +135,19 @@ const StarRating = ({ rating, size = 16, className = "" }: { rating: number | st
       ))}
     </div>
   );
-};
+}
 
 // Read URL parameter for initial view mode
-const getInitialViewMode = (): 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' => {
+function getInitialViewMode(): 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' {
   const params = new URLSearchParams(window.location.search);
   const view = params.get('view');
   if (view && ['overview', 'businesses', 'bookings', 'analytics', 'operations', 'marketing', 'reviews'].includes(view)) {
     return view as 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews';
   }
   return 'overview';
-};
+}
 
-const BusinessDashboard: React.FC = () => {
+function BusinessDashboard() {
   const navigate = useNavigate();
   const { sessionToken } = useParams<{ sessionToken: string }>();
 
@@ -2271,6 +2271,6 @@ const BusinessDashboard: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default BusinessDashboard;

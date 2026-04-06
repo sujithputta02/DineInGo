@@ -120,7 +120,7 @@ function BusinessCard({ business, actionLoading, onToggleStatus }: {
   );
 }
 
-const AdminBusinessesPage: React.FC = () => {
+function AdminBusinessesPage() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -322,6 +322,6 @@ const AdminBusinessesPage: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default AdminBusinessesPage;

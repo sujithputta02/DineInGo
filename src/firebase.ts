@@ -60,7 +60,7 @@ provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 
 // Initialize Analytics (only in production)
 let analytics = null;
-if (process.env.NODE_ENV === 'production') {
+if (import.meta.env.MODE === 'production') {
   analytics = getAnalytics(app);
 }
 

@@ -28,7 +28,7 @@ import { useNotifications } from '../contexts/NotificationContext';
 import { getSessionToken } from '../utils/sessionGuard';
 import { Analytics } from '@vercel/analytics/react';
 
-const BusinessLayout: React.FC = () => {
+function BusinessLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
@@ -385,6 +385,6 @@ const BusinessLayout: React.FC = () => {
             <Analytics />
         </div>
     );
-};
+}
 
 export default BusinessLayout;

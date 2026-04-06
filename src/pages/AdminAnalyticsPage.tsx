@@ -65,7 +65,7 @@ interface AnalyticsData {
 }
 
 // Module-level component — must NOT be inside AdminAnalyticsPage to avoid Vite TDZ error
-const AnalyticsStatCard = ({ 
+function AnalyticsStatCard({ 
   title, 
   value, 
   growth, 
@@ -77,29 +77,31 @@ const AnalyticsStatCard = ({
   growth: number; 
   icon: any; 
   color: string;
-}) => (
-  <motion.div
-    initial={{ opacity: 0, y: 20 }}
-    animate={{ opacity: 1, y: 0 }}
-    className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
-  >
-    <div className="flex items-start justify-between mb-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${color}-100`}>
-        <Icon className={`text-${color}-600`} size={24} />
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-${color}-100`}>
+          <Icon className={`text-${color}-600`} size={24} />
+        </div>
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+          growth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+        }`}>
+          {growth >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+          {Math.abs(growth)}%
+        </div>
       </div>
-      <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
-        growth >= 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-      }`}>
-        {growth >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-        {Math.abs(growth)}%
-      </div>
-    </div>
-    <h3 className="text-sm font-medium text-slate-600 mb-1">{title}</h3>
-    <p className="text-3xl font-bold text-slate-900">{value}</p>
-  </motion.div>
-);
+      <h3 className="text-sm font-medium text-slate-600 mb-1">{title}</h3>
+      <p className="text-3xl font-bold text-slate-900">{value}</p>
+    </motion.div>
+  );
+}
 
-const AdminAnalyticsPage: React.FC = () => {
+function AdminAnalyticsPage() {
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('6months');
@@ -386,6 +388,6 @@ const AdminAnalyticsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminAnalyticsPage;

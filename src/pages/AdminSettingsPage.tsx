@@ -52,7 +52,7 @@ interface PlatformSettings {
   };
 }
 
-const AdminSettingsPage: React.FC = () => {
+function AdminSettingsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('platform');
   const [loading, setLoading] = useState(true);
@@ -696,6 +696,6 @@ const AdminSettingsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminSettingsPage;

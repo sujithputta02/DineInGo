@@ -1,29 +1,60 @@
 import { db } from '../firebase';
 import { collection, doc, getDoc, getDocs, query, where } from 'firebase/firestore';
 import type { Restaurant as RestaurantType } from '../types';
-import Restaurant from '../models/Restaurant';
 import { API_CONFIG } from '../config/api';
 
-export const createRestaurant = async (restaurantData: any) => {
+export async function createRestaurant(restaurantData: any) {
   try {
-    const restaurant = new Restaurant(restaurantData);
-    await restaurant.save();
-    return restaurant;
+    const timestamp = Date.now();
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/restaurants?_t=${timestamp}`, {
+      method: 'POST',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(restaurantData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || data;
   } catch (error) {
+    console.error('Error creating restaurant:', error);
     throw error;
   }
-};
+}
 
-export const getAllRestaurants = async () => {
+export async function getAllRestaurants() {
   try {
-    const restaurants = await Restaurant.find();
-    return restaurants;
-  } catch (error) {
-    throw error;
-  }
-};
+    const timestamp = Date.now();
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/restaurants?_t=${timestamp}`, {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-cache',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
+    });
 
-export const getRestaurantById = async (id: string) => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || data;
+  } catch (error) {
+    console.error('Error fetching restaurants:', error);
+    // Fallback to mock data in case of error
+    return mockRestaurants;
+  }
+}
+
+export async function getRestaurantById(id: string) {
   try {
     // Validate ID format
     if (!id || id.trim() === '') {
@@ -65,9 +96,6 @@ export const getRestaurantById = async (id: string) => {
             const data = await response.json();
             const business = data.data || data;
             console.log('Business API response:', business);
-            console.log('Business timeSlots from API:', business.timeSlots);
-            console.log('Business dailySlots from API:', business.dailySlots);
-            console.log('Business menu from API:', business.menu?.length || 0);
             
             // Transform business data to restaurant format
             const restaurant = {
@@ -123,24 +151,15 @@ export const getRestaurantById = async (id: string) => {
                 : business.timeSlots || [],
               type: business.type,
               description: business.description,
-              
-              // Floor plan data for table selection
               floorPlan: business.floorPlan,
               seatingLayout: business.seatingLayout
             };
             
-            console.log('Successfully fetched and transformed business restaurant:', restaurant.name);
-            console.log('Restaurant menu items:', restaurant.menu?.length);
-            console.log('Restaurant timeSlots:', restaurant.timeSlots);
-            console.log('Restaurant timeSlots length:', restaurant.timeSlots?.length || 0);
             return restaurant;
-          } else {
-            console.log(`Business API returned ${response.status}, trying legacy API`);
           }
         }
         
         // Fallback to legacy restaurant API
-        console.log(`Trying legacy restaurant API for ID: ${id}`);
         response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/restaurants/${id}?_t=${timestamp}`, {
           method: 'GET',
           mode: 'cors',
@@ -153,76 +172,78 @@ export const getRestaurantById = async (id: string) => {
         
         if (!response.ok) {
           if (response.status === 404) {
-            console.log(`Restaurant with ID ${id} not found in database, trying mock data`);
             return getMockRestaurantById(id);
           }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         
         const data = await response.json();
-        // If backend wraps in { success, data }, unwrap
         return data.data || data;
         
       } catch (error: any) {
-        console.log(`Attempt ${attempt} failed:`, error);
-        
-        // If this is a CORS error or network error, fall back to mock data
-        if (error.message && (error.message.includes('Failed to fetch') || 
-            error.message.includes('NetworkError') || 
-            error.message.includes('CORS'))) {
-          console.log('Network/CORS error detected, falling back to mock data');
-          return getMockRestaurantById(id);
-        }
-        
         if (attempt < maxRetries) {
-          // Wait before retrying (exponential backoff)
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
           continue;
         }
+        return getMockRestaurantById(id);
       }
     }
-    
-    // If all retries failed, fall back to mock data
-    console.log('All API attempts failed, falling back to mock data');
     return getMockRestaurantById(id);
-    
   } catch (error) {
-    console.error('Error fetching restaurant:', error);
-    // If all else fails, fall back to mock data
     return getMockRestaurantById(id);
   }
-};
+}
 
-export const searchRestaurants = async (searchTerm: string) => {
+export async function searchRestaurants(searchTerm: string) {
   try {
-    const restaurants = await Restaurant.find({
-      $or: [
-        { name: { $regex: searchTerm, $options: 'i' } },
-        { 'location.city': { $regex: searchTerm, $options: 'i' } },
-        { 'location.state': { $regex: searchTerm, $options: 'i' } },
-        { cuisine: { $regex: searchTerm, $options: 'i' } }
-      ]
+    const timestamp = Date.now();
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/restaurants/search?q=${encodeURIComponent(searchTerm)}&_t=${timestamp}`, {
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      }
     });
-    return restaurants;
-  } catch (error) {
-    throw error;
-  }
-};
 
-export const updateRestaurant = async (id: string, updateData: any) => {
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || data;
+  } catch (error) {
+    console.error('Error searching restaurants:', error);
+    return [];
+  }
+}
+
+export async function updateRestaurant(id: string, updateData: any) {
   try {
-    const restaurant = await Restaurant.findByIdAndUpdate(
-      id,
-      { ...updateData, updatedAt: new Date() },
-      { new: true }
-    );
-    return restaurant;
+    const timestamp = Date.now();
+    const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/restaurants/${id}?_t=${timestamp}`, {
+      method: 'PATCH',
+      mode: 'cors',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(updateData)
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.data || data;
   } catch (error) {
+    console.error('Error updating restaurant:', error);
     throw error;
   }
-};
+}
 
-export const getTotalGuestsForRestaurant = async (restaurantId: string): Promise<number> => {
+export async function getTotalGuestsForRestaurant(restaurantId: string): Promise<number> {
   try {
     const bookingsRef = collection(db, 'bookings');
     const q = query(bookingsRef, where('restaurantId', '==', restaurantId));
@@ -239,7 +260,7 @@ export const getTotalGuestsForRestaurant = async (restaurantId: string): Promise
     console.error('Error fetching total guests:', error);
     return 0;
   }
-};
+}
 
 // Mock data for development
 const mockRestaurants: RestaurantType[] = [
@@ -369,15 +390,12 @@ const mockRestaurants: RestaurantType[] = [
       }
     ],
     timeSlots: [
-      // Lunch slots
       { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 50 },
       { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 50 },
       { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 50 },
       { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 50 },
       { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 50 },
       { id: 'lunch-6', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 50 },
-      
-      // Dinner slots
       { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 50 },
       { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 50 },
       { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 50 },
@@ -490,14 +508,11 @@ const mockRestaurants: RestaurantType[] = [
       }
     ],
     timeSlots: [
-      // Lunch slots
       { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 40 },
       { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 40 },
       { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 40 },
       { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 40 },
       { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 40 },
-      
-      // Dinner slots
       { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 40 },
       { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 40 },
       { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 40 },
@@ -597,7 +612,6 @@ const mockRestaurants: RestaurantType[] = [
       }
     ],
     timeSlots: [
-      // Lunch slots
       { id: 'lunch-1', name: '11:00 AM', startTime: '11:00', endTime: '12:00', type: 'lunch', available: true, maxCapacity: 60 },
       { id: 'lunch-2', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 60 },
       { id: 'lunch-3', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 60 },
@@ -605,8 +619,6 @@ const mockRestaurants: RestaurantType[] = [
       { id: 'lunch-5', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 60 },
       { id: 'lunch-6', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 60 },
       { id: 'lunch-7', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 60 },
-      
-      // Dinner slots
       { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 60 },
       { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 60 },
       { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 60 },
@@ -725,15 +737,12 @@ const mockRestaurants: RestaurantType[] = [
       }
     ],
     timeSlots: [
-      // Lunch slots
       { id: 'lunch-1', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 35 },
       { id: 'lunch-2', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 35 },
       { id: 'lunch-3', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 35 },
       { id: 'lunch-4', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 35 },
       { id: 'lunch-5', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 35 },
       { id: 'lunch-6', name: '2:30 PM', startTime: '14:30', endTime: '15:30', type: 'lunch', available: true, maxCapacity: 35 },
-      
-      // Dinner slots
       { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 35 },
       { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 35 },
       { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 35 },
@@ -851,14 +860,11 @@ const mockRestaurants: RestaurantType[] = [
       }
     ],
     timeSlots: [
-      // Lunch slots
       { id: 'lunch-1', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 25 },
       { id: 'lunch-2', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 25 },
       { id: 'lunch-3', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 25 },
       { id: 'lunch-4', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 25 },
       { id: 'lunch-5', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 25 },
-      
-      // Dinner slots
       { id: 'dinner-1', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 25 },
       { id: 'dinner-2', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 25 },
       { id: 'dinner-3', name: '7:30 PM', startTime: '19:30', endTime: '20:30', type: 'dinner', available: true, maxCapacity: 25 },
@@ -973,7 +979,6 @@ const mockRestaurants: RestaurantType[] = [
       }
     ],
     timeSlots: [
-      // Lunch slots
       { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 45 },
       { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 45 },
       { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 45 },
@@ -981,8 +986,6 @@ const mockRestaurants: RestaurantType[] = [
       { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 45 },
       { id: 'lunch-6', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 45 },
       { id: 'lunch-7', name: '2:30 PM', startTime: '14:30', endTime: '15:30', type: 'lunch', available: true, maxCapacity: 45 },
-      
-      // Dinner slots
       { id: 'dinner-1', name: '5:30 PM', startTime: '17:30', endTime: '18:30', type: 'dinner', available: true, maxCapacity: 45 },
       { id: 'dinner-2', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 45 },
       { id: 'dinner-3', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 45 },
@@ -996,24 +999,19 @@ const mockRestaurants: RestaurantType[] = [
   }
 ];
 
-// Use this for development if Firebase is not set up
-export const getMockRestaurantById = (id: string): RestaurantType | null => {
+export function getMockRestaurantById(id: string): RestaurantType | null {
   const restaurant = mockRestaurants.find(restaurant => restaurant.id === id);
   if (restaurant) {
     return restaurant;
   }
-  
-  // If the requested ID doesn't exist, return the first restaurant as fallback
-  console.log(`Restaurant with ID ${id} not found in mock data, using first restaurant as fallback`);
   return mockRestaurants[0] || null;
-};
+}
 
-export const getMockTotalGuests = async (): Promise<number> => {
+export async function getMockTotalGuests(): Promise<number> {
   return Math.floor(Math.random() * 100);
-};
+}
 
-// Default menu items for businesses without menus
-const getDefaultMenuForBusiness = (cuisines: string[]) => {
+function getDefaultMenuForBusiness(cuisines: string[]) {
   const defaultItems = [
     {
       id: 'default-1',
@@ -1083,7 +1081,6 @@ const getDefaultMenuForBusiness = (cuisines: string[]) => {
     }
   ];
 
-  // Customize based on cuisine
   if (cuisines.includes('Indian') || cuisines.includes('North Indian')) {
     defaultItems[0].name = 'Butter Chicken';
     defaultItems[0].description = 'Tender chicken in a rich, creamy tomato-based curry';
@@ -1106,20 +1103,16 @@ const getDefaultMenuForBusiness = (cuisines: string[]) => {
   }
 
   return defaultItems;
-};
+}
 
-// Default time slots for businesses without time slots
-const getDefaultTimeSlotsForBusiness = () => {
+function getDefaultTimeSlotsForBusiness() {
   return [
-    // Lunch slots
     { id: 'lunch-1', name: '11:30 AM', startTime: '11:30', endTime: '12:30', type: 'lunch', available: true, maxCapacity: 50 },
     { id: 'lunch-2', name: '12:00 PM', startTime: '12:00', endTime: '13:00', type: 'lunch', available: true, maxCapacity: 50 },
     { id: 'lunch-3', name: '12:30 PM', startTime: '12:30', endTime: '13:30', type: 'lunch', available: true, maxCapacity: 50 },
     { id: 'lunch-4', name: '1:00 PM', startTime: '13:00', endTime: '14:00', type: 'lunch', available: true, maxCapacity: 50 },
     { id: 'lunch-5', name: '1:30 PM', startTime: '13:30', endTime: '14:30', type: 'lunch', available: true, maxCapacity: 50 },
     { id: 'lunch-6', name: '2:00 PM', startTime: '14:00', endTime: '15:00', type: 'lunch', available: true, maxCapacity: 50 },
-    
-    // Dinner slots
     { id: 'dinner-1', name: '6:00 PM', startTime: '18:00', endTime: '19:00', type: 'dinner', available: true, maxCapacity: 50 },
     { id: 'dinner-2', name: '6:30 PM', startTime: '18:30', endTime: '19:30', type: 'dinner', available: true, maxCapacity: 50 },
     { id: 'dinner-3', name: '7:00 PM', startTime: '19:00', endTime: '20:00', type: 'dinner', available: true, maxCapacity: 50 },
@@ -1129,4 +1122,4 @@ const getDefaultTimeSlotsForBusiness = () => {
     { id: 'dinner-7', name: '9:00 PM', startTime: '21:00', endTime: '22:00', type: 'dinner', available: true, maxCapacity: 50 },
     { id: 'dinner-8', name: '9:30 PM', startTime: '21:30', endTime: '22:30', type: 'dinner', available: true, maxCapacity: 50 }
   ];
-}; 
+}

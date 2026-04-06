@@ -8,7 +8,11 @@ interface LocationData {
   address: string;
   city: string;
   state: string;
+  country: string;
   zipCode: string;
+  pincode?: string;
+  latitude: number;
+  longitude: number;
   coordinates: {
     lat: number;
     lng: number;
@@ -17,17 +21,26 @@ interface LocationData {
 
 interface BusinessLocationSelectorProps {
   onLocationSelect: (location: LocationData) => void;
+  onInputChange?: (value: string) => void;
   initialValue?: string;
+  initialLocation?: string;
+  initialLocationData?: any;
+  placeholder?: string;
 }
 
 const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({ 
   onLocationSelect, 
-  initialValue = '' 
+  onInputChange,
+  initialValue = '',
+  initialLocation = '',
+  initialLocationData,
+  placeholder = 'Enter business address...' 
 }) => {
-  const [searchQuery, setSearchQuery] = useState(initialValue);
+  const defaultQuery = initialLocation || initialValue || '';
+  const [searchQuery, setSearchQuery] = useState(defaultQuery);
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedLocation, setSelectedLocation] = useState<any>(null);
+  const [selectedLocation, setSelectedLocation] = useState<any>(initialLocationData || null);
 
   useEffect(() => {
     if (initialValue && !searchQuery) {
@@ -37,6 +50,10 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
 
   const handleSearch = async (query: string) => {
     setSearchQuery(query);
+    if (onInputChange) {
+      onInputChange(query);
+    }
+    
     if (query.length < 3) {
       setSuggestions([]);
       return;
@@ -44,8 +61,6 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
 
     setIsLoading(true);
     try {
-      // Mock geocoding service - in production this would call Google Maps or similar
-      // For now we'll use a public OpenStreetMap Nominatim API or our own backend proxy
       const response = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`
       );
@@ -59,14 +74,21 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
   };
 
   const handleSelect = (suggestion: any) => {
+    const lat = parseFloat(suggestion.lat);
+    const lng = parseFloat(suggestion.lon);
+    
     const locationData: LocationData = {
       address: suggestion.display_name,
       city: suggestion.address.city || suggestion.address.town || suggestion.address.suburb || '',
-      state: suggestion.address.state || '',
+      state: suggestion.address.state || suggestion.address.province || '',
+      country: suggestion.address.country || '',
       zipCode: suggestion.address.postcode || '',
+      pincode: suggestion.address.postcode || '',
+      latitude: lat,
+      longitude: lng,
       coordinates: {
-        lat: parseFloat(suggestion.lat),
-        lng: parseFloat(suggestion.lon)
+        lat: lat,
+        lng: lng
       }
     };
 
@@ -84,7 +106,7 @@ const BusinessLocationSelector: React.FC<BusinessLocationSelectorProps> = ({
           type="text"
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
-          placeholder="Enter business address..."
+          placeholder={placeholder}
           className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium text-slate-700"
         />
         {isLoading && (

@@ -132,7 +132,7 @@ function GhostDurationModal({
   );
 }
 
-const getStatusBadge = (user: User, activeGhostUid: string | null) => {
+function getStatusBadge(user: User, activeGhostUid: string | null) {
   const isCurrentlyGhosted = activeGhostUid === user.uid;
   
   if (isCurrentlyGhosted) {
@@ -158,7 +158,7 @@ const getStatusBadge = (user: User, activeGhostUid: string | null) => {
       Inactive
     </span>
   );
-};
+}
 
 function PaginationControls({ 
   pagination, 

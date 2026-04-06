@@ -17,7 +17,7 @@ import {
 import EmojiPicker from '../components/EmojiPicker';
 import { adminApi } from '../utils/adminApi';
 
-const AdminNotificationsPage: React.FC = () => {
+function AdminNotificationsPage() {
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState('');
   const [message, setMessage] = useState('');
@@ -426,6 +426,6 @@ const AdminNotificationsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminNotificationsPage;

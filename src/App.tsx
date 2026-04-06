@@ -78,19 +78,22 @@ import SEO from './components/SEO';
 import AnalyticsTracker from './components/AnalyticsTracker';
 
 // Helper component for business dashboard redirection
-const BusinessDashboardRedirect = () => {
+function BusinessDashboardRedirect() {
   const token = getSessionToken();
   if (token) {
     return <Navigate to={`/business/app/dashboard/${token}`} replace />;
   }
   return <Navigate to="/business/businessLogin" replace />;
-};
+}
 
 // Guard component for Feature Flags
-const FeatureRouteGuard: React.FC<{ 
+function FeatureRouteGuard({ 
+  feature, 
+  children 
+}: { 
   feature: 'arMenus' | 'preOrders' | 'events' | 'waitlist';
   children: React.ReactNode;
-}> = ({ feature, children }) => {
+}) {
   const { isEnabled, loading } = useFeatureFlags();
   
   if (loading) return null;
@@ -103,7 +106,7 @@ const FeatureRouteGuard: React.FC<{
   }
   
   return <>{children}</>;
-};
+}
 
 // Page content handler for socket connection
 function AppSocketHandler() {
@@ -132,7 +135,7 @@ function AppSocketHandler() {
   return null;
 }
 
-const App: React.FC = () => {
+function App() {
   return (
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <SEO />
@@ -308,6 +311,6 @@ const App: React.FC = () => {
       </AuthProvider>
     </Router>
   );
-};
+}
 
 export default App; 

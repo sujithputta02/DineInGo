@@ -35,7 +35,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 
-const AdminReportsPage: React.FC = () => {
+function AdminReportsPage() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'analytics' | 'issues'>('analytics');
   const [loading, setLoading] = useState(false);
@@ -442,6 +442,6 @@ const AdminReportsPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminReportsPage;

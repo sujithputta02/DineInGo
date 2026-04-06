@@ -66,7 +66,7 @@ interface UserProfile {
     };
 }
 
-const BusinessSettings: React.FC = () => {
+function BusinessSettings() {
     const [activeTab, setActiveTab] = useState<'profile' | 'businesses'>('profile');
     const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
     const [businesses, setBusinesses] = useState<Business[]>([]);
@@ -733,6 +733,6 @@ const BusinessSettings: React.FC = () => {
             />
         </div>
     );
-};
+}
 
 export default BusinessSettings;

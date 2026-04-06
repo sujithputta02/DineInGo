@@ -89,7 +89,7 @@ interface ServiceStatus {
   };
 }
 
-const AdminSystemHealthPage: React.FC = () => {
+function AdminSystemHealthPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -762,6 +762,6 @@ const AdminSystemHealthPage: React.FC = () => {
       )}
     </div>
   );
-};
+}
 
 export default AdminSystemHealthPage;

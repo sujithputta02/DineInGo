@@ -114,7 +114,7 @@ interface ValidationResult {
   errors: string[];
 }
 
-const BusinessOnboarding: React.FC = () => {
+function BusinessOnboarding() {
   console.log('BusinessOnboarding component rendering');
   
   const { id } = useParams<{ id: string }>();
@@ -2023,6 +2023,6 @@ const BusinessOnboarding: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default BusinessOnboarding;

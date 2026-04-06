@@ -4,12 +4,12 @@ import { API_CONFIG } from '../config/api';
 const API_URL = API_CONFIG.BASE_URL;
 
 // Get admin token from localStorage
-const getAdminToken = (): string | null => {
+export function getAdminToken(): string | null {
   return localStorage.getItem('adminToken');
-};
+}
 
 // Check if token is expired
-const isTokenExpired = (): boolean => {
+export function isTokenExpired(): boolean {
   const loginTime = localStorage.getItem('adminLoginTime');
   if (!loginTime) return true;
   
@@ -18,21 +18,21 @@ const isTokenExpired = (): boolean => {
   const hoursDiff = (now.getTime() - loginDate.getTime()) / (1000 * 60 * 60);
   
   return hoursDiff > 24; // Token expires after 24 hours
-};
+}
 
 // Clear admin session
-export const clearAdminSession = () => {
+export function clearAdminSession() {
   localStorage.removeItem('adminToken');
   localStorage.removeItem('adminEmail');
   localStorage.removeItem('adminRole');
   localStorage.removeItem('adminLoginTime');
-};
+}
 
 // Make authenticated API request
-export const adminApiRequest = async (
+export async function adminApiRequest(
   endpoint: string,
   options: RequestInit = {}
-): Promise<any> => {
+): Promise<any> {
   const token = getAdminToken();
   
   if (!token || isTokenExpired()) {
@@ -69,188 +69,266 @@ export const adminApiRequest = async (
     console.error('Admin API request failed:', error);
     throw error;
   }
-};
+}
 
-// Admin API methods
+// Admin API method implementations as hoisted functions
+export async function getStats() { return adminApiRequest('/api/v1/admin/stats'); }
+
+export async function getUsers(params: { page?: number; limit?: number; search?: string; status?: string }) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/admin/users?${query}`);
+}
+
+export async function toggleUserStatus(userId: string) {
+  return adminApiRequest('/api/v1/admin/users/toggle-status', {
+    method: 'PATCH',
+    body: JSON.stringify({ userId }),
+  });
+}
+
+export async function impersonateUser(userId: string) {
+  return adminApiRequest(`/api/v1/admin/users/${userId}/impersonate`, {
+    method: 'POST',
+  });
+}
+
+export async function getBusinesses(params: { page?: number; limit?: number; search?: string; status?: string }) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/admin/businesses?${query}`);
+}
+
+export async function toggleBusinessStatus(businessId: string) {
+  return adminApiRequest('/api/v1/admin/businesses/toggle-status', {
+    method: 'PATCH',
+    body: JSON.stringify({ businessId }),
+  });
+}
+
+export async function sendNotification(data: {
+  title: string;
+  message: string;
+  type: string;
+  targetType: string;
+}) {
+  return adminApiRequest('/api/v1/admin/notifications', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getNotificationStats() { return adminApiRequest('/api/v1/admin/notification-stats'); }
+
+export async function getAdmins(params: { page?: number; limit?: number } = {}) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/admin/list?${query}`);
+}
+
+export async function addAdmin(email: string) {
+  return adminApiRequest('/api/v1/admin/add', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function removeAdmin(adminEmail: string) {
+  return adminApiRequest('/api/v1/admin/remove', {
+    method: 'DELETE',
+    body: JSON.stringify({ adminEmail }),
+  });
+}
+
+export async function toggleAdminStatus(adminEmail: string) {
+  return adminApiRequest('/api/v1/admin/toggle-status', {
+    method: 'PATCH',
+    body: JSON.stringify({ adminEmail }),
+  });
+}
+
+export async function toggleImpersonationPermission(adminEmail: string) {
+  return adminApiRequest('/api/v1/admin/toggle-impersonation-permission', {
+    method: 'PATCH',
+    body: JSON.stringify({ adminEmail }),
+  });
+}
+
+export async function updateMaxAdmins(maxAdmins: number) {
+  return adminApiRequest('/api/v1/admin/update-max-admins', {
+    method: 'PATCH',
+    body: JSON.stringify({ maxAdmins }),
+  });
+}
+
+export async function getSystemHealth() { return adminApiRequest('/api/v1/admin/system-health'); }
+export async function getDatabaseStats() { return adminApiRequest('/api/v1/admin/database-stats'); }
+export async function getApiHealth() { return adminApiRequest('/api/v1/admin/api-health'); }
+export async function getServiceStatus() { return adminApiRequest('/api/v1/admin/service-status'); }
+
+export async function toggleMaintenanceMode(data: {
+  enabled: boolean;
+  message?: string;
+  estimatedEndTime?: string;
+}) {
+  return adminApiRequest('/api/v1/admin/maintenance-mode', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getSettings() { return adminApiRequest('/api/v1/admin/settings'); }
+export async function updateSettings(settings: any) {
+  return adminApiRequest('/api/v1/admin/settings', {
+    method: 'POST',
+    body: JSON.stringify(settings),
+  });
+}
+
+export async function updateSingleSetting(key: string, value: any) {
+  return adminApiRequest('/api/v1/admin/settings/single', {
+    method: 'PATCH',
+    body: JSON.stringify({ key, value }),
+  });
+}
+
+export async function resetSettings() {
+  return adminApiRequest('/api/v1/admin/settings/reset', {
+    method: 'POST',
+  });
+}
+
+export async function restartServices() {
+  return adminApiRequest('/api/v1/admin/restart-services', {
+    method: 'POST',
+  });
+}
+
+export async function clearCache() {
+  return adminApiRequest('/api/v1/admin/clear-cache', {
+    method: 'POST',
+  });
+}
+
+export async function forceRefresh() {
+  return adminApiRequest('/api/v1/admin/force-refresh', {
+    method: 'POST',
+  });
+}
+
+export async function generateReport(data: { startDate: string; endDate: string; reportType: string }) {
+  return adminApiRequest('/api/v1/reports/admin/generate', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getReportsList(params: { reportType?: string; limit?: number }) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/reports/list?${query}`);
+}
+
+export async function getIssueReports(params: { status?: string; issueType?: string; priority?: string }) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/issue-reports/admin/all?${query}`);
+}
+
+export async function getIssueStats() { return adminApiRequest('/api/v1/issue-reports/admin/stats'); }
+
+export async function updateIssueStatus(issueId: string, status: string) {
+  return adminApiRequest(`/api/v1/issue-reports/admin/${issueId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status }),
+  });
+}
+
+export async function getSecurityStats() { return adminApiRequest('/api/v1/admin/security/stats'); }
+
+export async function getSecurityLogs(params: { portal?: string; eventType?: string; severity?: string; limit?: number; page?: number; since?: string }) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/admin/security/logs?${query}`);
+}
+
+export async function getBlockedIPs() { return adminApiRequest('/api/v1/admin/security/blocked-ips'); }
+
+export async function unblockIP(ipAddress: string) {
+  return adminApiRequest('/api/v1/admin/security/unblock-ip', {
+    method: 'POST',
+    body: JSON.stringify({ ipAddress }),
+  });
+}
+
+export async function blockIP(ipAddress: string, reason: string) {
+  return adminApiRequest('/api/v1/admin/security/block-ip', {
+    method: 'POST',
+    body: JSON.stringify({ ipAddress, reason }),
+  });
+}
+
+export async function getWaitlistStats() { return adminApiRequest('/api/v1/admin/waitlist/stats'); }
+
+export async function sendWaitlistBroadcast(data: { subject: string; html: string; targetType: string; onlyPending?: boolean; targetIds?: string[] }) {
+  return adminApiRequest('/api/v1/admin/waitlist/broadcast', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getWaitlistSignups(params: { page?: number; limit?: number; search?: string; status?: string; userType?: string }) {
+  const query = new URLSearchParams(params as any).toString();
+  return adminApiRequest(`/api/v1/admin/waitlist/all?${query}`);
+}
+
+export async function updateWaitlistStatus(data: { id: string; emailStatus?: string; generalStatus?: string }) {
+  return adminApiRequest('/api/v1/admin/waitlist/update-status', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getFeatureFlags() {
+  const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/feature-flags`);
+  return res.json();
+}
+
+// Admin API combined object for backward compatibility
 export const adminApi = {
-  // Dashboard stats
-  getStats: () => adminApiRequest('/api/v1/admin/stats'),
-
-  // User management
-  getUsers: (params: { page?: number; limit?: number; search?: string; status?: string }) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/admin/users?${query}`);
-  },
-  toggleUserStatus: (userId: string) =>
-    adminApiRequest('/api/v1/admin/users/toggle-status', {
-      method: 'PATCH',
-      body: JSON.stringify({ userId }),
-    }),
-  impersonateUser: (userId: string) =>
-    adminApiRequest(`/api/v1/admin/users/${userId}/impersonate`, {
-      method: 'POST',
-    }),
-
-  // Business management
-  getBusinesses: (params: { page?: number; limit?: number; search?: string; status?: string }) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/admin/businesses?${query}`);
-  },
-  toggleBusinessStatus: (businessId: string) =>
-    adminApiRequest('/api/v1/admin/businesses/toggle-status', {
-      method: 'PATCH',
-      body: JSON.stringify({ businessId }),
-    }),
-
-  // Notifications
-  sendNotification: (data: {
-    title: string;
-    message: string;
-    type: string;
-    targetType: string;
-  }) =>
-    adminApiRequest('/api/v1/admin/notifications', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  getNotificationStats: () => adminApiRequest('/api/v1/admin/notification-stats'),
-
-  // Admin team management (Super admin only)
-  getAdmins: (params: { page?: number; limit?: number } = {}) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/admin/list?${query}`);
-  },
-  addAdmin: (email: string) =>
-    adminApiRequest('/api/v1/admin/add', {
-      method: 'POST',
-      body: JSON.stringify({ email }),
-    }),
-  removeAdmin: (adminEmail: string) =>
-    adminApiRequest('/api/v1/admin/remove', {
-      method: 'DELETE',
-      body: JSON.stringify({ adminEmail }),
-    }),
-  toggleAdminStatus: (adminEmail: string) =>
-    adminApiRequest('/api/v1/admin/toggle-status', {
-      method: 'PATCH',
-      body: JSON.stringify({ adminEmail }),
-    }),
-  toggleImpersonationPermission: (adminEmail: string) =>
-    adminApiRequest('/api/v1/admin/toggle-impersonation-permission', {
-      method: 'PATCH',
-      body: JSON.stringify({ adminEmail }),
-    }),
-  updateMaxAdmins: (maxAdmins: number) =>
-    adminApiRequest('/api/v1/admin/update-max-admins', {
-      method: 'PATCH',
-      body: JSON.stringify({ maxAdmins }),
-    }),
-
-  // System health
-  getSystemHealth: () => adminApiRequest('/api/v1/admin/system-health'),
-  getDatabaseStats: () => adminApiRequest('/api/v1/admin/database-stats'),
-  getApiHealth: () => adminApiRequest('/api/v1/admin/api-health'),
-  getServiceStatus: () => adminApiRequest('/api/v1/admin/service-status'),
-
-  // Maintenance mode
-  toggleMaintenanceMode: (data: {
-    enabled: boolean;
-    message?: string;
-    estimatedEndTime?: string;
-  }) =>
-    adminApiRequest('/api/v1/admin/maintenance-mode', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  // Platform settings
-  getSettings: () => adminApiRequest('/api/v1/admin/settings'),
-  updateSettings: (settings: any) =>
-    adminApiRequest('/api/v1/admin/settings', {
-      method: 'POST',
-      body: JSON.stringify(settings),
-    }),
-  updateSingleSetting: (key: string, value: any) =>
-    adminApiRequest('/api/v1/admin/settings/single', {
-      method: 'PATCH',
-      body: JSON.stringify({ key, value }),
-    }),
-  resetSettings: () =>
-    adminApiRequest('/api/v1/admin/settings/reset', {
-      method: 'POST',
-    }),
-
-  // System operations
-  restartServices: () =>
-    adminApiRequest('/api/v1/admin/restart-services', {
-      method: 'POST',
-    }),
-  clearCache: () =>
-    adminApiRequest('/api/v1/admin/clear-cache', {
-      method: 'POST',
-    }),
-  forceRefresh: () =>
-    adminApiRequest('/api/v1/admin/force-refresh', {
-      method: 'POST',
-    }),
-
-  // Reports
-  generateReport: (data: { startDate: string; endDate: string; reportType: string }) =>
-    adminApiRequest('/api/v1/reports/admin/generate', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  getReportsList: (params: { reportType?: string; limit?: number }) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/reports/list?${query}`);
-  },
-
-  // Issue Reports
-  getIssueReports: (params: { status?: string; issueType?: string; priority?: string }) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/issue-reports/admin/all?${query}`);
-  },
-  getIssueStats: () => adminApiRequest('/api/v1/issue-reports/admin/stats'),
-  updateIssueStatus: (issueId: string, status: string) =>
-    adminApiRequest(`/api/v1/issue-reports/admin/${issueId}/status`, {
-      method: 'PATCH',
-      body: JSON.stringify({ status }),
-    }),
-  
-  // Security auditing
-  getSecurityStats: () => adminApiRequest('/api/v1/admin/security/stats'),
-  getSecurityLogs: (params: { portal?: string; eventType?: string; severity?: string; limit?: number; page?: number; since?: string }) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/admin/security/logs?${query}`);
-  },
-  getBlockedIPs: () => adminApiRequest('/api/v1/admin/security/blocked-ips'),
-  unblockIP: (ipAddress: string) =>
-    adminApiRequest('/api/v1/admin/security/unblock-ip', {
-      method: 'POST',
-      body: JSON.stringify({ ipAddress }),
-    }),
-  blockIP: (ipAddress: string, reason: string) =>
-    adminApiRequest('/api/v1/admin/security/block-ip', {
-      method: 'POST',
-      body: JSON.stringify({ ipAddress, reason }),
-    }),
-
-  // Waitlist management
-  getWaitlistStats: () => adminApiRequest('/api/v1/admin/waitlist/stats'),
-  sendWaitlistBroadcast: (data: { subject: string; html: string; targetType: string; onlyPending?: boolean; targetIds?: string[] }) =>
-    adminApiRequest('/api/v1/admin/waitlist/broadcast', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-  getWaitlistSignups: (params: { page?: number; limit?: number; search?: string; status?: string; userType?: string }) => {
-    const query = new URLSearchParams(params as any).toString();
-    return adminApiRequest(`/api/v1/admin/waitlist/all?${query}`);
-  },
-  updateWaitlistStatus: (data: { id: string; emailStatus?: string; generalStatus?: string }) =>
-    adminApiRequest('/api/v1/admin/waitlist/update-status', {
-      method: 'PATCH',
-      body: JSON.stringify(data),
-    }),
-  getFeatureFlags: () => 
-    fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/feature-flags`).then(res => res.json()),
+  getStats,
+  getUsers,
+  toggleUserStatus,
+  impersonateUser,
+  getBusinesses,
+  toggleBusinessStatus,
+  sendNotification,
+  getNotificationStats,
+  getAdmins,
+  addAdmin,
+  removeAdmin,
+  toggleAdminStatus,
+  toggleImpersonationPermission,
+  updateMaxAdmins,
+  getSystemHealth,
+  getDatabaseStats,
+  getApiHealth,
+  getServiceStatus,
+  toggleMaintenanceMode,
+  getSettings,
+  updateSettings,
+  updateSingleSetting,
+  resetSettings,
+  restartServices,
+  clearCache,
+  forceRefresh,
+  generateReport,
+  getReportsList,
+  getIssueReports,
+  getIssueStats,
+  updateIssueStatus,
+  getSecurityStats,
+  getSecurityLogs,
+  getBlockedIPs,
+  unblockIP,
+  blockIP,
+  getWaitlistStats,
+  sendWaitlistBroadcast,
+  getWaitlistSignups,
+  updateWaitlistStatus,
+  getFeatureFlags,
 };

@@ -67,27 +67,29 @@ interface ChartData {
 
 // --- Module-level sub-components (must be outside AdminDashboard to avoid TDZ errors during Vite bundling) ---
 
-const StatCard = React.memo(function StatCard({ title, value, change, icon: Icon, color = 'emerald' }: any) {
+function StatCardComponent({ title, value, change, icon: Icon, color = 'emerald' }: any) {
   return (
-  <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
-    <div className="flex items-center justify-between mb-3 md:mb-4">
-      <div className={`p-2.5 sm:p-3 rounded-xl bg-${color}-100`}>
-        <Icon className={`text-${color}-600`} size={20} />
-      </div>
-      {change && (
-        <div className={`flex items-center gap-1 text-[10px] sm:text-sm font-bold ${
-          change > 0 ? 'text-green-600' : 'text-red-600'
-        }`}>
-          {change > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
-          {Math.abs(change)}%
+    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <div className={`p-2.5 sm:p-3 rounded-xl bg-${color}-100`}>
+          <Icon className={`text-${color}-600`} size={20} />
         </div>
-      )}
+        {change && (
+          <div className={`flex items-center gap-1 text-[10px] sm:text-sm font-bold ${
+            change > 0 ? 'text-green-600' : 'text-red-600'
+          }`}>
+            {change > 0 ? <ArrowUpRight size={14} /> : <ArrowDownRight size={14} />}
+            {Math.abs(change)}%
+          </div>
+        )}
+      </div>
+      <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
+      <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{title}</p>
     </div>
-    <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
-    <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{title}</p>
-  </div>
   );
-});
+}
+
+const StatCard = React.memo(StatCardComponent);
 
 function ActivityFeedItem({ activity }: { activity: ActivityItem }) {
   const getActivityIcon = (type: string) => {
@@ -130,30 +132,32 @@ function ActivityFeedItem({ activity }: { activity: ActivityItem }) {
   );
 }
 
-const AdminClock = React.memo(function AdminClock({ currentTime }: { currentTime: Date }) {
+function AdminClockComponent({ currentTime }: { currentTime: Date }) {
   return (
-  <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl shadow-lg">
-    <div className="text-center">
-      <div className="text-2xl font-bold font-mono tracking-wider transition-opacity duration-100">
-        {currentTime.toLocaleTimeString('en-US', { 
-          hour: '2-digit', 
-          minute: '2-digit', 
-          second: '2-digit',
-          hour12: true 
-        })}
-      </div>
-      <div className="text-xs font-medium opacity-90 mt-1">
-        {currentTime.toLocaleDateString('en-US', { 
-          weekday: 'short',
-          year: 'numeric', 
-          month: 'short', 
-          day: 'numeric' 
-        })}
+    <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl shadow-lg">
+      <div className="text-center">
+        <div className="text-2xl font-bold font-mono tracking-wider transition-opacity duration-100">
+          {currentTime.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit',
+            hour12: true 
+          })}
+        </div>
+        <div className="text-xs font-medium opacity-90 mt-1">
+          {currentTime.toLocaleDateString('en-US', { 
+            weekday: 'short',
+            year: 'numeric', 
+            month: 'short', 
+            day: 'numeric' 
+          })}
+        </div>
       </div>
     </div>
-  </div>
   );
-});
+}
+
+const AdminClock = React.memo(AdminClockComponent);
 
 function AdminDashboard() {
   const navigate = useNavigate();

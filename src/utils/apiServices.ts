@@ -78,7 +78,7 @@ interface GooglePlacesResponse {
 }
 
 // Get current location using browser geolocation
-export const getCurrentLocation = (): Promise<Location> => {
+export async function getCurrentLocation(): Promise<Location> {
   return new Promise((resolve, reject) => {
     if (!navigator.geolocation) {
       reject(new Error('Geolocation is not supported by your browser'));
@@ -115,10 +115,10 @@ export const getCurrentLocation = (): Promise<Location> => {
       }
     );
   });
-};
+}
 
 // Get nearby restaurants using Google Places API
-export const getNearbyRestaurants = async (latitude: number, longitude: number, radius: number = 5000): Promise<Restaurant[]> => {
+export async function getNearbyRestaurants(latitude: number, longitude: number, radius: number = 5000): Promise<Restaurant[]> {
   try {
     const response = await axios.get<GooglePlacesResponse>(
       `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=restaurant&key=${GOOGLE_MAPS_API_KEY}`
@@ -150,10 +150,10 @@ export const getNearbyRestaurants = async (latitude: number, longitude: number, 
     console.error('Error fetching nearby restaurants:', error);
     throw error;
   }
-};
+}
 
 // Get upcoming events (you would need to implement your own events API)
-export const getUpcomingEvents = async (latitude: number, longitude: number): Promise<Event[]> => {
+export async function getUpcomingEvents(latitude: number, longitude: number): Promise<Event[]> {
   try {
     // This is a placeholder. You would need to implement your own events API
     // or integrate with a service like Eventbrite API
@@ -196,10 +196,10 @@ export const getUpcomingEvents = async (latitude: number, longitude: number): Pr
       }
     ];
   }
-};
+}
 
 // Search restaurants by query
-export const searchRestaurants = async (query: string, latitude: number, longitude: number): Promise<Restaurant[]> => {
+export async function searchRestaurants(query: string, latitude: number, longitude: number): Promise<Restaurant[]> {
   try {
     const response = await axios.get<GooglePlacesResponse>(
       `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&location=${latitude},${longitude}&radius=5000&type=restaurant&key=${GOOGLE_MAPS_API_KEY}`
@@ -228,4 +228,5 @@ export const searchRestaurants = async (query: string, latitude: number, longitu
     console.error('Error searching restaurants:', error);
     throw error;
   }
-}; 
+}
+ 

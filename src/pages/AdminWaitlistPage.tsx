@@ -51,7 +51,7 @@ interface Signup {
   joinedAt?: string;
 }
 
-const AdminWaitlistPage: React.FC = () => {
+function AdminWaitlistPage() {
   const [stats, setStats] = useState<WaitlistStats | null>(null);
   const [recentSignups, setRecentSignups] = useState<Signup[]>([]);
   const [recentFailures, setRecentFailures] = useState<Signup[]>([]);
@@ -887,7 +887,7 @@ const AdminWaitlistPage: React.FC = () => {
       </AnimatePresence>
     </div>
   );
-};
+}
 
 interface StatCardProps {
   icon: React.ReactNode;
@@ -897,7 +897,7 @@ interface StatCardProps {
   hint?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, hint }) => {
+function StatCard({ icon, label, value, color, hint }: StatCardProps) {
   return (
     <motion.div 
       whileHover={{ y: -5 }}
@@ -913,6 +913,6 @@ const StatCard: React.FC<StatCardProps> = ({ icon, label, value, color, hint }) 
       </div>
     </motion.div>
   );
-};
+}
 
 export default AdminWaitlistPage;

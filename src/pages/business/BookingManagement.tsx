@@ -131,7 +131,7 @@ function BookingModal({ booking, onClose, onStatusChange, getStatusColor, getSta
   );
 }
 
-const BookingManagement: React.FC = () => {
+function BookingManagement() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -669,6 +669,6 @@ const BookingManagement: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default BookingManagement;

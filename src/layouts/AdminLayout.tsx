@@ -26,7 +26,7 @@ import { toast } from 'react-toastify';
 import DineInGoLogo from '../components/DineInGoLogo';
 import axios from 'axios';
 
-const AdminLayout: React.FC = () => {
+function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sessionToken } = useParams<{ sessionToken: string }>();
@@ -319,6 +319,6 @@ const AdminLayout: React.FC = () => {
       </AnimatePresence>
     </div>
   );
-};
+}
 
 export default AdminLayout;
