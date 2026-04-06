@@ -3,6 +3,77 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SEO from "./components/SEO";
 
+// DineInGo Logo Component
+const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15" }: any) => {
+    const fontSize = size === "large" ? "4rem" : size === "medium" ? "3rem" : "2rem";
+    const dotSize = size === "large" ? "15px" : size === "medium" ? "12px" : "8px";
+    const dotTop = size === "large" ? "22px" : size === "medium" ? "18px" : "11px";
+    const businessFontSize = size === "large" ? "1.8rem" : size === "medium" ? "1.2rem" : "0.9rem";
+    const businessMarginTop = size === "large" ? "4px" : size === "medium" ? "3px" : "2px";
+
+    return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <h1
+                style={{
+                    fontSize: fontSize,
+                    fontWeight: "bold",
+                    letterSpacing: "0.05em",
+                    display: "flex",
+                    alignItems: "center",
+                    margin: 0,
+                    textShadow: size === "large" ? "3px 3px 6px rgba(0, 0, 0, 0.1)" : "none",
+                }}
+            >
+                <span style={{ color: color }}>D</span>
+                <span style={{ color: color, position: "relative" }}>
+                    i
+                    <span
+                        style={{
+                            position: "absolute",
+                            top: dotTop,
+                            left: "40%",
+                            transform: "translateX(-50%)",
+                            width: dotSize,
+                            height: dotSize,
+                            backgroundColor: "red",
+                            borderRadius: "50%",
+                            boxShadow: "0 0 8px rgba(255, 0, 0, 0.6)",
+                        }}
+                    ></span>
+                </span>
+                <span style={{ color: color }}>ne</span>
+                <span style={{ color: color }}>I</span>
+                <span style={{ color: color }}>n</span>
+                <span style={{ color: yellowColor }}>G</span>
+                <span style={{ color: yellowColor }}>o</span>
+            </h1>
+            <div
+                style={{
+                    marginTop: businessMarginTop,
+                    fontSize: businessFontSize,
+                    fontWeight: "700",
+                    letterSpacing: "0.3em",
+                    color: "#00F29D",
+                    fontFamily: "'Poppins', sans-serif",
+                }}
+            >
+                BUSINESS
+            </div>
+        </div>
+    );
+};
+
+// Animated Doodle Component
+const AnimatedDoodle = ({ src, alt, style, animation }: any) => (
+    <motion.img
+        src={src}
+        alt={alt}
+        style={style}
+        animate={animation || { y: [0, -15, 0], rotate: [0, 5, 0] }}
+        transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+    />
+);
+
 export default function BusinessLandingPage() {
     const [scrollY, setScrollY] = useState(0);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -14,76 +85,7 @@ export default function BusinessLandingPage() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, []);
 
-    // DineInGo Logo Component
-    const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15" }) => {
-        const fontSize = size === "large" ? "4rem" : size === "medium" ? "3rem" : "2rem";
-        const dotSize = size === "large" ? "15px" : size === "medium" ? "12px" : "8px";
-        const dotTop = size === "large" ? "22px" : size === "medium" ? "18px" : "11px";
-        const businessFontSize = size === "large" ? "1.8rem" : size === "medium" ? "1.2rem" : "0.9rem";
-        const businessMarginTop = size === "large" ? "4px" : size === "medium" ? "3px" : "2px";
 
-        return (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-                <h1
-                    style={{
-                        fontSize: fontSize,
-                        fontWeight: "bold",
-                        letterSpacing: "0.05em",
-                        display: "flex",
-                        alignItems: "center",
-                        margin: 0,
-                        textShadow: size === "large" ? "3px 3px 6px rgba(0, 0, 0, 0.1)" : "none",
-                    }}
-                >
-                    <span style={{ color: color }}>D</span>
-                    <span style={{ color: color, position: "relative" }}>
-                        i
-                        <span
-                            style={{
-                                position: "absolute",
-                                top: dotTop,
-                                left: "40%",
-                                transform: "translateX(-50%)",
-                                width: dotSize,
-                                height: dotSize,
-                                backgroundColor: "red",
-                                borderRadius: "50%",
-                                boxShadow: "0 0 8px rgba(255, 0, 0, 0.6)",
-                            }}
-                        ></span>
-                    </span>
-                    <span style={{ color: color }}>ne</span>
-                    <span style={{ color: color }}>I</span>
-                    <span style={{ color: color }}>n</span>
-                    <span style={{ color: yellowColor }}>G</span>
-                    <span style={{ color: yellowColor }}>o</span>
-                </h1>
-                <div
-                    style={{
-                        marginTop: businessMarginTop,
-                        fontSize: businessFontSize,
-                        fontWeight: "700",
-                        letterSpacing: "0.3em",
-                        color: "#00F29D",
-                        fontFamily: "'Poppins', sans-serif",
-                    }}
-                >
-                    BUSINESS
-                </div>
-            </div>
-        );
-    };
-
-    // Animated Doodle Component
-    const AnimatedDoodle = ({ src, alt, style, animation }: any) => (
-        <motion.img
-            src={src}
-            alt={alt}
-            style={style}
-            animate={animation || { y: [0, -15, 0], rotate: [0, 5, 0] }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-        />
-    );
 
     return (
         <div style={{ fontFamily: "system-ui, -apple-system, sans-serif", overflow: "hidden" }}>

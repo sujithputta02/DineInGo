@@ -34,6 +34,436 @@ interface Table3DButtonProps {
   };
 }
 
+interface Table3DButtonProps {
+  number: number;
+  isSelected: boolean;
+  onClick: () => void;
+  position: {
+    x: number;
+    y: number;
+    rotate?: number;
+  };
+}
+
+// Design Tokens - Light Emerald Refined V3
+const glassStyles = {
+  card: {
+    background: "rgba(255, 255, 255, 0.4)",
+    backdropFilter: "blur(40px) saturate(180%)",
+    WebkitBackdropFilter: "blur(40px) saturate(180%)",
+    border: "1px solid rgba(255, 255, 255, 0.3)",
+    boxShadow: `
+      0 8px 32px 0 rgba(31, 38, 135, 0.05),
+      inset 0 0.5px 0.5px rgba(255, 255, 255, 0.4)
+    `,
+    borderRadius: "32px",
+  },
+  button: {
+    borderRadius: "50px",
+    transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+  },
+  colors: {
+    primary: "#34d399", // Light Emerald 400
+    primaryLight: "#6ee7b7", // Emerald 300
+    primaryDeep: "#059669", // Emerald 600
+    gold: "#facc15",
+    black: "#111827",
+    gray: "#4b5563",
+    bg: "#f9fafb" // Back to original light gray
+  }
+};
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.12,
+      delayChildren: 0.1
+    }
+  }
+};
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 30 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      type: "spring",
+      stiffness: 70,
+      damping: 22
+    }
+  }
+};
+
+// Logo component
+const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15" }: { size?: "small" | "large", color?: string, yellowColor?: string }) => {
+  const fontSize = size === "large" ? "4rem" : "2rem";
+  const dotSize = size === "large" ? "15px" : "8px";
+  const dotTop = size === "large" ? "22px" : "11px";
+
+  return (
+    <div style={{ display: "flex", alignItems: "center" }}>
+      <h1
+        style={{
+          fontSize: fontSize,
+          fontWeight: "bold",
+          letterSpacing: "0.05em",
+          display: "flex",
+          alignItems: "center",
+          margin: 0,
+          textShadow: size === "large" ? "3px 3px 6px rgba(0, 0, 0, 0.3)" : "none",
+        }}
+      >
+        <span style={{ color: color }}>D</span>
+        <span style={{ color: color, position: "relative" }}>
+          i
+          <span
+            style={{
+              position: "absolute",
+              top: dotTop,
+              left: "40%",
+              transform: "translateX(-50%)",
+              width: dotSize,
+              height: dotSize,
+              backgroundColor: "red",
+              borderRadius: "50%",
+              boxShadow: "0 0 4px rgba(255, 0, 0, 0.5)",
+            }}
+          ></span>
+        </span>
+        <span style={{ color: color }}>n</span>
+        <span style={{ color: color }}>e</span>
+        <span style={{ color: color }}>I</span>
+        <span style={{ color: color }}>n</span>
+        <span style={{ color: yellowColor }}>G</span>
+        <span style={{ color: yellowColor }}>o</span>
+      </h1>
+    </div>
+  );
+};
+
+// Modern Typography Section Heading
+const SectionHeading: React.FC<SectionHeadingProps & { glassStyles: any }> = ({ tagline, title, highlight, glassStyles, centered = true }) => (
+  <div style={{
+    textAlign: centered ? "center" : "left",
+    marginBottom: "70px",
+    maxWidth: centered ? "900px" : "100%",
+    margin: centered ? "0 auto 70px" : "0 0 70px"
+  }}>
+    <motion.span
+      initial={{ opacity: 0, y: 10 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      style={{
+        color: glassStyles.colors.primary,
+        fontSize: "0.85rem",
+        fontWeight: "900",
+        letterSpacing: "0.4em",
+        textTransform: "uppercase",
+        display: "block",
+        marginBottom: "16px"
+      }}
+    >
+      {tagline}
+    </motion.span>
+    <motion.h2
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ delay: 0.1 }}
+      style={{
+        fontSize: "clamp(2.5rem, 8vw, 4.5rem)",
+        fontWeight: "900",
+        color: glassStyles.colors.black,
+        lineHeight: "0.95",
+        letterSpacing: "-0.05em",
+        margin: 0
+      }}
+    >
+      {title} <br />
+      <span style={{
+        color: glassStyles.colors.primary,
+        fontStyle: "italic",
+        background: `linear-gradient(120deg, ${glassStyles.colors.primary}, ${glassStyles.colors.primaryDeep})`,
+        WebkitBackgroundClip: "text",
+        WebkitTextFillColor: "transparent",
+        display: "inline-block"
+      }}>
+        {highlight}
+      </span>
+    </motion.h2>
+  </div>
+);
+
+// Doodle component for decorative elements
+const Doodle: React.FC<DoodleProps> = ({ type, style }) => {
+  const doodles = {
+    plate: (
+      <motion.img
+        src="/images/cakedodle.png"
+        alt="Plate doodle"
+        style={{ width: "80px", height: "80px", ...style }}
+        animate={{
+          y: [0, -10, 0],
+          rotate: [0, 5, 0]
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    ),
+    fork: (
+      <motion.img
+        src="/images/nooddodle.png"
+        alt="Fork doodle"
+        style={{ width: "60px", height: "120px", ...style }}
+        animate={{
+          y: [0, -15, 0],
+          rotate: [-5, 5, -5]
+        }}
+        transition={{
+          duration: 5,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    ),
+    star: (
+      <motion.img
+        src="/images/eventdodle.png"
+        alt="Star doodle"
+        style={{ width: "70px", height: "70px", ...style }}
+        animate={{
+          scale: [1, 1.1, 1],
+          rotate: [0, 10, 0]
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    ),
+    chair: (
+      <motion.img
+        src="/images/tabledodle.png"
+        alt="Chair doodle"
+        style={{ width: "60px", height: "60px", ...style }}
+        animate={{
+          y: [0, -8, 0],
+          rotate: [0, -5, 0]
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    ),
+    wave: (
+      <motion.img
+        src="/images/dodle.png"
+        alt="Wave doodle"
+        style={{ width: "150px", height: "40px", ...style }}
+        animate={{
+          x: [-10, 10, -10],
+          y: [0, -5, 0]
+        }}
+        transition={{
+          duration: 6,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    ),
+    ticket: (
+      <motion.img
+        src="/images/guiterdodle.png"
+        alt="Ticket doodle"
+        style={{ width: "80px", height: "40px", ...style }}
+        animate={{
+          y: [0, -12, 0],
+          rotate: [-3, 3, -3]
+        }}
+        transition={{
+          duration: 4,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      />
+    )
+  };
+
+  return doodles[type] || null;
+};
+
+// 3D Button for table selection
+const Table3DButton: React.FC<Table3DButtonProps & { glassStyles: any }> = ({ number, isSelected, onClick, position, glassStyles }) => (
+  <motion.div
+    whileHover={{ scale: 1.08, y: -5 }}
+    onClick={onClick}
+    initial={{ scale: 0.9, opacity: 0 }}
+    animate={{
+      scale: 1,
+      opacity: 1,
+      y: isSelected ? -10 : 0,
+    }}
+    transition={{
+      type: "spring",
+      stiffness: 400,
+      damping: 17,
+      delay: number * 0.1
+    }}
+    style={{
+      position: "absolute",
+      left: `${position.x}%`,
+      top: `${position.y}%`,
+      width: "60px",
+      height: "60px",
+      cursor: "pointer",
+      transform: `perspective(800px) rotateX(30deg) rotateZ(${position.rotate || 0}deg)`,
+      transformStyle: "preserve-3d",
+      zIndex: isSelected ? 10 : 1,
+    }}
+  >
+    {/* Top surface */}
+    <motion.div
+      animate={{
+        boxShadow: isSelected
+          ? [
+            `0 20px 40px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}60`,
+            `0 20px 40px rgba(0,0,0,0.15), 0 0 35px ${glassStyles.colors.primary}40`,
+            `0 20px 40px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}60`
+          ]
+          : "0 10px 20px rgba(0,0,0,0.1)"
+      }}
+      transition={{
+        repeat: isSelected ? Infinity : 0,
+        duration: 2
+      }}
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        background: isSelected ? "white" : "rgba(255, 255, 255, 0.45)",
+        backdropFilter: "blur(10px)",
+        WebkitBackdropFilter: "blur(10px)",
+        borderRadius: "14px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: "18px",
+        fontWeight: "800",
+        color: isSelected ? glassStyles.colors.primaryDeep : "#333",
+        border: isSelected ? `2px solid ${glassStyles.colors.primary}` : "1px solid rgba(255,255,255,0.4)",
+        transform: "translateZ(10px)",
+        boxShadow: isSelected ? `0 15px 35px ${glassStyles.colors.primary}40` : "0 5px 15px rgba(0,0,0,0.05)",
+        zIndex: 2,
+      }}
+    >
+      {number}
+    </motion.div>
+
+    {/* Side surfaces for 3D effect */}
+    <div
+      style={{
+        position: "absolute",
+        width: "100%",
+        height: "12px",
+        bottom: "-10px",
+        left: "0",
+        backgroundColor: isSelected ? glassStyles.colors.primaryDeep : "#e2e8f0",
+        borderRadius: "0 0 10px 10px",
+        transformOrigin: "top",
+        transform: "rotateX(-90deg)",
+        zIndex: 1,
+      }}
+    />
+
+    {/* Base surface */}
+    <div
+      style={{
+        position: "absolute",
+        top: 0,
+        left: 0,
+        width: "100%",
+        height: "100%",
+        backgroundColor: isSelected ? glassStyles.colors.primary : "#cbd5e1",
+        borderRadius: "12px",
+        transform: "translateZ(0)",
+        zIndex: 0,
+      }}
+    />
+
+    {/* Pulse animation for selected table */}
+    {isSelected && (
+      <motion.div
+        animate={{
+          scale: [1, 1.4, 1],
+          opacity: [0.5, 0, 0.5]
+        }}
+        transition={{
+          duration: 2,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width: "100%",
+          height: "100%",
+          borderRadius: "12px",
+          backgroundColor: glassStyles.colors.primary,
+          zIndex: -1,
+        }}
+      />
+    )}
+  </motion.div>
+);
+
+// Feature card with animation
+const FeatureCard: React.FC<FeatureCardProps & { glassStyles: any }> = ({ icon, title, description, color, glassStyles }) => (
+  <motion.div
+    variants={itemVariants}
+    whileHover={{ scale: 1.02, y: -8 }}
+    style={{
+      ...glassStyles.card,
+      padding: "40px",
+      height: "100%",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "flex-start",
+      transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
+    }}
+  >
+    <div
+      style={{
+        background: `linear-gradient(135deg, ${color}, ${glassStyles.colors.primary})`,
+        width: "60px",
+        height: "60px",
+        borderRadius: "18px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        marginBottom: "24px",
+        boxShadow: `0 12px 24px ${color}15`,
+        color: "white"
+      }}
+    >
+      {icon}
+    </div>
+    <h3 style={{ fontSize: "1.5rem", fontWeight: "700", marginBottom: "14px", color: glassStyles.colors.black, letterSpacing: "-0.01em" }}>{title}</h3>
+    <p style={{ color: glassStyles.colors.gray, lineHeight: "1.7", margin: 0, fontSize: "1.05rem", fontWeight: "500" }}>{description}</p>
+  </motion.div>
+);
+
 export default function LandingPage() {
   const [activeTab, setActiveTab] = useState("restaurants");
   const [scrollY, setScrollY] = useState(0);
@@ -52,434 +482,7 @@ export default function LandingPage() {
   const isMobile = windowWidth < 768;
   const isTablet = windowWidth >= 768 && windowWidth < 1024;
 
-  // Design Tokens - Light Emerald Refined V3
-  const glassStyles = {
-    card: {
-      background: "rgba(255, 255, 255, 0.4)",
-      backdropFilter: "blur(40px) saturate(180%)",
-      WebkitBackdropFilter: "blur(40px) saturate(180%)",
-      border: "1px solid rgba(255, 255, 255, 0.3)",
-      boxShadow: `
-        0 8px 32px 0 rgba(31, 38, 135, 0.05),
-        inset 0 0.5px 0.5px rgba(255, 255, 255, 0.4)
-      `,
-      borderRadius: "32px",
-    },
-    button: {
-      borderRadius: "50px",
-      transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-    },
-    colors: {
-      primary: "#34d399", // Light Emerald 400
-      primaryLight: "#6ee7b7", // Emerald 300
-      primaryDeep: "#059669", // Emerald 600
-      gold: "#facc15",
-      black: "#111827",
-      gray: "#4b5563",
-      bg: "#f9fafb" // Back to original light gray
-    }
-  };
 
-  // Designs and Variants moved to top level
-
-  // Track scroll position for animations
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  // Logo component
-  const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15" }: { size?: "small" | "large", color?: string, yellowColor?: string }) => {
-    const fontSize = size === "large" ? "4rem" : "2rem";
-    const dotSize = size === "large" ? "15px" : "8px";
-    const dotTop = size === "large" ? "22px" : "11px";
-
-    return (
-      <div style={{ display: "flex", alignItems: "center" }}>
-        <h1
-          style={{
-            fontSize: fontSize,
-            fontWeight: "bold",
-            letterSpacing: "0.05em",
-            display: "flex",
-            alignItems: "center",
-            margin: 0,
-            textShadow: size === "large" ? "3px 3px 6px rgba(0, 0, 0, 0.3)" : "none",
-          }}
-        >
-          <span style={{ color: color }}>D</span>
-          <span style={{ color: color, position: "relative" }}>
-            i
-            <span
-              style={{
-                position: "absolute",
-                top: dotTop,
-                left: "40%",
-                transform: "translateX(-50%)",
-                width: dotSize,
-                height: dotSize,
-                backgroundColor: "red",
-                borderRadius: "50%",
-                boxShadow: "0 0 4px rgba(255, 0, 0, 0.5)",
-              }}
-            ></span>
-          </span>
-          <span style={{ color: color }}>n</span>
-          <span style={{ color: color }}>e</span>
-          <span style={{ color: color }}>I</span>
-          <span style={{ color: color }}>n</span>
-          <span style={{ color: yellowColor }}>G</span>
-          <span style={{ color: yellowColor }}>o</span>
-        </h1>
-      </div>
-    );
-  };
-
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.12,
-        delayChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        type: "spring",
-        stiffness: 70,
-        damping: 22
-      }
-    }
-  };
-
-  // Modern Typography Section Heading
-  const SectionHeading: React.FC<SectionHeadingProps> = ({ tagline, title, highlight, glassStyles, centered = true }) => (
-    <div style={{
-      textAlign: centered ? "center" : "left",
-      marginBottom: "70px",
-      maxWidth: centered ? "900px" : "100%",
-      margin: centered ? "0 auto 70px" : "0 0 70px"
-    }}>
-      <motion.span
-        initial={{ opacity: 0, y: 10 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        style={{
-          color: glassStyles.colors.primary,
-          fontSize: "0.85rem",
-          fontWeight: "900",
-          letterSpacing: "0.4em",
-          textTransform: "uppercase",
-          display: "block",
-          marginBottom: "16px"
-        }}
-      >
-        {tagline}
-      </motion.span>
-      <motion.h2
-        initial={{ opacity: 0, y: 20 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true }}
-        transition={{ delay: 0.1 }}
-        style={{
-          fontSize: "clamp(2.5rem, 8vw, 4.5rem)",
-          fontWeight: "900",
-          color: glassStyles.colors.black,
-          lineHeight: "0.95",
-          letterSpacing: "-0.05em",
-          margin: 0
-        }}
-      >
-        {title} <br />
-        <span style={{
-          color: glassStyles.colors.primary,
-          fontStyle: "italic",
-          background: `linear-gradient(120deg, ${glassStyles.colors.primary}, ${glassStyles.colors.primaryDeep})`,
-          WebkitBackgroundClip: "text",
-          WebkitTextFillColor: "transparent",
-          display: "inline-block"
-        }}>
-          {highlight}
-        </span>
-      </motion.h2>
-    </div>
-  );
-
-  // Doodle component for decorative elements
-  const Doodle: React.FC<DoodleProps> = ({ type, style }) => {
-    const doodles = {
-      plate: (
-        <motion.img
-          src="/images/cakedodle.png"
-          alt="Plate doodle"
-          style={{ width: "80px", height: "80px", ...style }}
-          animate={{
-            y: [0, -10, 0],
-            rotate: [0, 5, 0]
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      ),
-      fork: (
-        <motion.img
-          src="/images/nooddodle.png"
-          alt="Fork doodle"
-          style={{ width: "60px", height: "120px", ...style }}
-          animate={{
-            y: [0, -15, 0],
-            rotate: [-5, 5, -5]
-          }}
-          transition={{
-            duration: 5,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      ),
-      star: (
-        <motion.img
-          src="/images/eventdodle.png"
-          alt="Star doodle"
-          style={{ width: "70px", height: "70px", ...style }}
-          animate={{
-            scale: [1, 1.1, 1],
-            rotate: [0, 10, 0]
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      ),
-      chair: (
-        <motion.img
-          src="/images/tabledodle.png"
-          alt="Chair doodle"
-          style={{ width: "60px", height: "60px", ...style }}
-          animate={{
-            y: [0, -8, 0],
-            rotate: [0, -5, 0]
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      ),
-      wave: (
-        <motion.img
-          src="/images/dodle.png"
-          alt="Wave doodle"
-          style={{ width: "150px", height: "40px", ...style }}
-          animate={{
-            x: [-10, 10, -10],
-            y: [0, -5, 0]
-          }}
-          transition={{
-            duration: 6,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      ),
-      ticket: (
-        <motion.img
-          src="/images/guiterdodle.png"
-          alt="Ticket doodle"
-          style={{ width: "80px", height: "40px", ...style }}
-          animate={{
-            y: [0, -12, 0],
-            rotate: [-3, 3, -3]
-          }}
-          transition={{
-            duration: 4,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        />
-      )
-    };
-
-    return doodles[type] || null;
-  };
-
-  // 3D Button for table selection
-  const Table3DButton: React.FC<Table3DButtonProps & { glassStyles: any }> = ({ number, isSelected, onClick, position, glassStyles }) => (
-    <motion.div
-      whileHover={{ scale: 1.08, y: -5 }}
-      onClick={onClick}
-      initial={{ scale: 0.9, opacity: 0 }}
-      animate={{
-        scale: 1,
-        opacity: 1,
-        y: isSelected ? -10 : 0,
-      }}
-      transition={{
-        type: "spring",
-        stiffness: 400,
-        damping: 17,
-        delay: number * 0.1
-      }}
-      style={{
-        position: "absolute",
-        left: `${position.x}%`,
-        top: `${position.y}%`,
-        width: "60px",
-        height: "60px",
-        cursor: "pointer",
-        transform: `perspective(800px) rotateX(30deg) rotateZ(${position.rotate || 0}deg)`,
-        transformStyle: "preserve-3d",
-        zIndex: isSelected ? 10 : 1,
-      }}
-    >
-      {/* Top surface */}
-      <motion.div
-        animate={{
-          boxShadow: isSelected
-            ? [
-              `0 20px 40px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}60`,
-              `0 20px 40px rgba(0,0,0,0.15), 0 0 35px ${glassStyles.colors.primary}40`,
-              `0 20px 40px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}60`
-            ]
-            : "0 10px 20px rgba(0,0,0,0.1)"
-        }}
-        transition={{
-          repeat: isSelected ? Infinity : 0,
-          duration: 2
-        }}
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          background: isSelected ? "white" : "rgba(255, 255, 255, 0.45)",
-          backdropFilter: "blur(10px)",
-          WebkitBackdropFilter: "blur(10px)",
-          borderRadius: "14px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "18px",
-          fontWeight: "800",
-          color: isSelected ? glassStyles.colors.primaryDeep : "#333",
-          border: isSelected ? `2px solid ${glassStyles.colors.primary}` : "1px solid rgba(255,255,255,0.4)",
-          transform: "translateZ(10px)",
-          boxShadow: isSelected ? `0 15px 35px ${glassStyles.colors.primary}40` : "0 5px 15px rgba(0,0,0,0.05)",
-          zIndex: 2,
-        }}
-      >
-        {number}
-      </motion.div>
-
-      {/* Side surfaces for 3D effect */}
-      <div
-        style={{
-          position: "absolute",
-          width: "100%",
-          height: "12px",
-          bottom: "-10px",
-          left: "0",
-          backgroundColor: isSelected ? glassStyles.colors.primaryDeep : "#e2e8f0",
-          borderRadius: "0 0 10px 10px",
-          transformOrigin: "top",
-          transform: "rotateX(-90deg)",
-          zIndex: 1,
-        }}
-      />
-
-      {/* Base surface */}
-      <div
-        style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          backgroundColor: isSelected ? glassStyles.colors.primary : "#cbd5e1",
-          borderRadius: "12px",
-          transform: "translateZ(0)",
-          zIndex: 0,
-        }}
-      />
-
-      {/* Pulse animation for selected table */}
-      {isSelected && (
-        <motion.div
-          animate={{
-            scale: [1, 1.4, 1],
-            opacity: [0.5, 0, 0.5]
-          }}
-          transition={{
-            duration: 2,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            width: "100%",
-            height: "100%",
-            borderRadius: "12px",
-            backgroundColor: glassStyles.colors.primary,
-            zIndex: -1,
-          }}
-        />
-      )}
-    </motion.div>
-  );
-
-
-  // Feature card with animation
-  const FeatureCard: React.FC<FeatureCardProps & { glassStyles: any }> = ({ icon, title, description, color, glassStyles }) => (
-    <motion.div
-      variants={itemVariants}
-      whileHover={{ scale: 1.02, y: -8 }}
-      style={{
-        ...glassStyles.card,
-        padding: "40px",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "flex-start",
-        transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
-      }}
-    >
-      <div
-        style={{
-          background: `linear-gradient(135deg, ${color}, ${glassStyles.colors.primary})`,
-          width: "60px",
-          height: "60px",
-          borderRadius: "18px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          marginBottom: "24px",
-          boxShadow: `0 12px 24px ${color}15`,
-          color: "white"
-        }}
-      >
-        {icon}
-      </div>
-      <h3 style={{ fontSize: "1.5rem", fontWeight: "700", marginBottom: "14px", color: glassStyles.colors.black, letterSpacing: "-0.01em" }}>{title}</h3>
-      <p style={{ color: glassStyles.colors.gray, lineHeight: "1.7", margin: 0, fontSize: "1.05rem", fontWeight: "500" }}>{description}</p>
-    </motion.div>
-  );
 
   // Table layout positions
   const tablePositions = [

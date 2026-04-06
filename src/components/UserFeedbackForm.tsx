@@ -9,29 +9,29 @@ interface OnboardingFormData {
   // Discovery & Marketing Attribution
   decisionReason: string;
   followsSocialMedia: 'yes' | 'no' | 'not_sure' | '';
-  
+
   // User Intent & Preferences
   diningFrequency: string;
   bookingPriorities: string[];
   groupSize: string;
-  
+
   // Personalization & Notifications
   preferredCuisines: string[];
   preferredEvents: string[];
   lastMinuteDeals: 'yes' | 'no' | '';
-  
+
   // Location & Booking Preferences
   exploreNewVenues: 'yes' | 'no' | '';
   saveFavorites: 'yes' | 'not_now' | '';
-  
+
   // Optional Feedback
   perfectExperience: string;
   pastIssues: string;
-  
+
   // Behavioral Insights
   bookingStyle: string;
   focusPreference: string;
-  
+
   email: string;
 }
 
@@ -64,7 +64,7 @@ const DineInGoOnboarding: React.FC = () => {
     focusPreference: '',
     email: ''
   });
-  
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +81,7 @@ const DineInGoOnboarding: React.FC = () => {
 
     checkPermission();
     // Periodically check in case the user changes settings in another tab
-    const interval = setInterval(checkPermission, 2000); 
+    const interval = setInterval(checkPermission, 2000);
 
     return () => clearInterval(interval);
   }, []);
@@ -104,7 +104,7 @@ const DineInGoOnboarding: React.FC = () => {
   const calculateCompletion = () => {
     let filledFields = 0;
     let totalFields = 0;
-    
+
     switch (activeSection) {
       case 1: // Discovery & Marketing
         totalFields = 2;
@@ -138,7 +138,7 @@ const DineInGoOnboarding: React.FC = () => {
         if (formData.email) filledFields++;
         break;
     }
-    
+
     return totalFields > 0 ? Math.round((filledFields / totalFields) * 100) : 0;
   };
 
@@ -247,7 +247,7 @@ const DineInGoOnboarding: React.FC = () => {
 
   const CompletionBar = ({ percentage }: { percentage: number }) => (
     <div className="w-full bg-white bg-opacity-20 rounded-full h-3 mb-3">
-      <motion.div 
+      <motion.div
         className="bg-gradient-to-r from-yellow-300 to-orange-400 h-3 rounded-full shadow-lg"
         initial={{ width: 0 }}
         animate={{ width: `${percentage}%` }}
@@ -273,37 +273,36 @@ const DineInGoOnboarding: React.FC = () => {
     })
   };
 
-  const MultiSelectCard = ({ 
-    options, 
-    selectedValues, 
-    onChange, 
-    maxSelections 
-  }: { 
-    options: string[], 
-    selectedValues: string[], 
+  const MultiSelectCard = ({
+    options,
+    selectedValues,
+    onChange,
+    maxSelections
+  }: {
+    options: string[],
+    selectedValues: string[],
     onChange: (values: string[]) => void,
-    maxSelections?: number 
+    maxSelections?: number
   }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
       {options.map((option) => {
         const isSelected = selectedValues.includes(option);
         const canSelect = !maxSelections || selectedValues.length < maxSelections || isSelected;
-        
+
         return (
           <motion.div
             key={option}
-            className={`relative cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ${
-              isSelected 
-                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-lg transform scale-105' 
+            className={`relative cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ${isSelected
+                ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-lg transform scale-105'
                 : canSelect
                   ? 'bg-white border-gray-200 hover:border-emerald-300 hover:shadow-md'
                   : 'bg-gray-50 border-gray-100 opacity-50 cursor-not-allowed'
-            }`}
+              }`}
             whileHover={canSelect ? { scale: 1.02 } : {}}
             whileTap={canSelect ? { scale: 0.98 } : {}}
             onClick={() => {
               if (!canSelect) return;
-              
+
               const newValues = isSelected
                 ? selectedValues.filter(v => v !== option)
                 : [...selectedValues, option];
@@ -311,9 +310,8 @@ const DineInGoOnboarding: React.FC = () => {
             }}
           >
             <div className="flex items-center space-x-3">
-              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                isSelected ? 'bg-emerald-400 border-emerald-400' : 'border-gray-300'
-              }`}>
+              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${isSelected ? 'bg-emerald-400 border-emerald-400' : 'border-gray-300'
+                }`}>
                 {isSelected && (
                   <motion.svg
                     initial={{ scale: 0 }}
@@ -347,26 +345,25 @@ const DineInGoOnboarding: React.FC = () => {
     </div>
   );
 
-  const RadioCard = ({ 
-    options, 
-    selectedValue, 
-    onChange, 
-    name 
-  }: { 
-    options: {value: string, label: string, icon?: string}[], 
-    selectedValue: string, 
+  const RadioCard = ({
+    options,
+    selectedValue,
+    onChange,
+    name
+  }: {
+    options: { value: string, label: string, icon?: string }[],
+    selectedValue: string,
     onChange: (value: string) => void,
-    name: string 
+    name: string
   }) => (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       {options.map((option) => (
         <motion.label
           key={option.value}
-          className={`cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ${
-            selectedValue === option.value
+          className={`cursor-pointer p-4 rounded-xl border-2 transition-all duration-300 ${selectedValue === option.value
               ? 'bg-gradient-to-br from-emerald-50 to-teal-50 border-emerald-400 shadow-lg'
               : 'bg-white border-gray-200 hover:border-emerald-300 hover:shadow-md'
-          }`}
+            }`}
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -379,9 +376,8 @@ const DineInGoOnboarding: React.FC = () => {
               onChange={(e) => onChange(e.target.value)}
               className="sr-only"
             />
-            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-              selectedValue === option.value ? 'bg-emerald-400 border-emerald-400' : 'border-gray-300'
-            }`}>
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedValue === option.value ? 'bg-emerald-400 border-emerald-400' : 'border-gray-300'
+              }`}>
               {selectedValue === option.value && (
                 <motion.div
                   initial={{ scale: 0 }}
@@ -391,9 +387,8 @@ const DineInGoOnboarding: React.FC = () => {
               )}
             </div>
             {option.icon && <span className="text-lg">{option.icon}</span>}
-            <span className={`text-sm font-medium ${
-              selectedValue === option.value ? 'text-emerald-700' : 'text-gray-700'
-            }`}>
+            <span className={`text-sm font-medium ${selectedValue === option.value ? 'text-emerald-700' : 'text-gray-700'
+              }`}>
               {option.label}
             </span>
           </div>
@@ -429,7 +424,7 @@ const DineInGoOnboarding: React.FC = () => {
 
       <div className="max-w-4xl mx-auto relative z-10">
         {/* Header with logo */}
-        <motion.div 
+        <motion.div
           className="text-center mb-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -444,7 +439,7 @@ const DineInGoOnboarding: React.FC = () => {
               <span className="text-yellow-400">Go</span>
             </h1>
           </div>
-          <motion.h2 
+          <motion.h2
             className="text-2xl font-semibold text-gray-800 mb-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -452,7 +447,7 @@ const DineInGoOnboarding: React.FC = () => {
           >
             Welcome! Let's personalize your experience
           </motion.h2>
-          <motion.p 
+          <motion.p
             className="text-gray-600"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -465,7 +460,7 @@ const DineInGoOnboarding: React.FC = () => {
         {/* Error message */}
         <AnimatePresence>
           {error && (
-            <motion.div 
+            <motion.div
               className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl shadow-sm"
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
@@ -484,13 +479,13 @@ const DineInGoOnboarding: React.FC = () => {
           transition={{ duration: 0.7, type: "spring" }}
         >
           {submitSuccess ? (
-            <motion.div 
+            <motion.div
               className="p-12 text-center"
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.5 }}
             >
-              <motion.div 
+              <motion.div
                 className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-6"
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -503,13 +498,13 @@ const DineInGoOnboarding: React.FC = () => {
               <h3 className="text-3xl font-bold text-gray-800 mb-4">Welcome to DineInGo! 🎉</h3>
               <p className="text-gray-600 text-lg mb-2">Your preferences have been saved successfully.</p>
               <p className="text-gray-500">Redirecting to your personalized dashboard...</p>
-              <motion.div 
+              <motion.div
                 className="mt-6 w-32 h-1 bg-emerald-200 rounded-full mx-auto overflow-hidden"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
               >
-                <motion.div 
+                <motion.div
                   className="h-full bg-emerald-400 rounded-full"
                   initial={{ width: 0 }}
                   animate={{ width: '100%' }}
@@ -556,7 +551,7 @@ const DineInGoOnboarding: React.FC = () => {
                           <h2 className="text-2xl font-bold text-gray-800 mb-2">🧭 Discovery & Marketing</h2>
                           <p className="text-gray-600">Let's understand how you found us</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -602,7 +597,7 @@ const DineInGoOnboarding: React.FC = () => {
                           <h2 className="text-2xl font-bold text-gray-800 mb-2">🧑‍💼 Intent & Preferences</h2>
                           <p className="text-gray-600">Tell us about your dining habits</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -667,7 +662,7 @@ const DineInGoOnboarding: React.FC = () => {
                           <h2 className="text-2xl font-bold text-gray-800 mb-2">💡 Personalization</h2>
                           <p className="text-gray-600">Help us customize your experience</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -720,7 +715,7 @@ const DineInGoOnboarding: React.FC = () => {
                               onChange={(value) => handleLastMinuteDealsChange(value as 'yes' | 'no')}
                               name="lastMinuteDeals"
                             />
-                             {formData.lastMinuteDeals === 'yes' && notificationBlocked && (
+                            {formData.lastMinuteDeals === 'yes' && notificationBlocked && (
                               <motion.div
                                 className="mt-4 p-4 bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-xl text-sm flex items-start space-x-3 shadow-sm"
                                 initial={{ opacity: 0, y: -10 }}
@@ -746,7 +741,7 @@ const DineInGoOnboarding: React.FC = () => {
                           <h2 className="text-2xl font-bold text-gray-800 mb-2">📍 Location & Booking</h2>
                           <p className="text-gray-600">Your location and booking preferences</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -788,7 +783,7 @@ const DineInGoOnboarding: React.FC = () => {
                           <h2 className="text-2xl font-bold text-gray-800 mb-2">✨ Optional Feedback</h2>
                           <p className="text-gray-600">Help us improve your experience</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -887,7 +882,7 @@ const DineInGoOnboarding: React.FC = () => {
                           <h2 className="text-2xl font-bold text-gray-800 mb-2">🎉 Almost Done!</h2>
                           <p className="text-gray-600">Just one more step to complete your setup</p>
                         </div>
-                        
+
                         <div className="space-y-6">
                           <div>
                             <label className="block text-lg font-semibold text-gray-800 mb-4">
@@ -953,11 +948,10 @@ const DineInGoOnboarding: React.FC = () => {
                   type="button"
                   onClick={prevSection}
                   disabled={activeSection === 1}
-                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                    activeSection === 1
+                  className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${activeSection === 1
                       ? 'text-gray-400 cursor-not-allowed'
                       : 'text-gray-700 hover:bg-gray-200 hover:shadow-md'
-                  }`}
+                    }`}
                   whileHover={activeSection !== 1 ? { scale: 1.05 } : {}}
                   whileTap={activeSection !== 1 ? { scale: 0.95 } : {}}
                 >
@@ -971,13 +965,12 @@ const DineInGoOnboarding: React.FC = () => {
                   {[1, 2, 3, 4, 5, 6].map((step) => (
                     <motion.div
                       key={step}
-                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                        step === activeSection
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${step === activeSection
                           ? 'bg-emerald-500 scale-125'
                           : step < activeSection
                             ? 'bg-emerald-300'
                             : 'bg-gray-300'
-                      }`}
+                        }`}
                       initial={{ scale: 0 }}
                       animate={{ scale: step === activeSection ? 1.25 : 1 }}
                       transition={{ type: "spring", duration: 0.3 }}
@@ -990,11 +983,10 @@ const DineInGoOnboarding: React.FC = () => {
                     type="button"
                     onClick={nextSection}
                     disabled={!canProceedToNextSection()}
-                    className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                      canProceedToNextSection()
+                    className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${canProceedToNextSection()
                         ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:shadow-xl'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                      }`}
                     whileHover={canProceedToNextSection() ? { scale: 1.05 } : {}}
                     whileTap={canProceedToNextSection() ? { scale: 0.95 } : {}}
                   >
@@ -1007,11 +999,10 @@ const DineInGoOnboarding: React.FC = () => {
                   <motion.button
                     type="submit"
                     disabled={isSubmitting || !formData.email}
-                    className={`flex items-center space-x-2 px-8 py-3 rounded-xl font-medium transition-all duration-300 ${
-                      !isSubmitting && formData.email
+                    className={`flex items-center space-x-2 px-8 py-3 rounded-xl font-medium transition-all duration-300 ${!isSubmitting && formData.email
                         ? 'bg-gradient-to-r from-emerald-500 to-teal-600 text-white hover:from-emerald-600 hover:to-teal-700 shadow-lg hover:shadow-xl'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                      }`}
                     whileHover={!isSubmitting && formData.email ? { scale: 1.05 } : {}}
                     whileTap={!isSubmitting && formData.email ? { scale: 0.95 } : {}}
                   >

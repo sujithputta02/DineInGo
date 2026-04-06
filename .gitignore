@@ -59,3 +59,5 @@ secrets/
 dineingo-early-access/
 early-access-page/
 push-early-access.sh
+.vercel
+.env*.local

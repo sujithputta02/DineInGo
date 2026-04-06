@@ -53,6 +53,84 @@ interface BookingFilters {
   paymentStatus: string;
 }
 
+// Module-level component — must NOT be inside BookingManagement to avoid Vite TDZ error
+function BookingModal({ booking, onClose, onStatusChange, getStatusColor, getStatusIcon, getPaymentStatusColor }: {
+  booking: Booking;
+  onClose: () => void;
+  onStatusChange: (id: string, status: string) => void;
+  getStatusColor: (s: string) => string;
+  getStatusIcon: (s: string) => React.ReactNode;
+  getPaymentStatusColor: (s: string) => string;
+}) {
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-6 border-b border-slate-200">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold text-slate-900">Booking Details</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><XCircle size={24} /></button>
+          </div>
+        </div>
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Booking Information</h3>
+              <div className="space-y-3">
+                <div><label className="text-sm font-medium text-slate-600">Booking Number</label><p className="text-slate-900">{booking.bookingNumber}</p></div>
+                <div><label className="text-sm font-medium text-slate-600">Business</label><p className="text-slate-900">{booking.businessName}</p></div>
+                <div><label className="text-sm font-medium text-slate-600">Date &amp; Time</label><p className="text-slate-900">{booking.date} at {booking.time}</p></div>
+                <div><label className="text-sm font-medium text-slate-600">Seats</label><p className="text-slate-900">{booking.seats} seats</p></div>
+                {booking.tableNumber && (<div><label className="text-sm font-medium text-slate-600">Table</label><p className="text-slate-900">{booking.tableNumber}</p></div>)}
+                {booking.seatNumbers && (<div><label className="text-sm font-medium text-slate-600">Seat Numbers</label><p className="text-slate-900">{booking.seatNumbers.join(', ')}</p></div>)}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Customer Information</h3>
+              <div className="space-y-3">
+                <div><label className="text-sm font-medium text-slate-600">Name</label><p className="text-slate-900">{booking.customerName}</p></div>
+                <div><label className="text-sm font-medium text-slate-600">Email</label><p className="text-slate-900 flex items-center gap-2"><Mail size={16} />{booking.customerEmail}</p></div>
+                <div><label className="text-sm font-medium text-slate-600">Phone</label><p className="text-slate-900 flex items-center gap-2"><Phone size={16} />{booking.customerPhone}</p></div>
+                <div>
+                  <label className="text-sm font-medium text-slate-600">Status</label>
+                  <div className="flex items-center gap-2">{getStatusIcon(booking.status)}<span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>{booking.status}</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-slate-900 mb-4">Payment Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div><label className="text-sm font-medium text-slate-600">Amount</label><p className="text-slate-900 flex items-center gap-2"><DollarSign size={16} />₹{booking.amount}</p></div>
+              <div><label className="text-sm font-medium text-slate-600">Payment Status</label><span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>{booking.paymentStatus}</span></div>
+            </div>
+          </div>
+          {booking.specialRequests && (<div><h3 className="text-lg font-medium text-slate-900 mb-4">Special Requests</h3><p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{booking.specialRequests}</p></div>)}
+          {booking.rating && booking.review && (
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Customer Review</h3>
+              <div className="bg-slate-50 p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2"><Star className="text-yellow-500 fill-current" size={16} /><span className="font-medium">{booking.rating}/5</span></div>
+                <p className="text-slate-700">{booking.review}</p>
+              </div>
+            </div>
+          )}
+          <div className="flex gap-3 pt-4 border-t border-slate-200">
+            <select value={booking.status} onChange={(e) => onStatusChange(booking._id, e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="no-show">No Show</option>
+            </select>
+            <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"><MessageSquare size={16} />Contact Customer</button>
+            <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"><Edit size={16} />Edit Booking</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const BookingManagement: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [filteredBookings, setFilteredBookings] = useState<Booking[]>([]);
@@ -249,164 +327,6 @@ const BookingManagement: React.FC = () => {
     window.URL.revokeObjectURL(url);
   };
 
-  const BookingModal = () => {
-    if (!selectedBooking) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="p-6 border-b border-slate-200">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold text-slate-900">Booking Details</h2>
-              <button
-                onClick={() => setShowBookingModal(false)}
-                className="text-slate-400 hover:text-slate-600"
-              >
-                <XCircle size={24} />
-              </button>
-            </div>
-          </div>
-
-          <div className="p-6 space-y-6">
-            {/* Booking Info */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-medium text-slate-900 mb-4">Booking Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Booking Number</label>
-                    <p className="text-slate-900">{selectedBooking.bookingNumber}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Business</label>
-                    <p className="text-slate-900">{selectedBooking.businessName}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Date & Time</label>
-                    <p className="text-slate-900">{selectedBooking.date} at {selectedBooking.time}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Seats</label>
-                    <p className="text-slate-900">{selectedBooking.seats} seats</p>
-                  </div>
-                  {selectedBooking.tableNumber && (
-                    <div>
-                      <label className="text-sm font-medium text-slate-600">Table</label>
-                      <p className="text-slate-900">{selectedBooking.tableNumber}</p>
-                    </div>
-                  )}
-                  {selectedBooking.seatNumbers && (
-                    <div>
-                      <label className="text-sm font-medium text-slate-600">Seat Numbers</label>
-                      <p className="text-slate-900">{selectedBooking.seatNumbers.join(', ')}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-medium text-slate-900 mb-4">Customer Information</h3>
-                <div className="space-y-3">
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Name</label>
-                    <p className="text-slate-900">{selectedBooking.customerName}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Email</label>
-                    <p className="text-slate-900 flex items-center gap-2">
-                      <Mail size={16} />
-                      {selectedBooking.customerEmail}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Phone</label>
-                    <p className="text-slate-900 flex items-center gap-2">
-                      <Phone size={16} />
-                      {selectedBooking.customerPhone}
-                    </p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-slate-600">Status</label>
-                    <div className="flex items-center gap-2">
-                      {getStatusIcon(selectedBooking.status)}
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(selectedBooking.status)}`}>
-                        {selectedBooking.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Payment Info */}
-            <div>
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Payment Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium text-slate-600">Amount</label>
-                  <p className="text-slate-900 flex items-center gap-2">
-                    <DollarSign size={16} />
-                    ₹{selectedBooking.amount}
-                  </p>
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-600">Payment Status</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(selectedBooking.paymentStatus)}`}>
-                    {selectedBooking.paymentStatus}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Special Requests */}
-            {selectedBooking.specialRequests && (
-              <div>
-                <h3 className="text-lg font-medium text-slate-900 mb-4">Special Requests</h3>
-                <p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{selectedBooking.specialRequests}</p>
-              </div>
-            )}
-
-            {/* Review */}
-            {selectedBooking.rating && selectedBooking.review && (
-              <div>
-                <h3 className="text-lg font-medium text-slate-900 mb-4">Customer Review</h3>
-                <div className="bg-slate-50 p-4 rounded-lg">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Star className="text-yellow-500 fill-current" size={16} />
-                    <span className="font-medium">{selectedBooking.rating}/5</span>
-                  </div>
-                  <p className="text-slate-700">{selectedBooking.review}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-4 border-t border-slate-200">
-              <select
-                value={selectedBooking.status}
-                onChange={(e) => updateBookingStatus(selectedBooking._id, e.target.value)}
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="pending">Pending</option>
-                <option value="confirmed">Confirmed</option>
-                <option value="completed">Completed</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="no-show">No Show</option>
-              </select>
-              <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors">
-                <MessageSquare size={16} />
-                Contact Customer
-              </button>
-              <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-                <Edit size={16} />
-                Edit Booking
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -736,7 +656,16 @@ const BookingManagement: React.FC = () => {
         )}
 
         {/* Booking Modal */}
-        {showBookingModal && <BookingModal />}
+        {showBookingModal && selectedBooking && (
+          <BookingModal
+            booking={selectedBooking}
+            onClose={() => setShowBookingModal(false)}
+            onStatusChange={updateBookingStatus}
+            getStatusColor={getStatusColor}
+            getStatusIcon={getStatusIcon}
+            getPaymentStatusColor={getPaymentStatusColor}
+          />
+        )}
       </div>
     </div>
   );
