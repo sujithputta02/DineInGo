@@ -26,21 +26,21 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | null>(null);
 
-export const useNotifications = () => {
+export function useNotifications() {
   const context = useContext(NotificationContext);
   if (!context) {
     throw new Error('useNotifications must be used within a NotificationProvider');
   }
   return context;
-};
+}
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const auth = useAuth();
   const shownNotifications = useRef(new Set<string>());
   
-  const refreshNotifications = async () => {
+  async function refreshNotifications() {
     if (!auth.currentUser?.uid) {
       setLoading(false);
       return;
@@ -68,9 +68,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     } finally {
       setLoading(false);
     }
-  };
+  }
   
-  const markAsRead = async (id: string) => {
+  async function markAsRead(id: string) {
     if (!auth.currentUser?.uid) {
       console.error('No user ID available to mark notification as read');
       return;
@@ -92,9 +92,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Revert the optimistic update on error
       await refreshNotifications();
     }
-  };
+  }
   
-  const markAllAsRead = async () => {
+  async function markAllAsRead() {
     if (!auth.currentUser?.uid) {
       console.error('No user ID available to mark all notifications as read');
       return;
@@ -114,16 +114,16 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       // Revert the optimistic update on error
       await refreshNotifications();
     }
-  };
+  }
   
-  const isRead = (id: string): boolean => {
+  function isRead(id: string): boolean {
     const notification = notifications.find(n => n._id === id);
     if (!notification) {
       return false;
     }
     
     return notification.isRead || false;
-  };
+  }
   
   // Calculate unread count
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -154,6 +154,6 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       {children}
     </NotificationContext.Provider>
   );
-};
+}
 
 export { NotificationContext }; 

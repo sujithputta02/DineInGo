@@ -35,19 +35,21 @@ export function normalizeImageUrl(imagePath: string | undefined): string {
   return `${API_URL}${normalizedPath}`;
 }
 
-const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+function wait(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
-const handleApiError = (error: any) => {
+function handleApiError(error: any) {
   if (error.name === 'TypeError' && error.message === 'Failed to fetch') {
     return 'Unable to connect to the server. Please check your internet connection or try again later.';
   }
   return error.message || 'An unexpected error occurred';
-};
+}
 
 /**
  * Get Firebase auth token for API requests
  */
-const getAuthToken = async (): Promise<string | null> => {
+async function getAuthToken(): Promise<string | null> {
   // For development purposes, we're using a simplified authentication approach
   // In production, we would properly use Firebase authentication
   try {
@@ -60,12 +62,12 @@ const getAuthToken = async (): Promise<string | null> => {
     console.error('Error getting auth token:', error);
     return null;
   }
-};
+}
 
 /**
  * Make an authenticated request to the API
  */
-const apiRequest = async (url: string, method: string = 'GET', data?: any, retries = 3) => {
+async function apiRequest(url: string, method: string = 'GET', data?: any, retries = 3) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
@@ -135,10 +137,10 @@ const apiRequest = async (url: string, method: string = 'GET', data?: any, retri
   }
 
   throw lastError || new Error('Request failed');
-};
+}
 
 // Helper function to return mock data for various endpoints
-const getMockDataForEndpoint = (url: string) => {
+function getMockDataForEndpoint(url: string) {
   // Basic mock responses based on URL patterns
   if (url.includes('/api/v1/bookings')) {
     // Return an array of mock bookings for getAll

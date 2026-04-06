@@ -17,29 +17,31 @@ interface EntityContextType {
 
 const EntityContext = createContext<EntityContextType | undefined>(undefined);
 
-export const EntityProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+export function EntityProvider({ children }: { children: ReactNode }) {
   const [visibleEntities, setVisibleEntities] = useState<Entity[]>([]);
 
-  const addVisibleEntity = (entity: Entity) => {
+  function addVisibleEntity(entity: Entity) {
     setVisibleEntities(prev => {
       if (prev.find(e => e.id === entity.id)) return prev;
       return [...prev, entity];
     });
-  };
+  }
 
-  const clearVisibleEntities = () => setVisibleEntities([]);
+  function clearVisibleEntities() {
+    setVisibleEntities([]);
+  }
 
   return (
     <EntityContext.Provider value={{ visibleEntities, setVisibleEntities, addVisibleEntity, clearVisibleEntities }}>
       {children}
     </EntityContext.Provider>
   );
-};
+}
 
-export const useEntity = () => {
+export function useEntity() {
   const context = useContext(EntityContext);
   if (context === undefined) {
     throw new Error('useEntity must be used within an EntityProvider');
   }
   return context;
-};
+}

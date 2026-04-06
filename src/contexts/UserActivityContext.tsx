@@ -27,7 +27,7 @@ const UserActivityContext = createContext<UserActivityContextType>({
 });
 
 // Provider component
-export const UserActivityProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function UserActivityProvider({ children }: { children: React.ReactNode }) {
   const [activities, setActivities] = useState<UserActivity[]>([]);
 
   useEffect(() => {
@@ -51,23 +51,23 @@ export const UserActivityProvider: React.FC<{ children: React.ReactNode }> = ({ 
     };
   }, []);
 
-  const addActivity = (activity: UserActivity) => {
+  function addActivity(activity: UserActivity) {
     setActivities(prev => [activity, ...prev]);
-  };
+  }
 
-  const clearActivities = () => {
+  function clearActivities() {
     setActivities([]);
-  };
+  }
 
   return (
     <UserActivityContext.Provider value={{ activities, addActivity, clearActivities }}>
       {children}
     </UserActivityContext.Provider>
   );
-};
+}
 
 // Custom hook to use the context
-export const useUserActivity = () => {
+export function useUserActivity() {
   const context = useContext(UserActivityContext);
   if (!context) {
     throw new Error('useUserActivity must be used within a UserActivityProvider');

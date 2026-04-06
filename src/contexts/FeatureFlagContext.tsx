@@ -17,15 +17,15 @@ interface FeatureFlagContextType {
 
 const FeatureFlagContext = createContext<FeatureFlagContextType | null>(null);
 
-export const useFeatureFlags = () => {
+export function useFeatureFlags() {
   const context = useContext(FeatureFlagContext);
   if (!context) {
     throw new Error('useFeatureFlags must be used within a FeatureFlagProvider');
   }
   return context;
-};
+}
 
-export const FeatureFlagProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export function FeatureFlagProvider({ children }: { children: React.ReactNode }) {
   const [flags, setFlags] = useState<FeatureFlags>({
     arMenus: true,
     preOrders: true,
@@ -34,7 +34,7 @@ export const FeatureFlagProvider: React.FC<{ children: React.ReactNode }> = ({ c
   });
   const [loading, setLoading] = useState(true);
 
-  const fetchFlags = async () => {
+  async function fetchFlags() {
     try {
       const response = await adminApi.getFeatureFlags();
       if (response && response.success) {
@@ -45,15 +45,15 @@ export const FeatureFlagProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   useEffect(() => {
     fetchFlags();
   }, []);
 
-  const isEnabled = (feature: keyof FeatureFlags) => {
+  function isEnabled(feature: keyof FeatureFlags) {
     return flags[feature] !== false;
-  };
+  }
 
   const value = {
     flags,
@@ -67,4 +67,4 @@ export const FeatureFlagProvider: React.FC<{ children: React.ReactNode }> = ({ c
       {children}
     </FeatureFlagContext.Provider>
   );
-};
+}

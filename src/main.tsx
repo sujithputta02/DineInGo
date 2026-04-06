@@ -1,8 +1,7 @@
-import { suppressProductionLogs } from './utils/consoleGuard';
-suppressProductionLogs(); // Must be first — silences console in production
-
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { suppressProductionLogs } from './utils/consoleGuard';
+suppressProductionLogs();
 import App from './App';
 import './index.css';
 import { clearAuthSession } from './firebase';
