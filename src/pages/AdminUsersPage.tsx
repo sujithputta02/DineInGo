@@ -64,12 +64,13 @@ interface UserCardProps {
   onGhostLogin: (user: User) => void;
 }
 
-const GhostDurationModal: React.FC<GhostDurationModalProps> = ({ 
+function GhostDurationModal({ 
   ghostDuration, 
   setGhostDuration, 
   onClose, 
   onConfirm 
-}) => (
+}: GhostDurationModalProps) {
+  return (
   <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
     <motion.div 
       initial={{ scale: 0.9, opacity: 0 }}
@@ -128,7 +129,8 @@ const GhostDurationModal: React.FC<GhostDurationModalProps> = ({
       </div>
     </motion.div>
   </div>
-);
+  );
+}
 
 const getStatusBadge = (user: User, activeGhostUid: string | null) => {
   const isCurrentlyGhosted = activeGhostUid === user.uid;
@@ -158,11 +160,11 @@ const getStatusBadge = (user: User, activeGhostUid: string | null) => {
   );
 };
 
-const PaginationControls: React.FC<PaginationControlsProps> = ({ 
+function PaginationControls({ 
   pagination, 
   currentPage, 
   setCurrentPage 
-}) => {
+}: PaginationControlsProps) {
   if (!pagination || pagination.totalPages <= 1) return null;
 
   const renderPageNumbers = () => {
@@ -242,13 +244,14 @@ const PaginationControls: React.FC<PaginationControlsProps> = ({
   );
 };
 
-const UserCard: React.FC<UserCardProps> = ({ 
+function UserCard({ 
   user, 
   activeGhostUid, 
   actionLoading, 
   onToggleStatus, 
   onGhostLogin 
-}) => (
+}: UserCardProps) {
+  return (
   <motion.div
     initial={{ opacity: 0, y: 20 }}
     animate={{ opacity: 1, y: 0 }}
@@ -310,9 +313,10 @@ const UserCard: React.FC<UserCardProps> = ({
       </button>
     </div>
   </motion.div>
-);
+  );
+}
 
-const AdminUsersPage: React.FC = () => {
+function AdminUsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');

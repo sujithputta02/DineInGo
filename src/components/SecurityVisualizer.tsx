@@ -8,7 +8,7 @@ interface SecurityVisualizerProps {
   isScanning?: boolean;
 }
 
-const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats, isScanning = false }) => {
+function SecurityVisualizer({ logs, stats, isScanning = false }: SecurityVisualizerProps) {
   const [pulseActive, setPulseActive] = useState(false);
   const [attacks, setAttacks] = useState<any[]>([]);
   const lastLogId = useRef<string | null>(null);
@@ -256,6 +256,6 @@ const SecurityVisualizer: React.FC<SecurityVisualizerProps> = ({ logs, stats, is
       </div>
     </div>
   );
-};
+}
 
 export default SecurityVisualizer;

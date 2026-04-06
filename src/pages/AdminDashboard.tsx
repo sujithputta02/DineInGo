@@ -65,7 +65,7 @@ interface ChartData {
   revenue: number;
 }
 
-const AdminDashboard: React.FC = () => {
+function AdminDashboard() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -161,7 +161,8 @@ const AdminDashboard: React.FC = () => {
     loadDashboardData();
   };
 
-  const StatCard = React.memo(({ title, value, change, icon: Icon, color = 'emerald' }: any) => (
+  const StatCard = React.memo(function StatCard({ title, value, change, icon: Icon, color = 'emerald' }: any) {
+    return (
     <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200 hover:shadow-md transition-all">
       <div className="flex items-center justify-between mb-3 md:mb-4">
         <div className={`p-2.5 sm:p-3 rounded-xl bg-${color}-100`}>
@@ -179,9 +180,10 @@ const AdminDashboard: React.FC = () => {
       <h3 className="text-xl sm:text-2xl font-black text-slate-900 mb-1">{value?.toLocaleString() || 0}</h3>
       <p className="text-slate-500 text-[10px] sm:text-xs font-bold uppercase tracking-wider">{title}</p>
     </div>
-  ));
+    );
+  });
 
-  const ActivityItem = ({ activity }: { activity: ActivityItem }) => {
+  function ActivityItem({ activity }: { activity: ActivityItem }) {
     const getActivityIcon = (type: string) => {
       switch (type) {
         case 'user_signup': return <UserPlus size={16} className="text-blue-600" />;
@@ -220,7 +222,7 @@ const AdminDashboard: React.FC = () => {
         </span>
       </div>
     );
-  };
+  }
 
   const userDistribution = stats ? [
     { name: 'Active Users', value: stats.activeUsers, color: '#10b981' },
@@ -228,7 +230,8 @@ const AdminDashboard: React.FC = () => {
   ] : [];
 
   // Memoized Clock Component to prevent re-renders
-  const Clock = React.memo(() => (
+  const Clock = React.memo(function Clock() {
+    return (
     <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-3 rounded-xl shadow-lg">
       <div className="text-center">
         <div className="text-2xl font-bold font-mono tracking-wider transition-opacity duration-100">
@@ -249,7 +252,8 @@ const AdminDashboard: React.FC = () => {
         </div>
       </div>
     </div>
-  ));
+    );
+  });
 
   if (loading) {
     return (
@@ -541,6 +545,6 @@ const AdminDashboard: React.FC = () => {
       </div>
     </motion.div>
   );
-};
+}
 
 export default AdminDashboard;

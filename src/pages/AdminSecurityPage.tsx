@@ -51,7 +51,7 @@ interface SecurityLog {
   timestamp: string;
 }
 
-const AdminSecurityPage: React.FC = () => {
+function AdminSecurityPage() {
   const navigate = useNavigate();
   const { sessionToken } = useParams<{ sessionToken: string }>();
   const [loading, setLoading] = useState(true);
@@ -493,7 +493,7 @@ const AdminSecurityPage: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default AdminSecurityPage;
  
