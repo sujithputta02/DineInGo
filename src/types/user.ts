@@ -76,27 +76,9 @@ export interface FirebaseUser extends BaseUser {
   // Add other Firebase Auth user methods as needed
 }
 
-// Our application's user type
+// Application user type
 export type User = BaseUser & {
   // Make Firebase Auth methods optional since they might not always be available
   getIdToken?: (forceRefresh?: boolean) => Promise<string>;
   reload?: () => Promise<void>;
-}
-
-// NextAuth type extensions
-declare module 'next-auth' {
-  interface User {
-    id: string;
-    role?: string;
-    uid?: string;
-    phoneNumber?: string;
-  }
-}
-
-declare module 'next-auth/jwt' {
-  interface JWT {
-    id: string;
-    role?: string;
-    uid?: string;
-  }
 }

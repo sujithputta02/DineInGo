@@ -2,6 +2,7 @@ import { collection, addDoc, getDocs, query, where } from 'firebase/firestore';
 import { db } from './firebaseConfig';
 
 interface ReservationEmail {
+  id?: string;
   email: string;
   fullName: string;
   reservationId: string;

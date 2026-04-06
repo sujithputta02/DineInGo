@@ -88,7 +88,7 @@ const LocationDisplay: React.FC<LocationDisplayProps> = ({
         const { latitude, longitude } = position.coords;
         
         // Find the nearest city/town from our predefined list
-        const nearest = findNearestLocation({ lat: latitude, lng: longitude });
+        const nearest = findNearestLocation(latitude, longitude);
         setNearestLocation(nearest);
         
         // Calculate distance to nearest location (in km)

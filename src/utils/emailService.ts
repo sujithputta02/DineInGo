@@ -54,5 +54,53 @@ export const emailService = {
       console.error('Email service error:', error);
       throw error;
     }
+  },
+
+  /**
+   * Send a general email
+   */
+  async sendEmail(emailData: {
+    to: string;
+    subject: string;
+    html: string;
+    attachments?: any[];
+  }): Promise<boolean> {
+    try {
+      console.log('Sending email to:', emailData.to);
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/send-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(emailData),
+      });
+
+      return response.ok;
+    } catch (error) {
+      console.error('Error sending email:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Generate HTML for invoice email
+   */
+  generateInvoiceEmailHTML(invoice: any, booking: any): string {
+    return `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2>Order Confirmation - ${invoice.restaurantName || invoice.eventName}</h2>
+        <p>Hi ${invoice.customerName},</p>
+        <p>Thank you for booking with DineInGo! Your reservation is confirmed.</p>
+        <div style="background: #f8fafc; padding: 20px; border-radius: 12px; margin: 20px 0;">
+          <p><strong>Booking ID:</strong> ${invoice.bookingId}</p>
+          <p><strong>Date:</strong> ${new Date(booking.date).toLocaleDateString()}</p>
+          <p><strong>Time:</strong> ${booking.time}</p>
+          <p><strong>Total Amount:</strong> ₹${invoice.total}</p>
+        </div>
+        <p>Your wallet passes are attached to this email for easy access.</p>
+        <p>Enjoy your meal!</p>
+        <p>Best regards,<br/>The DineInGo Team</p>
+      </div>
+    `;
   }
 };

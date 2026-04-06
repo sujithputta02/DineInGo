@@ -23,9 +23,9 @@ function getPermissionStatus(): NotificationPermission | 'unsupported' {
 
 /**
  * Requests notification permission from the user.
- * @returns {Promise<NotificationPermission>} The permission status after the request.
+ * @returns {Promise<NotificationPermission | 'unsupported'>} The permission status after the request.
  */
-async function requestPermission(): Promise<NotificationPermission> {
+async function requestPermission(): Promise<NotificationPermission | 'unsupported'> {
   const status = getPermissionStatus();
   if (status === 'unsupported' || status === 'denied') {
     return status;
