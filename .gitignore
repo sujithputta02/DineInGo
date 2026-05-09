@@ -55,9 +55,35 @@ secrets/
 *.key
 *.cert
 
+# ML Training and Models
+ml/venv/
+ml/.venv/
+ml/saved_model/
+ml/training_logs/
+ml/data/
+ml/food-101/
+ml/*.tar.gz
+ml/*.h5
+ml/*.zip
+**/__pycache__/
+*.pyc
+
+# ML Model Binaries (shards)
+public/models/food_recognition/*.bin
+public/models/food_recognition/model.json
+
+# Large Assets
+*.mp4
+*.MOV
+*.PNG
+*.JPG
+*.jpeg
+
 # Early Access Pages (separate deployments)
 dineingo-early-access/
 early-access-page/
 push-early-access.sh
+
+# Vercel
 .vercel
 .env*.local

@@ -79,6 +79,7 @@ interface UserData {
   name: string;
   photoURL: string | null;
   location: GeoLocation;
+  locationSettings?: LocationSettings;
   createdAt: Date;
   lastLogin: Date;
   avatars?: string[];
@@ -1309,6 +1310,35 @@ useEffect(() => {
   };
 }, [userData?.uid]);
 
+// Auto-detect location on load if not already set in persistent profile
+useEffect(() => {
+  const autoDetect = async () => {
+    if (!userData?.uid || isLoading) return;
+
+    // Check if the user has already set a location in their persistent MongoDB profile
+    const hasSetLocationInProfile = userData?.locationSettings?.city && 
+                                   userData.locationSettings.city.trim() !== "";
+    
+    const isCurrentlyOnDefault = userData?.location?.city === defaultLocation.city;
+    
+    // Only auto-detect if they haven't saved a location yet AND they are currently seeing the default Mumbai
+    if (!hasSetLocationInProfile && isCurrentlyOnDefault) {
+      // Use sessionStorage to ensure we only try once per browser session if they decline/ignore
+      const hasPrompted = sessionStorage.getItem("dineInGoAutoLocationPrompted");
+      
+      if (!hasPrompted) {
+        sessionStorage.setItem("dineInGoAutoLocationPrompted", "true");
+        // Brief delay to let the dashboard render completely
+        setTimeout(() => {
+          detectLocation();
+        }, 1500);
+      }
+    }
+  };
+
+  autoDetect();
+}, [userData?.uid, isLoading, userData?.locationSettings?.city]);
+
 // Language is now loaded from MongoDB profile (see auth useEffect above)
 // No need for localStorage anymore
 
@@ -1746,15 +1776,17 @@ const detectLocation = async () => {
         currentLocation.lng,
       );
 
+      const locationData = {
+        city: nearestCity.city,
+        state: nearestCity.state,
+        country: nearestCity.country,
+      };
+
       setUserData((prev) =>
         prev
           ? {
             ...prev,
-            location: {
-              city: nearestCity.city,
-              state: nearestCity.state,
-              country: nearestCity.country,
-            },
+            location: locationData,
             uid: prev.uid,
             createdAt: prev.createdAt,
             lastLogin: new Date(),
@@ -1765,18 +1797,34 @@ const detectLocation = async () => {
       // Save to localStorage
       localStorage.setItem(
         "dineInGoLocation",
-        JSON.stringify({
-          city: nearestCity.city,
-          state: nearestCity.state,
-          country: nearestCity.country,
-        }),
+        JSON.stringify(locationData),
       );
+
+      // Persist to backend if user is logged in
+      if (userData?.uid) {
+        try {
+          await userAPI.updateUser(userData.uid, {
+            locationSettings: {
+              ...locationData,
+              type: 'Point',
+              coordinates: {
+                lat: currentLocation.lat,
+                lng: currentLocation.lng
+              }
+            }
+          } as any);
+        } catch (apiError) {
+          console.error("Failed to update location in profile:", apiError);
+        }
+      }
 
       // Close the modal
       setIsLocationModalOpen(false);
+      toast.success(`Location set to ${nearestCity.city}`);
     }
   } catch (error) {
     console.error("Error detecting location:", error);
+    toast.error("Could not detect your location automatically.");
   } finally {
     setIsDetectingLocation(false);
   }
@@ -3883,20 +3931,25 @@ return (
                   </span>
                 </div>
               </div>
-              <div className="text-2xl font-black tracking-tighter flex items-center">
-                <span className={isDarkMode ? "text-white" : "text-gray-900"}>
-                  D
+              <div className="text-2xl font-black tracking-tighter flex items-center gap-2">
+                <div className="flex items-center">
+                  <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+                    D
+                  </span>
+                  <span
+                    className={`relative ${isDarkMode ? "text-white" : "text-gray-900"}`}
+                  >
+                    i
+                    <span className="absolute top-[3px] left-[50%] -translate-x-1/3 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
+                  </span>
+                  <span className={isDarkMode ? "text-white" : "text-gray-900"}>
+                    neIn
+                  </span>
+                  <span className="text-yellow-400">Go</span>
+                </div>
+                <span className="px-2 py-0.5 text-[8px] font-black bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-500/30 text-emerald-500 rounded-lg uppercase tracking-widest shadow-sm">
+                  Beta Dev
                 </span>
-                <span
-                  className={`relative ${isDarkMode ? "text-white" : "text-gray-900"}`}
-                >
-                  i
-                  <span className="absolute top-[3px] left-[50%] -translate-x-1/3 w-2 h-2 bg-red-600 rounded-full shadow-[0_0_3px_rgba(255,0,0,0.5)]"></span>
-                </span>
-                <span className={isDarkMode ? "text-white" : "text-gray-900"}>
-                  neIn
-                </span>
-                <span className="text-yellow-400">Go</span>
               </div>
             </div>
             <button
@@ -4042,8 +4095,13 @@ return (
                 >
                   {icon}
                 </span>
-                <span className="ml-3 text-sm font-bold tracking-tight">
+                <span className="ml-3 text-sm font-bold tracking-tight flex items-center gap-2">
                   {label}
+                  {id === "ar-menu" && (
+                    <span className="px-1.5 py-0.5 text-[8px] font-black bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md uppercase tracking-wider animate-pulse border border-white/20 shadow-sm">
+                      Beta Dev
+                    </span>
+                  )}
                 </span>
                 {id === "messages" && unreadCount > 0 && (
                   <span className="ml-auto bg-red-500 text-white text-[10px] font-black px-1.5 py-0.5 rounded-lg shadow-sm">

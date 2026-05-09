@@ -3,6 +3,7 @@ import { indianCities, IndianCity } from '../utils/indianCities';
 
 const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 const OPENCAGE_BASE_URL = 'https://api.opencagedata.com/geocode/v1';
+const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
 interface Coordinates {
   lat: number;
@@ -216,5 +217,57 @@ export class GeocodingService {
     }
 
     this.isProcessingQueue = false;
+  }
+
+  /**
+   * Google Geocoding API (High Precision)
+   */
+  static async searchGoogle(query: string): Promise<any> {
+    if (!GOOGLE_MAPS_API_KEY) return null;
+    
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Google API Error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.status === 'OK' && data.results.length > 0) {
+        return data.results;
+      }
+      return null;
+    } catch (error) {
+      console.error('Google Geocoding failed:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Google Places API (Highest Precision for Business Names)
+   */
+  static async searchGooglePlaces(query: string): Promise<any> {
+    if (!GOOGLE_MAPS_API_KEY) return null;
+    
+    try {
+      const response = await fetch(
+        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`Google Places API Error: ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      if (data.status === 'OK' && data.results.length > 0) {
+        return data.results;
+      }
+      return null;
+    } catch (error) {
+      console.error('Google Places search failed:', error);
+      return null;
+    }
   }
 } 

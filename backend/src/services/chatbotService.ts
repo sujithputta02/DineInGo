@@ -493,24 +493,32 @@ export class ChatbotService {
         ? `\n\nIMPORTANT: The user has selected ${languageName} as their preferred language. You MUST respond in ${languageName}. Do not use English unless the user specifically asks a question in English.`
         : '';
 
+      // Always send system prompt as a proper system role message
+      // This ensures Dino's identity is enforced on every API call
+      const systemMessage: ChatMessage = {
+        role: 'system',
+        content: `${SYSTEM_PROMPT}${languageInstruction}\n\nCRITICAL: Your name is Dino 🦖. When asked your name, ALWAYS say "I'm Dino 🦖". NEVER say you are "Sarvam AI" or that you were "created by Sarvam AI". You are Dino, DineInGo's assistant.`
+      };
+
       if (session.messages.length === 1) {
-        // First message - include system prompt with language instruction
-        apiMessages = [{
-          role: 'user',
-          content: `${SYSTEM_PROMPT}${languageInstruction}\n\n---\n\nUser: ${enhancedMessage}\n\nAssistant:`
-        }];
+        // First message
+        apiMessages = [systemMessage, { role: 'user', content: enhancedMessage }];
       } else {
-        // Subsequent messages - add language reminder
+        // Subsequent messages - keep system + last 18 conversation turns
         const languageReminder = preferredLanguage && preferredLanguage !== 'en'
           ? `[Remember: Respond in ${languageName}]\n\n`
           : '';
 
-        apiMessages = session.messages.slice(-19);
-        // Update the last user message with language reminder
-        if (apiMessages.length > 0 && languageReminder) {
-          const lastMessage = apiMessages[apiMessages.length - 1];
+        const historyMessages = session.messages
+          .filter(m => m.role !== 'system')
+          .slice(-18);
+
+        if (historyMessages.length > 0 && languageReminder) {
+          const lastMessage = historyMessages[historyMessages.length - 1];
           lastMessage.content = languageReminder + lastMessage.content;
         }
+
+        apiMessages = [systemMessage, ...historyMessages];
       }
 
       let aiMessage: string = '';

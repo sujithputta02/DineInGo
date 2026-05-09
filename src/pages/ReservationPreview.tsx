@@ -58,10 +58,37 @@ const ReservationPreview: React.FC = () => {
   const [selectedMenuItems, setSelectedMenuItems] = useState<{ [key: string]: number }>({});
   const [showMenuItems, setShowMenuItems] = useState(false);
   const [dataReady, setDataReady] = useState(false);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem("dineInGoDarkMode");
-    return saved === "true" ? true : false;
+  const [theme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
+
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Sync theme with system preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      if (theme === 'system') {
+        setIsDarkMode(mediaQuery.matches);
+        document.documentElement.setAttribute('data-theme', mediaQuery.matches ? 'dark' : 'light');
+      }
+    };
+    
+    // Initial sync
+    if (theme === 'system') {
+      document.documentElement.setAttribute('data-theme', mediaQuery.matches ? 'dark' : 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
 
   const time = searchParams.get('time');
   const date = searchParams.get('date');

@@ -16,11 +16,16 @@ interface DinoDailyMorselsProps {
 const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode, variant = 'default', userMood = 'Social', language = 'english' }) => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
 
   const fetchMorsels = async (refresh: boolean = false) => {
+    if (isRefreshing) return;
+    
     // Stage 1: Get items immediately with local/fallback reasoning
-    setLoading(true);
+    if (refresh) setIsRefreshing(true);
+    else setLoading(true);
+    
     try {
       const items = await recommendationService.getDailyMorsels(userId, userMood);
       setRecommendations(items);
@@ -37,7 +42,9 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
       }
     } catch (e) {
       console.error('Failed to fetch morsels:', e);
+    } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -92,10 +99,11 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
           <div className="flex items-center justify-between sm:justify-end gap-3 w-full sm:w-auto">
             <button 
               onClick={() => fetchMorsels(true)}
-              className={`p-2 rounded-xl border border-white/10 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'} transition-all active:scale-90 group flex-shrink-0`}
+              disabled={isRefreshing}
+              className={`p-2 rounded-xl border border-white/10 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'} transition-all active:scale-90 group flex-shrink-0 disabled:opacity-50`}
               title="Refresh AI Insights"
             >
-              <Zap size={16} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} group-hover:text-yellow-500 transition-colors`} />
+              <Zap size={16} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} group-hover:text-yellow-500 transition-colors ${isRefreshing ? 'animate-spin text-yellow-500' : ''}`} />
             </button>
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'} border border-white/5 flex-shrink-0`}>
               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">Current Vibe:</span>
