@@ -2,10 +2,9 @@
 export const API_CONFIG = {
   // Backend API base URL
   // Backend API base URL with production-aware fallback
-  BASE_URL: import.meta.env.VITE_API_URL || 
-    (typeof window !== 'undefined' && window.location.hostname.includes('dine-in-go.vercel.app') 
-      ? 'https://dineingo-backend.onrender.com' 
-      : 'http://localhost:5001'),
+  BASE_URL: (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
+    ? 'http://localhost:5001'
+    : (import.meta.env.VITE_API_URL || 'https://dineingo-backend.onrender.com'),
   
   // API endpoints
   ENDPOINTS: {

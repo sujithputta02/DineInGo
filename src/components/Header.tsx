@@ -45,9 +45,12 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
               </button>
 
               {/* Logo */}
-              <Link to="/dashboard" className="flex-shrink-0">
+              <Link to="/dashboard" className="flex-shrink-0 flex items-center gap-2">
                 <span className="text-xl sm:text-2xl md:text-2xl lg:text-3xl font-bold text-white whitespace-nowrap">
                   DineInGo
+                </span>
+                <span className="px-2 py-0.5 text-[10px] font-black bg-white/20 backdrop-blur-md border border-white/30 text-white rounded-lg uppercase tracking-widest shadow-sm">
+                  Beta Dev
                 </span>
               </Link>
             </div>

@@ -1401,6 +1401,43 @@ export const authOtpApi = {
   resetPassword: resetPasswordInApi,
 };
 
+// Food Scan API implementation functions
+async function logFoodScan(data: { 
+  foodName: string; 
+  confidence: number; 
+  source: string; 
+  metadata?: any;
+  imageData?: string;
+  correctedName?: string;
+}) {
+  const user = auth.currentUser;
+  if (!user) return null; // Silently fail if not logged in
+
+  return apiRequest(`${API_URL}/api/v1/food-scans/log`, 'POST', {
+    ...data,
+    userId: user.uid
+  });
+}
+
+async function correctFoodScan(scanId: string, correctedName: string) {
+  return apiRequest(`${API_URL}/api/v1/food-scans/correct/${scanId}`, 'PATCH', {
+    correctedName
+  });
+}
+
+async function getFoodScanHistory() {
+  const user = auth.currentUser;
+  if (!user) return [];
+
+  return apiRequest(`${API_URL}/api/v1/food-scans/history/${user.uid}`);
+}
+
+export const foodScanApi = {
+  log: logFoodScan,
+  correct: correctFoodScan,
+  getHistory: getFoodScanHistory
+};
+
 export default {
   business: businessApi,
   bookings: bookingsApi,
@@ -1409,5 +1446,6 @@ export default {
   preOrder: preOrderApi,
   event: eventApi,
   preferences: userPreferenceApi,
-  authOtp: authOtpApi
+  authOtp: authOtpApi,
+  foodScans: foodScanApi
 };

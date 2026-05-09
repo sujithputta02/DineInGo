@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ShoppingCart, Star, StarHalf, Tag, Percent, MessageSquare, Send } from 'lucide-react';
+import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ShoppingCart, Star, StarHalf, Tag, Percent, MessageSquare, Send, Eye } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getRestaurantById, getMockTotalGuests } from '../services/restaurantService';
 import { getMockEventById, getMockEventCapacity } from '../services/event-service';
@@ -32,10 +32,37 @@ const RestaurantDetails = () => {
   const [reviews, setReviews] = useState<any[]>([]);
   const [promotions, setPromotions] = useState<any[]>([]);
   const [reviewsLoading, setReviewsLoading] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
-    const saved = localStorage.getItem("dineInGoDarkMode");
-    return saved === "true" ? true : false;
+  const [theme] = useState<'light' | 'dark' | 'system'>(() => {
+    return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
+
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const saved = localStorage.getItem('theme');
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
+  // Sync theme with system preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = () => {
+      if (theme === 'system') {
+        setIsDarkMode(mediaQuery.matches);
+        document.documentElement.setAttribute('data-theme', mediaQuery.matches ? 'dark' : 'light');
+      }
+    };
+    
+    // Initial sync
+    if (theme === 'system') {
+      document.documentElement.setAttribute('data-theme', mediaQuery.matches ? 'dark' : 'light');
+    } else {
+      document.documentElement.setAttribute('data-theme', theme);
+    }
+
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, [theme]);
 
   // New review form state
   const [newRating, setNewRating] = useState(0);
@@ -285,8 +312,8 @@ const RestaurantDetails = () => {
     }
 
     try {
-      // Get user from session storage
-      const userStr = sessionStorage.getItem('userData');
+      // Get user from local storage
+      const userStr = localStorage.getItem('userData');
       const user = userStr ? JSON.parse(userStr) : null;
 
       if (!user || !user.uid) {
@@ -326,7 +353,7 @@ const RestaurantDetails = () => {
   // Check if restaurant is in favorites
   useEffect(() => {
     const checkFavoriteStatus = async () => {
-      const userStr = sessionStorage.getItem('userData');
+      const userStr = localStorage.getItem('userData');
       if (!userStr) return;
 
       try {
@@ -347,7 +374,7 @@ const RestaurantDetails = () => {
   }, [id]);
 
   const toggleFavorite = async () => {
-    const userStr = sessionStorage.getItem('userData');
+    const userStr = localStorage.getItem('userData');
     if (!userStr) {
       toast.error('Please login to save favorites');
       return;
@@ -777,11 +804,25 @@ const RestaurantDetails = () => {
               </p>
 
               <div className="space-y-6">
-                <div className="flex items-center gap-4 group/item">
-                  <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
-                    <MapPin size={22} />
+                <div className="flex items-center justify-between group/item">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
+                      <MapPin size={22} />
+                    </div>
+                    <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{restaurant.address}</span>
                   </div>
-                  <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{restaurant.address}</span>
+                  <button
+                    onClick={() => {
+                      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(restaurant.address || '')}&map_action=pano`;
+                      window.open(url, '_blank');
+                    }}
+                    className={`p-3 rounded-xl border-2 transition-all hover:scale-110 active:scale-95 ${
+                      isDarkMode ? 'border-gray-700 hover:border-emerald-500 text-gray-400 hover:text-emerald-500' : 'border-gray-100 hover:border-emerald-500 text-gray-400 hover:text-emerald-500'
+                    }`}
+                    title="View Street View"
+                  >
+                    <Eye size={18} />
+                  </button>
                 </div>
                 <div className="flex items-center gap-4 group/item">
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">

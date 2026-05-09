@@ -1,5 +1,6 @@
 import { achievementsApi } from '../services/achievementsApi';
 import { mockRestaurants } from '../utils/mockData';
+import { API_CONFIG } from '../config/api';
 
 export interface Recommendation {
   id: string;
@@ -16,7 +17,6 @@ export interface AIReason {
   reason: string;
 }
 
-import { API_CONFIG } from '../config/api';
 const API_URL = API_CONFIG.BASE_URL;
 
 const FLAVOR_PROFILES: Record<string, string[]> = {
@@ -40,6 +40,10 @@ const MOOD_VIBES: Record<string, string[]> = {
   'Adventurous': ['Unique', 'Exotic', 'Bold'],
   'Hungry': ['Hearty', 'Generous', 'Satisfying']
 };
+
+// Simple in-memory cache for AI reasons to prevent 429 errors
+const aiReasonsCache: Record<string, { reasons: AIReason[], timestamp: number }> = {};
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 export const recommendationService = {
   async getDailyMorsels(userId: string, mood: string = 'Social'): Promise<Recommendation[]> {
@@ -80,8 +84,8 @@ export const recommendationService = {
       }
 
       // 3. Select items quickly
-      const timeContext = this.getFutureSightContext();
-      const vibePrefix = this.getVibePrefix(mood);
+      // const timeContext = this.getFutureSightContext();
+      // const vibePrefix = this.getVibePrefix(mood);
 
       return pool
         .sort(() => 0.5 - Math.random())
@@ -103,6 +107,15 @@ export const recommendationService = {
 
   async getAIReasons(userId: string, items: Recommendation[], language: string = 'english', refresh: boolean = false): Promise<AIReason[]> {
     try {
+      // 1. Check cache first
+      const cacheKey = `${userId}-${items.map(i => i.id).sort().join(',')}-${language}`;
+      if (!refresh && aiReasonsCache[cacheKey]) {
+        const cached = aiReasonsCache[cacheKey];
+        if (Date.now() - cached.timestamp < CACHE_DURATION) {
+          return cached.reasons;
+        }
+      }
+
       const statsData = await achievementsApi.getUserAchievements(userId);
       const userStats = statsData.success ? statsData.data.userStats : { cuisinesTried: 0, favoriteCuisines: [] };
 
@@ -122,9 +135,21 @@ export const recommendationService = {
         })
       });
 
+      if (aiResponse.status === 429) {
+        console.warn('AI Recommendation Rate limit reached (429). Using fallback.');
+        return aiReasonsCache[cacheKey]?.reasons || [];
+      }
+
       if (aiResponse.ok) {
         const aiData = await aiResponse.json();
-        return aiData.success && aiData.reasons ? aiData.reasons : [];
+        const reasons = aiData.success && aiData.reasons ? aiData.reasons : [];
+        
+        // Update cache
+        if (reasons.length > 0) {
+          aiReasonsCache[cacheKey] = { reasons, timestamp: Date.now() };
+        }
+        
+        return reasons;
       }
       return [];
     } catch (e) {
