@@ -44,37 +44,37 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
         >
           {/* Walking Dino Sprite */}
           <div 
-            className="w-48 h-48"
+            className="w-56 h-56 overflow-hidden"
             style={{
               backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
-              backgroundSize: '400% 100%',
+              backgroundSize: '400% auto',
+              backgroundPosition: '0 50%', // Centers the dino and crops the numbers
               imageRendering: 'pixelated',
-              animation: 'dino-walk 0.6s steps(4) infinite',
-              mixBlendMode: 'screen', // Removes white background
-              filter: 'brightness(1.2) contrast(1.1)',
+              animation: 'dino-walk 0.8s steps(4) infinite',
+              mixBlendMode: 'screen', // Perfect for black backgrounds
+              filter: 'brightness(1.1)',
             }}
           />
 
           {/* Held Item Overlay */}
           <motion.div
             animate={{
-              y: [0, -4, 0, 4, 0],
-              x: [35, 37, 35, 33, 35],
+              y: [0, -6, 0, 6, 0],
+              x: [40, 42, 40, 38, 40],
               rotate: [-5, 5, -5]
             }}
             transition={{
-              duration: 0.6,
+              duration: 0.8,
               repeat: Infinity,
               ease: "steps(4)"
             }}
-            className="absolute top-16 left-1/2 -ml-16 w-16 h-16 pointer-events-none"
+            className="absolute top-20 left-1/2 -ml-12 w-20 h-20 pointer-events-none"
             style={{
               backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
-              backgroundSize: '400% 100%',
-              backgroundPosition: `${-(itemIndex * 100)}% 0`,
+              backgroundSize: '400% auto',
+              backgroundPosition: `${-(itemIndex * 100)}% 45%`,
               imageRendering: 'pixelated',
               mixBlendMode: 'screen',
-              filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.3))'
             }}
           />
         </motion.div>
