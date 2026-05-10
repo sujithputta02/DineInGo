@@ -982,10 +982,14 @@ export const sendNotification = async (req: Request, res: Response) => {
 export const getNotificationHistory = async (req: Request, res: Response) => {
   try {
     const { page = 1, limit = 10 } = req.query;
-    const skip = (Number(page) - 1) * Number(limit);
+    
+    // Ensure page and limit are positive integers to prevent MongoDB errors
+    const sanitizedPage = Math.max(1, parseInt(page as string) || 1);
+    const sanitizedLimit = Math.max(1, parseInt(limit as string) || 10);
+    const skip = (sanitizedPage - 1) * sanitizedLimit;
 
     const [broadcasts, total] = await Promise.all([
-      Broadcast.find().sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Broadcast.find().sort({ createdAt: -1 }).skip(skip).limit(sanitizedLimit),
       Broadcast.countDocuments()
     ]);
 
@@ -993,11 +997,11 @@ export const getNotificationHistory = async (req: Request, res: Response) => {
       success: true,
       broadcasts,
       pagination: {
-        currentPage: Number(page),
-        totalPages: Math.ceil(total / Number(limit)),
+        currentPage: sanitizedPage,
+        totalPages: Math.max(1, Math.ceil(total / sanitizedLimit)),
         total,
-        hasNext: skip + Number(limit) < total,
-        hasPrev: Number(page) > 1
+        hasNext: skip + sanitizedLimit < total,
+        hasPrev: sanitizedPage > 1
       }
     });
   } catch (error: any) {
