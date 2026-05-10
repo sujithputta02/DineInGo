@@ -1000,11 +1000,12 @@ export const getNotificationHistory = async (req: Request, res: Response) => {
         hasPrev: Number(page) > 1
       }
     });
-  } catch (error) {
-    console.error('Error getting notification history:', error);
+  } catch (error: any) {
+    console.error('CRITICAL ERROR in getNotificationHistory:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Internal server error' 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
@@ -1083,25 +1084,27 @@ export const getNotificationStats = async (req: Request, res: Response) => {
       });
     }
 
+    // Use non-mutating date logic to avoid side effects
     const now = new Date();
-    const todayStart = new Date(now.setHours(0, 0, 0, 0));
-    const weekStart = new Date(now.setDate(now.getDate() - 7));
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    
+    const weekStart = new Date(todayStart);
+    weekStart.setDate(weekStart.getDate() - 7);
 
-    // Get today's notifications count
-    const todayCount = await NotificationStats.aggregate([
-      { $match: { createdAt: { $gte: todayStart } } },
-      { $group: { _id: null, total: { $sum: '$recipientCount' } } }
-    ]);
-
-    // Get this week's notifications count
-    const weekCount = await NotificationStats.aggregate([
-      { $match: { createdAt: { $gte: weekStart } } },
-      { $group: { _id: null, total: { $sum: '$recipientCount' } } }
-    ]);
-
-    // Get total notifications count
-    const totalCount = await NotificationStats.aggregate([
-      { $group: { _id: null, total: { $sum: '$recipientCount' } } }
+    // Get counts via aggregation
+    const [todayResult, weekResult, totalResult] = await Promise.all([
+      NotificationStats.aggregate([
+        { $match: { createdAt: { $gte: todayStart } } },
+        { $group: { _id: null, total: { $sum: '$recipientCount' } } }
+      ]),
+      NotificationStats.aggregate([
+        { $match: { createdAt: { $gte: weekStart } } },
+        { $group: { _id: null, total: { $sum: '$recipientCount' } } }
+      ]),
+      NotificationStats.aggregate([
+        { $group: { _id: null, total: { $sum: '$recipientCount' } } }
+      ])
     ]);
 
     // Get recent notifications
@@ -1113,18 +1116,19 @@ export const getNotificationStats = async (req: Request, res: Response) => {
     res.json({
       success: true,
       stats: {
-        today: todayCount[0]?.total || 0,
-        week: weekCount[0]?.total || 0,
-        total: totalCount[0]?.total || 0
+        today: todayResult[0]?.total || 0,
+        week: weekResult[0]?.total || 0,
+        total: totalResult[0]?.total || 0
       },
       recent: recentNotifications
     });
 
-  } catch (error) {
-    console.error('Error getting notification stats:', error);
+  } catch (error: any) {
+    console.error('CRITICAL ERROR in getNotificationStats:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Internal server error' 
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
