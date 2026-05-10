@@ -64,18 +64,29 @@ export const getUserReviews = async (req: Request, res: Response) => {
  */
 export const addReview = async (req: Request, res: Response) => {
     try {
+        console.log('[ReviewController] New review submission received');
+        
         // Try to get businessId from params first, then body
         const businessIdRaw = req.params.businessId || req.body.businessId;
 
         if (!businessIdRaw) {
+            console.error('[ReviewController] Missing businessId');
             return res.status(400).json({ message: 'Business ID is required' });
         }
 
+        if (!mongoose.isValidObjectId(businessIdRaw)) {
+            console.error('[ReviewController] Invalid businessId format:', businessIdRaw);
+            return res.status(400).json({ message: 'Invalid business ID format' });
+        }
+
         let { userId, userName, userPhoto, rating, comment, bookingId, images: bodyImages } = req.body;
+        
+        console.log(`[ReviewController] Processing review for business: ${businessIdRaw}, user: ${userId}`);
 
         // Handle file uploads
         let uploadedImages: string[] = [];
         if (req.files && Array.isArray(req.files)) {
+            console.log(`[ReviewController] Found ${req.files.length} uploaded files`);
             uploadedImages = (req.files as Express.Multer.File[]).map(file => file.path);
         }
 
@@ -93,6 +104,7 @@ export const addReview = async (req: Request, res: Response) => {
 
         // Combine uploaded and existing
         finalImages = [...finalImages, ...uploadedImages];
+        console.log(`[ReviewController] Total images for review: ${finalImages.length}`);
 
         const review = new Review({
             businessId: new mongoose.Types.ObjectId(businessIdRaw),
@@ -101,16 +113,19 @@ export const addReview = async (req: Request, res: Response) => {
             userPhoto,
             rating,
             comment,
-            bookingId: bookingId ? new mongoose.Types.ObjectId(bookingId) : undefined,
+            bookingId: bookingId && mongoose.isValidObjectId(bookingId) ? new mongoose.Types.ObjectId(bookingId) : undefined,
             images: finalImages,
             likes: [],
             dislikes: []
         });
 
+        console.log('[ReviewController] Saving review to database...');
         await review.save();
+        console.log('[ReviewController] Review saved successfully, ID:', review._id);
 
         // Send email notifications
         try {
+            console.log('[ReviewController] Triggering email notifications...');
             const user = await User.findOne({ uid: userId });
             const business = await Business.findById(businessIdRaw);
 
@@ -136,18 +151,25 @@ export const addReview = async (req: Request, res: Response) => {
                         comment
                     });
                 }
+                console.log('[ReviewController] Emails sent successfully');
+            } else {
+                console.warn(`[ReviewController] Skipping emails - User found: ${!!user}, Business found: ${!!business}`);
             }
         } catch (emailError) {
-            console.error('Failed to send review email:', emailError);
+            console.error('[ReviewController] Failed to send review email:', emailError);
             // Continue without failing the request
         }
 
         res.status(201).json(review);
     } catch (error: any) {
+        console.error('[ReviewController] CRITICAL ERROR in addReview:', error);
         if (error.code === 11000) {
             return res.status(400).json({ message: 'You have already reviewed this booking' });
         }
-        res.status(500).json({ message: error.message });
+        res.status(500).json({ 
+            message: process.env.NODE_ENV === 'production' ? 'Something went wrong!' : error.message,
+            error: process.env.NODE_ENV === 'production' ? undefined : error.stack
+        });
     }
 };
 

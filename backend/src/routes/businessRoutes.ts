@@ -39,9 +39,11 @@ import {
   validateStaffMember,
   validatePromotion,
   validateCampaign,
+  validateReviewSubmission,
   validateReviewReply,
   validateBusinessSearch,
   validateObjectId,
+  validateParamId,
   handleValidationErrors
 } from '../middleware/inputValidation';
 import { accountLockoutCheck } from '../middleware/accountLockout';
@@ -129,9 +131,9 @@ router.delete('/promotions/:id', businessApiLimiter, logBusinessAction, deletePr
 router.post('/promotions/validate', businessApiLimiter, validatePromotion);
 
 // Review Management
-router.get('/:businessId/reviews', businessApiLimiter, getBusinessReviews);
-router.post('/:businessId/reviews', reviewLimiter, upload.array('images', 5), addReview);
-router.put('/reviews/:id', reviewLimiter, upload.array('images', 5), updateReview);
+router.get('/:businessId/reviews', validateParamId('businessId'), handleValidationErrors, businessApiLimiter, getBusinessReviews);
+router.post('/:businessId/reviews', validateParamId('businessId'), handleValidationErrors, reviewLimiter, upload.array('images', 5), validateReviewSubmission, handleValidationErrors, addReview);
+router.put('/reviews/:id', reviewLimiter, validateObjectId, handleValidationErrors, upload.array('images', 5), updateReview);
 router.post('/reviews/:id/reply', reviewLimiter, logBusinessAction, validateReviewReply, handleValidationErrors, replyToReview);
 router.put('/reviews/:id/reply', reviewLimiter, logBusinessAction, validateReviewReply, handleValidationErrors, updateReply);
 router.delete('/reviews/:id/reply', reviewLimiter, logBusinessAction, deleteReply);

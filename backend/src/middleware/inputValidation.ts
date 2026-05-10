@@ -214,12 +214,18 @@ export const validateBusinessSearch = [
 ];
 
 /**
- * MongoDB ObjectId Validation
+ * MongoDB ObjectId Validation (generic)
  */
 export const validateObjectId = [
   param('id')
     .isMongoId()
     .withMessage('Invalid ID format'),
+];
+
+export const validateParamId = (paramName: string) => [
+  param(paramName)
+    .isMongoId()
+    .withMessage(`Invalid ${paramName} format`),
 ];
 
 /**

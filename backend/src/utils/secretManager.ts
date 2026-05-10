@@ -101,6 +101,24 @@ const SECRETS_CONFIG: SecretConfig[] = [
     envVar: 'GOOGLE_MAPS_API_KEY',
     required: true,
     description: 'Google Maps API key for geocoding and places'
+  },
+  {
+    name: 'CLOUDINARY_CLOUD_NAME',
+    envVar: 'CLOUDINARY_CLOUD_NAME',
+    required: true,
+    description: 'Cloudinary cloud name'
+  },
+  {
+    name: 'CLOUDINARY_API_KEY',
+    envVar: 'CLOUDINARY_API_KEY',
+    required: true,
+    description: 'Cloudinary API key'
+  },
+  {
+    name: 'CLOUDINARY_API_SECRET',
+    envVar: 'CLOUDINARY_API_SECRET',
+    required: true,
+    description: 'Cloudinary API secret'
   }
 ];
 
@@ -259,5 +277,9 @@ export const getStripeSecretKey = (): string | null => {
     return null;
   }
 };
+
+export const getCloudinaryCloudName = (): string => secretManager.getSecret('CLOUDINARY_CLOUD_NAME');
+export const getCloudinaryApiKey = (): string => secretManager.getSecret('CLOUDINARY_API_KEY');
+export const getCloudinaryApiSecret = (): string => secretManager.getSecret('CLOUDINARY_API_SECRET');
 
 export default secretManager;
