@@ -76,16 +76,18 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
         </div>
 
         {/* THE DINOSAUR - ANIMATED VIDEO */}
-        <div className="relative z-10 w-full h-full flex items-center justify-center p-6">
+        <div 
+          className="relative z-10 w-full h-full flex items-center justify-center p-6 mix-blend-multiply"
+          style={{ mixBlendMode: 'multiply' }}
+        >
           <video 
             src={videoSrc}
             autoPlay
             loop
             muted
             playsInline
-            className="w-full h-full object-contain pointer-events-none mix-blend-multiply"
+            className="w-full h-full object-contain pointer-events-none"
             style={{ 
-              mixBlendMode: 'multiply',
               filter: 'contrast(1.1)' 
             }}
           />
