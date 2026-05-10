@@ -22,29 +22,34 @@ const badgeStyles: Record<string, string> = {
 };
 
 const captionStyles: Record<string, string> = {
-  development: 'text-emerald-700 dark:text-emerald-400',
-  testing: 'text-blue-700 dark:text-blue-400',
-  maintenance: 'text-rose-700 dark:text-rose-400',
-  coming_soon: 'text-emerald-600 dark:text-emerald-300',
+  development: 'text-emerald-500 dark:text-emerald-400',
+  testing: 'text-blue-500 dark:text-blue-400',
+  maintenance: 'text-rose-500 dark:text-rose-400',
+  coming_soon: 'text-emerald-500 dark:text-emerald-400',
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
   const itemIndex = itemMap[mode] || 0;
+  
+  // Calculate exact X percentage for 4-frame sprite sheet
+  const itemBgX = itemIndex === 0 ? '0%' : itemIndex === 1 ? '33.33%' : itemIndex === 2 ? '66.66%' : '100%';
 
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
       <style>{`
         @keyframes dino-walk-cycle {
-          0%, 24.99% { background-position: 0% 50%; }
-          25%, 49.99% { background-position: 33.33% 50%; }
-          50%, 74.99% { background-position: 66.66% 50%; }
-          75%, 100% { background-position: 100% 50%; }
+          0%, 24.99% { background-position: 0% 45%; }
+          25%, 49.99% { background-position: 33.33% 45%; }
+          50%, 74.99% { background-position: 66.66% 45%; }
+          75%, 100% { background-position: 100% 45%; }
         }
         .dino-sprite-anim {
-          background-image: url(/stickers/dino_walk_sheet.png);
-          background-size: 400% 100%;
+          background-image: url('/stickers/dino_walk_sheet.png');
+          background-size: 400% 400%;
           image-rendering: pixelated;
           animation: dino-walk-cycle 0.8s infinite;
+          mix-blend-mode: screen;
+          filter: brightness(1.5) contrast(1.2);
         }
         
         @keyframes item-bob-cycle {
@@ -54,11 +59,12 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           75%, 100% { transform: translateY(5px) translateX(44px) rotate(15deg); }
         }
         .item-sprite-anim {
-          background-image: url(/stickers/pixel_items_sheet.png);
-          background-size: 400% 100%;
-          background-position: calc(-100% * var(--item-index)) 50%;
+          background-image: url('/stickers/pixel_items_sheet.png');
+          background-size: 400% 400%;
           image-rendering: pixelated;
           animation: item-bob-cycle 0.8s infinite;
+          mix-blend-mode: screen;
+          filter: brightness(1.5);
         }
       `}</style>
 
@@ -81,13 +87,13 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
         >
           {/* Walking Dino Sprite - CSS Animation */}
           <div 
-            className="absolute inset-0 w-full h-full dino-sprite-anim dark:mix-blend-screen dark:brightness-125 mix-blend-normal"
+            className="absolute inset-0 w-full h-full dino-sprite-anim"
           />
 
           {/* Held Item Overlay */}
           <div
-            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24 item-sprite-anim dark:mix-blend-screen dark:brightness-125 mix-blend-normal"
-            style={{ '--item-index': itemIndex } as React.CSSProperties}
+            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24 item-sprite-anim"
+            style={{ backgroundPosition: `${itemBgX} 45%` }}
           />
         </motion.div>
       </div>
@@ -132,4 +138,5 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
     </div>
   );
 };
+
 
