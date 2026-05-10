@@ -266,14 +266,14 @@ export const getMaintenanceStatus = async (req: Request, res: Response) => {
     
     res.json({
       success: true,
-      maintenanceMode: settings.maintenanceMode,
-      maintenanceMessage: settings.maintenanceMessage,
+      maintenanceMode: settings.maintenanceMode || false,
+      maintenanceMessage: settings.maintenanceMessage || 'We are currently performing scheduled maintenance.',
       maintenanceStartedAt: settings.maintenanceStartedAt,
       maintenanceStartedBy: settings.maintenanceStartedBy,
       estimatedEndTime: settings.estimatedEndTime,
     });
   } catch (error) {
-    console.error('Error fetching maintenance status:', error);
+    console.error('CRITICAL ERROR fetching maintenance status:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch maintenance status',

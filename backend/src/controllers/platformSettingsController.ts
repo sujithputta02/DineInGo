@@ -191,20 +191,23 @@ export const getFeatureFlags = async (req: Request, res: Response) => {
   try {
     const settings = await getPlatformSettings();
     
+    // Ensure we return the flags in the expected structure even if the DB has old format
+    // Mongoose handles most of this but we want to be safe for the public endpoint
     res.json({
       success: true,
       flags: settings.featureFlags || {
-        arMenus: true,
-        preOrders: true,
-        events: true,
-        waitlist: true
+        arMenus: { enabled: true, mode: 'production', caption: '', sticker: 'dino_dev' },
+        preOrders: { enabled: true, mode: 'production', caption: '', sticker: 'dino_dev' },
+        events: { enabled: true, mode: 'production', caption: '', sticker: 'dino_dev' },
+        waitlist: { enabled: true, mode: 'production', caption: '', sticker: 'dino_dev' }
       }
     });
   } catch (error) {
-    console.error('Error fetching feature flags:', error);
+    console.error('CRITICAL ERROR fetching feature flags:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch feature flags'
+      message: 'Failed to fetch feature flags',
+      error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 };
