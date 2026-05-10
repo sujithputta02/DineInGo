@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { toast } from 'react-toastify';
-import { User, UserAddress, LocationSettings } from '@/types/user';
+import { User, UserAddress, LocationSettings } from '../types/user';
 import { Loader2, User as LucideUser, X, MapPin, Globe, Moon, Sun, Camera, ChevronRight, Save, LogOut, Sliders, Laptop, Lock, Eye, EyeOff } from 'lucide-react';
 import { getAuth, updateProfile, updatePassword, User as FirebaseUser } from 'firebase/auth';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -15,6 +15,7 @@ import socketService from '../utils/socketService';
 import API_CONFIG from '../config/api';
 import { DietaryAssistant } from './DietaryAssistant';
 import { userPreferenceApi, userAPI } from '../services/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 // Type guard to check if user has Firebase Auth methods
 const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
@@ -80,6 +81,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   onToggleTheme
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'app' | 'security'>('profile');
+  const { t } = useLanguage();
 
   // Change Password State
   const [currentPassword, setCurrentPassword] = useState('');
@@ -281,13 +283,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           displayName: updates.displayName, photoURL: updates.photoURL
         });
         // Also update custom backend/mongo
-        const idToken = await firebaseAuth.currentUser.getIdToken();
-        const apiRes = await fetch(API_CONFIG.getFullUrl('/api/v1/users/update'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
-          body: JSON.stringify({ userId: authUser.uid, updates }) // Note structure
-        });
-        if (!apiRes.ok) throw new Error('Failed to save to backend');
+        await userAPI.updateUser(authUser.uid, updates);
       }
 
       toast.success('Profile updated successfully');
@@ -447,8 +443,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                   <LucideUser size={20} />
                 </div>
                 <div>
-                  <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-0.5">Action</p>
-                  <p className="text-white font-bold text-base leading-none">Edit Profile</p>
+                  <p className="text-emerald-100 text-xs font-semibold uppercase tracking-wider mb-0.5">{t('action')}</p>
+                  <p className="text-white font-bold text-base leading-none">{t('editProfile')}</p>
                 </div>
               </div>
             </button>
@@ -463,10 +459,10 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
         {/* Tabs */}
         <div className={`px-6 md:px-8 border-b ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
           <div className="flex">
-            {renderTabButton('profile', 'Personal Info', <LucideUser size={18} />)}
-            {renderTabButton('preferences', 'Preferences', <Sliders size={18} />)}
-            {renderTabButton('app', 'App Settings', <Save size={18} />)}
-            {renderTabButton('security', 'Security', <Lock size={18} />)}
+            {renderTabButton('profile', t('personalInfo'), <LucideUser size={18} />)}
+            {renderTabButton('preferences', t('preferences'), <Sliders size={18} />)}
+            {renderTabButton('app', t('appSettings'), <Save size={18} />)}
+            {renderTabButton('security', t('security'), <Lock size={18} />)}
           </div>
         </div>
 
@@ -533,7 +529,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Full Name */}
                     <div className="space-y-2">
-                      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Full Name</label>
+                      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('fullName')}</label>
                       <input
                         type="text"
                         name="name"
@@ -549,7 +545,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
                     {/* Phone */}
                     <div className="space-y-2">
-                      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Phone Number</label>
+                      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('phoneNumber')}</label>
                       <input
                         type="tel"
                         name="phoneNumber"
@@ -566,7 +562,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
                     {/* Email */}
                     <div className="space-y-2">
-                      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Email Address</label>
+                      <label className={`text-sm font-medium ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('emailAddress')}</label>
                       <input
                         type="email"
                         name="email"
@@ -578,13 +574,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                           } opacity-60 cursor-not-allowed`}
                       />
                       <p className={`text-xs ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>
-                        Email cannot be changed
+                        {t('emailLockedNote')}
                       </p>
                     </div>
 
                     {/* Address form fields... simplified for this specific user request to "enhance UI" */}
                     <div className="md:col-span-2 pt-4 border-t border-gray-200 dark:border-gray-700">
-                      <h4 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Delivery Address</h4>
+                      <h4 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('deliveryAddress')}</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
                           type="text"
@@ -638,7 +634,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         className="flex-1 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
                       >
                         {isLoading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
-                        Save Changes
+                        {t('saveChanges')}
                       </button>
                       <button
                         type="button"
@@ -646,7 +642,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         className={`px-6 py-3 rounded-xl font-bold transition-colors ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                           }`}
                       >
-                        Cancel
+                        {t('cancel')}
                       </button>
                     </div>
                   )}
@@ -663,7 +659,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 >
                   <div className="space-y-6">
                     <div>
-                      <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Dietary Preferences</h3>
+                      <h3 className={`text-lg font-bold mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('dietaryPreferences')}</h3>
                       <p className={`text-sm mb-6 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                         Customize your dining experience. We'll prioritize food that matches your lifestyle.
                       </p>
@@ -680,7 +676,7 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                     </div>
 
                     <div className="pt-6 border-t border-gray-200 dark:border-gray-700">
-                      <h3 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Cuisine Interests</h3>
+                      <h3 className={`text-lg font-bold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('cuisineInterests')}</h3>
                       <div className="flex flex-wrap gap-2">
                         {userPreferences?.cuisines?.length > 0 ? (
                           userPreferences.cuisines.map((c: any) => (
@@ -726,9 +722,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                           {currentTheme === 'dark' ? <Moon size={24} /> : currentTheme === 'light' ? <Sun size={24} /> : <Laptop size={24} />}
                         </div>
                         <div>
-                          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Appearance</h4>
+                          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('appearance')}</h4>
                           <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {currentTheme === 'system' ? 'Device Mode (Follows System)' : `${currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)} Mode Active`}
+                            {currentTheme === 'system' ? t('deviceMode') : `${currentTheme.charAt(0).toUpperCase() + currentTheme.slice(1)} Mode Active`}
                           </p>
                         </div>
                       </div>
@@ -780,8 +776,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         <Globe size={24} />
                       </div>
                       <div>
-                        <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Language</h4>
-                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select your preferred language</p>
+                        <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('language')}</h4>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('selectPreferredLanguage')}</p>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -811,9 +807,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                           <MapPin size={24} />
                         </div>
                         <div>
-                          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Auto-Detect Location</h4>
+                          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('autoDetectLocation')}</h4>
                           <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                            Use GPS for better recommendations
+                            {t('useGpsDescription')}
                           </p>
                         </div>
                       </div>
@@ -841,16 +837,16 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                 >
                   <div className="max-w-md mx-auto space-y-6">
                     <div className="text-center md:text-left">
-                      <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Security Settings</h3>
+                      <h3 className={`text-xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{t('security')}</h3>
                       <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                        Keep your account safe by updating your password regularly.
+                        {t('securitySettingsDescription')}
                       </p>
                     </div>
 
                     <form onSubmit={handlePasswordChangeSubmit} className="space-y-5">
                       {/* Current Password */}
                       <div className="space-y-2">
-                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Current Password</label>
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('currentPassword')}</label>
                         <div className="relative">
                           <input
                             type={showCurrentPassword ? 'text' : 'password'}
@@ -876,13 +872,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
                       {/* New Password */}
                       <div className="space-y-2">
-                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>New Password</label>
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('newPassword')}</label>
                         <div className="relative">
                           <input
                             type={showNewPassword ? 'text' : 'password'}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            placeholder="At least 8 characters"
+                            placeholder={t('passwordLengthHint')}
                             className={`w-full pl-11 pr-12 py-3.5 rounded-2xl border outline-none transition-all ${isDarkMode
                               ? 'bg-gray-900/50 border-gray-700 text-white focus:border-emerald-500'
                               : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
@@ -902,13 +898,13 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
                       {/* Confirm New Password */}
                       <div className="space-y-2">
-                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>Confirm New Password</label>
+                        <label className={`text-sm font-semibold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{t('confirmNewPassword')}</label>
                         <div className="relative">
                           <input
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Repeat your new password"
+                            placeholder={t('repeatPasswordHint')}
                             className={`w-full pl-11 pr-4 py-3.5 rounded-2xl border outline-none transition-all ${isDarkMode
                               ? 'bg-gray-900/50 border-gray-700 text-white focus:border-emerald-500'
                               : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
@@ -929,12 +925,12 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         {isChangingPassword ? (
                           <>
                             <Loader2 className="animate-spin" size={20} />
-                            Updating...
+                            {t('processing')}
                           </>
                         ) : (
                           <>
                             <Save size={20} />
-                            Update Password
+                            {t('updatePassword')}
                           </>
                         )}
                       </motion.button>
@@ -946,9 +942,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         <Lock size={20} className="text-amber-500" />
                       </div>
                       <div className="space-y-1">
-                        <p className="font-bold text-sm">Pro Tip for Dino Users</p>
+                        <p className="font-bold text-sm">{t('proTipTitle')}</p>
                         <p className="text-xs leading-relaxed opacity-80">
-                          For maximal security, use a unique password and avoid reusing passwords from other apps. Your password is encrypted and never stored in plain text.
+                          {t('proTipDescription')}
                         </p>
                       </div>
                     </div>

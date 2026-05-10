@@ -38,9 +38,10 @@ export default defineConfig({
       workbox: {
         maximumFileSizeToCacheInBytes: 10000000,
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp}'],
+        navigateFallbackDenylist: [/^\/api/, /^\/socket.io/, /^\/translations/],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\..*/i,
+            urlPattern: ({ url }) => url.pathname.startsWith('/api/v1/translations'),
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',
@@ -54,15 +55,32 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/,
+            urlPattern: ({ url }) => {
+              const isExternalImage = url.origin !== self.location.origin && /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
+              const isLocalImage = url.pathname.includes('/images/') || /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
+              return isExternalImage || isLocalImage;
+            },
             handler: 'CacheFirst',
             options: {
               cacheName: 'image-cache',
               expiration: {
                 maxEntries: 200,
                 maxAgeSeconds: 60 * 60 * 24 * 30 // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
               }
             }
+          },
+          {
+            // Exclude external analytics and socket.io from being handled by Workbox
+            urlPattern: ({ url }) => 
+              url.origin.includes('amplitude.com') || 
+              url.origin.includes('google-analytics.com') || 
+              url.origin.includes('posthog.com') || 
+              url.origin.includes('mixpanel.com') ||
+              url.pathname.startsWith('/socket.io'),
+            handler: 'NetworkOnly'
           }
         ]
       },

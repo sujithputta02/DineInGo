@@ -66,6 +66,7 @@ import CustomerRoute from './components/CustomerRoute';
 import { UserActivityProvider } from './contexts/UserActivityContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider } from './contexts/LanguageContext';
 import AIChatbot from './components/AIChatbot';
 import { EntityProvider } from './contexts/EntityContext';
 import FloorPlanDesigner from './components/FloorPlanDesigner';
@@ -162,7 +163,8 @@ function App() {
           </div>
         </div>
       }>
-        <AuthProvider>
+    <LanguageProvider>
+      <AuthProvider>
         <FeatureFlagProvider>
         <UserActivityProvider>
           <EntityProvider>
@@ -331,6 +333,7 @@ function App() {
         </UserActivityProvider>
         </FeatureFlagProvider>
       </AuthProvider>
+    </LanguageProvider>
       </React.Suspense>
     </Router>
   );

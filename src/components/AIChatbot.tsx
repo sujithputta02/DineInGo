@@ -5,6 +5,7 @@ import { MessageCircle, X, Send, Trash2, Loader } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useEntity } from '../contexts/EntityContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { toast } from 'react-toastify';
 
 interface Message {
@@ -32,6 +33,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
   const isDragging = useRef(false);
   const auth = useAuth();
   const { visibleEntities } = useEntity();
+  const { t, language } = useLanguage();
 
   const API_URL = API_CONFIG.BASE_URL;
 
@@ -64,7 +66,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
         // Show welcome message if no history
         setMessages([{
           role: 'assistant',
-          content: "🦖 Rawr! Hello there! I'm Dino, your enthusiastic dining companion! 🍽️\n\nI'm here to help you stomp through the city and find the best feasts! Whether it's:\n\n• 🥘 Picking the perfect cuisine (try our new Onboarding!)\n• 📱 Fast & Secure OTP Login\n• 🪑 Reserving your favorite table\n• 🎉 Scoring tickets to the hottest events\n\nI'm ready to help you bite into something delicious! What's cooking today?",
+          content: t('welcomeMessage'),
           timestamp: new Date()
         }]);
       }
@@ -73,7 +75,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
       // Show welcome message on error
       setMessages([{
         role: 'assistant',
-        content: "🦖 Rawr! I'm Dino, your friendly dining companion. I hit a small snag, but I'm still ready to help! What can I do for you?",
+        content: t('snagMessage'),
         timestamp: new Date()
       }]);
     } finally {
@@ -103,6 +105,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
         body: JSON.stringify({
           userId: auth.currentUser.uid,
           message: inputMessage,
+          language: language,
           userContext: {
             ...userContext,
             userName: auth.currentUser.displayName || userContext?.userName,
@@ -157,7 +160,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
       setMessages([{
         role: 'assistant',
-        content: "🦖 Stomp! Chat history cleared! I'm ready for a fresh start. What's on your mind?",
+        content: t('freshStart'),
         timestamp: new Date()
       }]);
 
@@ -223,7 +226,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
             {/* Tooltip */}
             <div className="absolute top-1/2 right-full -translate-y-1/2 mr-3 px-3 py-1.5 bg-gray-900/90 backdrop-blur-sm text-white text-[10px] sm:text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg">
-              🦖 Chat with Dino - Ready to Help!
+              🦖 {t('chatWithDino')} - {t('readyToHelp')}
             </div>
           </div>
         </motion.div>
@@ -255,8 +258,8 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 <span className="absolute -top-1.5 -right-1 sm:-top-2 sm:-right-1 text-base sm:text-xl drop-shadow-md select-none">👨‍🍳</span>
               </div>
               <div>
-                <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">🦖 Dino <span className="text-[9px] sm:text-[10px] bg-white/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Assistant</span></h3>
-                <p className="text-[10px] sm:text-xs text-white/80 font-medium italic">"The Stomping Chef"</p>
+                <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">🦖 Dino <span className="text-[9px] sm:text-[10px] bg-white/20 px-1.5 py-0.5 rounded uppercase tracking-wider">{t('assistant')}</span></h3>
+                <p className="text-[10px] sm:text-xs text-white/80 font-medium italic">"{t('stompingChef')}"</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -310,7 +313,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 <div className="bg-white text-gray-800 rounded-2xl rounded-bl-none px-4 py-3 shadow-sm border border-gray-200">
                   <div className="flex items-center gap-2">
                     <Loader className="w-4 h-4 animate-spin text-emerald-500" />
-                    <span className="text-sm text-gray-500">Thinking...</span>
+                    <span className="text-sm text-gray-500">{t('thinking')}</span>
                   </div>
                 </div>
               </div>
@@ -326,7 +329,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
+                placeholder={t('typeYourMessage')}
                 className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2 sm:px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent max-h-32 text-sm sm:text-base"
                 rows={1}
                 disabled={isLoading}
@@ -341,10 +344,10 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
             </div>
             <div className="flex flex-col items-center gap-1 mt-2 mb-2 sm:mb-0">
               <p className="text-[10px] text-gray-400 font-medium text-center">
-                Dino is AI and can make mistakes.
+                {t('dinoAiDisclaimer')}
               </p>
               <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] sm:text-[10px] text-gray-400">
-                <span>Powered by AI</span>
+                <span>{t('poweredByAi')}</span>
                 <span className="hidden sm:inline">•</span>
                 <span className="hidden sm:inline">Press Enter to send</span>
                 <span>•</span>

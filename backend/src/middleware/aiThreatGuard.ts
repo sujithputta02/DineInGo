@@ -114,8 +114,8 @@ const KNOWN_BOT_AGENTS = [
 const TRUSTED_UA_MINIMUM_LENGTH = 40; // Legitimate browsers have long UAs
 
 export const botFingerprintGuard = (req: Request, res: Response, next: NextFunction) => {
-  // Allow health checks, internal routes, and admin portal (which might use bare fetch calls)
-  if (req.path === '/health' || req.path === '/' || req.path.startsWith('/api/v1/admin')) return next();
+  // Allow health checks, internal routes, and admin/translation routes
+  if (req.path === '/health' || req.path === '/' || req.path.startsWith('/api/v1/admin') || req.path.startsWith('/api/v1/translations')) return next();
 
   const userAgent = req.headers['user-agent'] || '';
   const acceptHeader = req.headers['accept'] || '';

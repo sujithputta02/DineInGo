@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SEO from "./components/SEO";
+import { useLanguage } from "./contexts/LanguageContext";
 
 interface DoodleProps {
   type: 'plate' | 'fork' | 'star' | 'chair' | 'wave' | 'ticket';
@@ -471,6 +472,7 @@ export default function LandingPage() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(window.innerWidth);
   const navigate = useNavigate();
+  const { t } = useLanguage();
 
   // Track window width for responsiveness
   useEffect(() => {
@@ -612,7 +614,7 @@ export default function LandingPage() {
                 flex: "0 0 auto"
               }}
             >
-              Sign In
+              {t('signIn', 'Sign In')}
             </motion.button>
           ) : (
             <button
@@ -670,7 +672,7 @@ export default function LandingPage() {
                   textAlign: "center"
                 }}
               >
-                Sign In
+                {t('signIn', 'Sign In')}
               </button>
               <nav style={{ display: "flex", flexDirection: "column", gap: "15px", padding: "10px 0" }}>
                 <span onClick={() => { document.querySelector('[data-section="features"]')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} style={{ fontWeight: "600", fontSize: "1.1rem" }}>Features</span>
@@ -730,14 +732,14 @@ export default function LandingPage() {
                 transform: `translateY(${scrollY * 0.05}px)`,
               }}
             >
-              The future of <br />
+              {t('theFutureOf', 'The future of')} <br />
               <span style={{
                 fontStyle: "italic",
                 background: `linear-gradient(120deg, ${glassStyles.colors.primary}, ${glassStyles.colors.primaryDeep})`,
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
-              }}>dining & events</span> <br />
-              is finally here.
+              }}>{t('diningAndEvents', 'dining & events')}</span> <br />
+              {t('isFinallyHere', 'is finally here.')}
             </motion.h2>
 
             <motion.p
@@ -753,7 +755,7 @@ export default function LandingPage() {
                 lineHeight: "1.6"
               }}
             >
-              Select exact tables or specific seats with India's first truly interactive booking platform.
+              {t('heroDescription', "Select exact tables or specific seats with India's first truly interactive booking platform.")}
             </motion.p>
 
               <motion.div
@@ -783,7 +785,7 @@ export default function LandingPage() {
                   color: "white"
                 }}
               >
-                Reserve Now
+                {t('reserveNow', 'Reserve Now')}
               </motion.button>
 
               <motion.button

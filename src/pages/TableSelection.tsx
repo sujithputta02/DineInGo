@@ -7,6 +7,7 @@ import { auth } from '../firebase';
 import socketService from '../utils/socketService';
 import { toast } from 'react-toastify';
 import { DinoStepper } from '../components/DinoStepper';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface TableData {
   id: string;
@@ -177,6 +178,7 @@ const TableSelection: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>('');
   const [reservedTables, setReservedTables] = useState<string[]>([]);
@@ -485,14 +487,14 @@ const TableSelection: React.FC = () => {
 
   const handleProceed = async () => {
     if (!selectedTable) {
-      alert('Please select a table to proceed');
+      alert(t('selectToProceed', 'Please select a table to proceed'));
       return;
     }
     setLoadingTables(true); // Immediate UI feedback
     setTimeout(async () => {
       const user = auth.currentUser;
       if (!user) {
-        alert('You must be logged in to reserve a table.');
+        alert(t('loginRequiredError', 'You must be logged in to reserve a table.'));
         setLoadingTables(false);
         return;
       }
@@ -515,7 +517,7 @@ const TableSelection: React.FC = () => {
         });
         console.log('Table reserved successfully:', result);
       } catch (err) {
-        alert('Failed to reserve table. Please try again.');
+        alert(t('failedToAction', 'Failed to {action} booking. Please try again.').replace('{action}', 'reserve'));
         setLoadingTables(false);
         return;
       }
@@ -551,13 +553,13 @@ const TableSelection: React.FC = () => {
   // Select table (visual only, no blocking until proceed)
   const handleTableSelect = (table: string) => {
     if (isTableUnavailable(table) || loadingTables) {
-      toast.error('This table is already booked. Please choose another table.');
+      toast.error(t('tableBookedError', 'This table is already booked. Please choose another table.'));
       return;
     }
 
     const user = auth.currentUser;
     if (!user) {
-      toast.error('You must be logged in to select a table.');
+      toast.error(t('loginRequiredError', 'You must be logged in to select a table.'));
       return;
     }
 
@@ -580,12 +582,12 @@ const TableSelection: React.FC = () => {
             }`}
           >
             <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
-            <span>Back</span>
+            <span>{t('back', 'Back')}</span>
           </button>
 
           <div className="text-right sm:text-left sm:ml-4">
             <h2 className={`text-base sm:text-xl font-black tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{restaurantName}</h2>
-            <p className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Table Selection</p>
+            <p className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('tableSelection', 'Table Selection')}</p>
           </div>
         </div>
 
@@ -647,15 +649,15 @@ const TableSelection: React.FC = () => {
           }`}>
             <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
               <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-gray-200 border-gray-300'}`}></div>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">Available</span>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">{t('available', 'Available')}</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
               <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-md bg-emerald-500 border-2 border-emerald-400"></div>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-500">Selected</span>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-500">{t('selected', 'Selected')}</span>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
               <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-900 border-slate-950' : 'bg-gray-400 border-gray-500'}`}></div>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">Booked</span>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">{t('booked', 'Booked')}</span>
             </div>
           </div>
         </div>
@@ -667,8 +669,8 @@ const TableSelection: React.FC = () => {
             <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1"></div>
             
             <div className="px-6 py-4 sm:p-6 border-b border-white/5">
-              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase">Your Selection</h2>
-              <p className="text-[10px] sm:text-sm text-slate-400 mt-1 font-bold uppercase tracking-widest">1 table selected for your feast</p>
+              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase">{t('yourSelection', 'Your Selection')}</h2>
+              <p className="text-[10px] sm:text-sm text-slate-400 mt-1 font-bold uppercase tracking-widest">{t('selectionSummary', '1 table selected for your feast')}</p>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
@@ -682,7 +684,7 @@ const TableSelection: React.FC = () => {
                     <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-1 flex items-center gap-2">
                       <span className="bg-slate-700/50 px-2 py-0.5 rounded uppercase tracking-wider">{activeFloor?.name}</span>
                       <span>•</span>
-                      <span>{activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0} Guests</span>
+                      <span>{activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0} {Number(activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0) === 1 ? t('guestLabel', 'Guest') : t('guestsLabel', 'Guests')}</span>
                     </div>
                   </div>
                 </div>
@@ -707,11 +709,11 @@ const TableSelection: React.FC = () => {
                 {loadingTables ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                    <span>Processing...</span>
+                    <span>{t('processing', 'Processing...')}</span>
                   </div>
                 ) : (
                   <>
-                    <span>Confirm Selection</span>
+                    <span>{t('confirmSelection', 'Confirm Selection')}</span>
                     <ChevronRight size={18} />
                   </>
                 )}

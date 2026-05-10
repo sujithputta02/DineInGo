@@ -369,7 +369,7 @@ export const updateUser = async (req: Request, res: Response): Promise<void> => 
     // SECURITY: Strictly whitelist allowed fields for user self-updates
     // This prevents users from escalating their own privileges (e.g. setting isAdmin: true)
     const allowedUpdates: any = {};
-    const whitelist = ['displayName', 'name', 'photoURL', 'timezone', 'phoneNumber', 'bio', 'preferences'];
+    const whitelist = ['displayName', 'name', 'photoURL', 'timezone', 'phoneNumber', 'bio', 'preferences', 'language'];
     
     whitelist.forEach(field => {
       if (req.body[field] !== undefined) {

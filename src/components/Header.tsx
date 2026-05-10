@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import NotificationBell from './NotificationBell';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface HeaderProps {
   handleLogout?: () => void;
@@ -10,6 +11,7 @@ interface HeaderProps {
 
 const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
   const auth = useAuth();
+  const { t } = useLanguage();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const sessionToken = localStorage.getItem('sessionToken');
@@ -68,7 +70,7 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
               <div className="relative w-full">
                 <input
                   type="text"
-                  placeholder="Search restaurants..."
+                  placeholder={t('searchPlaceholder')}
                   className="w-full px-4 py-2.5 rounded-full bg-white/20 text-white placeholder-white/70 focus:outline-none focus:bg-white/30 transition text-sm md:text-base"
                 />
                 <button className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition flex-shrink-0">
@@ -128,7 +130,7 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
               <div className="relative w-full">
                 <input
                   type="text"
-                  placeholder="Search restaurants..."
+                  placeholder={t('searchPlaceholder')}
                   className="w-full px-4 py-2.5 sm:py-3 rounded-full bg-white/20 text-white placeholder-white/70 focus:outline-none focus:bg-white/30 transition text-sm sm:text-base"
                 />
                 <button className="absolute right-3 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition">
@@ -145,20 +147,20 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
               className="block px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium"
               onClick={() => setMobileMenuOpen(false)}
             >
-              Dashboard
+              {t('dashboard')}
             </Link>
             <button className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium">
-              Settings
+              {t('settings')}
             </button>
             <button className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium">
-              Theme
+              {t('theme')}
             </button>
             {auth.currentUser && (
               <button
                 onClick={onLogout}
                 className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-red-500/30 rounded-lg transition text-base sm:text-lg font-medium"
               >
-                Logout
+                {t('logout')}
               </button>
             )}
           </div>
@@ -168,4 +170,5 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
   );
 };
 
-export default Header; 
+export default Header;
+ 

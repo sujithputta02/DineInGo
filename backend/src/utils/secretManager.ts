@@ -99,7 +99,7 @@ const SECRETS_CONFIG: SecretConfig[] = [
   {
     name: 'GOOGLE_MAPS_API_KEY',
     envVar: 'GOOGLE_MAPS_API_KEY',
-    required: true,
+    required: false,
     description: 'Google Maps API key for geocoding and places'
   },
   {

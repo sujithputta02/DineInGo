@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { recommendationService, Recommendation } from '../services/recommendationService';
 import { Sparkles, ArrowRight, Utensils, Zap } from 'lucide-react';
 import socketService from '../utils/socketService';
+import { useLanguage } from '../contexts/LanguageContext';
 
 interface DinoDailyMorselsProps {
   userId: string;
@@ -13,11 +14,12 @@ interface DinoDailyMorselsProps {
   language?: string;
 }
 
-const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode, variant = 'default', userMood = 'Social', language = 'english' }) => {
+const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode, variant = 'default', userMood = 'Social', language: propLanguage = 'english' }) => {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
 
   const fetchMorsels = async (refresh: boolean = false) => {
     if (isRefreshing) return;
@@ -59,7 +61,7 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
     return () => {
       socketService.off('daily-morsels-updated');
     };
-  }, [userId, userMood]);
+  }, [userId, userMood, language]);
 
   if (loading) return null;
 
@@ -88,10 +90,10 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
               <Sparkles size={20} />
             </div>
             <div className="flex flex-col min-w-0">
-              <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-none mb-1 truncate">Dino's Daily Morsels</h3>
+              <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight leading-none mb-1 truncate">{t('dinoDailyMorsels')}</h3>
               <div className="flex items-center gap-1.5">
                 <span className="flex h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 truncate">AI-Powered Insights Active</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 truncate">{t('aiInsightsActive')}</span>
               </div>
             </div>
           </div>
@@ -101,13 +103,15 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
               onClick={() => fetchMorsels(true)}
               disabled={isRefreshing}
               className={`p-2 rounded-xl border border-white/10 ${isDarkMode ? 'hover:bg-white/5' : 'hover:bg-gray-100'} transition-all active:scale-90 group flex-shrink-0 disabled:opacity-50`}
-              title="Refresh AI Insights"
+              title={t('refreshAIInsights')}
             >
               <Zap size={16} className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} group-hover:text-yellow-500 transition-colors ${isRefreshing ? 'animate-spin text-yellow-500' : ''}`} />
             </button>
             <div className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${isDarkMode ? 'bg-white/5' : 'bg-gray-100'} border border-white/5 flex-shrink-0`}>
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">Current Vibe:</span>
-              <span className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-500 whitespace-nowrap">{userMood} {getVibeIcon(userMood)}</span>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-40 whitespace-nowrap">{t('currentVibe')}</span>
+              <span className="text-[9px] sm:text-[10px] font-bold uppercase text-emerald-500 whitespace-nowrap">
+                {t(`mood${userMood}` as any) || userMood} {getVibeIcon(userMood)}
+              </span>
             </div>
           </div>
         </div>
@@ -142,14 +146,14 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
                         {morsel.type}
                       </span>
                       <span className={`text-[8px] font-black uppercase tracking-widest text-emerald-400 bg-emerald-400/10 px-2 py-0.5 rounded-full inline-block border border-emerald-400/20`}>
-                        {getVibeIcon(userMood)} VIBE CHECK
+                        {getVibeIcon(userMood)} {t('vibeCheck')}
                       </span>
                     </div>
                     <h4 className={`${isCompact ? 'text-lg' : 'text-xl'} font-black`}>{morsel.name}</h4>
                  </div>
                  <div className="text-right">
                     <span className={`font-black text-yellow-500 ${isCompact ? 'text-xl' : 'text-2xl'}`}>{morsel.matchScore}%</span>
-                    {!isCompact && <p className="text-[8px] uppercase font-bold opacity-30">Match</p>}
+                    {!isCompact && <p className="text-[8px] uppercase font-bold opacity-30">{t('match')}</p>}
                  </div>
               </div>
               
@@ -165,7 +169,7 @@ const DinoDailyMorsels: React.FC<DinoDailyMorselsProps> = ({ userId, isDarkMode,
                    whileHover={{ x: 5 }}
                    className="flex items-center gap-1 text-[10px] font-black uppercase tracking-tighter text-yellow-500"
                  >
-                   View <ArrowRight size={10} />
+                   {t('view')} <ArrowRight size={10} />
                  </motion.div>
               </div>
             </div>

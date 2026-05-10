@@ -5,11 +5,13 @@ import { getRestaurantById } from '../services/restaurantService';
 import type { MenuItem } from '../types';
 import { DinoStepper } from '../components/DinoStepper';
 import { normalizeImageUrl } from '../services/api';
+import { useLanguage } from '../contexts/LanguageContext';
 
 export default function FoodMenu() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [restaurant, setRestaurant] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({});
@@ -106,10 +108,10 @@ export default function FoodMenu() {
     navigate(`/restaurant/${id}/preview?${queryParams.toString()}`);
   };
 
-  const categories = ['All', ...new Set(restaurant?.menu?.map((item: MenuItem) => item.category) || [])] as string[];
+  const categories = [t('allCategories', 'All'), ...new Set(restaurant?.menu?.map((item: MenuItem) => item.category) || [])] as string[];
 
   const filteredMenu = restaurant?.menu.filter((item: MenuItem) => {
-    return activeCategory === 'All' || item.category === activeCategory;
+    return activeCategory === t('allCategories', 'All') || item.category === activeCategory;
   });
 
   if (loading) {
@@ -154,7 +156,7 @@ export default function FoodMenu() {
               </div>
               <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-500/5 border border-emerald-500/10">
                 <Users className="w-4 h-4" />
-                <span>{guests} {Number(guests) === 1 ? 'Guest' : 'Guests'}</span>
+                <span>{guests} {Number(guests) === 1 ? t('guestLabel', 'Guest') : t('guestsLabel', 'Guests')}</span>
               </div>
             </div>
 
@@ -251,7 +253,7 @@ export default function FoodMenu() {
                           }`}
                         >
                           <Plus className="w-4 h-4" />
-                          <span>Add to Expedition</span>
+                          <span>{t('addToExpedition', 'Add to Expedition')}</span>
                         </button>
                       )}
                     </div>
@@ -265,8 +267,8 @@ export default function FoodMenu() {
             <div className={`rounded-[3rem] p-12 border-4 border-dashed transition-all ${
               isDarkMode ? 'bg-gray-900/40 border-gray-800' : 'bg-white border-gray-100'
             }`}>
-              <h3 className={`text-2xl font-black mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>The Vault is Empty</h3>
-              <p className={`text-lg font-medium mb-8 max-w-md mx-auto opacity-60 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>The restaurant owner hasn't added their menu items yet. Please check back later or contact the restaurant directly.</p>
+              <h3 className={`text-2xl font-black mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t('vaultIsEmpty', 'The Vault is Empty')}</h3>
+              <p className={`text-lg font-medium mb-8 max-w-md mx-auto opacity-60 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t('vaultEmptyDescription', "The restaurant owner hasn't added their menu items yet.")}</p>
               <button
                 onClick={() => navigate(`/restaurant/${id}`)}
                 className="group relative bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm py-4 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-95 overflow-hidden"
@@ -274,7 +276,7 @@ export default function FoodMenu() {
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <span className="relative flex items-center justify-center gap-3">
                   <ChevronLeft className="w-5 h-5" />
-                  Return to Site
+                  {t('returnToSite', 'Return to Site')}
                 </span>
               </button>
             </div>
@@ -294,7 +296,7 @@ export default function FoodMenu() {
                   <ShoppingCart className="w-8 h-8" />
                 </div>
                 <div>
-                  <p className={`text-xs uppercase tracking-widest opacity-60 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{getTotalItems()} items captured</p>
+                  <p className={`text-xs uppercase tracking-widest opacity-60 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{getTotalItems()} {t('capturedItems', 'items captured')}</p>
                   <p className={`text-2xl tracking-tighter ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getTotalPrice()}</p>
                 </div>
               </div>
@@ -304,7 +306,7 @@ export default function FoodMenu() {
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                 <span className="relative flex items-center justify-center gap-3">
-                  Proceed to Preview
+                  {t('proceedToPreview', 'Proceed to Preview')}
                   <Plus className="w-5 h-5 rotate-45 group-hover:rotate-90 transition-transform" />
                 </span>
               </button>

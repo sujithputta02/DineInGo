@@ -161,22 +161,22 @@ const AchievementsSection: React.FC<AchievementsSectionProps> = ({ isDarkMode, l
           >
             <div className="flex items-center gap-3 mb-4">
                <div className="h-2 w-12 bg-yellow-500 rounded-full" />
-               <span className="text-yellow-500 font-black text-xs uppercase tracking-[0.2em]">Dino Expedition Status</span>
+               <span className="text-yellow-500 font-black text-xs uppercase tracking-[0.2em]">{translations.dinoExpeditionStatus || "Dino Expedition Status"}</span>
             </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight">
-              YOUR <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">DIG SITE</span>
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-black mb-4 leading-tight uppercase">
+              {translations.yourDigSite || "YOUR DIG SITE"}
             </h1>
             <p className={`${isDarkMode ? 'text-zinc-400' : 'text-gray-600'} text-lg max-w-xl font-medium`}>
-              Uncover rare culinary fossils by exploring new territories. Your evolution depends on the variety of your bites.
+              {translations.digSiteDescription || "Uncover rare culinary fossils by exploring new territories. Your evolution depends on the variety of your bites."}
             </p>
             
             {/* Quick Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
               {[
-                { label: 'Cuisines', value: stats?.cuisinesTried || 0, icon: ChefHat },
-                { label: 'Territories', value: stats?.localRestaurants || 0, icon: MapPin },
-                { label: 'Bookings', value: stats?.totalBookings || 0, icon: Zap },
-                { label: 'Points', value: level * 100, icon: Star }
+                { label: translations.cuisines || 'Cuisines', value: stats?.cuisinesTried || 0, icon: ChefHat },
+                { label: translations.territories || 'Territories', value: stats?.localRestaurants || 0, icon: MapPin },
+                { label: translations.bookings || 'Bookings', value: stats?.totalBookings || 0, icon: Zap },
+                { label: translations.points || 'Points', value: level * 100, icon: Star }
               ].map((item, idx) => (
                 <div key={idx} className={`${isDarkMode ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'} p-4 rounded-2xl border`}>
                   <item.icon className={`${isDarkMode ? 'text-white/30' : 'text-gray-400'} mb-2`} size={20} />

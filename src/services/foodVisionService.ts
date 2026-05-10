@@ -21,7 +21,7 @@ import { createWorker } from 'tesseract.js';
 import { foodScanApi } from './api';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
-const SARVAM_API_KEY     = import.meta.env.VITE_SARVAM_API_KEY     || '';
+const SARVAM_API_KEY = import.meta.env.VITE_SARVAM_API_KEY || '';
 const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
 
 // Verified free vision models on OpenRouter (in preference order)
@@ -72,13 +72,13 @@ export async function loadLocalMLModel(): Promise<boolean> {
   mlLoading = true;
   try {
     await tf.ready();
-    
+
     // 1. Load model and labels (with caching)
     if (!cachedModel) {
       // Use loadLayersModel for Keras-converted models
       cachedModel = await tf.loadLayersModel(MODEL_PATH) as any;
     }
-    
+
     if (!cachedLabels) {
       const labelRes = await fetch(LABELS_PATH);
       if (!labelRes.ok) {
@@ -91,7 +91,7 @@ export async function loadLocalMLModel(): Promise<boolean> {
 
     foodModel = cachedModel as unknown as tf.LayersModel;
     foodLabels = cachedLabels;
-    
+
     console.log(`[Vision] ✅ Food-101 engine ready. Loaded ${foodLabels.length} classes.`);
     return true;
   } catch (e) {
@@ -109,7 +109,7 @@ export function isLocalMLReady(): boolean {
 // ─── Frame Capture ────────────────────────────────────────────────────────────
 function captureFrameAsBase64(video: HTMLVideoElement): string {
   const canvas = document.createElement('canvas');
-  canvas.width  = video.videoWidth  || 640;
+  canvas.width = video.videoWidth || 640;
   canvas.height = video.videoHeight || 480;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -118,7 +118,7 @@ function captureFrameAsBase64(video: HTMLVideoElement): string {
 
 function captureFrameAsDataURL(video: HTMLVideoElement): string {
   const canvas = document.createElement('canvas');
-  canvas.width  = video.videoWidth  || 640;
+  canvas.width = video.videoWidth || 640;
   canvas.height = video.videoHeight || 480;
   const ctx = canvas.getContext('2d')!;
   ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -128,17 +128,17 @@ function captureFrameAsDataURL(video: HTMLVideoElement): string {
 // ─── Cleaning Utility ────────────────────────────────────────────────────────
 function cleanAILabel(label: string | null | undefined): string {
   if (!label) return '';
-  
+
   // 1. Strip <think> tags and everything inside them (even if unclosed)
   let cleaned = label.replace(/<think>[\s\S]*?<\/think>/gi, '');
-  cleaned = cleaned.replace(/<think>[\s\S]*/gi, ''); 
-  
+  cleaned = cleaned.replace(/<think>[\s\S]*/gi, '');
+
   // 2. Remove common AI "chatter" prefixes
   cleaned = cleaned.replace(/^(here is the|the dish is|this is a|i identified this as|the main dish is|the name of the dish is|based on the image, this is)\s+/i, '');
-  
+
   // 3. Remove trailing/leading quotes and punctuation
   cleaned = cleaned.trim().replace(/^["']|["']$/g, '').replace(/[.!?]$/, '');
-  
+
   // 4. Handle cases where the AI is still too chatty (e.g. "The dish is Butter Chicken, a popular...")
   // If it's a long sentence, just take the first part before any comma or "which is"
   if (cleaned.length > 50) {
@@ -290,7 +290,7 @@ async function identifyViaOpenRouter(
 
       const data = await response.json();
       const label = cleanAILabel(data?.choices?.[0]?.message?.content);
-      
+
       if (!label || label.toLowerCase().includes('sorry') || label.toLowerCase().includes('cannot')) continue;
 
       console.log(`[Vision OpenRouter] ${model} identified:`, label);
@@ -311,10 +311,10 @@ async function identifyViaLocalML(
   overrideImage?: string
 ): Promise<VisionResult | null> {
   if (!foodModel || !foodLabels.length) return null;
-  
+
   try {
     onProgress?.('Local Neural Engine (Food-101)...');
-    
+
     // 1. Prepare image tensor (Async loading must happen outside tf.tidy)
     let imgTensor: tf.Tensor3D;
     if (overrideImage) {
@@ -331,9 +331,9 @@ async function identifyViaLocalML(
       const resized = tf.image.resizeBilinear(imgTensor, [224, 224]);
       const offset = tf.scalar(127.5);
       const normalized = resized.sub(offset).div(offset).expandDims(0);
-      
+
       const prediction = foodModel!.predict(normalized) as tf.Tensor;
-      return prediction.dataSync(); 
+      return prediction.dataSync();
     }) as Float32Array;
 
     imgTensor.dispose(); // Manual cleanup for the input tensor
@@ -343,22 +343,22 @@ async function identifyViaLocalML(
       .map((prob, i) => ({ prob, i }))
       .sort((a, b) => b.prob - a.prob)
       .slice(0, 3);
-        
-      console.log('[Vision LocalML] Top Predict:', topIndices[0].prob, foodLabels[topIndices[0].i]);
 
-      if (topIndices[0].prob < 0.10) {
-        console.log('[Vision LocalML] ❌ Confidence too low:', topIndices[0].prob);
-        return null;
-      }
-      
-      const label = foodLabels[topIndices[0].i].replace(/_/g, ' ');
-      console.log('[Vision LocalML] ✅ Identified:', label);
-      
-      return { 
-        label, 
-        confidence: topIndices[0].prob, 
-        tier: 'local-ml' 
-      };
+    console.log('[Vision LocalML] Top Predict:', topIndices[0].prob, foodLabels[topIndices[0].i]);
+
+    if (topIndices[0].prob < 0.10) {
+      console.log('[Vision LocalML] ❌ Confidence too low:', topIndices[0].prob);
+      return null;
+    }
+
+    const label = foodLabels[topIndices[0].i].replace(/_/g, ' ');
+    console.log('[Vision LocalML] ✅ Identified:', label);
+
+    return {
+      label,
+      confidence: topIndices[0].prob,
+      tier: 'local-ml'
+    };
   } catch (error: any) {
     console.warn('[Vision LocalML] Prediction failed:', error?.message);
     return null;
@@ -372,7 +372,7 @@ export async function identifyFoodFromCamera(
   onTierChange?: (msg: string) => void,
   croppedImageBase64?: string // New: Optional pre-cropped image
 ): Promise<VisionResult | null> {
-  
+
   let finalResult: VisionResult | null = null;
   let ocrResult: VisionResult | null = null;
   const targetSource = croppedImageBase64 || video;
@@ -449,7 +449,7 @@ export async function identifyFoodFromCamera(
         visionRes.confidence = Math.min(0.99, visionRes.confidence + 0.05);
       }
       finalResult = visionRes;
-    } 
+    }
     else if (mlRes && mlRes.confidence > 0.15) {
       // 3. SMART FALLBACK: ML + Sarvam Polish
       onTierChange?.('Smart Fallback: Refining...');
@@ -466,7 +466,7 @@ export async function identifyFoodFromCamera(
       } catch (err) {
         console.warn('[Vision] Sarvam Polish failed:', err);
       }
-      
+
       // If Sarvam failed but we have ML, keep ML as the result
       if (!finalResult) {
         console.log('[Vision] ✅ Tier 2b Success: Pure ML');
@@ -492,7 +492,7 @@ export async function identifyFoodFromCamera(
   if (finalResult) {
     // Attach OCR metadata if we captured it during the memory tier
     if (ocrResult?.label) finalResult.ocrText = ocrResult.label;
-    
+
     // Attach the image that led to this result
     finalResult.imageData = croppedImageBase64 || captureFrameAsBase64(video);
     return await logAndReturn(finalResult);
@@ -509,7 +509,7 @@ async function logAndReturn(result: VisionResult): Promise<VisionResult> {
     'openrouter': 'openrouter',
     'local-ml': 'ml'
   };
-  
+
   try {
     const scanResponse = await foodScanApi.log({
       foodName: result.label,
@@ -530,7 +530,7 @@ async function logAndReturn(result: VisionResult): Promise<VisionResult> {
 // Sarvam logic to clean up ML labels
 async function polishMLResultWithSarvam(mlLabel: string): Promise<string | null> {
   if (!SARVAM_API_KEY) return null;
-  
+
   const response = await fetch('https://api.sarvam.ai/v1/chat/completions', {
     method: 'POST',
     headers: {
@@ -591,15 +591,15 @@ export function matchLabelToMenu(
 
     // Word overlap
     const labelHits = labelWords.filter(lw => normName.includes(lw) || normDesc.includes(lw)).length;
-    const nameHits  = nameWords.filter((nw: string) => normLabel.includes(nw)).length;
-    const overlap   = (labelHits + nameHits) / Math.max(labelWords.length + nameWords.length, 1);
+    const nameHits = nameWords.filter((nw: string) => normLabel.includes(nw)).length;
+    const overlap = (labelHits + nameHits) / Math.max(labelWords.length + nameWords.length, 1);
     score = Math.max(score, overlap);
 
     // Food keyword bonus
     const keywords = [
-      'pizza','burger','biryani','pasta','sushi','curry','tikka','masala',
-      'noodle','salad','sandwich','soup','dosa','paneer','chicken','mutton',
-      'fish','prawn','rice','bread','roll','wrap','cake','dessert','steak'
+      'pizza', 'burger', 'biryani', 'pasta', 'sushi', 'curry', 'tikka', 'masala',
+      'noodle', 'salad', 'sandwich', 'soup', 'dosa', 'paneer', 'chicken', 'mutton',
+      'fish', 'prawn', 'rice', 'bread', 'roll', 'wrap', 'cake', 'dessert', 'steak'
     ];
     for (const kw of keywords) {
       if (normLabel.includes(kw) && normName.includes(kw)) {

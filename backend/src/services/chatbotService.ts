@@ -301,22 +301,22 @@ export class ChatbotService {
     // First pass: remove block of patterns that look like internal reasoning at the start
     const lines = cleaned.split('\n');
     let firstActualLineIndex = 0;
-    
+
     for (let i = 0; i < Math.min(lines.length, 10); i++) {
       const line = lines[i].trim().toLowerCase();
-      if (line.startsWith('okay,') || 
-          line.startsWith('let me') || 
-          line.startsWith('let\'s') ||
-          line.startsWith('i should') ||
-          line.startsWith('thinking:') ||
-          line.startsWith('i need to') ||
-          line.startsWith('alright,') ||
-          line.startsWith('the user') ||
-          line.startsWith('they asked') ||
-          line.startsWith('i will') ||
-          line.startsWith('drafting') ||
-          line.startsWith('checking') ||
-          line.startsWith('searching')) {
+      if (line.startsWith('okay,') ||
+        line.startsWith('let me') ||
+        line.startsWith('let\'s') ||
+        line.startsWith('i should') ||
+        line.startsWith('thinking:') ||
+        line.startsWith('i need to') ||
+        line.startsWith('alright,') ||
+        line.startsWith('the user') ||
+        line.startsWith('they asked') ||
+        line.startsWith('i will') ||
+        line.startsWith('drafting') ||
+        line.startsWith('checking') ||
+        line.startsWith('searching')) {
         firstActualLineIndex = i + 1;
       } else if (line === '') {
         continue;
@@ -324,7 +324,7 @@ export class ChatbotService {
         break;
       }
     }
-    
+
     if (firstActualLineIndex > 0) {
       cleaned = lines.slice(firstActualLineIndex).join('\n').trim();
     }

@@ -13,6 +13,7 @@ import { DinoStepper } from '../components/DinoStepper';
 import EmojiPicker from '../components/EmojiPicker';
 import { isRestaurantOpen } from '../utils/openStatus';
 import { trackEvent } from '../utils/analytics';
+import { useLanguage } from '../contexts/LanguageContext';
 
 
 
@@ -21,6 +22,7 @@ const RestaurantDetails = () => {
   const [searchParams] = useSearchParams();
   const type = searchParams.get('type') || 'restaurant';
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [selectedGuests, setSelectedGuests] = useState(2);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -484,7 +486,7 @@ const RestaurantDetails = () => {
       <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Loading details...</p>
+          <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{t('loadingDetails')}</p>
         </div>
       </div>
     );
@@ -494,13 +496,13 @@ const RestaurantDetails = () => {
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} flex items-center justify-center`}>
         <div className="text-center">
-          <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{type === 'restaurant' ? 'Restaurant' : 'Event'} not found</h2>
+          <h2 className={`text-2xl font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{type === 'restaurant' ? t('restaurantNotFound') : t('eventNotFound')}</h2>
           <button
             onClick={() => navigate('/dashboard')}
             className="mt-4 inline-flex items-center gap-2 text-emerald-500 hover:text-emerald-600"
           >
             <ArrowLeft size={20} />
-            <span>Back to Dashboard</span>
+            <span>{t('backToDashboard')}</span>
           </button>
         </div>
       </div>
@@ -547,7 +549,7 @@ const RestaurantDetails = () => {
             <div className="flex flex-col md:flex-row items-start md:items-center gap-2 md:gap-4 lg:gap-6 text-xs md:text-sm">
               <div className="flex items-center gap-2">
                 <Clock size={14} className="md:w-4 md:h-4 text-emerald-400" />
-                <span className="font-semibold">{restaurant && isRestaurantOpen(restaurant) ? 'Open Now' : 'Closed'}</span>
+                <span className="font-semibold">{restaurant && isRestaurantOpen(restaurant) ? t('openNow') : t('closed')}</span>
               </div>
               <div className="flex items-center gap-2">
                 <MapPin size={14} className="md:w-4 md:h-4 text-emerald-400" />
@@ -569,7 +571,7 @@ const RestaurantDetails = () => {
                     <span className="font-black text-white">{averageRating}</span>
                   </div>
                 ) : (
-                  <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">Not yet rated</span>
+                  <span className="text-xs font-black text-emerald-400 uppercase tracking-widest">{t('notYetRated')}</span>
                 )}
               </div>
             </div>
@@ -581,7 +583,7 @@ const RestaurantDetails = () => {
           {/* Booking Section */}
           <div className="lg:col-span-2">
             <div className={`${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-100'} rounded-3xl p-6 sm:p-8 shadow-xl border mb-8 transition-all`}>
-              <h2 className={`text-2xl font-black mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}>Make a Reservation</h2>
+              <h2 className={`text-2xl font-black mb-6 ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}>{t('makeAReservation')}</h2>
 
               {/* Dino Progress Tracker */}
               <DinoStepper currentStep={0} />
@@ -589,7 +591,7 @@ const RestaurantDetails = () => {
               {/* Guest and Date Selection */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8 mt-8">
                 <div>
-                  <label className={`block text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Number of Guests</label>
+                  <label className={`block text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('numberOfGuests')}</label>
                   <select
                     value={selectedGuests}
                     onChange={(e) => setSelectedGuests(Number(e.target.value))}
@@ -598,12 +600,12 @@ const RestaurantDetails = () => {
                     } border-2`}
                   >
                     {[1, 2, 3, 4, 5, 6, 7, 8].map(num => (
-                      <option key={num} value={num}>{num} {num === 1 ? 'Guest' : 'Guests'}</option>
+                      <option key={num} value={num}>{num} {num === 1 ? t('guestLabel') : t('guestsLabel')}</option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className={`block text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>Select Date</label>
+                  <label className={`block text-xs font-black uppercase tracking-widest mb-3 ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{t('selectDate')}</label>
                   <input
                     type="date"
                     value={selectedDate}
@@ -622,7 +624,7 @@ const RestaurantDetails = () => {
                     ))}
                   </datalist>
                   {blockedDates.includes(selectedDate) && (
-                    <div className="text-red-500 text-[10px] font-bold uppercase mt-2 tracking-wider">This date is fully booked.</div>
+                    <div className="text-red-500 text-[10px] font-bold uppercase mt-2 tracking-wider">{t('dateFullyBooked')}</div>
                   )}
                 </div>
               </div>
@@ -632,7 +634,7 @@ const RestaurantDetails = () => {
                 <div className="space-y-8 mt-8">
                   {lunchSlots.length > 0 && (
                     <div>
-                      <h3 className={`text-sm font-black uppercase tracking-[0.2em] mb-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Lunch Expedition</h3>
+                      <h3 className={`text-sm font-black uppercase tracking-[0.2em] mb-4 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('lunchExpedition')}</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {lunchSlots.map((slot, index) => (
                           <button
@@ -658,7 +660,7 @@ const RestaurantDetails = () => {
 
                   {dinnerSlots.length > 0 && (
                     <div>
-                      <h3 className={`text-sm font-black uppercase tracking-[0.2em] mb-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>Dinner Hunt</h3>
+                      <h3 className={`text-sm font-black uppercase tracking-[0.2em] mb-4 ${isDarkMode ? 'text-purple-400' : 'text-purple-600'}`}>{t('dinnerHunt')}</h3>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                         {dinnerSlots.map((slot, index) => (
                           <button
@@ -685,8 +687,8 @@ const RestaurantDetails = () => {
               ) : (
                 <div className="text-center py-10">
                   <div className={`${isDarkMode ? 'bg-gray-700/50' : 'bg-gray-50'} rounded-3xl p-8 border-2 border-dashed ${isDarkMode ? 'border-gray-600' : 'border-gray-200'}`}>
-                    <h3 className={`text-xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Time Slots Not Available</h3>
-                    <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} font-medium`}>The restaurant owner hasn't set up time slots yet. Please contact the restaurant directly to make a reservation.</p>
+                    <h3 className={`text-xl font-black mb-3 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>{t('timeSlotsNotAvailable')}</h3>
+                        <p className={`${isDarkMode ? 'text-gray-400' : 'text-gray-600'} font-medium`}>{t('timeSlotsDescription')}</p>
                   </div>
                 </div>
               )}
@@ -699,7 +701,7 @@ const RestaurantDetails = () => {
                   <div className="w-10 h-10 rounded-xl bg-yellow-400/10 flex items-center justify-center text-yellow-500">
                     <Tag size={20} />
                   </div>
-                  Dino Deals & Offers
+                  {t('dinoDeals')}
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {promotions.map((promo: any) => (
@@ -735,7 +737,7 @@ const RestaurantDetails = () => {
                   <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
                     <MessageSquare size={20} />
                   </div>
-                  Excavation Feedback
+                  {t('excavationFeedback')}
                 </h2>
                 <div className={`flex items-center gap-4 px-5 py-3 rounded-2xl ${isDarkMode ? 'bg-gray-700/50' : 'bg-emerald-50'}`}>
                   {averageRating ? (
@@ -751,12 +753,12 @@ const RestaurantDetails = () => {
               {/* Review Submission Form */}
               <div className={`mb-10 rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
                 <h3 className={`text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  Leave Your Mark
+                  {t('leaveYourMark')}
                 </h3>
                 <form id="review-form" onSubmit={handleReviewSubmit} className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight uppercase`}>
-                      {editingReviewId ? 'Edit Your Expedition Report' : 'Log Your Expedition'}
+                      {editingReviewId ? t('editReview') : t('logYourExpedition')}
                     </h3>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (

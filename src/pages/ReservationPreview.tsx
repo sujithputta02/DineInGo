@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useLanguage } from "../contexts/LanguageContext";
 import { ArrowLeft, MapPin, Calendar, Users } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getRestaurantById, getMockRestaurantById } from "../services/restaurantService";
@@ -48,6 +49,7 @@ const ReservationPreview: React.FC = () => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
+  const { language, t } = useLanguage();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -409,7 +411,7 @@ const ReservationPreview: React.FC = () => {
             className="flex items-center gap-2 px-4 py-2 bg-white/90 backdrop-blur-sm rounded-xl shadow-sm hover:bg-white transition-colors group"
           >
             <MapPin size={20} className="text-gray-700 group-hover:text-emerald-500" />
-            <span className="text-gray-700 font-medium group-hover:text-emerald-500">View on Map</span>
+            <span className="text-gray-700 font-medium group-hover:text-emerald-500">{t('viewOnMap')}</span>
           </a>
         </div>
       )}
@@ -422,9 +424,9 @@ const ReservationPreview: React.FC = () => {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
             <div>
               <h2 className={`text-3xl md:text-4xl font-black tracking-tight mb-2 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
-                {type === 'restaurant' ? 'Reservation Preview' : 'Event Registration'}
+                {type === 'restaurant' ? t('reservationPreview') : t('eventRegistration')}
               </h2>
-              <p className={`text-sm font-bold uppercase tracking-widest opacity-60 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Verify your mission details</p>
+              <p className={`text-sm font-bold uppercase tracking-widest opacity-60 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{t('verifyMissionDetails')}</p>
             </div>
             {/* Dino Progress Tracker */}
             <div className="w-full md:w-auto">
@@ -439,11 +441,11 @@ const ReservationPreview: React.FC = () => {
                   isDarkMode ? 'text-white border-gray-800' : 'text-gray-900 border-gray-50'
                 }`}>
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Primary Contact
+                  {t('primaryContact')}
                 </h3>
                 <div className="space-y-6">
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Full Name</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('fullName')}</label>
                     <input
                       type="text"
                       name="fullName"
@@ -454,12 +456,12 @@ const ReservationPreview: React.FC = () => {
                           ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
                           : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
                       }`}
-                      placeholder="e.g. Maverick Mitchell"
+                      placeholder={t('fullNamePlaceholder')}
                       required
                     />
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Email Address</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('emailAddress')}</label>
                     <input
                       type="email"
                       name="email"
@@ -470,12 +472,12 @@ const ReservationPreview: React.FC = () => {
                           ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
                           : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
                       }`}
-                      placeholder="e.g. maverick@topgun.com"
+                      placeholder={t('emailPlaceholder')}
                       required
                     />
                   </div>
                   <div>
-                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Phone Number</label>
+                    <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('phoneNumber')}</label>
                     <input
                       type="tel"
                       name="phoneNumber"
@@ -486,13 +488,13 @@ const ReservationPreview: React.FC = () => {
                           ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
                           : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
                       }`}
-                      placeholder="+91 XXXXX XXXXX"
+                      placeholder={t('phonePlaceholder')}
                       required
                     />
                   </div>
                   {type === 'restaurant' && (
                     <div>
-                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Occasion (Optional)</label>
+                      <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('occasion')}</label>
                       <select
                         name="occasion"
                         value={formData.occasion}
@@ -503,12 +505,12 @@ const ReservationPreview: React.FC = () => {
                             : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
                         }`}
                       >
-                        <option value="">Select Occasion</option>
-                        <option value="birthday">Birthday Celebration</option>
-                        <option value="anniversary">Anniversary Dinner</option>
-                        <option value="date">Romantic Rendezvous</option>
-                        <option value="business">Corporate Strategic Meeting</option>
-                        <option value="other">Other Special Event</option>
+                        <option value="">{t('selectOccasion')}</option>
+                        <option value="birthday">{t('birthday')}</option>
+                        <option value="anniversary">{t('anniversary')}</option>
+                        <option value="date">{t('dateNight')}</option>
+                        <option value="business">{t('business')}</option>
+                        <option value="other">{t('other')}</option>
                       </select>
                     </div>
                   )}
@@ -520,29 +522,29 @@ const ReservationPreview: React.FC = () => {
                   isDarkMode ? 'text-white border-gray-800' : 'text-gray-900 border-gray-50'
                 }`}>
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                  Manifest Details
+                  {t('manifestDetails')}
                 </h3>
                 <div className={`grid grid-cols-2 gap-4 p-6 rounded-[2rem] border-2 transition-all ${
                   isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-100'
                 }`}>
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Date</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('date')}</p>
                     <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{date}</p>
                   </div>
                   <div>
-                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Time Slot</p>
+                    <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('timeSlot')}</p>
                     <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{time}</p>
                   </div>
                   {type === 'restaurant' && (
                     <div className="col-span-2">
-                      <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Guests Count</p>
-                      <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{guests} Personnel</p>
+                      <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('guestsCount')}</p>
+                      <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{guests} {t('personnel')}</p>
                     </div>
                   )}
                   {type === 'event' && event && (
                     <>
                       <div className="col-span-2 mt-2 pt-2 border-t border-gray-500/10">
-                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Organizer</p>
+                        <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('organizer')}</p>
                         <p className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{event.organizer}</p>
                       </div>
                     </>
@@ -550,7 +552,7 @@ const ReservationPreview: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Special Mission Intel (Optional)</label>
+                  <label className={`block text-[10px] font-black uppercase tracking-widest mb-2 px-2 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>{t('specialMissionIntel')}</label>
                   <textarea
                     name="specialRequest"
                     value={formData.specialRequest}
@@ -560,7 +562,7 @@ const ReservationPreview: React.FC = () => {
                         ? 'bg-gray-800 border-gray-700 text-white focus:border-emerald-500/50' 
                         : 'bg-gray-50 border-gray-100 text-gray-900 focus:border-emerald-500/50'
                     }`}
-                    placeholder="Enter special requirements or dietary restrictions..."
+                    placeholder={t('specialRequirementsPlaceholder')}
                   />
                 </div>
 
@@ -576,10 +578,10 @@ const ReservationPreview: React.FC = () => {
                       </svg>
                     </div>
                     <span className={`ml-3 text-xs font-bold leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                      I certify that the information provided is correct and I agree to the{' '}
-                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">Terms of Engagement</a>
-                      {' '}and{' '}
-                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">Privacy Protocol</a>.
+                      {t('agreeToTerms')}{' '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">{t('termsOfEngagement')}</a>
+                      {' '}{t('and')}{' '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" className="text-emerald-500 hover:underline">{t('privacyProtocol')}</a>.
                     </span>
                   </label>
                 </div>
@@ -596,7 +598,7 @@ const ReservationPreview: React.FC = () => {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                       </svg>
                     </div>
-                    Provisioning Manifest
+                    {t('provisioningManifest')}
                   </h3>
                   <div className="flex flex-wrap items-center gap-4">
                     <div className={`px-6 py-4 rounded-2xl border-2 font-black ${isDarkMode ? 'bg-gray-800 border-gray-700' : 'bg-gray-50 border-gray-100'}`}>
