@@ -19,6 +19,7 @@ import UserFeedbackForm from './components/UserFeedbackForm';
 import FoodMenu from './pages/FoodMenu';
 import AdminLoginPage from './pages/AdminLoginPage';
 import AdminDashboard from './pages/AdminDashboard';
+import AdminSandboxPage from './pages/AdminSandboxPage';
 import AdminSecurityPage from './pages/AdminSecurityPage';
 import AdminNotificationsPage from './pages/AdminNotificationsPage';
 import AdminUsersPage from './pages/AdminUsersPage';
@@ -248,6 +249,7 @@ function App() {
                 <Route path="/admin/:sessionToken" element={<ProtectedAdminRoute><AdminLayout /></ProtectedAdminRoute>}>
                   <Route index element={<Navigate to="dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboard />} />
+                  <Route path="sandbox" element={<AdminSandboxPage />} />
                   <Route path="security" element={<AdminSecurityPage />} />
                   <Route path="waitlist" element={<AdminWaitlistPage />} />
                   <Route path="users" element={<AdminUsersPage />} />

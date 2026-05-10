@@ -19,7 +19,8 @@ import {
   AlertTriangle,
   UserCheck,
   Bug,
-  X
+  X,
+  FlaskConical
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
@@ -80,6 +81,7 @@ function AdminLayout() {
 
   const navItems = [
     { name: 'Dashboard', path: `/admin/${sessionToken}/dashboard`, icon: LayoutDashboard },
+    { name: 'Dev Sandbox', path: `/admin/${sessionToken}/sandbox`, icon: FlaskConical },
     { name: 'Users', path: `/admin/${sessionToken}/users`, icon: Users },
     { name: 'Businesses', path: `/admin/${sessionToken}/businesses`, icon: Database },
     { name: 'Notifications', path: `/admin/${sessionToken}/notifications`, icon: MessageSquare },

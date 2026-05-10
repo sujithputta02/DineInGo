@@ -15,14 +15,8 @@ import {
   UserPlus,
   ArrowUpRight,
   ArrowDownRight,
-  RefreshCw,
-  FlaskConical,
-  ShoppingCart,
-  Users as UsersIcon
+  RefreshCw
 } from 'lucide-react';
-import { useFeatureFlags } from '../contexts/FeatureFlagContext';
-import WaitlistManagement from './business/WaitlistManagement';
-import PreOrderManagement from './business/PreOrderManagement';
 import {
   LineChart,
   Line,
@@ -175,14 +169,6 @@ function AdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
   const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const { flags } = useFeatureFlags();
-  
-  // Sandbox state
-  const [showSandbox, setShowSandbox] = useState(false);
-  const [sandboxTab, setSandboxTab] = useState<'pre-orders' | 'waitlist'>('pre-orders');
-  const [businesses, setBusinesses] = useState<any[]>([]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>('');
-  const [loadingBusinesses, setLoadingBusinesses] = useState(false);
 
   // Real-time clock update - optimized to prevent re-renders
   useEffect(() => {
@@ -263,29 +249,6 @@ function AdminDashboard() {
       setLoading(false);
     }
   };
-
-  const loadBusinesses = async () => {
-    try {
-      setLoadingBusinesses(true);
-      const res = await adminApi.getBusinesses({ limit: 100 });
-      if (res.success) {
-        setBusinesses(res.businesses);
-        if (res.businesses.length > 0 && !selectedBusinessId) {
-          setSelectedBusinessId(res.businesses[0]._id);
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load businesses for sandbox');
-    } finally {
-      setLoadingBusinesses(false);
-    }
-  };
-
-  useEffect(() => {
-    if (showSandbox) {
-      loadBusinesses();
-    }
-  }, [showSandbox]);
 
   const handleRefresh = () => {
     setLoading(true);
@@ -584,111 +547,6 @@ function AdminDashboard() {
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
-
-      {/* Developer Sandbox Section */}
-      <div className="mt-12 pt-12 border-t border-slate-200">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-red-100 rounded-lg">
-                <FlaskConical className="text-red-600" size={24} />
-              </div>
-              <h2 className="text-2xl font-black text-slate-900">Developer Sandbox</h2>
-            </div>
-            <p className="text-slate-500 font-medium mt-1">Test features under development before global release</p>
-          </div>
-          <button
-            onClick={() => setShowSandbox(!showSandbox)}
-            className={`px-6 py-2.5 rounded-xl font-bold transition-all ${
-              showSandbox 
-                ? 'bg-slate-100 text-slate-600 border border-slate-200' 
-                : 'bg-red-600 text-white shadow-lg shadow-red-200 hover:bg-red-700'
-            }`}
-          >
-            {showSandbox ? 'Close Sandbox' : 'Open Sandbox'}
-          </button>
-        </div>
-
-        {showSandbox && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-6"
-          >
-            {/* Sandbox Controls */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Impersonate Business</label>
-                  <select
-                    value={selectedBusinessId}
-                    onChange={(e) => setSelectedBusinessId(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-red-500 outline-none transition-all"
-                  >
-                    {loadingBusinesses ? (
-                      <option>Loading businesses...</option>
-                    ) : (
-                      businesses.map(b => (
-                        <option key={b._id} value={b._id}>{b.name} ({b.type})</option>
-                      ))
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Feature Under Test</label>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => setSandboxTab('pre-orders')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                        sandboxTab === 'pre-orders'
-                          ? 'bg-red-600 text-white shadow-lg shadow-red-100'
-                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-                      }`}
-                    >
-                      <ShoppingCart size={16} />
-                      Pre-orders
-                    </button>
-                    <button
-                      onClick={() => setSandboxTab('waitlist')}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm transition-all ${
-                        sandboxTab === 'waitlist'
-                          ? 'bg-red-600 text-white shadow-lg shadow-red-100'
-                          : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
-                      }`}
-                    >
-                      <UsersIcon size={16} />
-                      Waitlist
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature Content */}
-            <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden min-h-[400px]">
-              <div className="bg-slate-900 text-white px-6 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  <span className="text-xs font-bold uppercase tracking-widest opacity-80">Sandbox Mode: Active</span>
-                </div>
-                <span className="text-[10px] font-mono opacity-60">TESTING_ID: {selectedBusinessId}</span>
-              </div>
-              <div className="p-4">
-                {sandboxTab === 'pre-orders' && (
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <PreOrderManagement businessId={selectedBusinessId} />
-                  </div>
-                )}
-                {sandboxTab === 'waitlist' && (
-                  <div className="bg-slate-50 rounded-xl p-4">
-                    <WaitlistManagement businessId={selectedBusinessId} />
-                  </div>
-                )}
-              </div>
-            </div>
-          </motion.div>
-        )}
       </div>
     </motion.div>
   );
