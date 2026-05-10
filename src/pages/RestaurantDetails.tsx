@@ -73,7 +73,12 @@ const RestaurantDetails = () => {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
-  const [activeLightbox, setActiveLightbox] = useState<{ images: string[], index: number } | null>(null);
+  const [activeLightbox, setActiveLightbox] = useState<{ 
+    images: string[], 
+    index: number,
+    comment?: string,
+    userName?: string
+  } | null>(null);
 
   // Helper to identify mock restaurants (Standard ObjectIDs are 24 chars)
   const isMockId = id ? id.length < 24 : true;
@@ -948,7 +953,12 @@ const RestaurantDetails = () => {
                             <div 
                               key={idx} 
                               className="relative group cursor-zoom-in w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
-                              onClick={() => setActiveLightbox({ images: review.images, index: idx })}
+                              onClick={() => setActiveLightbox({ 
+                                images: review.images, 
+                                index: idx,
+                                comment: review.comment,
+                                userName: review.userName
+                              })}
                             >
                               <img 
                                 src={normalizeImageUrl(img)} 
@@ -1075,6 +1085,27 @@ const RestaurantDetails = () => {
               >
                 <ChevronRight size={32} />
               </button>
+
+              {/* Comment Overlay */}
+              {activeLightbox.comment && (
+                <div className="absolute bottom-0 left-0 right-0 p-6 md:p-10 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white animate-in slide-in-from-bottom-10 duration-500">
+                  <div className="max-w-3xl mx-auto">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-1 h-6 bg-emerald-500 rounded-full" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-400">Expedition Report</span>
+                      {activeLightbox.userName && (
+                        <>
+                          <span className="text-white/20">•</span>
+                          <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Scout: {activeLightbox.userName}</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-lg md:text-xl font-medium leading-relaxed italic drop-shadow-md">
+                      "{activeLightbox.comment}"
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2 px-4 overflow-x-auto">
