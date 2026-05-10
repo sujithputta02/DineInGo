@@ -82,7 +82,7 @@ export const PremiumRestaurantCard: React.FC<PremiumRestaurantCardProps> = ({
                 ★
               </span>
               <span className="font-black text-sm tracking-tight">
-                {restaurant.averageRating ?? restaurant.rating}
+                {Number(restaurant.averageRating ?? restaurant.rating).toFixed(1)}
               </span>
             </div>
 

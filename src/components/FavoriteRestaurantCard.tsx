@@ -25,7 +25,7 @@ const FavoriteRestaurantCard: React.FC<FavoriteRestaurantCardProps> = ({ restaur
                     />
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md flex items-center gap-1 shadow-sm">
                         <Star size={14} className="text-yellow-500 fill-yellow-500" />
-                        <span className="text-sm font-bold text-gray-800">{restaurant.rating}</span>
+                        <span className="text-sm font-bold text-gray-800">{Number(restaurant.rating).toFixed(1)}</span>
                     </div>
                 </div>
 
