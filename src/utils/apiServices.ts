@@ -1,4 +1,7 @@
 import axios from 'axios';
+import { API_CONFIG } from '../config/api';
+
+const API_URL = API_CONFIG.BASE_URL;
 
 // API Keys (should be moved to environment variables)
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -121,7 +124,7 @@ export async function getCurrentLocation(): Promise<Location> {
 export async function getNearbyRestaurants(latitude: number, longitude: number, radius: number = 5000): Promise<Restaurant[]> {
   try {
     const response = await axios.get<GooglePlacesResponse>(
-      `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=${radius}&type=restaurant&key=${GOOGLE_MAPS_API_KEY}`
+      `${API_URL}/api/v1/geocoding/google/places?location=${latitude},${longitude}&radius=${radius}&type=restaurant`
     );
 
     const currentLocation = await getCurrentLocation();
@@ -136,13 +139,13 @@ export async function getNearbyRestaurants(latitude: number, longitude: number, 
       },
       rating: place.rating || 0,
       image: place.photos?.[0]?.photo_reference 
-        ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${GOOGLE_MAPS_API_KEY}`
+        ? `${API_URL}/api/v1/geocoding/google/places?photoreference=${place.photos[0].photo_reference}`
         : '/images/default-restaurant.jpg',
       cuisine: place.types.filter((type) => !['restaurant', 'food', 'point_of_interest', 'establishment'].includes(type)),
       priceLevel: place.price_level || 1,
       address: place.formatted_address || place.vicinity,
       photos: place.photos?.map((photo) => 
-        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${GOOGLE_MAPS_API_KEY}`
+        `${API_URL}/api/v1/geocoding/google/places?photoreference=${photo.photo_reference}`
       ) || [],
       openNow: place.opening_hours?.open_now
     }));
@@ -202,7 +205,7 @@ export async function getUpcomingEvents(latitude: number, longitude: number): Pr
 export async function searchRestaurants(query: string, latitude: number, longitude: number): Promise<Restaurant[]> {
   try {
     const response = await axios.get<GooglePlacesResponse>(
-      `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${query}&location=${latitude},${longitude}&radius=5000&type=restaurant&key=${GOOGLE_MAPS_API_KEY}`
+      `${API_URL}/api/v1/geocoding/google/places?query=${query}&location=${latitude},${longitude}&radius=5000&type=restaurant`
     );
 
     return response.data.results.map((place) => ({
@@ -215,13 +218,13 @@ export async function searchRestaurants(query: string, latitude: number, longitu
       },
       rating: place.rating || 0,
       image: place.photos?.[0]?.photo_reference 
-        ? `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${place.photos[0].photo_reference}&key=${GOOGLE_MAPS_API_KEY}`
+        ? `${API_URL}/api/v1/geocoding/google/places?photoreference=${place.photos[0].photo_reference}`
         : '/images/default-restaurant.jpg',
       cuisine: place.types.filter((type) => !['restaurant', 'food', 'point_of_interest', 'establishment'].includes(type)),
       priceLevel: place.price_level || 1,
       address: place.formatted_address,
       photos: place.photos?.map((photo) => 
-        `https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference=${photo.photo_reference}&key=${GOOGLE_MAPS_API_KEY}`
+        `${API_URL}/api/v1/geocoding/google/places?photoreference=${photo.photo_reference}`
       ) || []
     }));
   } catch (error) {

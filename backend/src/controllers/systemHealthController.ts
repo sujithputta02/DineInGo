@@ -259,9 +259,18 @@ export const toggleMaintenanceMode = async (req: Request, res: Response) => {
   }
 };
 
-// Get maintenance status
 export const getMaintenanceStatus = async (req: Request, res: Response) => {
   try {
+    // If database is not connected yet, return default status to avoid hanging
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({
+        success: true,
+        maintenanceMode: false,
+        maintenanceMessage: 'System starting up...',
+        dbStatus: 'connecting'
+      });
+    }
+
     const settings = await getSystemSettings();
     
     res.json({

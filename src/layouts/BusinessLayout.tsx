@@ -27,12 +27,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNotifications } from '../contexts/NotificationContext';
 import { getSessionToken } from '../utils/sessionGuard';
 import { Analytics } from '@vercel/analytics/react';
+import { useFeatureFlags } from '../contexts/FeatureFlagContext';
 
 function BusinessLayout() {
     const navigate = useNavigate();
     const location = useLocation();
     const { currentUser } = useAuth();
     const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+    const { shouldShow } = useFeatureFlags();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -60,13 +62,15 @@ function BusinessLayout() {
     const navItems = [
         { name: 'Dashboard', path: `/business/app/dashboard/${sessionToken}`, icon: LayoutDashboard },
         { name: 'Reservations', path: '/business/app/reservations', icon: Calendar },
-        { name: 'Waitlist', path: '/business/app/waitlist', icon: Users },
-        { name: 'Events', path: '/business/app/events', icon: Ticket },
-        { name: 'Pre-orders', path: '/business/app/pre-orders', icon: ShoppingBag },
+        { name: 'Waitlist', path: '/business/app/waitlist', icon: Users, feature: 'waitlist' },
+        { name: 'Events', path: '/business/app/events', icon: Ticket, feature: 'events' },
+        { name: 'Pre-orders', path: '/business/app/pre-orders', icon: ShoppingBag, feature: 'preOrders' },
         { name: 'Menu', path: '/business/app/menu', icon: Menu },
         { name: 'Floor Plans', path: '/business/app/floor-plans', icon: Map },
         { name: 'Settings', path: '/business/app/settings', icon: Settings },
     ];
+
+    const visibleNavItems = navItems.filter(item => !item.feature || shouldShow(item.feature as any));
 
     const notificationsPath = '/business/app/notifications';
 
@@ -88,7 +92,7 @@ function BusinessLayout() {
                 </div>
 
                 <nav className="flex-1 p-3 md:p-4 space-y-1 md:space-y-2 overflow-y-auto">
-                    {navItems.map((item) => (
+                    {visibleNavItems.map((item) => (
                         <Link
                             key={item.path}
                             to={item.path}
@@ -358,7 +362,7 @@ function BusinessLayout() {
                             <X size={24} />
                         </button>
 
-                        {navItems.map((item) => (
+                        {visibleNavItems.map((item) => (
                             <Link
                                 key={item.path}
                                 to={item.path}

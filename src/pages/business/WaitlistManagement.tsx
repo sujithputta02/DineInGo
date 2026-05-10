@@ -165,7 +165,8 @@ const WaitlistManagement: React.FC<WaitlistManagementProps> = ({ businessId }) =
             </div>
 
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                {/* Desktop Header */}
+                <div className="hidden sm:grid grid-cols-12 gap-4 p-4 bg-gray-50 border-b border-gray-200 text-xs font-semibold text-gray-500 uppercase tracking-wider">
                     <div className="col-span-1 text-center">Pos</div>
                     <div className="col-span-3">Customer</div>
                     <div className="col-span-2">Party Size</div>
@@ -196,61 +197,126 @@ const WaitlistManagement: React.FC<WaitlistManagementProps> = ({ businessId }) =
                                     animate={{ opacity: 1 }}
                                     exit={{ opacity: 0 }}
                                     key={entry._id}
-                                    className="grid grid-cols-12 gap-4 p-4 items-center hover:bg-gray-50 transition-colors"
+                                    className="p-4 hover:bg-gray-50 transition-colors"
                                 >
-                                    <div className="col-span-1 text-center font-bold text-gray-700">#{entry.position}</div>
-                                    <div className="col-span-3">
-                                        <div className="font-medium text-gray-900">{entry.customerName}</div>
-                                        <div className="text-xs text-gray-500 flex items-center gap-1">
-                                            <Phone size={10} /> {entry.customerPhone}
+                                    {/* Desktop View */}
+                                    <div className="hidden sm:grid grid-cols-12 gap-4 items-center">
+                                        <div className="col-span-1 text-center font-bold text-gray-700">#{entry.position}</div>
+                                        <div className="col-span-3">
+                                            <div className="font-medium text-gray-900">{entry.customerName}</div>
+                                            <div className="text-xs text-gray-500 flex items-center gap-1">
+                                                <Phone size={10} /> {entry.customerPhone}
+                                            </div>
+                                            {entry.notes && (
+                                                <div className="text-xs text-amber-600 mt-1 italic flex items-center gap-1">
+                                                    <MessageSquare size={10} /> {entry.notes}
+                                                </div>
+                                            )}
                                         </div>
+                                        <div className="col-span-2 flex items-center gap-2">
+                                            <Users size={16} className="text-gray-400" />
+                                            <span>{entry.partySize} guests</span>
+                                        </div>
+                                        <div className="col-span-2 text-sm text-gray-600">
+                                            <div className="flex items-center gap-2">
+                                                <Clock size={16} className="text-gray-400" />
+                                                {Math.floor((Date.now() - new Date(entry.createdAt).getTime()) / 60000)} mins
+                                            </div>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(entry.status)}`}>
+                                                {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
+                                            </span>
+                                        </div>
+                                        <div className="col-span-2 flex justify-end gap-2">
+                                            {entry.status === 'waiting' && (
+                                                <button
+                                                    onClick={() => handleNotify(entry)}
+                                                    className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                                                    title="Notify Table Ready"
+                                                >
+                                                    <Bell size={18} />
+                                                </button>
+                                            )}
+                                            {entry.status === 'notified' && (
+                                                <button
+                                                    onClick={() => handleSeated(entry)}
+                                                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                                                    title="Mark Seated"
+                                                >
+                                                    <CheckCircle size={18} />
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleCancel(entry)}
+                                                className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                title="Cancel"
+                                            >
+                                                <XCircle size={18} />
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Mobile View */}
+                                    <div className="sm:hidden space-y-3">
+                                        <div className="flex justify-between items-start">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-slate-600 text-sm border-2 border-white shadow-sm">
+                                                    #{entry.position}
+                                                </div>
+                                                <div>
+                                                    <div className="font-bold text-gray-900">{entry.customerName}</div>
+                                                    <div className="text-[10px] text-gray-500 font-medium uppercase tracking-wider flex items-center gap-1">
+                                                        <Phone size={10} className="text-emerald-500" /> {entry.customerPhone}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-widest ${getStatusColor(entry.status)}`}>
+                                                {entry.status}
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2">
+                                            <div className="flex items-center gap-2 text-[11px] text-gray-600 bg-gray-50 p-2 rounded-lg font-medium">
+                                                <Users size={14} className="text-gray-400" />
+                                                {entry.partySize} Guests
+                                            </div>
+                                            <div className="flex items-center gap-2 text-[11px] text-gray-600 bg-gray-50 p-2 rounded-lg font-medium">
+                                                <Clock size={14} className="text-gray-400" />
+                                                {Math.floor((Date.now() - new Date(entry.createdAt).getTime()) / 60000)} mins
+                                            </div>
+                                        </div>
+
                                         {entry.notes && (
-                                            <div className="text-xs text-amber-600 mt-1 italic flex items-center gap-1">
-                                                <MessageSquare size={10} /> {entry.notes}
+                                            <div className="text-[11px] text-amber-700 bg-amber-50 p-2 rounded-lg border border-amber-100 italic flex items-center gap-2">
+                                                <MessageSquare size={14} className="text-amber-500" /> {entry.notes}
                                             </div>
                                         )}
-                                    </div>
-                                    <div className="col-span-2 flex items-center gap-2">
-                                        <Users size={16} className="text-gray-400" />
-                                        <span>{entry.partySize} guests</span>
-                                    </div>
-                                    <div className="col-span-2 text-sm text-gray-600">
-                                        <div className="flex items-center gap-2">
-                                            <Clock size={16} className="text-gray-400" />
-                                            {Math.floor((Date.now() - new Date(entry.createdAt).getTime()) / 60000)} mins
+
+                                        <div className="flex gap-2 pt-1">
+                                            {entry.status === 'waiting' && (
+                                                <button
+                                                    onClick={() => handleNotify(entry)}
+                                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-emerald-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+                                                >
+                                                    <Bell size={14} /> Notify Ready
+                                                </button>
+                                            )}
+                                            {entry.status === 'notified' && (
+                                                <button
+                                                    onClick={() => handleSeated(entry)}
+                                                    className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-500 text-white rounded-xl text-[11px] font-black uppercase tracking-widest shadow-lg shadow-blue-500/20 active:scale-95 transition-all"
+                                                >
+                                                    <CheckCircle size={14} /> Mark Seated
+                                                </button>
+                                            )}
+                                            <button
+                                                onClick={() => handleCancel(entry)}
+                                                className="w-12 flex items-center justify-center py-2.5 bg-gray-100 text-gray-400 rounded-xl active:scale-95 transition-all"
+                                            >
+                                                <XCircle size={18} />
+                                            </button>
                                         </div>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(entry.status)}`}>
-                                            {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
-                                        </span>
-                                    </div>
-                                    <div className="col-span-2 flex justify-end gap-2">
-                                        {entry.status === 'waiting' && (
-                                            <button
-                                                onClick={() => handleNotify(entry)}
-                                                className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
-                                                title="Notify Table Ready"
-                                            >
-                                                <Bell size={18} />
-                                            </button>
-                                        )}
-                                        {entry.status === 'notified' && (
-                                            <button
-                                                onClick={() => handleSeated(entry)}
-                                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Mark Seated"
-                                            >
-                                                <CheckCircle size={18} />
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => handleCancel(entry)}
-                                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                            title="Cancel"
-                                        >
-                                            <XCircle size={18} />
-                                        </button>
                                     </div>
                                 </motion.div>
                             ))

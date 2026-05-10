@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ShoppingCart, Star, StarHalf, Tag, Percent, MessageSquare, Send, Eye } from 'lucide-react';
+import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ChevronRight, ShoppingCart, Star, StarHalf, Tag, Percent, MessageSquare, Send, Eye, Camera, Image as ImageIcon, X, Trash2, Edit2, Maximize2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getRestaurantById, getMockTotalGuests } from '../services/restaurantService';
 import { getMockEventById, getMockEventCapacity } from '../services/event-service';
@@ -69,7 +69,11 @@ const RestaurantDetails = () => {
   const [newRating, setNewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [newComment, setNewComment] = useState('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [activeLightbox, setActiveLightbox] = useState<{ images: string[], index: number } | null>(null);
 
   // Helper to identify mock restaurants (Standard ObjectIDs are 24 chars)
   const isMockId = id ? id.length < 24 : true;
@@ -300,6 +304,27 @@ const RestaurantDetails = () => {
     navigate(`/event/${id}/register`);
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const newImages = [...selectedImages, ...files].slice(0, 5); // Limit to 5 images
+      setSelectedImages(newImages);
+
+      const newPreviews = newImages.map(file => URL.createObjectURL(file));
+      setImagePreviews(newPreviews);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...selectedImages];
+    newImages.splice(index, 1);
+    setSelectedImages(newImages);
+
+    const newPreviews = [...imagePreviews];
+    newPreviews.splice(index, 1);
+    setImagePreviews(newPreviews);
+  };
+
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
@@ -313,7 +338,6 @@ const RestaurantDetails = () => {
     }
 
     try {
-      // Get user from local storage
       const userStr = localStorage.getItem('userData');
       const user = userStr ? JSON.parse(userStr) : null;
 
@@ -323,20 +347,33 @@ const RestaurantDetails = () => {
       }
 
       setIsSubmittingReview(true);
-      await businessApi.addReview({
-        businessId: id,
-        userId: user.uid,
-        userName: user.displayName || user.name || 'Anonymous User',
-        userPhoto: user.photoURL || user.photoUrl, // Handle both casing consistent with LoginPage.tsx
-        rating: newRating,
-        comment: newComment,
+
+      const formData = new FormData();
+      formData.append('userId', user.uid);
+      formData.append('userName', user.displayName || user.name || 'Anonymous User');
+      formData.append('userPhoto', user.photoURL || user.photoUrl || '');
+      formData.append('rating', newRating.toString());
+      formData.append('comment', newComment);
+      
+      selectedImages.forEach(image => {
+        formData.append('images', image);
       });
 
-      trackEvent('submit_review', { 
-        id, 
-        rating: newRating,
-        isMock: isMockId
-      });
+      if (editingReviewId) {
+        // Update existing review
+        // In this case, we also need to send the existing images that were kept
+        const existingImages = reviews.find(r => r._id === editingReviewId)?.images || [];
+        // For simplicity, if we are editing, we might want to handle existing vs new images
+        // For now, let's just append existing images as JSON if they weren't deleted
+        // (This part needs backend support for 'existingImages' field or similar)
+        formData.append('existingImages', JSON.stringify(imagePreviews.filter(p => p.startsWith('http'))));
+        await businessApi.updateReview(editingReviewId, formData);
+        toast.success('Review updated successfully!');
+      } else {
+        // Add new review
+        await businessApi.addReview(id, formData);
+        toast.success('Review submitted successfully!');
+      }
 
       // Refresh reviews
       const reviewsData = await businessApi.getReviews(id);
@@ -345,9 +382,36 @@ const RestaurantDetails = () => {
       // Reset form
       setNewRating(0);
       setNewComment('');
-      toast.error('Failed to submit review. Please try again.');
+      setSelectedImages([]);
+      setImagePreviews([]);
+      setEditingReviewId(null);
+    } catch (error: any) {
+      console.error('Review error:', error);
+      toast.error(error.response?.data?.message || 'Failed to submit review');
     } finally {
       setIsSubmittingReview(false);
+    }
+  };
+
+  const handleEditReview = (review: any) => {
+    setEditingReviewId(review._id);
+    setNewRating(review.rating);
+    setNewComment(review.comment);
+    setImagePreviews(review.images || []);
+    // Note: selectedImages will stay empty until new files are picked
+    // Scroll to form
+    document.getElementById('review-form')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+
+    try {
+      await businessApi.deleteReview(reviewId);
+      setReviews(reviews.filter(r => r._id !== reviewId));
+      toast.success('Review deleted');
+    } catch (err) {
+      toast.error('Failed to delete review');
     }
   };
 
@@ -684,10 +748,12 @@ const RestaurantDetails = () => {
                 <h3 className={`text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                   Leave Your Mark
                 </h3>
-                <form onSubmit={handleReviewSubmit} className="space-y-6">
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>Rating:</span>
-                    <div className="flex items-center gap-1.5">
+                <form id="review-form" onSubmit={handleReviewSubmit} className="space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight uppercase`}>
+                      {editingReviewId ? 'Edit Your Expedition Report' : 'Log Your Expedition'}
+                    </h3>
+                    <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
                         <div key={star} className="relative cursor-pointer group">
                           <button
@@ -709,7 +775,7 @@ const RestaurantDetails = () => {
                               <Star size={28} className="text-yellow-400 fill-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.4)]" />
                             ) : (hoverRating || newRating) >= star - 0.5 ? (
                               <div className="relative">
-                                <Star size={28} className="text-gray-300" />
+                                <Star size={28} className={`${isDarkMode ? 'text-gray-600' : 'text-gray-300'}`} />
                                 <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
                                   <Star size={28} className="text-yellow-400 fill-yellow-400" />
                                 </div>
@@ -722,6 +788,7 @@ const RestaurantDetails = () => {
                       ))}
                     </div>
                   </div>
+                  
                   <div className="relative">
                     <textarea
                       value={newComment}
@@ -731,23 +798,90 @@ const RestaurantDetails = () => {
                         isDarkMode ? 'bg-gray-800 border-gray-600 text-white' : 'bg-white border-gray-100 text-gray-900'
                       }`}
                     />
-                    <div className="absolute bottom-3 right-3 scale-110">
+                    <div className="absolute bottom-3 right-3 scale-110 flex items-center gap-2">
                       <EmojiPicker
                         onEmojiSelect={(emoji) => setNewComment(prev => prev + emoji)}
                       />
                     </div>
                   </div>
-                  <button
-                    type="submit"
-                    disabled={isSubmittingReview}
-                    className="group relative bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm py-4 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-95 disabled:opacity-50 overflow-hidden"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
-                    <span className="relative flex items-center justify-center gap-3">
-                      {isSubmittingReview ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : null}
-                      Post Review
-                    </span>
-                  </button>
+
+                  {/* Image Upload Area */}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <label className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Visual Evidence (Optional)
+                      </label>
+                      <span className="text-[10px] font-bold text-gray-400">{imagePreviews.length}/5 photos</span>
+                    </div>
+                    
+                    <div className="flex flex-wrap gap-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative w-24 h-24 group">
+                          <img 
+                            src={preview} 
+                            alt="Preview" 
+                            className="w-full h-full object-cover rounded-2xl border-2 border-emerald-500/20"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg hover:bg-rose-600 transition-colors"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                      
+                      {imagePreviews.length < 5 && (
+                        <label className={`w-24 h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
+                          isDarkMode 
+                            ? 'bg-gray-800/50 border-gray-700 hover:border-emerald-500 hover:bg-emerald-500/5' 
+                            : 'bg-gray-50 border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
+                        }`}>
+                          <Camera className="text-gray-400 mb-1" size={24} />
+                          <span className="text-[10px] font-bold text-gray-400 uppercase">Add Photo</span>
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            multiple 
+                            onChange={handleImageChange} 
+                            className="hidden" 
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      type="submit"
+                      disabled={isSubmittingReview}
+                      className="flex-1 group relative bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm py-4 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-95 disabled:opacity-50 overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                      <span className="relative flex items-center justify-center gap-3">
+                        {isSubmittingReview ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Send size={18} />}
+                        {editingReviewId ? 'Update Report' : 'Post Review'}
+                      </span>
+                    </button>
+                    {editingReviewId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setEditingReviewId(null);
+                          setNewRating(0);
+                          setNewComment('');
+                          setImagePreviews([]);
+                          setSelectedImages([]);
+                        }}
+                        className={`px-8 rounded-2xl font-black uppercase tracking-widest text-xs border-2 ${
+                          isDarkMode ? 'border-gray-700 text-gray-400' : 'border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        Cancel
+                      </button>
+                    )}
+                  </div>
                 </form>
               </div>
 
@@ -765,21 +899,70 @@ const RestaurantDetails = () => {
                     <div key={review._id} className={`p-6 rounded-3xl border-2 transition-all ${isDarkMode ? 'bg-gray-700/20 border-gray-700 hover:border-emerald-500/20' : 'bg-white border-gray-50 hover:border-emerald-100'}`}>
                       <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg ${
-                            isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500 text-white'
-                          }`}>
-                            {review.userName?.charAt(0) || 'U'}
-                          </div>
+                          {review.userPhoto ? (
+                            <img 
+                              src={normalizeImageUrl(review.userPhoto)} 
+                              alt={review.userName} 
+                              className="w-12 h-12 rounded-2xl object-cover shadow-lg"
+                            />
+                          ) : (
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg ${
+                              isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-500 text-white'
+                            }`}>
+                              {review.userName?.charAt(0) || 'U'}
+                            </div>
+                          )}
                           <div>
                             <div className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{review.userName || 'Anonymous'}</div>
                             <div className={`text-[10px] font-bold uppercase tracking-widest opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Authenticated Explorer • {new Date(review.createdAt).toLocaleDateString()}</div>
                           </div>
                         </div>
-                        <div className="scale-90">
-                          <StarRating rating={review.rating} size={14} />
+                        <div className="flex items-center gap-3">
+                          <div className="scale-90">
+                            <StarRating rating={review.rating} size={14} />
+                          </div>
+                          {localStorage.getItem('userData') && JSON.parse(localStorage.getItem('userData')!).uid === review.userId && (
+                            <div className="flex items-center gap-2">
+                              <button 
+                                onClick={() => handleEditReview(review)}
+                                className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-gray-800 text-emerald-400 hover:bg-gray-700' : 'bg-gray-50 text-emerald-600 hover:bg-gray-100'}`}
+                              >
+                                <Edit2 size={14} />
+                              </button>
+                              <button 
+                                onClick={() => handleDeleteReview(review._id)}
+                                className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-gray-800 text-rose-400 hover:bg-gray-700' : 'bg-gray-50 text-rose-600 hover:bg-gray-100'}`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
-                      <p className={`text-base font-medium leading-relaxed ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.comment}</p>
+                      <p className={`text-base font-medium leading-relaxed mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.comment}</p>
+                      
+                      {/* Review Images Gallery */}
+                      {review.images && review.images.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-4">
+                          {review.images.map((img: string, idx: number) => (
+                            <div 
+                              key={idx} 
+                              className="relative group cursor-zoom-in w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
+                              onClick={() => setActiveLightbox({ images: review.images, index: idx })}
+                            >
+                              <img 
+                                src={normalizeImageUrl(img)} 
+                                alt={`Review ${idx}`} 
+                                className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                              />
+                              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <Maximize2 className="text-white" size={20} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
                       {review.reply && (
                         <div className={`mt-6 rounded-2xl p-5 border-l-4 border-emerald-500 ${isDarkMode ? 'bg-gray-700/40 text-gray-400' : 'bg-emerald-50/50 text-emerald-800'}`}>
                           <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-60">Owner Response</div>
@@ -861,6 +1044,54 @@ const RestaurantDetails = () => {
             </div>
           </div>
         </div>
+
+        {/* Lightbox Modal */}
+        {activeLightbox && (
+          <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 md:p-8">
+            <button 
+              onClick={() => setActiveLightbox(null)}
+              className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-all z-[110]"
+            >
+              <X size={24} />
+            </button>
+            
+            <div className="relative w-full max-w-5xl aspect-video md:aspect-auto md:h-[80vh] flex items-center justify-center">
+              <button 
+                onClick={() => setActiveLightbox({ ...activeLightbox, index: (activeLightbox.index - 1 + activeLightbox.images.length) % activeLightbox.images.length })}
+                className="absolute left-0 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all z-[110]"
+              >
+                <ChevronLeft size={32} />
+              </button>
+              
+              <img 
+                src={normalizeImageUrl(activeLightbox.images[activeLightbox.index])} 
+                alt="Fullscreen view" 
+                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in fade-in zoom-in duration-300"
+              />
+              
+              <button 
+                onClick={() => setActiveLightbox({ ...activeLightbox, index: (activeLightbox.index + 1) % activeLightbox.images.length })}
+                className="absolute right-0 p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all z-[110]"
+              >
+                <ChevronRight size={32} />
+              </button>
+            </div>
+
+            <div className="absolute bottom-8 left-0 right-0 flex justify-center gap-2 px-4 overflow-x-auto">
+              {activeLightbox.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveLightbox({ ...activeLightbox, index: idx })}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all flex-shrink-0 ${
+                    activeLightbox.index === idx ? 'border-emerald-500 scale-110' : 'border-transparent opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <img src={normalizeImageUrl(img)} alt="Thumbnail" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     );
   }

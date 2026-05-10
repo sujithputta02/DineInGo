@@ -4107,6 +4107,8 @@ return (
             ].filter(item => {
               if (item.id === 'ar-menu') return shouldShow('arMenus');
               if (item.id === 'events') return shouldShow('events');
+              if (item.id === 'bookings') return true; // Always show bookings
+              // Add other feature-dependent items here if needed
               return true;
             }).map(({ id, label, icon }) => (
               <button

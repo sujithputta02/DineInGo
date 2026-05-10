@@ -9,6 +9,7 @@ import {
   getUpcomingEvents,
   registerForEvent
 } from '../controllers/eventController';
+import { uploadCloud as upload } from '../config/cloudinary';
 import {
   getEventReviews,
   addEventReview,
@@ -50,9 +51,9 @@ router.post('/:id/register', registerForEvent);
 
 // Event Review Routes
 router.get('/:eventId/reviews', getEventReviews);
-router.post('/:eventId/reviews', addEventReview);
+router.post('/:eventId/reviews', upload.array('images', 5), addEventReview);
 router.get('/:eventId/reviews/stats', getEventRatingStats);
-router.put('/reviews/:id', updateReview);
+router.put('/reviews/:id', upload.array('images', 5), updateReview);
 router.delete('/reviews/:id', deleteReview);
 router.post('/reviews/:id/reply', replyToReview);
 router.put('/reviews/:id/reply', updateReply);

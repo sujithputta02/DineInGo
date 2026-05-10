@@ -618,16 +618,51 @@ async function getBusinessReviews(businessId: string) {
   return apiRequest(`${API_URL}/api/v1/business/${businessId}/reviews`);
 }
 
-async function addBusinessReview(data: any) {
-  const { businessId, ...reviewData } = data;
-  return apiRequest(`${API_URL}/api/v1/business/${businessId}/reviews`, 'POST', reviewData);
+async function addBusinessReview(businessId: string, data: any) {
+  // If data is FormData, send it directly using fetch
+  if (data instanceof FormData) {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/api/v1/business/${businessId}/reviews`, {
+      method: 'POST',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: data
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${response.status}: ${errorText}`);
+    }
+    return await response.json();
+  }
+  
+  // Backward compatibility for JSON
+  return apiRequest(`${API_URL}/api/v1/business/${businessId}/reviews`, 'POST', data);
 }
 
 async function replyToBusinessReview(id: string, text: string) {
   return apiRequest(`${API_URL}/api/v1/business/reviews/${id}/reply`, 'POST', { text });
 }
 
-async function updateBusinessReview(id: string, data: { rating: number; comment: string }) {
+async function updateBusinessReview(id: string, data: any) {
+  // If data is FormData, send it directly using fetch
+  if (data instanceof FormData) {
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/api/v1/business/reviews/${id}`, {
+      method: 'PUT',
+      headers: {
+        ...(token && { 'Authorization': `Bearer ${token}` })
+      },
+      body: data
+    });
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`${response.status}: ${errorText}`);
+    }
+    return await response.json();
+  }
+  
+  // Backward compatibility
   return apiRequest(`${API_URL}/api/v1/business/reviews/${id}`, 'PUT', data);
 }
 
@@ -1025,7 +1060,6 @@ async function registerForEventInApi(id: string, data: any) {
   return apiRequest(`${API_URL}/api/v1/events/${id}/register`, 'POST', data);
 }
 
-// Event API combined object
 export const eventApi = {
   getAll: getAllEvents,
   getById: getEventByIdInApi,
@@ -1035,6 +1069,30 @@ export const eventApi = {
   getUpcoming: getUpcomingEvents,
   search: searchEventsInApi,
   register: registerForEventInApi,
+  getReviews: async (eventId: string) => {
+    return apiRequest(`${API_URL}/api/v1/events/${eventId}/reviews`);
+  },
+  addReview: async (eventId: string, data: any) => {
+    if (data instanceof FormData) {
+      const token = await getAuthToken();
+      const response = await fetch(`${API_URL}/api/v1/events/${eventId}/reviews`, {
+        method: 'POST',
+        headers: {
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        },
+        body: data
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`${response.status}: ${errorText}`);
+      }
+      return await response.json();
+    }
+    return apiRequest(`${API_URL}/api/v1/events/${eventId}/reviews`, 'POST', data);
+  },
+  getRatingStats: async (eventId: string) => {
+    return apiRequest(`${API_URL}/api/v1/events/${eventId}/reviews/stats`);
+  },
 };
 
 export interface UserData {

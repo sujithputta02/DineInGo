@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { indianCities, IndianCity } from '../utils/indianCities';
+import { API_CONFIG } from '../config/api';
 
+const API_URL = API_CONFIG.BASE_URL;
 const OPENCAGE_API_KEY = import.meta.env.VITE_OPENCAGE_API_KEY;
 const OPENCAGE_BASE_URL = 'https://api.opencagedata.com/geocode/v1';
 const GOOGLE_MAPS_API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
@@ -227,7 +229,7 @@ export class GeocodingService {
     
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}`
+        `${API_URL}/api/v1/geocoding/google/geocode?address=${encodeURIComponent(query)}`
       );
       
       if (!response.ok) {
@@ -253,7 +255,7 @@ export class GeocodingService {
     
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query)}&key=${GOOGLE_MAPS_API_KEY}`
+        `${API_URL}/api/v1/geocoding/google/places?query=${encodeURIComponent(query)}`
       );
       
       if (!response.ok) {

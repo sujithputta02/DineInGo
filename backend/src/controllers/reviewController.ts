@@ -12,16 +12,23 @@ export const getBusinessReviews = async (req: Request, res: Response) => {
     try {
         const { businessId } = req.params;
 
+        if (!mongoose.isValidObjectId(businessId)) {
+            console.error('[ReviewController] Invalid businessId:', businessId);
+            return res.status(400).json({ message: 'Invalid business ID format' });
+        }
+
         // Check if this business is an event by looking at the Business collection
         const business = await Business.findById(businessId);
 
         let reviews;
         if (business && (business.type === 'event' || business.type === 'both')) {
+            console.log('[ReviewController] Fetching event reviews for:', businessId);
             // For events, look for reviews with eventId
             reviews = await Review.find({
                 eventId: new mongoose.Types.ObjectId(businessId)
             }).sort({ createdAt: -1 });
         } else {
+            console.log('[ReviewController] Fetching business reviews for:', businessId);
             // For regular businesses, look for reviews with businessId
             reviews = await Review.find({
                 businessId: new mongoose.Types.ObjectId(businessId)
@@ -30,7 +37,8 @@ export const getBusinessReviews = async (req: Request, res: Response) => {
 
         res.json(reviews);
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        console.error('[ReviewController] Error in getBusinessReviews:', error);
+        res.status(500).json({ message: error.message || 'Failed to fetch reviews' });
     }
 };
 
@@ -63,7 +71,28 @@ export const addReview = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Business ID is required' });
         }
 
-        const { userId, userName, userPhoto, rating, comment, bookingId, images } = req.body;
+        let { userId, userName, userPhoto, rating, comment, bookingId, images: bodyImages } = req.body;
+
+        // Handle file uploads
+        let uploadedImages: string[] = [];
+        if (req.files && Array.isArray(req.files)) {
+            uploadedImages = (req.files as Express.Multer.File[]).map(file => file.path);
+        }
+
+        // Handle existing images (from bodyImages)
+        let finalImages: string[] = [];
+        if (typeof bodyImages === 'string') {
+            try {
+                finalImages = JSON.parse(bodyImages);
+            } catch (e) {
+                finalImages = [];
+            }
+        } else if (Array.isArray(bodyImages)) {
+            finalImages = bodyImages;
+        }
+
+        // Combine uploaded and existing
+        finalImages = [...finalImages, ...uploadedImages];
 
         const review = new Review({
             businessId: new mongoose.Types.ObjectId(businessIdRaw),
@@ -73,7 +102,7 @@ export const addReview = async (req: Request, res: Response) => {
             rating,
             comment,
             bookingId: bookingId ? new mongoose.Types.ObjectId(bookingId) : undefined,
-            images: images || [],
+            images: finalImages,
             likes: [],
             dislikes: []
         });
@@ -169,11 +198,32 @@ export const replyToReview = async (req: Request, res: Response) => {
 export const updateReview = async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const { rating, comment } = req.body;
+        let { rating, comment, images: bodyImages } = req.body;
+
+        // Handle file uploads
+        let uploadedImages: string[] = [];
+        if (req.files && Array.isArray(req.files)) {
+            uploadedImages = (req.files as Express.Multer.File[]).map(file => file.path);
+        }
+
+        // Handle existing images and potential deletions
+        let finalImages: string[] = [];
+        if (typeof bodyImages === 'string') {
+            try {
+                finalImages = JSON.parse(bodyImages);
+            } catch (e) {
+                finalImages = [];
+            }
+        } else if (Array.isArray(bodyImages)) {
+            finalImages = bodyImages;
+        }
+
+        // Combine with new uploads
+        finalImages = [...finalImages, ...uploadedImages];
 
         const review = await Review.findByIdAndUpdate(
             id,
-            { rating, comment, updatedAt: new Date() },
+            { rating, comment, images: finalImages, updatedAt: new Date() },
             { new: true }
         );
 
@@ -350,7 +400,28 @@ export const addEventReview = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Event ID is required' });
         }
 
-        const { userId, userName, userPhoto, rating, comment, bookingId, images } = req.body;
+        let { userId, userName, userPhoto, rating, comment, bookingId, images: bodyImages } = req.body;
+
+        // Handle file uploads
+        let uploadedImages: string[] = [];
+        if (req.files && Array.isArray(req.files)) {
+            uploadedImages = (req.files as Express.Multer.File[]).map(file => file.path);
+        }
+
+        // Handle existing images
+        let finalImages: string[] = [];
+        if (typeof bodyImages === 'string') {
+            try {
+                finalImages = JSON.parse(bodyImages);
+            } catch (e) {
+                finalImages = [];
+            }
+        } else if (Array.isArray(bodyImages)) {
+            finalImages = bodyImages;
+        }
+
+        // Combine uploaded and existing
+        finalImages = [...finalImages, ...uploadedImages];
 
         // Validate required fields
         if (!userId) {
@@ -380,6 +451,7 @@ export const addEventReview = async (req: Request, res: Response) => {
             existingReview.comment = comment;
             existingReview.userPhoto = userPhoto;
             existingReview.userName = userName;
+            existingReview.images = finalImages;
 
             await existingReview.save();
 
@@ -398,7 +470,7 @@ export const addEventReview = async (req: Request, res: Response) => {
             rating,
             comment,
             bookingId: bookingId ? new mongoose.Types.ObjectId(bookingId) : undefined,
-            images: images || [],
+            images: finalImages,
             likes: [],
             dislikes: []
         });

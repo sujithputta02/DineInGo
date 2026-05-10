@@ -110,59 +110,61 @@ const EventSeatingViewer: React.FC<EventSeatingViewerProps> = ({
       </div>
 
       {/* Canvas Container - dark mode background */}
-      <div className="relative w-full max-w-4xl mx-auto aspect-[4/3] bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-2xl">
-        {/* Concert Areas */}
-        {areas.map((area: any) => {
-          const isSelected = selectedAreaIds.includes(area.id);
-          const styling = getAreaStyling(area.tier);
-          const booked = bookedCounts[area.id] ?? area.booked ?? 0;
-          const isFull = booked >= area.capacity;
+      <div className="relative w-full overflow-auto lg:overflow-visible flex items-center justify-center">
+        <div className="relative min-w-[600px] lg:min-w-0 w-full max-w-[800px] aspect-[4/3] bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0">
+          {/* Concert Areas */}
+          {areas.map((area: any) => {
+            const isSelected = selectedAreaIds.includes(area.id);
+            const styling = getAreaStyling(area.tier);
+            const booked = bookedCounts[area.id] ?? area.booked ?? 0;
+            const isFull = booked >= area.capacity;
 
-          return (
-            <div
-              key={area.id}
-              onClick={() => !isFull && onAreaClick && onAreaClick(area.id)}
-              className={`absolute border-2 rounded-lg transition-all duration-200 ${styling.bg} ${styling.border} ${styling.text} ${styling.shadow} ${isFull
-                  ? 'opacity-50 cursor-not-allowed'
-                  : 'cursor-pointer hover:ring-2 hover:ring-emerald-400'
-                } ${isSelected ? 'ring-4 ring-emerald-500 ring-offset-2 ring-offset-slate-900' : ''
-                }`}
-              style={{
-                left: `${area.x}%`,
-                top: `${area.y}%`,
-                width: `${area.width}%`,
-                height: `${area.height}%`,
-                transform: 'translate(-50%, -50%)',
-                zIndex: isSelected ? 20 : 10
-              }}
-            >
-              {/* Area Content - exact match from designer */}
-              <div className="w-full h-full flex flex-col items-center justify-center p-2 text-center">
-                <div className="font-bold text-sm uppercase tracking-wider">{area.name || area.label}</div>
-                <div className="text-xs opacity-80 mt-1">{area.tier.toUpperCase()}</div>
-                <div className={`text-xs mt-1 font-medium ${isFull ? 'text-red-400' : 'opacity-60'}`}>
-                  {booked}/{area.capacity} booked{isFull ? ' — FULL' : ''}
+            return (
+              <div
+                key={area.id}
+                onClick={() => !isFull && onAreaClick && onAreaClick(area.id)}
+                className={`absolute border-2 rounded-lg transition-all duration-200 ${styling.bg} ${styling.border} ${styling.text} ${styling.shadow} ${isFull
+                    ? 'opacity-50 cursor-not-allowed'
+                    : 'cursor-pointer hover:ring-2 hover:ring-emerald-400'
+                  } ${isSelected ? 'ring-4 ring-emerald-500 ring-offset-2 ring-offset-slate-900' : ''
+                  }`}
+                style={{
+                  left: `${area.x}%`,
+                  top: `${area.y}%`,
+                  width: `${area.width}%`,
+                  height: `${area.height}%`,
+                  transform: 'translate(-50%, -50%)',
+                  zIndex: isSelected ? 20 : 10
+                }}
+              >
+                {/* Area Content - exact match from designer */}
+                <div className="w-full h-full flex flex-col items-center justify-center p-1 sm:p-2 text-center">
+                  <div className="font-bold text-[10px] sm:text-sm uppercase tracking-wider line-clamp-1">{area.name || area.label}</div>
+                  <div className="text-[8px] sm:text-xs opacity-80 mt-0.5">{area.tier.toUpperCase()}</div>
+                  <div className={`text-[8px] sm:text-xs mt-0.5 font-medium ${isFull ? 'text-red-400' : 'opacity-60'}`}>
+                    {booked}/{area.capacity} {isFull ? 'FULL' : 'booked'}
+                  </div>
+                  <div className="text-[10px] sm:text-xs font-bold mt-1 text-emerald-400">₹{area.price}</div>
                 </div>
-                <div className="text-xs font-medium mt-1">₹{area.price}</div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
 
       {/* Legend - dark mode */}
-      <div className="mt-12 flex flex-wrap justify-center gap-6 bg-slate-800 px-6 py-3 rounded-full border-2 border-slate-700 shadow-md">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-amber-600/30 border-amber-500 border-2"></div>
-          <span className="text-xs text-slate-300 font-medium">VIP Area</span>
+      <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-4 sm:gap-6 bg-slate-800 px-4 sm:px-6 py-3 rounded-full border-2 border-slate-700 shadow-md overflow-x-auto max-w-[90vw] no-scrollbar">
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-amber-600/30 border-amber-500 border-2"></div>
+          <span className="text-[10px] sm:text-xs text-slate-300 font-medium">VIP Area</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-emerald-600/30 border-emerald-500 border-2"></div>
-          <span className="text-xs text-slate-300 font-medium">Premium Area</span>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-emerald-600/30 border-emerald-500 border-2"></div>
+          <span className="text-[10px] sm:text-xs text-slate-300 font-medium">Premium Area</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-slate-600/30 border-slate-500 border-2"></div>
-          <span className="text-xs text-slate-300 font-medium">Standard Area</span>
+        <div className="flex items-center gap-2 whitespace-nowrap">
+          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-slate-600/30 border-slate-500 border-2"></div>
+          <span className="text-[10px] sm:text-xs text-slate-300 font-medium">Standard Area</span>
         </div>
       </div>
     </div>

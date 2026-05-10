@@ -239,12 +239,12 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
             scale: 1,
             transition: { type: "spring", stiffness: 300, damping: 20 }
           }}
-          className="fixed bottom-6 right-6 z-50 w-96 h-[600px] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-gray-200"
+          className="fixed inset-x-0 bottom-0 sm:inset-auto sm:bottom-6 sm:right-6 z-[120] w-full sm:w-96 h-[75vh] sm:h-[600px] max-h-[90vh] bg-white rounded-t-[2.5rem] sm:rounded-2xl shadow-[0_-10px_40px_rgba(0,0,0,0.2)] sm:shadow-2xl flex flex-col overflow-hidden border-t sm:border border-gray-200"
         >
           {/* Header */}
           <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center p-2 relative overflow-visible">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 bg-white/20 rounded-xl flex items-center justify-center p-1.5 sm:p-2 relative overflow-visible">
                 {/* Dino Icon */}
                 <img
                   src="/images/Dino Icon.svg"
@@ -252,11 +252,11 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                   className="w-full h-full object-contain"
                 />
                 {/* Chef Hat Overlay */}
-                <span className="absolute -top-2 -right-1 text-xl drop-shadow-md select-none">👨‍🍳</span>
+                <span className="absolute -top-1.5 -right-1 sm:-top-2 sm:-right-1 text-base sm:text-xl drop-shadow-md select-none">👨‍🍳</span>
               </div>
               <div>
-                <h3 className="font-bold flex items-center gap-2">🦖 Dino <span className="text-[10px] bg-white/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Assistant</span></h3>
-                <p className="text-xs text-white/80 font-medium italic">"The Stomping Chef"</p>
+                <h3 className="font-bold text-sm sm:text-base flex items-center gap-2">🦖 Dino <span className="text-[9px] sm:text-[10px] bg-white/20 px-1.5 py-0.5 rounded uppercase tracking-wider">Assistant</span></h3>
+                <p className="text-[10px] sm:text-xs text-white/80 font-medium italic">"The Stomping Chef"</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -278,7 +278,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 bg-gray-50">
             {isLoadingHistory ? (
               <div className="flex items-center justify-center h-full">
                 <Loader className="w-6 h-6 animate-spin text-emerald-500" />
@@ -320,33 +320,33 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
           </div>
 
           {/* Input */}
-          <div className="p-4 bg-white border-t border-gray-200">
+          <div className="p-3 sm:p-4 bg-white border-t border-gray-200 pb-safe">
             <div className="flex items-end gap-2">
               <textarea
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Type your message..."
-                className="flex-1 resize-none border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent max-h-32"
+                className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2 sm:px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent max-h-32 text-sm sm:text-base"
                 rows={1}
                 disabled={isLoading}
               />
               <button
                 onClick={sendMessage}
                 disabled={!inputMessage.trim() || isLoading}
-                className="bg-emerald-500 text-white p-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-emerald-500 text-white p-2.5 sm:p-3 rounded-xl hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Send className="w-5 h-5" />
+                <Send className="w-4 h-4 sm:w-5 sm:h-5" />
               </button>
             </div>
-            <div className="flex flex-col items-center gap-1 mt-2">
-              <p className="text-xs text-gray-400 font-medium text-center">
+            <div className="flex flex-col items-center gap-1 mt-2 mb-2 sm:mb-0">
+              <p className="text-[10px] text-gray-400 font-medium text-center">
                 Dino is AI and can make mistakes.
               </p>
-              <div className="flex items-center gap-2 text-[10px] text-gray-400">
+              <div className="flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-[9px] sm:text-[10px] text-gray-400">
                 <span>Powered by AI</span>
-                <span>•</span>
-                <span>Press Enter to send</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="hidden sm:inline">Press Enter to send</span>
                 <span>•</span>
                 <Link to="/privacy" className="hover:text-emerald-500 transition-colors underline decoration-gray-200">Privacy Policy</Link>
               </div>

@@ -42,12 +42,14 @@ import {
   X as CloseIcon,
   Pencil,
   X,
-  Check
+  Check,
+  ShoppingCart
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { validateSession, clearSession } from '../../utils/sessionGuard';
 import socketService from '../../utils/socketService';
 import EmojiPicker from '../../components/EmojiPicker';
+import { useFeatureFlags } from '../../contexts/FeatureFlagContext';
 import {
   LineChart,
   Line,
@@ -64,7 +66,6 @@ import {
 import { businessApi, normalizeImageUrl } from '../../services/api';
 import WaitlistManagement from './WaitlistManagement';
 import PreOrderManagement from './PreOrderManagement';
-import { ShoppingCart } from 'lucide-react';
 
 // Types for business dashboard
 interface Business {
@@ -165,7 +166,7 @@ function BusinessDashboard() {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-
+  const { shouldShow } = useFeatureFlags();
   const [viewMode, setViewMode] = useState<'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' | 'waitlist' | 'pre-orders'>(getInitialViewMode() as any);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'draft'>('all');
@@ -2247,9 +2248,9 @@ function BusinessDashboard() {
                 { id: 'operations', label: 'Staff & Ops', icon: Briefcase },
                 { id: 'marketing', label: 'Marketing', icon: Megaphone },
                 { id: 'reviews', label: 'Reviews', icon: MessageSquare },
-                { id: 'waitlist', label: 'Waitlist', icon: Users },
-                { id: 'pre-orders', label: 'Pre-orders', icon: ShoppingCart }
-              ].map(({ id, label, icon: Icon }) => (
+                { id: 'waitlist', label: 'Waitlist', icon: Users, feature: 'waitlist' },
+                { id: 'pre-orders', label: 'Pre-orders', icon: ShoppingCart, feature: 'preOrders' }
+              ].filter(tab => !tab.feature || shouldShow(tab.feature as any)).map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
                   onClick={() => setViewMode(id as any)}

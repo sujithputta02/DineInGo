@@ -143,26 +143,26 @@ const FloorPlanManagement: React.FC = () => {
 
     if (selectedBusinessId) {
         return (
-            <div className="h-full flex flex-col space-y-4">
-                <div className="flex items-center justify-between">
+            <div className="h-full flex flex-col space-y-4 sm:space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                     <button
                         onClick={() => setSelectedBusinessId(null)}
-                        className="flex items-center gap-2 text-slate-600 hover:text-emerald-600 transition-colors font-medium"
+                        className="flex items-center gap-2 text-slate-600 hover:text-emerald-600 transition-colors font-semibold text-sm sm:text-base"
                     >
-                        <ArrowLeft size={20} />
+                        <ArrowLeft size={18} />
                         Back to Gallery
                     </button>
-                    <div className="text-right">
-                        <h2 className="text-xl font-bold text-slate-800">
+                    <div className="text-left sm:text-right">
+                        <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
                             {businesses.find(b => (b.id || b._id) === selectedBusinessId)?.name}
                         </h2>
-                        <p className="text-sm text-slate-500 capitalize">
+                        <p className="text-[10px] sm:text-sm font-black text-emerald-600 uppercase tracking-widest">
                             {businesses.find(b => (b.id || b._id) === selectedBusinessId)?.type} Floor Plan
                         </p>
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden min-h-[600px]">
+                <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden min-h-[500px] sm:min-h-[600px] flex flex-col">
                     <EventLayoutViewerWrapper businessId={selectedBusinessId} />
                 </div>
             </div>
@@ -171,21 +171,21 @@ const FloorPlanManagement: React.FC = () => {
 
     return (
         <div className="space-y-8 pb-12">
-            <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">Floor Plans</h1>
-                    <p className="text-slate-500 mt-1">View and manage layouts for your businesses</p>
+                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Floor Plans</h1>
+                    <p className="text-slate-500 text-sm sm:text-base font-medium">View and manage layouts for your businesses</p>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <div className="relative">
+                <div className="flex items-center gap-3 w-full lg:w-auto">
+                    <div className="relative flex-1 lg:flex-none">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                         <input
                             type="text"
                             placeholder="Search businesses..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none w-64 shadow-sm"
+                            className="w-full lg:w-64 pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm font-medium"
                         />
                     </div>
                 </div>

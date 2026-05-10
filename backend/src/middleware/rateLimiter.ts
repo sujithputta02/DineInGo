@@ -198,7 +198,7 @@ export const adminOtpLimiter = rateLimit({
  */
 export const strictAiLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 3,
+  max: 30,
   message: 'AI request limit reached. Please wait a moment before sending more messages.',
   standardHeaders: true,
   legacyHeaders: false,

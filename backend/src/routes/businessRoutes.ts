@@ -130,8 +130,8 @@ router.post('/promotions/validate', businessApiLimiter, validatePromotion);
 
 // Review Management
 router.get('/:businessId/reviews', businessApiLimiter, getBusinessReviews);
-router.post('/:businessId/reviews', reviewLimiter, addReview);
-router.put('/reviews/:id', reviewLimiter, updateReview);
+router.post('/:businessId/reviews', reviewLimiter, upload.array('images', 5), addReview);
+router.put('/reviews/:id', reviewLimiter, upload.array('images', 5), updateReview);
 router.post('/reviews/:id/reply', reviewLimiter, logBusinessAction, validateReviewReply, handleValidationErrors, replyToReview);
 router.put('/reviews/:id/reply', reviewLimiter, logBusinessAction, validateReviewReply, handleValidationErrors, updateReply);
 router.delete('/reviews/:id/reply', reviewLimiter, logBusinessAction, deleteReply);

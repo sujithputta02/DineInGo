@@ -96,14 +96,21 @@ function FeatureRouteGuard({
   children: React.ReactNode;
 }) {
   const { isEnabled, loading } = useFeatureFlags();
+  const token = getSessionToken();
+  const userData = localStorage.getItem('userData');
+  const role = userData ? JSON.parse(userData).role : 'customer';
   
   if (loading) return null;
   
   if (!isEnabled(feature)) {
-    toast.warning(`This feature is currently under maintenance.`, {
+    toast.warning(`The ${feature} module is currently under maintenance.`, {
       toastId: `feature-disabled-${feature}`
     });
-    return <Navigate to="/" replace />;
+    
+    if (role === 'owner' || role === 'admin') {
+      return <Navigate to={token ? `/business/app/dashboard/${token}` : "/business/businessLogin"} replace />;
+    }
+    return <Navigate to={token ? `/dashboard/${token}` : "/login"} replace />;
   }
   
   return <>{children}</>;

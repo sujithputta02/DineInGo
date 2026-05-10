@@ -40,20 +40,22 @@ function FeatureRenderer({ feature }: { feature: any }) {
     top: `${feature.y}%`,
     width: `${feature.width}%`,
     height: `${feature.height}%`,
-    transform: `translate(-50%, -50%)`,
+    transform: `translate(-50%, -50%) rotate(${feature.rotation || 0}deg) scaleX(${feature.flipX ? -1 : 1}) scaleY(${feature.flipY ? -1 : 1})`,
   };
+
+  const baseClasses = "transition-all duration-300";
 
   switch (feature.type) {
     case 'reception':
       return (
-        <div style={style} className="flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl">
+        <div style={style} className={`flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl ${baseClasses}`}>
           <Store size={14} className="text-amber-500 mb-1" />
           <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">{feature.label}</span>
         </div>
       );
     case 'window':
       return (
-        <div style={style} className="bg-cyan-900/20 border border-cyan-500/30 backdrop-blur-sm flex items-center justify-center overflow-hidden">
+        <div style={style} className={`bg-cyan-900/20 border border-cyan-500/30 backdrop-blur-sm flex items-center justify-center overflow-hidden ${baseClasses}`}>
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent"></div>
           <div className="w-full h-[1px] bg-cyan-500/20 absolute top-1/3"></div>
           <div className="w-full h-[1px] bg-cyan-500/20 absolute top-2/3"></div>
@@ -61,26 +63,26 @@ function FeatureRenderer({ feature }: { feature: any }) {
       );
     case 'entrance':
       return (
-        <div style={style} className="flex flex-col items-center justify-end pb-1 border-b-4 border-emerald-500">
+        <div style={style} className={`flex flex-col items-center justify-end pb-1 border-b-4 border-emerald-500 ${baseClasses}`}>
           <span className="text-[9px] text-emerald-500 font-bold uppercase tracking-[0.2em]">ENTRANCE</span>
         </div>
       );
     case 'bar':
       return (
-        <div style={style} className="bg-slate-800 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-slate-900">
+        <div style={style} className={`bg-slate-800 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-slate-900 ${baseClasses}`}>
           <Wine size={14} className="text-purple-400 mr-2" />
-          <span className="text-purple-200 text-xs font-bold tracking-widest uppercase">{feature.label}</span>
+          <span className="text-purple-200 text-[10px] font-bold tracking-widest uppercase">{feature.label}</span>
         </div>
       );
     case 'plant':
       return (
-        <div style={style} className="bg-emerald-900/50 rounded-full border border-emerald-800/50 flex items-center justify-center">
+        <div style={style} className={`bg-emerald-900/50 rounded-full border border-emerald-800/50 flex items-center justify-center ${baseClasses}`}>
           <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
         </div>
       );
     case 'wall':
       return (
-        <div style={style} className="bg-slate-800 border-x border-slate-700 shadow-inner"></div>
+        <div style={style} className={`bg-slate-800 border-x border-slate-700 shadow-inner ${baseClasses}`}></div>
       );
     default:
       return null;
@@ -110,19 +112,42 @@ function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTab
     borderColor = "border-emerald-400";
     textColor = "text-white";
   } else {
-    bgGradient = "bg-gradient-to-br from-slate-600 to-slate-800";
-    borderColor = "border-slate-500";
-    textColor = "text-slate-300";
+    // Color based on category (if available from business creator)
+    switch (tableData.category) {
+      case 'vip':
+        bgGradient = "bg-gradient-to-br from-amber-600 to-amber-800";
+        borderColor = "border-amber-500";
+        textColor = "text-amber-100";
+        break;
+      case 'premium':
+        bgGradient = "bg-gradient-to-br from-blue-600 to-blue-800";
+        borderColor = "border-blue-500";
+        textColor = "text-blue-100";
+        break;
+      default:
+        bgGradient = "bg-gradient-to-br from-slate-600 to-slate-800";
+        borderColor = "border-slate-500";
+        textColor = "text-slate-300";
+    }
   }
+
+  // Handle shapes
+  const isCircle = tableData.shape === 'circle';
+  const isRectangle = tableData.shape === 'rectangle';
 
   return (
     <div
       className="absolute flex items-center justify-center transition-all duration-300"
-      style={{ left: `${tableData.x}%`, top: `${tableData.y}%`, transform: 'translate(-50%, -50%)', zIndex: 10 }}
+      style={{ 
+        left: `${tableData.x}%`, 
+        top: `${tableData.y}%`, 
+        transform: `translate(-50%, -50%) rotate(${tableData.rotation || 0}deg)`, 
+        zIndex: isSelected ? 20 : 10 
+      }}
     >
       {Array.from({ length: tableData.seats }).map((_: unknown, i: number) => {
         const angle = (i * (360 / tableData.seats)) * (Math.PI / 180);
-        const radius = 60;
+        const radius = isCircle ? 60 : 70;
         return (
           <div
             key={`chair-indicator-${tableData.id}-${i}`}
@@ -136,11 +161,12 @@ function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTab
         disabled={isUnavailable || loadingTables}
         className={`relative flex items-center justify-center border-t-2 border-b-4 ${borderColor} ${bgGradient} ${textColor}
           shadow-lg transition-all active:scale-95 active:border-b-0 active:translate-y-1
-          w-12 md:w-16 h-12 md:h-16 rounded-lg`}
+          ${isCircle ? 'rounded-full' : 'rounded-lg'}
+          ${isRectangle ? 'w-20 md:w-28 h-12 md:h-16' : 'w-12 md:w-16 h-12 md:h-16'}`}
       >
         <div className="flex flex-col items-center leading-none">
-          <span className="font-bold text-sm md:text-base drop-shadow-md">{tableData.id}</span>
-          {tableData.seats > 0 && <span className="text-[9px] opacity-60 mt-0.5">{tableData.seats}</span>}
+          <span className="font-bold text-[10px] md:text-sm drop-shadow-md">{tableData.label || tableData.id}</span>
+          {tableData.seats > 0 && <span className="text-[8px] opacity-60 mt-0.5">{tableData.seats}P</span>}
         </div>
       </button>
     </div>
@@ -543,31 +569,33 @@ const TableSelection: React.FC = () => {
   return (
     <div className={`flex flex-col h-screen transition-colors duration-300 ${isDarkMode ? 'bg-slate-950 text-slate-200' : 'bg-gray-50 text-gray-800'}`}>
       {/* Header */}
-      <header className={`backdrop-blur-xl border-b px-6 py-4 flex justify-between items-center z-30 shadow-lg transition-all ${
+      <header className={`backdrop-blur-xl border-b px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row gap-4 sm:gap-0 justify-between items-center z-30 shadow-lg transition-all ${
         isDarkMode ? 'bg-slate-900/80 border-slate-700/50 text-white' : 'bg-white border-gray-100 text-gray-900'
       }`}>
-        <button
-          onClick={() => navigate(`/restaurant/${id}/preview?${searchParams.toString()}`)}
-          className={`flex items-center gap-3 px-5 py-2.5 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 border-2 ${
-            isDarkMode ? 'bg-slate-800/50 border-white/10 text-white hover:bg-slate-700' : 'bg-gray-50 border-gray-100 text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          <ArrowLeft size={16} />
-          <span>Back</span>
-        </button>
+        <div className="flex w-full sm:w-auto items-center justify-between sm:justify-start gap-4">
+          <button
+            onClick={() => navigate(`/restaurant/${id}/preview?${searchParams.toString()}`)}
+            className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-2.5 rounded-xl font-black uppercase tracking-widest text-[9px] sm:text-[10px] transition-all active:scale-95 border-2 ${
+              isDarkMode ? 'bg-slate-800/50 border-white/10 text-white hover:bg-slate-700' : 'bg-gray-50 border-gray-100 text-gray-700 hover:bg-gray-100'
+            }`}
+          >
+            <ArrowLeft size={14} className="sm:w-4 sm:h-4" />
+            <span>Back</span>
+          </button>
 
-        <div className="text-center">
-          <h2 className={`text-xl font-black tracking-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{restaurantName}</h2>
-          <p className={`text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Table Selection</p>
+          <div className="text-right sm:text-left sm:ml-4">
+            <h2 className={`text-base sm:text-xl font-black tracking-tight leading-tight ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{restaurantName}</h2>
+            <p className={`text-[8px] sm:text-[10px] font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>Table Selection</p>
+          </div>
         </div>
 
         {/* Floor Tabs */}
-        <div className="flex bg-slate-900/50 p-1 rounded-lg border border-slate-700 overflow-x-auto max-w-[200px] md:max-w-none gap-1">
+        <div className="flex w-full sm:w-auto bg-slate-900/50 p-1 rounded-xl border border-slate-700 overflow-x-auto no-scrollbar gap-1">
           {floors.map(f => (
             <button
               key={f.id}
               onClick={() => setActiveFloorId(f.id)}
-              className={`px-4 py-2 rounded-md text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${activeFloorId === f.id
+              className={`flex-1 sm:flex-none px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-semibold uppercase tracking-wider transition-all whitespace-nowrap ${activeFloorId === f.id
                 ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/30'
                 : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
                 }`}
@@ -585,82 +613,108 @@ const TableSelection: React.FC = () => {
 
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* MAP CANVAS */}
-        <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex flex-col items-center justify-center p-4 md:p-8">
-          {/* Floor Container */}
-          <div className="relative w-full max-w-[700px] aspect-[4/3] bg-slate-800/30 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-sm transition-all duration-500 p-4">
-            {/* Features Layer */}
-            {activeFloor?.features.map((feat, idx) => (
-              <FeatureRenderer key={`feature-${feat.type}-${idx}`} feature={feat} />
-            ))}
+        <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex flex-col items-center justify-center p-4 sm:p-8">
+          {/* Floor Container Wrapper for Mobile Scroll */}
+          <div className="w-full h-full flex flex-col items-center justify-center overflow-auto no-scrollbar sm:overflow-visible p-2 sm:p-0">
+            <div className="relative min-w-[450px] xs:min-w-[500px] sm:min-w-0 w-full max-w-[800px] aspect-[4/3] sm:aspect-video bg-slate-800/30 rounded-2xl border border-white/5 shadow-2xl backdrop-blur-sm transition-all duration-500 p-4 shrink-0">
+              {/* Features Layer */}
+              {activeFloor?.features.map((feat, idx) => (
+                <FeatureRenderer key={`feature-${feat.type}-${idx}`} feature={feat} />
+              ))}
 
-            {/* Tables Layer */}
-            {activeFloor?.layout.map((table: any) => (
-              <TableRenderer 
-                key={table.id} 
-                tableData={table}
-                selectedTable={selectedTable}
-                unavailableTables={unavailableTables}
-                loadingTables={loadingTables}
-                onTableSelect={handleTableSelect}
-              />
-            ))}
+              {/* Tables Layer */}
+              {activeFloor?.layout.map((table: any) => (
+                <TableRenderer 
+                  key={table.id} 
+                  tableData={table}
+                  selectedTable={selectedTable}
+                  unavailableTables={unavailableTables}
+                  loadingTables={loadingTables}
+                  onTableSelect={handleTableSelect}
+                />
+              ))}
+            </div>
+            
+            {/* Mobile Scroll Hint */}
+            <p className="sm:hidden text-[9px] text-slate-500 mt-2 font-medium uppercase tracking-widest italic animate-pulse">
+              ← Scroll to explore the layout →
+            </p>
           </div>
 
           {/* Legend */}
-          <div className={`mt-8 backdrop-blur-3xl rounded-[2rem] px-8 py-4 flex items-center gap-8 shadow-2xl transition-all border-2 ${
+          <div className={`mt-4 sm:mt-8 backdrop-blur-3xl rounded-2xl sm:rounded-[2rem] px-4 sm:px-8 py-3 sm:py-4 flex flex-wrap justify-center items-center gap-4 sm:gap-8 shadow-2xl transition-all border-2 ${
             isDarkMode ? 'bg-slate-900/80 border-white/10' : 'bg-white/90 border-gray-100'
           }`}>
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              <div className={`w-4 h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-gray-200 border-gray-300'}`}></div>
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Available</span>
+            <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
+              <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-700 border-slate-600' : 'bg-gray-200 border-gray-300'}`}></div>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">Available</span>
             </div>
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              <div className="w-4 h-4 rounded-md bg-emerald-500 border-2 border-emerald-400"></div>
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Selected</span>
+            <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 rounded-md bg-emerald-500 border-2 border-emerald-400"></div>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-emerald-500">Selected</span>
             </div>
-            <div className="flex items-center gap-3 whitespace-nowrap">
-              <div className={`w-4 h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-900 border-slate-950' : 'bg-gray-400 border-gray-500'}`}></div>
-              <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Booked</span>
+            <div className="flex items-center gap-2 sm:gap-3 whitespace-nowrap">
+              <div className={`w-3 h-3 sm:w-4 sm:h-4 rounded-md border-2 ${isDarkMode ? 'bg-slate-900 border-slate-950' : 'bg-gray-400 border-gray-500'}`}></div>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">Booked</span>
             </div>
           </div>
         </div>
 
-        {/* SIDEBAR SUMMARY */}
+        {/* SIDEBAR SUMMARY / BOTTOM SHEET */}
         {selectedTable && (
-          <div className="absolute bottom-0 w-full md:static md:w-80 bg-slate-800/95 backdrop-blur-md border-t md:border-t-0 md:border-l border-slate-700/50 flex flex-col z-40 shadow-2xl animate-in slide-in-from-bottom md:slide-in-from-right duration-300">
-            <div className="p-6 border-b border-slate-700/50">
-              <h2 className="text-xl font-bold text-white tracking-tight">Your Selection</h2>
-              <p className="text-sm text-slate-400 mt-1">1 table selected</p>
+          <div className="fixed sm:static bottom-0 left-0 w-full sm:w-80 bg-slate-900/95 sm:bg-slate-800/95 backdrop-blur-xl border-t sm:border-t-0 sm:border-l border-slate-700/50 flex flex-col z-[100] sm:z-40 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] sm:shadow-2xl animate-in slide-in-from-bottom sm:slide-in-from-right duration-300 rounded-t-[2.5rem] sm:rounded-none">
+            {/* Pull Bar for Mobile */}
+            <div className="sm:hidden w-12 h-1.5 bg-slate-700 rounded-full mx-auto mt-3 mb-1"></div>
+            
+            <div className="px-6 py-4 sm:p-6 border-b border-white/5">
+              <h2 className="text-lg sm:text-xl font-black text-white tracking-tight uppercase">Your Selection</h2>
+              <p className="text-[10px] sm:text-sm text-slate-400 mt-1 font-bold uppercase tracking-widest">1 table selected for your feast</p>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4">
-              <div className="bg-slate-900/50 border border-slate-700/50 p-4 rounded-xl flex justify-between items-center hover:bg-slate-900/70 transition-colors">
-                <div>
-                  <div className="font-bold text-white">{selectedTable}</div>
-                  <div className="text-xs text-slate-500 font-medium mt-1 flex items-center gap-2">
-                    {activeFloor?.name} • {activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0} Guests
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+              <div className="bg-slate-800/50 sm:bg-slate-900/50 border border-slate-700/50 p-4 rounded-2xl flex justify-between items-center hover:bg-slate-900/70 transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-400 border border-emerald-500/30">
+                    <span className="font-black text-lg">{selectedTable}</span>
+                  </div>
+                  <div>
+                    <div className="font-bold text-white text-sm sm:text-base">Table {selectedTable}</div>
+                    <div className="text-[10px] sm:text-xs text-slate-500 font-medium mt-1 flex items-center gap-2">
+                      <span className="bg-slate-700/50 px-2 py-0.5 rounded uppercase tracking-wider">{activeFloor?.name}</span>
+                      <span>•</span>
+                      <span>{activeFloor?.layout.find(t => t.id === selectedTable)?.seats || 0} Guests</span>
+                    </div>
                   </div>
                 </div>
                 <button
                   onClick={() => setSelectedTable(null)}
-                  className="w-8 h-8 flex items-center justify-center bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-colors"
+                  className="w-8 h-8 flex items-center justify-center bg-slate-700/50 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-900/20 transition-all active:scale-90"
                 >
                   <X size={16} />
                 </button>
               </div>
             </div>
 
-            <div className="p-6 bg-slate-900/50 border-t border-slate-700/50">
+            <div className="p-4 sm:p-6 bg-slate-900/80 sm:bg-slate-900/50 border-t border-slate-700/50 pb-safe">
               <button
                 onClick={handleProceed}
                 disabled={!selectedTable || loadingTables}
-                className={`w-full py-4 rounded-xl font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-2 transform ${selectedTable && !loadingTables
-                  ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50 active:scale-95'
+                className={`w-full py-4 sm:py-4 rounded-2xl font-bold uppercase tracking-widest text-xs sm:text-sm transition-all flex items-center justify-center gap-3 transform ${selectedTable && !loadingTables
+                  ? 'bg-emerald-500 text-white hover:bg-emerald-400 shadow-[0_8px_25px_rgba(16,185,129,0.3)] hover:shadow-[0_8px_30px_rgba(16,185,129,0.5)] active:scale-95'
                   : 'bg-slate-700 text-slate-500 cursor-not-allowed'
                   }`}
               >
-                {loadingTables ? 'Processing...' : 'Confirm Booking'}
-                <ChevronRight size={18} />
+                {loadingTables ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                    <span>Processing...</span>
+                  </div>
+                ) : (
+                  <>
+                    <span>Confirm Selection</span>
+                    <ChevronRight size={18} />
+                  </>
+                )}
               </button>
             </div>
           </div>

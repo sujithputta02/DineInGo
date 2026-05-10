@@ -3,6 +3,52 @@ import axios from 'axios';
 
 const router = express.Router();
 
+// Proxy for Google Maps APIs to avoid CORS issues
+router.get('/google/places', async (req, res) => {
+  try {
+    const { query, location, radius, type, photoreference, maxwidth } = req.query;
+    const key = process.env.GOOGLE_MAPS_API_KEY;
+
+    if (!key) {
+      return res.status(500).json({ error: 'Google Maps API key not configured' });
+    }
+
+    let url = '';
+    if (photoreference) {
+      url = `https://maps.googleapis.com/maps/api/place/photo?maxwidth=${maxwidth || 400}&photoreference=${photoreference}&key=${key}`;
+      // For photos, we might want to redirect or stream
+      return res.redirect(url);
+    } else if (location && radius) {
+      url = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${location}&radius=${radius}&type=${type || 'restaurant'}&key=${key}`;
+    } else {
+      url = `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent(query as string)}&key=${key}`;
+    }
+
+    const response = await axios.get(url);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Google Places Proxy error:', error.message);
+    res.status(error.response?.status || 500).json({ error: 'Google Places service unavailable' });
+  }
+});
+
+router.get('/google/geocode', async (req, res) => {
+  try {
+    const { address } = req.query;
+    const key = process.env.GOOGLE_MAPS_API_KEY;
+
+    if (!key) {
+      return res.status(500).json({ error: 'Google Maps API key not configured' });
+    }
+
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address as string)}&key=${key}`;
+    const response = await axios.get(url);
+    res.json(response.data);
+  } catch (error: any) {
+    console.error('Google Geocode Proxy error:', error.message);
+    res.status(error.response?.status || 500).json({ error: 'Geocoding service unavailable' });
+  }
+});
 // Proxy for OpenStreetMap Nominatim API to avoid CORS issues
 router.get('/search', async (req, res) => {
   try {

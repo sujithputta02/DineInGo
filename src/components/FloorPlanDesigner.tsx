@@ -637,10 +637,10 @@ const FloorPlanDesigner: React.FC<{
   };
 
   return (
-    <div className="flex h-full min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
-      {/* Left Sidebar - Element Palette - Only show if not read-only */}
+    <div className="flex flex-col lg:flex-row h-full min-h-[500px] sm:min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200 overflow-hidden">
+      {/* Left Sidebar / Top Toolbar - Element Palette */}
       {!readOnly && (
-        <div className="w-80 bg-slate-800/50 backdrop-blur-sm border-r border-slate-700/50 flex flex-col max-h-full">
+        <div className="w-full lg:w-80 bg-slate-800/50 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-slate-700/50 flex flex-col max-h-[40vh] lg:max-h-full">
           <div className="p-4 border-b border-slate-700/50 flex-shrink-0">
             <h2 className="text-lg font-bold text-white mb-2">Floor Plan Designer</h2>
             <div className="flex gap-2 mb-3">
@@ -702,47 +702,51 @@ const FloorPlanDesigner: React.FC<{
                   </div>
                 )}
 
-                {/* Tables Section */}
-                <div className="p-4 border-b border-slate-700/50">
-                  <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Tables</h3>
-                  <div className="space-y-2">
-                    {TABLE_TEMPLATES.map((template, index) => (
-                      <button
-                        key={`table-template-${template.shape}-${index}`}
-                        onClick={() => addTable(template)}
-                        className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors text-left"
-                      >
-                        {template.shape === 'circle' ? <Circle size={16} /> :
-                          template.shape === 'square' ? <Square size={16} /> :
-                            <Minus size={16} className="rotate-90" />}
-                        <div>
-                          <div className="text-sm font-medium text-slate-200">{template.label}</div>
-                          <div className="text-xs text-slate-400">{template.seats} seats</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* Tables Section */}
+            <div className="p-4 border-b border-slate-700/50">
+              <h3 className="text-[10px] sm:text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Tables</h3>
+              <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 lg:space-y-2 no-scrollbar">
+                {TABLE_TEMPLATES.map((template, index) => (
+                  <button
+                    key={`table-template-${template.shape}-${index}`}
+                    onClick={() => addTable(template)}
+                    className="flex-shrink-0 lg:flex-shrink-1 flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg sm:rounded-xl transition-all active:scale-95 text-left min-w-[120px] lg:min-w-0"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-emerald-400">
+                      {template.shape === 'circle' ? <Circle size={16} /> :
+                        template.shape === 'square' ? <Square size={16} /> :
+                          <Minus size={16} className="rotate-90" />}
+                    </div>
+                    <div>
+                      <div className="text-[11px] sm:text-sm font-bold text-slate-200">{template.label}</div>
+                      <div className="text-[9px] sm:text-xs text-slate-400">{template.seats} seats</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                {/* Features Section */}
-                <div className="p-4 border-b border-slate-700/50">
-                  <h3 className="text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Features</h3>
-                  <div className="space-y-2">
-                    {FEATURE_TEMPLATES.map((template, index) => (
-                      <button
-                        key={`feature-template-${template.type}-${index}`}
-                        onClick={() => addFeature(template)}
-                        className="w-full flex items-center gap-3 p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg transition-colors text-left"
-                      >
-                        {template.type === 'entrance' ? <DoorOpen size={16} /> :
-                          template.type === 'reception' ? <Store size={16} /> :
-                            template.type === 'bar' ? <Wine size={16} /> :
-                              <MapPin size={16} />}
-                        <div className="text-sm font-medium text-slate-200">{template.label}</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* Features Section */}
+            <div className="p-4 border-b border-slate-700/50">
+              <h3 className="text-[10px] sm:text-sm font-bold text-slate-300 mb-3 uppercase tracking-wider">Features</h3>
+              <div className="flex lg:flex-col overflow-x-auto lg:overflow-x-visible gap-2 lg:space-y-2 no-scrollbar">
+                {FEATURE_TEMPLATES.map((template, index) => (
+                  <button
+                    key={`feature-template-${template.type}-${index}`}
+                    onClick={() => addFeature(template)}
+                    className="flex-shrink-0 lg:flex-shrink-1 flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg sm:rounded-xl transition-all active:scale-95 text-left min-w-[140px] lg:min-w-0"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-slate-800 flex items-center justify-center text-blue-400">
+                      {template.type === 'entrance' ? <DoorOpen size={16} /> :
+                        template.type === 'reception' ? <Store size={16} /> :
+                          template.type === 'bar' ? <Wine size={16} /> :
+                            <MapPin size={16} />}
+                    </div>
+                    <div className="text-[11px] sm:text-sm font-bold text-slate-200">{template.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
               </div>
             )}
 
@@ -1138,85 +1142,130 @@ const FloorPlanDesigner: React.FC<{
               className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
             >
               <Save size={16} />
-              {isSaving ? 'Saving...' : 'Save Layout'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Main Canvas Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Canvas */}
-        <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex items-center justify-center p-4 md:p-8">
-          <div
-            className="relative w-full max-w-[800px] aspect-[4/3] bg-slate-800/30 rounded-2xl border border-slate-700/50 shadow-2xl backdrop-blur-sm"
-            onClick={() => !isPreviewMode && setSelectedElement(null)}
-          >
-            {/* Grid overlay */}
-            {showGrid && !isPreviewMode && (
-              <div className="absolute inset-0 opacity-20">
-                <svg width="100%" height="100%" className="absolute inset-0">
-                  <defs>
-                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#475569" strokeWidth="1" />
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#grid)" />
-                </svg>
-              </div>
-            )}
-
-            {/* Features Layer */}
-            {activeFloor?.features.map(feature => (
-              <DraggableFeature
-                key={feature.id}
-                feature={feature}
-                isSelected={selectedElement?.type === 'feature' && selectedElement.id === feature.id}
-                isPreviewMode={isPreviewMode}
-                onSelect={() => setSelectedElement({ type: 'feature', id: feature.id })}
-                onDrag={(x, y) => updateFeaturePosition(feature.id, x, y)}
-              />
-            ))}
-
-            {/* Tables Layer */}
-            {activeFloor?.tables.map(table => (
-              <DraggableTable
-                key={table.id}
-                table={table}
-                isSelected={selectedElement?.type === 'table' && selectedElement.id === table.id}
-                isPreviewMode={isPreviewMode}
-                onSelect={() => setSelectedElement({ type: 'table', id: table.id })}
-                onDrag={(x, y) => updateTablePosition(table.id, x, y)}
-              />
-            ))}
-
-            {/* Empty state */}
-            {(!activeFloor?.tables.length && !activeFloor?.features.length) && (
-              <div className="absolute inset-4 flex items-center justify-center text-slate-400">
-                <div className="text-center">
-                  <Building size={48} className="mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Floor Plan Canvas</p>
-                  <p className="text-sm mt-2">Add tables and features from the sidebar</p>
-                </div>
-              </div>
+      {/* Main Designer Area */}
+      <div className="flex-1 flex flex-col relative overflow-hidden">
+        {/* Designer Header */}
+        <div className="p-3 sm:p-4 bg-slate-800/30 border-b border-slate-700/50 flex items-center justify-between z-20">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex bg-slate-700/50 p-1 rounded-xl border border-slate-600 overflow-x-auto no-scrollbar max-w-[150px] sm:max-w-none">
+              {floors.map(f => (
+                <button
+                  key={f.id}
+                  onClick={() => setActiveFloorId(f.id)}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFloorId === f.id
+                    ? 'bg-emerald-500 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
+                    }`}
+                >
+                  {f.name}
+                </button>
+              ))}
+            </div>
+            {!readOnly && (
+              <button
+                onClick={() => {
+                  const newId = `floor-${floors.length + 1}`;
+                  setFloors([...floors, { id: newId, name: `Floor ${floors.length + 1}`, width: 100, height: 100, tables: [], features: [] }]);
+                  setActiveFloorId(newId);
+                }}
+                className="p-2 bg-slate-700/50 hover:bg-emerald-600 text-slate-400 hover:text-white rounded-lg transition-all"
+                title="Add Floor"
+              >
+                <Plus size={18} />
+              </button>
             )}
           </div>
 
+          <div className="flex items-center gap-2">
+            {!readOnly && (
+              <button
+                onClick={saveFloorPlan}
+                disabled={isSaving}
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                ) : (
+                  <Save size={16} />
+                )}
+                <span className="hidden sm:inline">Save Layout</span>
+                <span className="sm:hidden">Save</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Canvas Container */}
+        <div className="flex-1 bg-slate-900 relative overflow-auto lg:overflow-visible flex items-center justify-center p-4 sm:p-12">
+          {/* Scrollable Map for Mobile */}
+          <div className="relative min-w-[600px] lg:min-w-0 w-full max-w-[800px] aspect-[4/3] bg-slate-800/20 rounded-2xl border-2 border-slate-700/50 shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0">
+            {/* Grid overlay */}
+            {showGrid && !isPreviewMode && (
+              <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
+                style={{
+                  backgroundImage: `linear-gradient(to right, #ffffff 1px, transparent 1px), linear-gradient(to bottom, #ffffff 1px, transparent 1px)`,
+                  backgroundSize: '4% 5.33%'
+                }}>
+              </div>
+            )}
+
+            {/* Elements Layer */}
+            <div className="absolute inset-0 p-4">
+              {activeFloor?.features.map((feature) => (
+                <DraggableFeature
+                  key={feature.id}
+                  feature={feature}
+                  isSelected={selectedElement?.type === 'feature' && selectedElement.id === feature.id}
+                  isPreviewMode={isPreviewMode}
+                  onSelect={() => setSelectedElement({ type: 'feature', id: feature.id })}
+                  onDrag={(x, y) => updateFeaturePosition(feature.id, x, y)}
+                />
+              ))}
+
+              {activeFloor?.tables.map((table) => (
+                <DraggableTable
+                  key={table.id}
+                  table={table}
+                  isSelected={selectedElement?.type === 'table' && selectedElement.id === table.id}
+                  isPreviewMode={isPreviewMode}
+                  onSelect={() => setSelectedElement({ type: 'table', id: table.id })}
+                  onDrag={(x, y) => updateTablePosition(table.id, x, y)}
+                />
+              ))}
+
+              {/* Empty state */}
+              {(!activeFloor?.tables.length && !activeFloor?.features.length) && (
+                <div className="absolute inset-4 flex items-center justify-center text-slate-400">
+                  <div className="text-center">
+                    <Building size={48} className="mx-auto mb-4 opacity-50" />
+                    <p className="text-lg font-medium">Floor Plan Canvas</p>
+                    <p className="text-sm mt-2">Add tables and features from the sidebar</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Legend */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800/80 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-4 shadow-2xl border border-slate-700/50 overflow-x-auto max-w-[90vw]">
+          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800/80 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-4 shadow-2xl border border-slate-700/50 overflow-x-auto max-w-[90vw] no-scrollbar z-30">
             <div className="flex items-center gap-2 whitespace-nowrap">
               <div className="w-3 h-3 rounded bg-gradient-to-br from-slate-600 to-slate-800 border border-slate-500 shadow-sm"></div>
-              <span className="text-xs font-semibold text-slate-300 uppercase">Available</span>
+              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Available</span>
             </div>
             {!isPreviewMode && (
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <div className="w-3 h-3 rounded bg-emerald-500 border border-emerald-400 shadow-sm"></div>
-                <span className="text-xs font-semibold text-slate-300 uppercase">Selected</span>
+                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Selected</span>
               </div>
             )}
             <div className="flex items-center gap-2 whitespace-nowrap">
               <div className="w-3 h-3 rounded bg-slate-900 border border-slate-800 shadow-sm"></div>
-              <span className="text-xs font-semibold text-slate-300 uppercase">Booked</span>
+              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Booked</span>
             </div>
           </div>
         </div>
