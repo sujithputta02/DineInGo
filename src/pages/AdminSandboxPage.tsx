@@ -6,6 +6,7 @@ import { menuApi } from '../services/api';
 import WaitlistManagement from './business/WaitlistManagement';
 import PreOrderManagement from './business/PreOrderManagement';
 import ARMenuSection from '../components/ARMenuSection';
+import { useFeatureFlags } from '../contexts/FeatureFlagContext';
 
 const AdminSandboxPage: React.FC = () => {
     const [sandboxTab, setSandboxTab] = useState<'pre-orders' | 'waitlist' | 'ar-menu'>('pre-orders');
@@ -14,6 +15,19 @@ const AdminSandboxPage: React.FC = () => {
     const [loadingBusinesses, setLoadingBusinesses] = useState(true);
     const [arMenuItems, setArMenuItems] = useState<any[]>([]);
     const [loadingARMenu, setLoadingARMenu] = useState(false);
+    const { isEnabled } = useFeatureFlags();
+
+    const availableFeatures = [
+        { id: 'pre-orders', label: 'Pre-order Engine', icon: ShoppingCart, flag: 'preOrders' },
+        { id: 'waitlist', label: 'Universal Waitlist', icon: UsersIcon, flag: 'waitlist' },
+        { id: 'ar-menu', label: 'AR Interactive Menu', icon: Camera, flag: 'arMenus' }
+    ].filter(f => !isEnabled(f.flag as any));
+
+    useEffect(() => {
+        if (availableFeatures.length > 0 && !availableFeatures.find(f => f.id === sandboxTab)) {
+            setSandboxTab(availableFeatures[0].id as any);
+        }
+    }, [availableFeatures, sandboxTab]);
 
     useEffect(() => {
         loadBusinesses();
@@ -119,43 +133,31 @@ const AdminSandboxPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="lg:col-span-2">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Feature Under Development</label>
-                        <div className="flex flex-wrap gap-3">
-                            <button
-                                onClick={() => setSandboxTab('pre-orders')}
-                                className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm transition-all ${
-                                    sandboxTab === 'pre-orders'
-                                        ? 'bg-red-600 text-white shadow-xl shadow-red-200'
-                                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                                }`}
-                            >
-                                <ShoppingCart size={20} />
-                                Pre-order Engine
-                            </button>
-                            <button
-                                onClick={() => setSandboxTab('waitlist')}
-                                className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm transition-all ${
-                                    sandboxTab === 'waitlist'
-                                        ? 'bg-red-600 text-white shadow-xl shadow-red-200'
-                                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                                }`}
-                            >
-                                <UsersIcon size={20} />
-                                Universal Waitlist
-                            </button>
-                            <button
-                                onClick={() => setSandboxTab('ar-menu')}
-                                className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm transition-all ${
-                                    sandboxTab === 'ar-menu'
-                                        ? 'bg-red-600 text-white shadow-xl shadow-red-200'
-                                        : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                                }`}
-                            >
-                                <Camera size={20} />
-                                AR Interactive Menu
-                            </button>
-                        </div>
-                    </div>
+                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Feature Under Development</label>
+                         <div className="flex flex-wrap gap-3">
+                             {availableFeatures.length > 0 ? (
+                                 availableFeatures.map(feature => (
+                                     <button
+                                         key={feature.id}
+                                         onClick={() => setSandboxTab(feature.id as any)}
+                                         className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm transition-all ${
+                                             sandboxTab === feature.id
+                                                 ? 'bg-red-600 text-white shadow-xl shadow-red-200'
+                                                 : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                                         }`}
+                                     >
+                                         <feature.icon size={20} />
+                                         {feature.label}
+                                     </button>
+                                 ))
+                             ) : (
+                                 <div className="flex items-center gap-2 text-emerald-600 font-bold text-sm bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100">
+                                     <FlaskConical size={16} />
+                                     All features currently live in production
+                                 </div>
+                             )}
+                         </div>
+                     </div>
                 </div>
             </div>
 
@@ -177,35 +179,47 @@ const AdminSandboxPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="p-8">
-                    {sandboxTab === 'pre-orders' && (
-                        <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                            <PreOrderManagement businessId={selectedBusinessId} />
-                        </div>
-                    )}
-                    {sandboxTab === 'waitlist' && (
-                        <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                            <WaitlistManagement businessId={selectedBusinessId} />
-                        </div>
-                    )}
-                    {sandboxTab === 'ar-menu' && (
-                        <div className="bg-slate-900 rounded-3xl overflow-hidden min-h-[500px]">
-                            {loadingARMenu ? (
-                                <div className="flex flex-col items-center justify-center p-20 text-white">
-                                    <Loader2 className="w-10 h-10 text-red-500 animate-spin mb-4" />
-                                    <p className="text-sm font-bold uppercase tracking-widest opacity-60">Loading AR Models...</p>
-                                </div>
-                            ) : (
-                                <ARMenuSection
-                                    isDarkMode={true}
-                                    language="english"
-                                    translations={translations}
-                                    menuItems={arMenuItems}
-                                />
-                            )}
-                        </div>
-                    )}
-                </div>
+                 <div className="p-8">
+                     {availableFeatures.length === 0 ? (
+                         <div className="flex flex-col items-center justify-center py-20 text-center">
+                             <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+                                 <FlaskConical className="text-emerald-600" size={40} />
+                             </div>
+                             <h3 className="text-2xl font-black text-slate-900 mb-2">System Stable</h3>
+                             <p className="text-slate-500 max-w-md">All developer features have been promoted to stable. There are no features currently in the sandbox pipeline.</p>
+                         </div>
+                     ) : (
+                         <>
+                             {sandboxTab === 'pre-orders' && (
+                                 <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                                     <PreOrderManagement businessId={selectedBusinessId} />
+                                 </div>
+                             )}
+                             {sandboxTab === 'waitlist' && (
+                                 <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                                     <WaitlistManagement businessId={selectedBusinessId} />
+                                 </div>
+                             )}
+                             {sandboxTab === 'ar-menu' && (
+                                 <div className="bg-slate-900 rounded-3xl overflow-hidden min-h-[500px]">
+                                     {loadingARMenu ? (
+                                         <div className="flex flex-col items-center justify-center p-20 text-white">
+                                             <Loader2 className="w-10 h-10 text-red-500 animate-spin mb-4" />
+                                             <p className="text-sm font-bold uppercase tracking-widest opacity-60">Loading AR Models...</p>
+                                         </div>
+                                     ) : (
+                                         <ARMenuSection
+                                             isDarkMode={true}
+                                             language="english"
+                                             translations={translations}
+                                             menuItems={arMenuItems}
+                                         />
+                                     )}
+                                 </div>
+                             )}
+                         </>
+                     )}
+                 </div>
 
                 {/* Developer Console Placeholder */}
                 <div className="absolute bottom-4 right-4 px-4 py-2 bg-slate-900/10 backdrop-blur-md border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">
