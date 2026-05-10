@@ -14,137 +14,144 @@ const itemMap: Record<string, number> = {
   coming_soon: 3, // Sign
 };
 
-const modeColors: Record<string, string> = {
-  development: 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20',
-  testing: 'bg-blue-500/10 text-blue-500 dark:text-blue-400 border-blue-500/20',
-  maintenance: 'bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-500/20',
-  coming_soon: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20',
+const modeStyles: Record<string, string> = {
+  development: 'from-emerald-500 to-slate-900 text-white border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.2)]',
+  testing: 'from-blue-500 to-slate-900 text-white border-blue-500/30 shadow-[0_0_20px_rgba(59,130,246,0.2)]',
+  maintenance: 'from-rose-500 to-slate-900 text-white border-rose-500/30 shadow-[0_0_20px_rgba(244,63,94,0.2)]',
+  coming_soon: 'from-emerald-400 to-slate-900 text-white border-emerald-400/30 shadow-[0_0_20px_rgba(52,211,153,0.2)]',
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
   const itemIndex = itemMap[mode] || 0;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center space-y-8">
-      {/* SVG Filter to remove black background and keep colors vibrant in both modes */}
-      <svg className="absolute w-0 h-0 invisible">
-        <filter id="pixel-transparency">
+    <div className="flex flex-col items-center justify-center p-8 text-center space-y-10 relative overflow-visible">
+      {/* Universal Transparency Filter - Improved injection */}
+      <svg className="absolute w-0 h-0 pointer-events-none opacity-0">
+        <filter id="pixel-transparency" colorInterpolationFilters="sRGB">
           <feColorMatrix 
             type="matrix" 
             values="1 0 0 0 0
                     0 1 0 0 0
                     0 0 1 0 0
-                    1 1 1 0 -0.2" />
+                    1 1 1 0 -0.1" />
           <feComponentTransfer>
-            <feFuncA type="linear" slope="10" intercept="-0.5" />
+            <feFuncA type="linear" slope="20" intercept="-0.2" />
           </feComponentTransfer>
         </filter>
       </svg>
 
-      <div className="relative group">
-        {/* Cinematic Ambient Glow - Adapts to theme */}
-        <div className="absolute inset-0 bg-emerald-500/20 dark:bg-emerald-500/15 blur-[80px] rounded-full scale-150" />
+      <div className="relative">
+        {/* Dynamic Background Glow */}
+        <div className="absolute inset-0 bg-emerald-500/20 dark:bg-emerald-400/10 blur-[100px] rounded-full scale-[2]" />
         
+        {/* The Animated Figure - Walking "In Front" of User */}
         <motion.div 
           className="relative z-10 flex flex-col items-center"
           animate={{
-             x: [-20, 20, -20],
+             y: [0, -8, 0],
+             scale: [1, 1.05, 1]
           }}
           transition={{
-            duration: 6,
+            duration: 0.8,
             repeat: Infinity,
-            ease: "linear"
+            ease: "steps(4)"
           }}
         >
-          {/* Walking Dino Sprite with Universal Transparency Filter */}
+          {/* Walking Dino Sprite */}
           <div 
-            className="w-56 h-56 overflow-hidden"
+            className="w-64 h-64 overflow-hidden"
             style={{
               backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
               backgroundSize: '400% auto',
-              backgroundPosition: '0 50%',
               imageRendering: 'pixelated',
               animation: 'dino-walk 0.8s steps(4) infinite',
-              filter: 'url(#pixel-transparency) brightness(1.1)',
+              filter: 'url(#pixel-transparency) drop-shadow(0 0 10px rgba(16,185,129,0.4))',
             }}
           />
 
-          {/* Held Item Overlay */}
+          {/* Held Item Overlay - Bobbing with hand */}
           <motion.div
             animate={{
-              y: [0, -6, 0, 6, 0],
-              x: [40, 42, 40, 38, 40],
-              rotate: [-5, 5, -5]
+              y: [0, -4, 0, 4, 0],
+              x: [45, 47, 45, 43, 45],
+              rotate: [-10, 10, -10]
             }}
             transition={{
               duration: 0.8,
               repeat: Infinity,
               ease: "steps(4)"
             }}
-            className="absolute top-20 left-1/2 -ml-12 w-20 h-20 pointer-events-none"
+            className="absolute top-24 left-1/2 -ml-12 w-24 h-24 pointer-events-none"
             style={{
               backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
               backgroundSize: '400% auto',
               backgroundPosition: `${-(itemIndex * 100)}% 45%`,
               imageRendering: 'pixelated',
-              filter: 'url(#pixel-transparency)',
+              filter: 'url(#pixel-transparency) brightness(1.2)',
             }}
           />
         </motion.div>
 
-        {/* Action Micro-particles */}
+        {/* Ambient Pixel Particles */}
         <div className="absolute inset-0 pointer-events-none">
-          {[...Array(5)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <motion.div
               key={i}
               animate={{
-                y: [0, -100],
-                x: [0, (i - 2) * 30],
+                y: [0, -150],
+                x: [0, (i - 4) * 40],
                 opacity: [0, 1, 0],
-                scale: [0, 1.5, 0]
+                scale: [0, 1, 0]
               }}
               transition={{
-                duration: 2 + Math.random(),
+                duration: 3,
                 repeat: Infinity,
-                delay: i * 0.4,
-                ease: "easeOut"
+                delay: i * 0.3,
               }}
-              className="absolute left-1/2 bottom-1/2 w-1 h-1 bg-emerald-500 rounded-full blur-[1px]"
+              className="absolute left-1/2 bottom-1/4 w-1.5 h-1.5 bg-emerald-400/40 rounded-sm"
+              style={{ imageRendering: 'pixelated' }}
             />
           ))}
         </div>
       </div>
 
-      <div className="space-y-4 max-w-md z-20">
+      <div className="space-y-6 max-w-xl z-20">
         <div className="flex justify-center">
-          <motion.span 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border shadow-2xl backdrop-blur-xl ${modeColors[mode] || modeColors.development}`}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`px-6 py-2 rounded-xl text-[11px] font-black uppercase tracking-[0.4em] border bg-gradient-to-r ${modeStyles[mode] || modeStyles.development}`}
           >
             {mode.replace('_', ' ')}
-          </motion.span>
+          </motion.div>
         </div>
         
-        <h3 className="text-4xl font-black text-gray-900 dark:text-white leading-tight tracking-tighter uppercase italic">
+        <h3 className="text-5xl font-black text-white dark:text-white leading-tight tracking-tighter uppercase italic drop-shadow-xl">
           {caption}
         </h3>
         
-        <p className="text-gray-500 dark:text-gray-400 text-lg font-medium leading-relaxed opacity-80">
+        <p className="text-slate-400 text-xl font-medium leading-relaxed max-w-md mx-auto opacity-90">
           Our team of dinosaurs is working hard to bring this feature to your expedition.
         </p>
 
-        <div className="pt-6 flex justify-center space-x-2">
-           <div className="h-1 w-1 bg-emerald-500 rounded-full" />
-           <div className="h-1 w-12 bg-gradient-to-r from-emerald-500 to-transparent rounded-full" />
-           <div className="h-1 w-1 bg-emerald-500/50 rounded-full" />
+        {/* Progress Bar / Visual Separator */}
+        <div className="pt-8 flex flex-col items-center space-y-2">
+           <div className="text-[10px] text-emerald-500 font-bold tracking-[0.2em] uppercase opacity-50">Syncing with Expedition</div>
+           <div className="h-1.5 w-48 bg-slate-800 rounded-full overflow-hidden">
+             <motion.div 
+               animate={{ x: [-200, 200] }}
+               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+               className="h-full w-24 bg-gradient-to-r from-transparent via-emerald-500 to-transparent"
+             />
+           </div>
         </div>
       </div>
 
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes dino-walk {
-          from { background-position: 0% 0; }
-          to { background-position: 100% 0; }
+          from { background-position: 0% 50%; }
+          to { background-position: 100% 50%; }
         }
       `}} />
     </div>
