@@ -981,16 +981,33 @@ export const sendNotification = async (req: Request, res: Response) => {
 // Get notification history (broadcast logs)
 export const getNotificationHistory = async (req: Request, res: Response) => {
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, targetType, year, month } = req.query;
     
+    // Build filter object
+    const filter: any = {};
+    if (targetType && targetType !== 'all_targets') filter.targetType = targetType;
+    
+    if (year) {
+      const startOfYear = new Date(Number(year), 0, 1);
+      const endOfYear = new Date(Number(year), 11, 31, 23, 59, 59);
+      
+      if (month) {
+        const startOfMonth = new Date(Number(year), Number(month) - 1, 1);
+        const endOfMonth = new Date(Number(year), Number(month), 0, 23, 59, 59);
+        filter.createdAt = { $gte: startOfMonth, $lte: endOfMonth };
+      } else {
+        filter.createdAt = { $gte: startOfYear, $lte: endOfYear };
+      }
+    }
+
     // Ensure page and limit are positive integers to prevent MongoDB errors
     const sanitizedPage = Math.max(1, parseInt(page as string) || 1);
     const sanitizedLimit = Math.max(1, parseInt(limit as string) || 10);
     const skip = (sanitizedPage - 1) * sanitizedLimit;
 
     const [broadcasts, total] = await Promise.all([
-      Broadcast.find().sort({ createdAt: -1 }).skip(skip).limit(sanitizedLimit),
-      Broadcast.countDocuments()
+      Broadcast.find(filter).sort({ createdAt: -1 }).skip(skip).limit(sanitizedLimit),
+      Broadcast.countDocuments(filter)
     ]);
 
     res.json({

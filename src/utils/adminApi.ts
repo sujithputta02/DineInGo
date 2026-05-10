@@ -129,7 +129,13 @@ export async function sendNotification(data: {
 }
 
 export async function getNotificationStats() { return adminApiRequest('/api/v1/admin/notification-stats'); }
-export async function getNotificationHistory(params: { page?: number; limit?: number } = {}) {
+export async function getNotificationHistory(params: { 
+  page?: number; 
+  limit?: number; 
+  targetType?: string; 
+  year?: number; 
+  month?: number;
+} = {}) {
   const query = new URLSearchParams(params as any).toString();
   return adminApiRequest(`/api/v1/admin/notification-history?${query}`);
 }

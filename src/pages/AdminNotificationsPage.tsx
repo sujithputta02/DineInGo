@@ -13,7 +13,10 @@ import {
   Globe,
   UserCheck,
   RefreshCw,
-  Clock
+  Clock,
+  History,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import EmojiPicker from '../components/EmojiPicker';
 import { adminApi } from '../utils/adminApi';
@@ -32,6 +35,9 @@ function AdminNotificationsPage() {
   const [historyLoading, setHistoryLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filterTarget, setFilterTarget] = useState('all_targets');
+  const [filterYear, setFilterYear] = useState('all');
+  const [filterMonth, setFilterMonth] = useState('all');
 
   // Fetch notification stats and history
   useEffect(() => {
@@ -39,7 +45,13 @@ function AdminNotificationsPage() {
       try {
         const [statsData, historyData] = await Promise.all([
           adminApi.getNotificationStats(),
-          adminApi.getNotificationHistory({ page, limit: 5 })
+          adminApi.getNotificationHistory({ 
+            page, 
+            limit: 5, 
+            targetType: filterTarget,
+            year: filterYear !== 'all' ? Number(filterYear) : undefined,
+            month: filterMonth !== 'all' ? Number(filterMonth) : undefined
+          })
         ]);
         
         if (statsData.success) setStats(statsData.stats);
@@ -58,7 +70,7 @@ function AdminNotificationsPage() {
     fetchData();
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [page]);
+  }, [page, filterTarget, filterYear, filterMonth]);
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -328,30 +340,81 @@ function AdminNotificationsPage() {
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-3">
                 <div className="p-3 bg-purple-100 rounded-xl">
-                  <Clock className="text-purple-600" size={24} />
+                  <History className="text-purple-600" size={24} />
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Broadcast History</h2>
                   <p className="text-slate-600 text-sm">Logs of all sent notifications</p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Target Filter */}
+                <select 
+                  value={filterTarget}
+                  onChange={(e) => {
+                    setFilterTarget(e.target.value);
+                    setPage(1);
+                  }}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-purple-200 transition-all"
+                >
+                  <option value="all_targets">All Targets</option>
+                  <option value="users">Customers Only</option>
+                  <option value="businesses">Businesses Only</option>
+                </select>
+
+                {/* Year Filter */}
+                <select 
+                  value={filterYear}
+                  onChange={(e) => {
+                    setFilterYear(e.target.value);
+                    setPage(1);
+                  }}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-purple-200 transition-all"
+                >
+                  <option value="all">Any Year</option>
+                  {Array.from({ length: 3 }, (_, i) => new Date().getFullYear() - i).map(y => (
+                    <option key={y} value={y}>{y}</option>
+                  ))}
+                </select>
+
+                {/* Month Filter */}
+                {filterYear !== 'all' && (
+                  <select 
+                    value={filterMonth}
+                    onChange={(e) => {
+                      setFilterMonth(e.target.value);
+                      setPage(1);
+                    }}
+                    className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-600 outline-none focus:ring-2 focus:ring-purple-200 transition-all"
+                  >
+                    <option value="all">Any Month</option>
+                    {[
+                      'January', 'February', 'March', 'April', 'May', 'June',
+                      'July', 'August', 'September', 'October', 'November', 'December'
+                    ].map((m, i) => (
+                      <option key={m} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                )}
+
+                <div className="h-6 w-px bg-slate-200 mx-1" />
+
                 <button 
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                   disabled={page === 1}
-                  className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30"
+                  className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30 transition-colors"
                 >
-                  ←
+                  <ChevronLeft size={18} className="text-slate-600" />
                 </button>
-                <span className="flex items-center px-3 font-bold text-sm text-slate-500">
+                <span className="flex items-center px-3 font-bold text-xs text-slate-500 bg-slate-50 rounded-lg h-9">
                   {page} / {totalPages}
                 </span>
                 <button 
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
-                  className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30"
+                  className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30 transition-colors"
                 >
-                  →
+                  <ChevronRight size={18} className="text-slate-600" />
                 </button>
               </div>
             </div>
@@ -390,6 +453,21 @@ function AdminNotificationsPage() {
                             </span>
                           </div>
                         </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        <button
+                          onClick={() => {
+                            setTitle(item.title);
+                            setMessage(item.message);
+                            setType(item.type);
+                            setTargetType(item.targetType);
+                            window.scrollTo({ top: 0, behavior: 'smooth' });
+                          }}
+                          className="px-3 py-2 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-all flex items-center gap-1.5 border border-blue-100"
+                        >
+                          <RefreshCw size={14} />
+                          Edit & Resend
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -439,6 +517,22 @@ function AdminNotificationsPage() {
                 <p className="text-xs text-slate-600">New feature release</p>
               </button>
               
+              <button
+                onClick={() => {
+                  setTitle('Interactive AR Menu! 🦖');
+                  setMessage('Why just read a menu when you can see it in 3D? We’ve just launched our Interactive AR Menu! Next time you’re at a partner restaurant, just tap the AR icon to see your dish appear right on your table before you even order.\n\nExplore nutrition, ingredients, and 3D visuals like never before. The future of dining is here—come take a look!\n\n— Team DineInGo');
+                  setType('info');
+                  setTargetType('all');
+                }}
+                className="w-full text-left p-3 hover:bg-slate-50 rounded-xl transition-colors border border-emerald-100 bg-emerald-50/30"
+              >
+                <p className="font-medium text-emerald-900 text-sm flex items-center gap-2">
+                  <Globe size={14} />
+                  AR Menu Launch
+                </p>
+                <p className="text-xs text-emerald-600">3D Interactive Menu Announcement</p>
+              </button>
+
               <button
                 onClick={() => {
                   setTitle('Important Policy Update');
