@@ -15,10 +15,10 @@ const itemMap: Record<string, number> = {
 };
 
 const modeColors: Record<string, string> = {
-  development: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-  testing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  maintenance: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-  coming_soon: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+  development: 'bg-amber-500/10 text-amber-500 dark:text-amber-400 border-amber-500/20',
+  testing: 'bg-blue-500/10 text-blue-500 dark:text-blue-400 border-blue-500/20',
+  maintenance: 'bg-rose-500/10 text-rose-500 dark:text-rose-400 border-rose-500/20',
+  coming_soon: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400 border-emerald-500/20',
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
@@ -26,11 +26,25 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
 
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-8">
+      {/* SVG Filter to remove black background and keep colors vibrant in both modes */}
+      <svg className="absolute w-0 h-0 invisible">
+        <filter id="pixel-transparency">
+          <feColorMatrix 
+            type="matrix" 
+            values="1 0 0 0 0
+                    0 1 0 0 0
+                    0 0 1 0 0
+                    1 1 1 0 -0.2" />
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="10" intercept="-0.5" />
+          </feComponentTransfer>
+        </filter>
+      </svg>
+
       <div className="relative group">
-        {/* Cinematic Ambient Glow */}
-        <div className="absolute inset-0 bg-emerald-500/15 blur-[80px] rounded-full scale-150" />
+        {/* Cinematic Ambient Glow - Adapts to theme */}
+        <div className="absolute inset-0 bg-emerald-500/20 dark:bg-emerald-500/15 blur-[80px] rounded-full scale-150" />
         
-        {/* Animated Spritesheet Character */}
         <motion.div 
           className="relative z-10 flex flex-col items-center"
           animate={{
@@ -42,17 +56,16 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
             ease: "linear"
           }}
         >
-          {/* Walking Dino Sprite */}
+          {/* Walking Dino Sprite with Universal Transparency Filter */}
           <div 
             className="w-56 h-56 overflow-hidden"
             style={{
               backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
               backgroundSize: '400% auto',
-              backgroundPosition: '0 50%', // Centers the dino and crops the numbers
+              backgroundPosition: '0 50%',
               imageRendering: 'pixelated',
               animation: 'dino-walk 0.8s steps(4) infinite',
-              mixBlendMode: 'screen', // Perfect for black backgrounds
-              filter: 'brightness(1.1)',
+              filter: 'url(#pixel-transparency) brightness(1.1)',
             }}
           />
 
@@ -74,7 +87,7 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
               backgroundSize: '400% auto',
               backgroundPosition: `${-(itemIndex * 100)}% 45%`,
               imageRendering: 'pixelated',
-              mixBlendMode: 'screen',
+              filter: 'url(#pixel-transparency)',
             }}
           />
         </motion.div>
@@ -96,7 +109,7 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
                 delay: i * 0.4,
                 ease: "easeOut"
               }}
-              className="absolute left-1/2 bottom-1/2 w-1 h-1 bg-emerald-400 rounded-full blur-[1px]"
+              className="absolute left-1/2 bottom-1/2 w-1 h-1 bg-emerald-500 rounded-full blur-[1px]"
             />
           ))}
         </div>
@@ -113,11 +126,11 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           </motion.span>
         </div>
         
-        <h3 className="text-4xl font-black text-white leading-tight tracking-tighter uppercase italic">
+        <h3 className="text-4xl font-black text-gray-900 dark:text-white leading-tight tracking-tighter uppercase italic">
           {caption}
         </h3>
         
-        <p className="text-gray-400 text-lg font-medium leading-relaxed opacity-80">
+        <p className="text-gray-500 dark:text-gray-400 text-lg font-medium leading-relaxed opacity-80">
           Our team of dinosaurs is working hard to bring this feature to your expedition.
         </p>
 
