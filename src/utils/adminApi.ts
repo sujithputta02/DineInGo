@@ -52,6 +52,14 @@ export async function adminApiRequest(
       headers,
     });
 
+    // Check if the response is actually JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Non-JSON response received:', text.substring(0, 200));
+      throw new Error(`Server returned non-JSON response (${response.status}). The backend might be down or misconfigured.`);
+    }
+
     const data = await response.json();
 
     // Handle token expiration
@@ -61,12 +69,16 @@ export async function adminApiRequest(
     }
 
     if (!response.ok) {
-      throw new Error(data.message || 'Request failed');
+      throw new Error(data.message || `Request failed with status ${response.status}`);
     }
 
     return data;
-  } catch (error) {
+  } catch (error: any) {
     console.error('Admin API request failed:', error);
+    // Provide a more user-friendly error message if it's a JSON parse error or connection error
+    if (error instanceof SyntaxError) {
+      throw new Error('Failed to parse server response. The API might be returning HTML instead of JSON.');
+    }
     throw error;
   }
 }

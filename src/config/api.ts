@@ -2,8 +2,8 @@
 export const API_CONFIG = {
   // Backend API base URL
   // Backend API base URL with production-aware fallback
-  BASE_URL: (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'))
-    ? 'http://127.0.0.1:5001'
+  BASE_URL: (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0'))
+    ? '' // Use relative paths to leverage Vite proxy and avoid CORS/hostname issues
     : (import.meta.env.VITE_API_URL || 'https://dineingo-backend.onrender.com'),
   
   // API endpoints
