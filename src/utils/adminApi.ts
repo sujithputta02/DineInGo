@@ -136,7 +136,13 @@ export async function getNotificationHistory(params: {
   year?: number; 
   month?: number;
 } = {}) {
-  const query = new URLSearchParams(params as any).toString();
+  const cleanParams: any = {};
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== null && value !== '') {
+      cleanParams[key] = value;
+    }
+  });
+  const query = new URLSearchParams(cleanParams).toString();
   return adminApiRequest(`/api/v1/admin/notification-history?${query}`);
 }
 

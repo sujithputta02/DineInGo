@@ -987,16 +987,24 @@ export const getNotificationHistory = async (req: Request, res: Response) => {
     const filter: any = {};
     if (targetType && targetType !== 'all_targets') filter.targetType = targetType;
     
-    if (year) {
-      const startOfYear = new Date(Number(year), 0, 1);
-      const endOfYear = new Date(Number(year), 11, 31, 23, 59, 59);
-      
-      if (month) {
-        const startOfMonth = new Date(Number(year), Number(month) - 1, 1);
-        const endOfMonth = new Date(Number(year), Number(month), 0, 23, 59, 59);
-        filter.createdAt = { $gte: startOfMonth, $lte: endOfMonth };
-      } else {
-        filter.createdAt = { $gte: startOfYear, $lte: endOfYear };
+    if (year && year !== 'undefined') {
+      const yearNum = Number(year);
+      if (!isNaN(yearNum)) {
+        const startOfYear = new Date(yearNum, 0, 1);
+        const endOfYear = new Date(yearNum, 11, 31, 23, 59, 59);
+        
+        if (month && month !== 'undefined') {
+          const monthNum = Number(month);
+          if (!isNaN(monthNum)) {
+            const startOfMonth = new Date(yearNum, monthNum - 1, 1);
+            const endOfMonth = new Date(yearNum, monthNum, 0, 23, 59, 59);
+            filter.createdAt = { $gte: startOfMonth, $lte: endOfMonth };
+          } else {
+            filter.createdAt = { $gte: startOfYear, $lte: endOfYear };
+          }
+        } else {
+          filter.createdAt = { $gte: startOfYear, $lte: endOfYear };
+        }
       }
     }
 
