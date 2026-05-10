@@ -25,7 +25,7 @@
     "@types/hpp": "^0.2.7",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^1.4.11",
-    "@types/node": "^18.16.3",
+    "@types/node": "^20.11.24",
     "@types/nodemailer": "^6.4.14",
     "@types/pdfkit": "^0.13.9",
     "@types/qrcode": "^1.5.5",
@@ -66,6 +66,7 @@
   "overrides": {
     "http-proxy-agent": "^9.0.0",
     "teeny-request": "^10.1.2",
-    "retry-request": "^7.0.2"
+    "retry-request": "^7.0.2",
+    "cloudinary": "^2.10.0"
   }
 }
