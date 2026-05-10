@@ -106,8 +106,21 @@ export const addReview = async (req: Request, res: Response) => {
         finalImages = [...finalImages, ...uploadedImages];
         console.log(`[ReviewController] Total images for review: ${finalImages.length}`);
 
+        console.log('[ReviewController] Saving review to database...');
+        
+        // Fetch business to determine if it's an event or business
+        const business = await Business.findById(businessIdRaw);
+        if (!business) {
+            console.error('[ReviewController] Business not found:', businessIdRaw);
+            return res.status(404).json({ message: 'Business not found' });
+        }
+
+        const isEvent = business.type === 'event' || business.type === 'both';
+        
         const review = new Review({
-            businessId: new mongoose.Types.ObjectId(businessIdRaw),
+            businessId: !isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
+            eventId: isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
+            entityType: isEvent ? 'event' : 'business',
             userId,
             userName,
             userPhoto,
@@ -119,7 +132,6 @@ export const addReview = async (req: Request, res: Response) => {
             dislikes: []
         });
 
-        console.log('[ReviewController] Saving review to database...');
         await review.save();
         console.log('[ReviewController] Review saved successfully, ID:', review._id);
 
@@ -127,7 +139,6 @@ export const addReview = async (req: Request, res: Response) => {
         try {
             console.log('[ReviewController] Triggering email notifications...');
             const user = await User.findOne({ uid: userId });
-            const business = await Business.findById(businessIdRaw);
 
             if (user && business) {
                 // Notify user: their review was submitted

@@ -842,7 +842,7 @@ const RestaurantDetails = () => {
                           <span className="text-[10px] font-bold text-gray-400 uppercase">Add Photo</span>
                           <input 
                             type="file" 
-                            accept="image/*" 
+                            accept="image/jpeg,image/png,image/webp,image/avif" 
                             multiple 
                             onChange={handleImageChange} 
                             className="hidden" 

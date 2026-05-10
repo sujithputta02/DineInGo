@@ -17,7 +17,7 @@ const storage = new CloudinaryStorage({
   params: async (req, file) => {
     return {
       folder: 'dineingo', // General folder
-      allowed_formats: ['jpeg', 'png', 'jpg', 'webp'],
+      allowed_formats: ['jpeg', 'png', 'jpg', 'webp', 'avif'],
       public_id: `${file.fieldname}-${Date.now()}`
     };
   }
