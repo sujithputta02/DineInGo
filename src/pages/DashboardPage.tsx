@@ -42,7 +42,7 @@ import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import BookingCard from "../components/BookingCard";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
-import { userAPI, bookingsApi, userPreferenceApi, normalizeImageUrl } from "../services/api";
+import { userAPI, bookingsApi, userPreferenceApi, normalizeImageUrl, businessApi } from "../services/api";
 import { API_CONFIG } from "../config/api";
 import { toast } from "react-toastify";
 import { Location as GeoLocation, Event as AppEvent } from "../types";
@@ -1159,7 +1159,8 @@ useEffect(() => {
     if (businessRestaurants.length === 0) return;
 
     try {
-      const { businessApi } = await import("../services/api");
+      // Use statically imported businessApi
+
 
       const ratingPromises = businessRestaurants.map(async (restaurant) => {
         try {
@@ -1403,7 +1404,8 @@ const fetchUserReviews = async () => {
   if (!userData?.uid) return;
   setIsReviewsLoading(true);
   try {
-    const { businessApi } = await import("../services/api");
+    // Use statically imported businessApi
+
     const reviews = await businessApi.getUserReviews(userData.uid);
     setUserReviews(reviews);
   } catch (err) {
@@ -1430,7 +1432,8 @@ const handleUpdateReview = async (reviewId: string) => {
   }
 
   try {
-    const { businessApi } = await import("../services/api");
+    // Use statically imported businessApi
+
     await businessApi.updateReview(reviewId, {
       rating: editRating,
       comment: editComment.trim(),
@@ -1447,7 +1450,8 @@ const handleDeleteReview = async (reviewId: string) => {
   if (!window.confirm("Are you sure you want to delete this review?")) return;
 
   try {
-    const { businessApi } = await import("../services/api");
+    // Use statically imported businessApi
+
     await businessApi.deleteReview(reviewId);
     toast.success("Review deleted successfully");
     fetchUserReviews();
@@ -1620,7 +1624,8 @@ const handleLogout = async () => {
     if (currentUser) {
       // Track logout activity in our backend
       try {
-        const { userAPI } = await import("../services/api");
+        // Use statically imported userAPI
+
         await userAPI.logoutUser(currentUser.uid, "ui_button");
       } catch (error) {
         console.error("Error tracking logout:", error);

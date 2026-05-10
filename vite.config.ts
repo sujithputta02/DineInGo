@@ -81,6 +81,11 @@ export default defineConfig({
             if (id.includes('framer-motion')) return 'vendor-framer';
             if (id.includes('lucide-react')) return 'vendor-lucide';
             if (id.includes('react-router-dom') || id.includes('remix-run') || id.includes('@remix-run')) return 'vendor-router';
+            if (id.includes('three') || id.includes('@react-three')) return 'vendor-three';
+            if (id.includes('@tensorflow') || id.includes('tesseract.js')) return 'vendor-ai';
+            if (id.includes('@mui') || id.includes('@emotion')) return 'vendor-ui';
+            if (id.includes('recharts') || id.includes('leaflet')) return 'vendor-viz';
+            if (id.includes('pdfkit') || id.includes('jspdf') || id.includes('html2canvas')) return 'vendor-docs';
             return 'vendor';
           }
         },

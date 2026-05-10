@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Navigate, useLocation, useParams } from 'react-router-dom';
-import { validateSession } from '../utils/sessionGuard';
+import { validateSession, clearSession } from '../utils/sessionGuard';
 
 interface ProtectedAdminRouteProps {
   children: React.ReactNode;
@@ -23,7 +23,7 @@ const ProtectedAdminRoute: React.FC<ProtectedAdminRouteProps> = ({ children }) =
         localStorage.removeItem('adminEmail');
         localStorage.removeItem('adminRole');
         localStorage.removeItem('adminLoginTime');
-        import('../utils/sessionGuard').then(module => module.clearSession());
+        clearSession();
       }
     }
     

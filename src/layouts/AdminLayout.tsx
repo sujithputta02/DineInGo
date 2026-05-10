@@ -135,11 +135,10 @@ function AdminLayout() {
             <Link
               key={item.path}
               to={item.path}
-              className={`flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl transition-all relative text-sm md:text-base ${
-                isActive(item.path)
+              className={`flex items-center gap-3 px-3 md:px-4 py-2 md:py-3 rounded-xl transition-all relative text-sm md:text-base ${isActive(item.path)
                   ? 'bg-red-600 text-white shadow-lg shadow-red-900/20'
                   : 'text-slate-400 hover:bg-slate-800 hover:text-white'
-              }`}
+                }`}
             >
               <item.icon size={18} className="md:w-5 md:h-5" />
               <span className="font-medium">{item.name}</span>
@@ -292,11 +291,10 @@ function AdminLayout() {
                 key={item.path}
                 to={item.path}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-2xl text-base md:text-lg mb-2 transition-all relative ${
-                  isActive(item.path)
+                className={`flex items-center gap-3 md:gap-4 px-4 md:px-6 py-3 md:py-4 rounded-2xl text-base md:text-lg mb-2 transition-all relative ${isActive(item.path)
                     ? 'bg-red-600 text-white shadow-lg'
                     : 'text-slate-400 hover:text-white'
-                }`}
+                  }`}
               >
                 <item.icon size={20} className="md:w-6 md:h-6" />
                 <span className="font-bold">{item.name}</span>

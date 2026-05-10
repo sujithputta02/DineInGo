@@ -13,6 +13,8 @@ import EmojiPicker from '../components/EmojiPicker';
 import { isRestaurantOpen } from '../utils/openStatus';
 import { normalizeImageUrl } from '../services/api';
 import { trackEvent } from '../utils/analytics';
+import { favoritesApi } from '../services/favoritesApi';
+
 
 
 const RestaurantDetails = () => {
@@ -359,7 +361,8 @@ const RestaurantDetails = () => {
       try {
         const user = JSON.parse(userStr);
         if (user.uid && id) {
-          const { favoritesApi } = await import('../services/favoritesApi');
+          // Use statically imported favoritesApi
+
           const response = await favoritesApi.get(user.uid);
           const restFavs = response.restaurantIds || [];
           const isFav = restFavs.includes(id);
@@ -384,7 +387,8 @@ const RestaurantDetails = () => {
       const user = JSON.parse(userStr);
       if (!user.uid || !id) return;
 
-      const { favoritesApi } = await import('../services/favoritesApi');
+      // Use statically imported favoritesApi
+
       if (isFavorite) {
         await favoritesApi.removeRestaurant(user.uid, id);
         toast.success('Removed from favorites');

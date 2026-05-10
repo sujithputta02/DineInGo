@@ -17,6 +17,8 @@ import {
   Calendar,
   Copy
 } from 'lucide-react';
+import { businessApi } from '../services/api';
+
 
 // Types matching the customer event seating view
 type SeatStatus = 'available' | 'selected' | 'booked';
@@ -1055,7 +1057,8 @@ const EventSeatingDesigner: React.FC<{
         setSaveMessage('Seating layout saved successfully!');
       } else if (businessId) {
         // Save to business API
-        const { businessApi } = await import('../services/api');
+        // Use statically imported businessApi
+
         await businessApi.update(businessId, { seatingLayout: seatingLayoutData });
         setSaveMessage('Seating layout saved to business successfully!');
       }

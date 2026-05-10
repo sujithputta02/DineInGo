@@ -700,9 +700,8 @@ const EventRegistration: React.FC = () => {
             </button>
             <button
               onClick={() => navigate('/dashboard')}
-              className={`px-6 py-2 border rounded-lg transition-colors ${
-                isDarkMode ? 'text-emerald-400 border-emerald-400 hover:bg-emerald-400/10' : 'text-emerald-500 border-emerald-500 hover:bg-emerald-50'
-              }`}
+              className={`px-6 py-2 border rounded-lg transition-colors ${isDarkMode ? 'text-emerald-400 border-emerald-400 hover:bg-emerald-400/10' : 'text-emerald-500 border-emerald-500 hover:bg-emerald-50'
+                }`}
             >
               Go to Dashboard
             </button>
@@ -720,18 +719,16 @@ const EventRegistration: React.FC = () => {
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
-          className={`flex items-center gap-2 mb-4 md:mb-6 min-h-[44px] min-w-[44px] transition-colors ${
-            isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-800'
-          }`}
+          className={`flex items-center gap-2 mb-4 md:mb-6 min-h-[44px] min-w-[44px] transition-colors ${isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-800'
+            }`}
         >
           <ArrowLeft size={20} />
           <span className="text-sm md:text-base font-bold uppercase tracking-widest">Back</span>
         </button>
 
         {/* Event Details Card */}
-        <div className={`rounded-3xl shadow-2xl overflow-hidden border-2 mb-8 ${
-          isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'
-        }`}>
+        <div className={`rounded-3xl shadow-2xl overflow-hidden border-2 mb-8 ${isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-white'
+          }`}>
           {/* Event Image */}
           <div className="h-40 md:h-56 lg:h-72 bg-gradient-to-r from-emerald-500 to-emerald-600 relative overflow-hidden">
             {event.imageUrl && (
@@ -805,8 +802,8 @@ const EventRegistration: React.FC = () => {
                   <span className={`text-[10px] font-black ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>{Math.round((event.registeredCount / event.capacity) * 100)}% Full</span>
                 </div>
                 <div className={`h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-100'}`}>
-                  <div 
-                    className="h-full bg-emerald-500 transition-all duration-1000" 
+                  <div
+                    className="h-full bg-emerald-500 transition-all duration-1000"
                     style={{ width: `${(event.registeredCount / event.capacity) * 100}%` }}
                   />
                 </div>
@@ -818,13 +815,12 @@ const EventRegistration: React.FC = () => {
               <button
                 onClick={toggleFavorite}
                 disabled={favoriteLoading}
-                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-3 border-2 active:scale-95 ${
-                  isFavorite
-                  ? 'bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/20'
-                  : isDarkMode
-                    ? 'bg-transparent border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
-                    : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
-                }`}
+                className={`flex-1 py-4 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-3 border-2 active:scale-95 ${isFavorite
+                    ? 'bg-rose-500 border-rose-500 text-white shadow-lg shadow-rose-500/20'
+                    : isDarkMode
+                      ? 'bg-transparent border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10'
+                      : 'bg-white border-emerald-500 text-emerald-600 hover:bg-emerald-50'
+                  }`}
               >
                 {favoriteLoading ? (
                   <Loader className="w-5 h-5 animate-spin" />
