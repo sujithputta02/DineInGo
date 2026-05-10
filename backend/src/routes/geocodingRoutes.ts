@@ -1,5 +1,6 @@
 import express from 'express';
 import axios from 'axios';
+import { getGoogleMapsApiKey } from '../utils/secretManager';
 
 const router = express.Router();
 
@@ -7,11 +8,7 @@ const router = express.Router();
 router.get('/google/places', async (req, res) => {
   try {
     const { query, location, radius, type, photoreference, maxwidth } = req.query;
-    const key = process.env.GOOGLE_MAPS_API_KEY;
-
-    if (!key) {
-      return res.status(500).json({ error: 'Google Maps API key not configured' });
-    }
+    const key = getGoogleMapsApiKey();
 
     let url = '';
     if (photoreference) {
@@ -35,11 +32,7 @@ router.get('/google/places', async (req, res) => {
 router.get('/google/geocode', async (req, res) => {
   try {
     const { address } = req.query;
-    const key = process.env.GOOGLE_MAPS_API_KEY;
-
-    if (!key) {
-      return res.status(500).json({ error: 'Google Maps API key not configured' });
-    }
+    const key = getGoogleMapsApiKey();
 
     const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address as string)}&key=${key}`;
     const response = await axios.get(url);
@@ -49,6 +42,7 @@ router.get('/google/geocode', async (req, res) => {
     res.status(error.response?.status || 500).json({ error: 'Geocoding service unavailable' });
   }
 });
+
 // Proxy for OpenStreetMap Nominatim API to avoid CORS issues
 router.get('/search', async (req, res) => {
   try {

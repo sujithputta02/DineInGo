@@ -95,6 +95,12 @@ const SECRETS_CONFIG: SecretConfig[] = [
     envVar: 'SESSION_SECRET',
     required: true,
     description: 'Session encryption secret'
+  },
+  {
+    name: 'GOOGLE_MAPS_API_KEY',
+    envVar: 'GOOGLE_MAPS_API_KEY',
+    required: true,
+    description: 'Google Maps API key for geocoding and places'
   }
 ];
 
@@ -231,6 +237,7 @@ export const getMongoDBUri = (): string => secretManager.getSecret('MONGODB_URI'
 export const getJWTSecret = (): string => secretManager.getSecret('JWT_SECRET');
 export const getSessionSecret = (): string => secretManager.getSecret('SESSION_SECRET');
 export const getAdminCode = (): string => secretManager.getSecret('ADMIN_CODE');
+export const getGoogleMapsApiKey = (): string => secretManager.getSecret('GOOGLE_MAPS_API_KEY');
 export const getSarvamApiKey = (): string | null => {
   try {
     return secretManager.getSecret('SARVAM_API_KEY');
