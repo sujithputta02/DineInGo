@@ -9,6 +9,7 @@ import UserNotification from '../models/UserNotification';
 import BusinessNotification from '../models/BusinessNotification';
 import AllUserNotification from '../models/AllUserNotification';
 import NotificationStats from '../models/NotificationStats';
+import Broadcast from '../models/Broadcast';
 import { getSystemSettings } from '../models/SystemSettings';
 import * as crypto from 'crypto';
 import { generateAdminToken } from '../middleware/adminAuth';
@@ -921,7 +922,17 @@ export const sendNotification = async (req: Request, res: Response) => {
       title,
       sentBy: adminEmail
     });
-    console.log('Notification stats recorded');
+
+    // Create Broadcast log for history
+    await Broadcast.create({
+      title,
+      message,
+      type,
+      targetType,
+      recipientCount: recipients.length,
+      sentBy: adminEmail
+    });
+    console.log('Notification stats and broadcast log recorded');
 
     // Emit real-time notification to all connected clients
     const io = req.app.get('io');
@@ -960,6 +971,37 @@ export const sendNotification = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error sending notification:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
+  }
+};
+
+// Get notification history (broadcast logs)
+export const getNotificationHistory = async (req: Request, res: Response) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [broadcasts, total] = await Promise.all([
+      Broadcast.find().sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+      Broadcast.countDocuments()
+    ]);
+
+    res.json({
+      success: true,
+      broadcasts,
+      pagination: {
+        currentPage: Number(page),
+        totalPages: Math.ceil(total / Number(limit)),
+        total,
+        hasNext: skip + Number(limit) < total,
+        hasPrev: Number(page) > 1
+      }
+    });
+  } catch (error) {
+    console.error('Error getting notification history:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Internal server error' 

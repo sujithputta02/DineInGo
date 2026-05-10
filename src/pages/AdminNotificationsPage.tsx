@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   MessageSquare,
@@ -12,7 +12,8 @@ import {
   Target,
   Globe,
   UserCheck,
-  RefreshCw
+  RefreshCw,
+  Clock
 } from 'lucide-react';
 import EmojiPicker from '../components/EmojiPicker';
 import { adminApi } from '../utils/adminApi';
@@ -27,27 +28,37 @@ function AdminNotificationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [stats, setStats] = useState({ today: 0, week: 0, total: 0 });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [history, setHistory] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
-  // Fetch notification stats
-  React.useEffect(() => {
-    const fetchStats = async () => {
+  // Fetch notification stats and history
+  useEffect(() => {
+    const fetchData = async () => {
       try {
-        const data = await adminApi.getNotificationStats();
-        if (data.success) {
-          setStats(data.stats);
+        const [statsData, historyData] = await Promise.all([
+          adminApi.getNotificationStats(),
+          adminApi.getNotificationHistory({ page, limit: 5 })
+        ]);
+        
+        if (statsData.success) setStats(statsData.stats);
+        if (historyData.success) {
+          setHistory(historyData.broadcasts);
+          setTotalPages(historyData.pagination.totalPages);
         }
       } catch (err) {
-        console.error('Error fetching stats:', err);
+        console.error('Error fetching notification data:', err);
       } finally {
         setStatsLoading(false);
+        setHistoryLoading(false);
       }
     };
 
-    fetchStats();
-    // Refresh stats every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+    fetchData();
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [page]);
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,10 +87,16 @@ function AdminNotificationsPage() {
         setType('info');
         setTargetType('all');
         
-        // Refresh stats after sending
-        const statsData = await adminApi.getNotificationStats();
-        if (statsData.success) {
-          setStats(statsData.stats);
+        // Refresh stats and history after sending
+        const [statsData, historyData] = await Promise.all([
+          adminApi.getNotificationStats(),
+          adminApi.getNotificationHistory({ page: 1, limit: 5 })
+        ]);
+        
+        if (statsData.success) setStats(statsData.stats);
+        if (historyData.success) {
+          setHistory(historyData.broadcasts);
+          setPage(1);
         }
       } else {
         setError(data.message || 'Failed to send notification');
@@ -119,27 +136,27 @@ function AdminNotificationsPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pb-12">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-slate-900 flex items-center gap-3">
             <MessageSquare className="text-blue-600" size={32} />
-            Send Notifications
+            Notification Center
           </h1>
           <p className="text-slate-600 mt-1">
-            Send system-wide notifications to users and businesses
+            Manage system-wide broadcasts and communication history
           </p>
         </div>
         <div className="flex items-center gap-2 px-4 py-2 bg-blue-100 text-blue-800 rounded-xl">
           <Bell size={16} />
-          <span className="text-sm font-medium">Notification Center</span>
+          <span className="text-sm font-medium">Broadcast Hub</span>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Notification Form */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-8">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -285,7 +302,7 @@ function AdminNotificationsPage() {
               <button
                 type="submit"
                 disabled={loading || !title.trim() || !message.trim()}
-                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold"
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold shadow-lg shadow-blue-100"
               >
                 {loading ? (
                   <>
@@ -300,6 +317,85 @@ function AdminNotificationsPage() {
                 )}
               </button>
             </form>
+          </motion.div>
+
+          {/* Broadcast History */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-white rounded-2xl p-8 shadow-sm border border-slate-200"
+          >
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-purple-100 rounded-xl">
+                  <Clock className="text-purple-600" size={24} />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-slate-900">Broadcast History</h2>
+                  <p className="text-slate-600 text-sm">Logs of all sent notifications</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setPage(p => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30"
+                >
+                  ←
+                </button>
+                <span className="flex items-center px-3 font-bold text-sm text-slate-500">
+                  {page} / {totalPages}
+                </span>
+                <button 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  disabled={page === totalPages}
+                  className="p-2 hover:bg-slate-100 rounded-lg disabled:opacity-30"
+                >
+                  →
+                </button>
+              </div>
+            </div>
+
+            {historyLoading ? (
+              <div className="flex justify-center py-12">
+                <RefreshCw className="animate-spin text-blue-600" size={32} />
+              </div>
+            ) : history.length === 0 ? (
+              <div className="text-center py-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-300">
+                No notification history found.
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {history.map((item) => (
+                  <div key={item._id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-white hover:shadow-md transition-all">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-start gap-4">
+                        <div className={`mt-1 p-2 rounded-lg ${getTypeColor(item.type)}`}>
+                          {getTypeIcon(item.type)}
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900">{item.title}</h4>
+                          <p className="text-sm text-slate-600 mt-1 line-clamp-2">{item.message}</p>
+                          <div className="flex items-center gap-4 mt-3">
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                              <Clock size={12} />
+                              {new Date(item.createdAt).toLocaleDateString()} {new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
+                              <Target size={12} />
+                              {item.recipientCount} Recipients
+                            </span>
+                            <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                              {item.targetType.toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </motion.div>
         </div>
 
@@ -369,26 +465,22 @@ function AdminNotificationsPage() {
               <UserCheck size={20} className="text-green-600" />
               Best Practices
             </h3>
-            <div className="space-y-3 text-sm text-slate-600">
+            <div className="space-y-3 text-sm text-slate-600 font-medium">
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
                 <p>Keep titles concise and descriptive</p>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p>Use appropriate notification types for better user experience</p>
+                <p>Use appropriate notification types</p>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p>Target specific audiences when relevant</p>
+                <p>Target specific audiences</p>
               </div>
               <div className="flex items-start gap-2">
                 <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p>Preview notifications before sending</p>
-              </div>
-              <div className="flex items-start gap-2">
-                <div className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2 flex-shrink-0"></div>
-                <p>Avoid sending too many notifications to prevent fatigue</p>
+                <p>Preview before sending</p>
               </div>
             </div>
           </motion.div>
@@ -400,24 +492,24 @@ function AdminNotificationsPage() {
             transition={{ delay: 0.3 }}
             className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200"
           >
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">Notification Stats</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">Live Activity</h3>
             {statsLoading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="animate-spin text-blue-600" size={24} />
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Today's Notifications</span>
-                  <span className="font-semibold text-slate-900">{stats.today}</span>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Today</span>
+                  <span className="font-black text-slate-900">{stats.today}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">This Week</span>
-                  <span className="font-semibold text-slate-900">{stats.week}</span>
+                <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">Weekly</span>
+                  <span className="font-black text-slate-900">{stats.week}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-slate-600">Total Sent</span>
-                  <span className="font-semibold text-slate-900">{stats.total}</span>
+                <div className="flex items-center justify-between p-3 bg-blue-50 rounded-xl">
+                  <span className="text-xs font-bold text-blue-600 uppercase tracking-widest">Lifetime</span>
+                  <span className="font-black text-blue-900">{stats.total}</span>
                 </div>
               </div>
             )}

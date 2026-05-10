@@ -133,6 +133,10 @@ function AdminSettingsPage() {
     },
   });
 
+  const [editingFeature, setEditingFeature] = useState<string | null>(null);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [showBroadcastConfirm, setShowBroadcastConfirm] = useState<{key: string, label: string} | null>(null);
+
   const API_URL = API_CONFIG.BASE_URL;
 
   useEffect(() => {
@@ -141,7 +145,6 @@ function AdminSettingsPage() {
     // Socket.IO for real-time updates
     const socket = (window as any).io?.(API_URL);
     if (socket) {
-      // Listen for settings updates from other admins
       socket.on('settingsUpdated', (data: any) => {
         setSettings(data.settings);
         toast.info(`Settings updated by ${data.updatedBy}`, {
@@ -149,7 +152,6 @@ function AdminSettingsPage() {
         });
       });
 
-      // Listen for individual setting updates
       socket.on('settingUpdated', (data: any) => {
         setSettings((prev) => ({
           ...prev,
@@ -160,7 +162,6 @@ function AdminSettingsPage() {
         });
       });
 
-      // Listen for settings reset
       socket.on('settingsReset', (data: any) => {
         setSettings(data.settings);
         toast.warning('Settings have been reset to default');
@@ -214,9 +215,7 @@ function AdminSettingsPage() {
     }
   };
 
-  // Real-time update for individual settings (like toggles)
   const handleToggleChange = async (key: string, value: any, isFlag: boolean = false) => {
-    // URL or Nested Key handling
     if (isFlag) {
       const currentFlag = (settings.featureFlags as any)[key];
       const updatedFlag = { ...currentFlag, enabled: value };
@@ -246,17 +245,38 @@ function AdminSettingsPage() {
         toast.error('Failed to update feature flag');
       }
     } else {
-      // Optimistic update
       setSettings((prev) => ({ ...prev, [key]: value }));
-
       try {
         await adminApi.updateSingleSetting(key, value);
       } catch (error) {
         console.error('Error updating setting:', error);
-        // Revert on error
         setSettings((prev) => ({ ...prev, [key]: !value }));
         toast.error('Failed to update setting');
       }
+    }
+  };
+
+  const handleSaveAndBroadcast = async (featureKey: string, featureLabel: string) => {
+    setIsBroadcasting(true);
+    try {
+      await adminApi.updateSingleSetting('featureFlags', settings.featureFlags);
+      const flag = (settings.featureFlags as any)[featureKey];
+      await adminApi.sendNotification({
+        title: `🚀 ${featureLabel} Update`,
+        message: flag.enabled 
+          ? `Exciting news! ${featureLabel} is now live for all users. Explore it today!`
+          : `We're working on ${featureLabel}! ${flag.caption}`,
+        type: 'info',
+        targetType: 'all'
+      });
+      toast.success('Settings updated and broadcast sent to all users!');
+      setEditingFeature(null);
+      setShowBroadcastConfirm(null);
+    } catch (error) {
+      console.error('Failed to save and broadcast:', error);
+      toast.error('Failed to complete the update and broadcast');
+    } finally {
+      setIsBroadcasting(false);
     }
   };
 
@@ -472,39 +492,6 @@ function AdminSettingsPage() {
                         onChange={(e) => setSettings({ ...settings, commissionRate: parseFloat(e.target.value) })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Commission charged on each booking
-                      </p>
-                    </div>
-
-                    <div className="border-t border-gray-200 pt-6">
-                      <h3 className="font-semibold text-gray-900 mb-4">Payment Gateway Status</h3>
-                      <div className="space-y-3">
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <CreditCard className="w-5 h-5 text-gray-600" />
-                            <div>
-                              <p className="font-medium text-gray-900">Stripe</p>
-                              <p className="text-sm text-gray-500">Credit/Debit Cards</p>
-                            </div>
-                          </div>
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                            Active
-                          </span>
-                        </div>
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                          <div className="flex items-center gap-3">
-                            <CreditCard className="w-5 h-5 text-gray-600" />
-                            <div>
-                              <p className="font-medium text-gray-900">PayPal</p>
-                              <p className="text-sm text-gray-500">PayPal Payments</p>
-                            </div>
-                          </div>
-                          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm font-medium">
-                            Inactive
-                          </span>
-                        </div>
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -531,9 +518,6 @@ function AdminSettingsPage() {
                         onChange={(e) => setSettings({ ...settings, bookingAdvanceDays: parseInt(e.target.value) })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       />
-                      <p className="text-sm text-gray-500 mt-1">
-                        How many days in advance users can book
-                      </p>
                     </div>
 
                     <div>
@@ -548,9 +532,6 @@ function AdminSettingsPage() {
                         onChange={(e) => setSettings({ ...settings, cancellationHours: parseInt(e.target.value) })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                       />
-                      <p className="text-sm text-gray-500 mt-1">
-                        Minimum hours before booking to allow cancellation
-                      </p>
                     </div>
 
                     <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -579,52 +560,6 @@ function AdminSettingsPage() {
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Security Settings</h2>
                     <p className="text-gray-500 mb-6">Configure security and access control</p>
                   </div>
-
-                  <div className="space-y-4">
-                    <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <AlertCircle className="w-5 h-5 text-yellow-600 mt-0.5" />
-                        <div>
-                          <p className="font-medium text-yellow-900">Security Notice</p>
-                          <p className="text-sm text-yellow-700 mt-1">
-                            These settings affect platform security. Changes should be made carefully.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">Two-Factor Authentication</p>
-                          <p className="text-sm text-gray-500">Require 2FA for admin accounts</p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                          Enabled
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">Session Timeout</p>
-                          <p className="text-sm text-gray-500">Auto-logout after 30 minutes of inactivity</p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                          Active
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                        <div>
-                          <p className="font-medium text-gray-900">API Rate Limiting</p>
-                          <p className="text-sm text-gray-500">Limit API requests to prevent abuse</p>
-                        </div>
-                        <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
-                          Active
-                        </span>
-                      </div>
-                    </div>
-                  </div>
                 </div>
               )}
 
@@ -634,18 +569,6 @@ function AdminSettingsPage() {
                   <div>
                     <h2 className="text-xl font-bold text-gray-900 mb-4">Email Configuration</h2>
                     <p className="text-gray-500 mb-6">Configure email service and templates</p>
-                  </div>
-
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <div className="flex items-start gap-3">
-                      <Mail className="w-5 h-5 text-blue-600 mt-0.5" />
-                      <div>
-                        <p className="font-medium text-blue-900">Email Service Status</p>
-                        <p className="text-sm text-blue-700 mt-1">
-                          Email service is configured and operational
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 </div>
               )}
@@ -706,7 +629,6 @@ function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    {/* Feature Flag Row Component */}
                     {Object.entries({
                       arMenus: 'AR Experience (Menu)',
                       preOrders: 'Pre-Order Engine',
@@ -714,57 +636,85 @@ function AdminSettingsPage() {
                       waitlist: 'Universal Waitlist'
                     }).map(([key, label]) => {
                       const flag = (settings.featureFlags as any)[key];
+                      const isEditing = editingFeature === key;
                       return (
-                        <div key={key} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="font-semibold text-slate-900">{label}</p>
-                              <p className="text-sm text-slate-500">Global toggle for this feature</p>
+                        <div key={key} className={`p-5 rounded-2xl border transition-all ${
+                          isEditing ? 'bg-white border-emerald-500 shadow-xl ring-4 ring-emerald-50' : 'bg-slate-50 border-slate-200'
+                        }`}>
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-4">
+                              <div className={`p-2 rounded-xl ${flag.enabled ? 'bg-emerald-100' : 'bg-slate-200'}`}>
+                                <ToggleLeft className={flag.enabled ? 'text-emerald-600' : 'text-slate-400'} size={24} />
+                              </div>
+                              <div>
+                                <p className="font-bold text-slate-900">{label}</p>
+                                <p className="text-xs text-slate-500 font-medium">
+                                  {flag.enabled ? 'LIVE IN PRODUCTION' : 'DISABLED / IN DEVELOPMENT'}
+                                </p>
+                              </div>
                             </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={flag.enabled}
-                                onChange={(e) => handleToggleChange(key, e.target.checked, true)}
-                                className="sr-only peer"
-                              />
-                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                            </label>
+                            <div className="flex items-center gap-3">
+                              {!isEditing ? (
+                                <button
+                                  onClick={() => setEditingFeature(key)}
+                                  className="px-4 py-2 bg-white border border-slate-200 text-slate-600 rounded-xl text-sm font-bold hover:bg-slate-50 transition-all flex items-center gap-2"
+                                >
+                                  <Wrench size={14} />
+                                  Edit Details
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setEditingFeature(null)}
+                                  className="text-xs font-bold text-slate-400 hover:text-slate-600 px-3 py-2"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={flag.enabled}
+                                  onChange={(e) => handleToggleChange(key, e.target.checked, true)}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                              </label>
+                            </div>
                           </div>
 
-                          {!flag.enabled && (
+                          {isEditing && (
                             <motion.div
                               initial={{ height: 0, opacity: 0 }}
                               animate={{ height: 'auto', opacity: 1 }}
-                              className="pt-4 border-t border-slate-200 space-y-4"
+                              className="pt-4 border-t border-slate-100 space-y-6"
                             >
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                  <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
-                                    Display Status
+                                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">
+                                    Visibility
                                   </label>
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
                                     <input
                                       type="checkbox"
                                       id={`show-${key}`}
                                       checked={flag.showIfDisabled}
                                       onChange={(e) => handleFeatureChange(key, 'showIfDisabled', e.target.checked)}
-                                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                                      className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer"
                                     />
-                                    <label htmlFor={`show-${key}`} className="text-sm text-slate-700 font-medium">
+                                    <label htmlFor={`show-${key}`} className="text-sm text-slate-700 font-bold cursor-pointer">
                                       Show in UI while disabled
                                     </label>
                                   </div>
                                 </div>
 
                                 <div>
-                                  <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
-                                    Status Mode
+                                  <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">
+                                    Phase Mode
                                   </label>
                                   <select
                                     value={flag.mode}
                                     onChange={(e) => handleFeatureChange(key, 'mode', e.target.value)}
-                                    className="w-full text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                                    className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
                                   >
                                     <option value="development">Under Development</option>
                                     <option value="testing">Testing Mode</option>
@@ -775,42 +725,49 @@ function AdminSettingsPage() {
                               </div>
 
                               <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
-                                  Custom Caption
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-widest">
+                                  Update Message (Custom Caption)
                                 </label>
-                                <input
-                                  type="text"
+                                <textarea
                                   value={flag.caption}
                                   onChange={(e) => handleFeatureChange(key, 'caption', e.target.value)}
-                                  placeholder="Enter custom caption..."
-                                  className="w-full text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                                  placeholder="What should users see?"
+                                  rows={2}
+                                  className="w-full bg-slate-50 border border-slate-100 rounded-xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-emerald-500 outline-none transition-all resize-none"
                                 />
                               </div>
 
-                              <div>
-                                <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
-                                  Animated Sticker
-                                </label>
-                                <div className="flex gap-4">
-                                  {[
-                                    { id: 'dino_dev', label: 'Dev Dino' },
-                                    { id: 'dino_test', label: 'Test Dino' },
-                                    { id: 'dino_maint', label: 'Maint Dino' },
-                                    { id: 'dino_soon', label: 'Soon Dino' }
-                                  ].map((sticker) => (
-                                    <button
-                                      key={sticker.id}
-                                      onClick={() => handleFeatureChange(key, 'sticker', sticker.id)}
-                                      className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
-                                        flag.sticker === sticker.id
-                                          ? 'bg-emerald-100 border-emerald-600 text-emerald-700'
-                                          : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-400'
-                                      }`}
-                                    >
-                                      {sticker.label}
-                                    </button>
-                                  ))}
+                              <div className="flex items-center justify-between gap-4 pt-4">
+                                <div className="flex-1">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Selected Sticker</p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {[
+                                      { id: 'dino_dev', label: 'Dev' },
+                                      { id: 'dino_test', label: 'Test' },
+                                      { id: 'dino_maint', label: 'Maint' },
+                                      { id: 'dino_soon', label: 'Soon' }
+                                    ].map((sticker) => (
+                                      <button
+                                        key={sticker.id}
+                                        onClick={() => handleFeatureChange(key, 'sticker', sticker.id)}
+                                        className={`px-3 py-1.5 text-[10px] font-black rounded-lg border transition-all ${
+                                          flag.sticker === sticker.id
+                                            ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg'
+                                            : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-400'
+                                        }`}
+                                      >
+                                        {sticker.label.toUpperCase()}
+                                      </button>
+                                    ))}
+                                  </div>
                                 </div>
+                                <button
+                                  onClick={() => setShowBroadcastConfirm({key, label})}
+                                  className="px-6 py-3 bg-emerald-600 text-white rounded-xl text-sm font-black shadow-lg shadow-emerald-100 hover:bg-emerald-700 transition-all flex items-center gap-2"
+                                >
+                                  <Bell size={16} />
+                                  Save & Notify Users
+                                </button>
                               </div>
                             </motion.div>
                           )}
@@ -824,6 +781,52 @@ function AdminSettingsPage() {
           </div>
         </div>
       </div>
+
+      <AnimatePresence>
+        {showBroadcastConfirm && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowBroadcastConfirm(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-white rounded-3xl shadow-2xl w-full max-w-md p-8 overflow-hidden"
+            >
+              <div className="absolute top-0 left-0 w-full h-2 bg-emerald-500" />
+              <div className="flex flex-col items-center text-center">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
+                  <Bell className="text-emerald-600 animate-bounce" size={32} />
+                </div>
+                <h3 className="text-2xl font-black text-slate-900 mb-2">Broadcast Update?</h3>
+                <p className="text-slate-500 text-sm font-medium mb-8">
+                  This will send an instant alert to **ALL users** about the {showBroadcastConfirm.label} update. Are you sure you want to proceed?
+                </p>
+                <div className="grid grid-cols-2 gap-4 w-full">
+                  <button
+                    onClick={() => setShowBroadcastConfirm(null)}
+                    className="px-6 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                  >
+                    Just Save
+                  </button>
+                  <button
+                    onClick={() => handleSaveAndBroadcast(showBroadcastConfirm.key, showBroadcastConfirm.label)}
+                    disabled={isBroadcasting}
+                    className="px-6 py-4 bg-emerald-600 text-white rounded-2xl font-bold shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {isBroadcasting ? <RefreshCw className="animate-spin" size={18} /> : 'Send & Alert'}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

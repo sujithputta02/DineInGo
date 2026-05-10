@@ -26,7 +26,8 @@ import {
   updateWaitlistStatus,
   triggerForceRefresh,
   impersonateUser,
-  toggleImpersonationPermission
+  toggleImpersonationPermission,
+  getNotificationHistory
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -115,6 +116,7 @@ router.patch('/businesses/toggle-status', adminApiLimiter, verifyAdminToken, log
 // Notifications
 router.post('/notifications', adminApiLimiter, verifyAdminToken, logAdminAction, validateAdminNotification, handleValidationErrors, sendNotification);
 router.get('/notification-stats', adminApiLimiter, verifyAdminToken, logAdminAction, getNotificationStats);
+router.get('/notification-history', adminApiLimiter, verifyAdminToken, logAdminAction, getNotificationHistory);
 
 // Admin team management (Super admin only)
 router.get('/list', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, getAdmins);

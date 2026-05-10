@@ -38,7 +38,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const auth = useAuth();
-  const shownNotifications = useRef(new Set<string>());
+  
+  // Use persistent storage for seen notifications to avoid duplicates across reloads
+  const [shownIds, setShownIds] = useState<Set<string>>(() => {
+    const saved = localStorage.getItem('seen_notification_ids');
+    return saved ? new Set(JSON.parse(saved)) : new Set();
+  });
+
+  // Save to localStorage when shownIds change
+  useEffect(() => {
+    localStorage.setItem('seen_notification_ids', JSON.stringify(Array.from(shownIds)));
+  }, [shownIds]);
   
   async function refreshNotifications() {
     if (!auth.currentUser?.uid) {
@@ -49,22 +59,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     try {
       setLoading(true);
       const data = await notificationsApi.getAll(auth.currentUser.uid);
-      // Show desktop notifications for unread notifications
-      if (NotificationService.getPermission() === 'granted') {
-        const unread = data.filter((n: Notification) => 
-          !n.isRead && !shownNotifications.current.has(n._id)
-        );
+      
+      // Filter for unread AND not already shown in this session or stored in localStorage
+      const unreadAndNew = data.filter((n: Notification) => 
+        !n.isRead && !shownIds.has(n._id)
+      );
 
-        unread.forEach((n: Notification) => {
-          NotificationService.show(n.title, { body: n.message });
-          shownNotifications.current.add(n._id);
+      if (unreadAndNew.length > 0) {
+        // Show desktop notifications
+        if (NotificationService.getPermission() === 'granted') {
+          unreadAndNew.forEach((n: Notification) => {
+            NotificationService.show(n.title, { body: n.message });
+          });
+        }
+        
+        // Add to shownIds set
+        setShownIds(prev => {
+          const next = new Set(prev);
+          unreadAndNew.forEach((n: Notification) => next.add(n._id));
+          return next;
         });
       }
 
       setNotifications(data);
     } catch (error) {
       console.error('Failed to fetch notifications:', error);
-      setNotifications([]); // Set empty array on error
+      setNotifications([]);
     } finally {
       setLoading(false);
     }
