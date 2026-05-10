@@ -72,7 +72,16 @@ export default defineConfig({
     })
   ],
   build: {
-    chunkSizeWarningLimit: 5000,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-router': ['react-router-dom'],
+          'vendor-ui': ['framer-motion', 'lucide-react'],
+        },
+      },
+    },
   },
   optimizeDeps: {
     exclude: ['lucide-react'],
