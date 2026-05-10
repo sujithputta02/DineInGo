@@ -36,14 +36,13 @@ To test the application, you must be on our early access list. Follow these step
 ---
 
 
-## � What's New inn V1.0 Beta
+## 💎 What's New in V1.0 Beta
 
 ### 🔐 Enterprise-Grade Security
-- **Rate Limiting**: IP-based and user-based rate limiting to prevent abuse
-- **Input Validation**: Comprehensive schema-based validation on all endpoints
-- **Secure Secret Management**: All API keys managed through environment variables
-- **Security Headers**: CSP, HSTS, X-Frame-Options, and more
-- **CORS Protection**: Restricted cross-origin requests
+- **Identity Bonding**: Intelligent account linking that preserves your preferences when switching between Email and Google login.
+- **Rate Limiting**: Multi-tier protection (IP, User, and Route-based) to prevent platform abuse.
+- **Secure Secret Management**: Military-grade encryption for all sensitive platform configurations.
+- **Security Headers**: Full HSTS, CSP, and X-Frame-Options implementation for zero-trust browsing.
 - See [SECURITY.md](backend/SECURITY.md) for detailed security documentation
 
 ### 🎪 Enhanced Event System
@@ -55,6 +54,7 @@ To test the application, you must be on our early access list. Follow these step
 - **Event Reviews & Ratings**: Full review system with emoji support and owner replies
 
 ### 🏢 Advanced Restaurant Features
+- **3D AR Menu Engine**: Revolutionary augmented reality previews of dishes directly on your table.
 - **Multi-Floor Management**: Support for up to 4 floors with independent table layouts
 - **Real-Time Table Status**: Live updates across all connected users
 - **Interactive Floor Plans**: Drag-and-drop table designer
@@ -75,6 +75,7 @@ To test the application, you must be on our early access list. Follow these step
 - **Live Notifications**: Real-time alerts for booking changes
 - **Waitlist System**: Join and track waitlist positions
 - **Event Reminders**: Automatic reminders for upcoming events
+- **Platform Communication Suite**: Real-time platform-wide announcements and targeted updates.
 
 ---
 
@@ -82,6 +83,7 @@ To test the application, you must be on our early access list. Follow these step
 
 ### 🎯 Smart Restaurant Discovery
 - **Intelligent Search**: Find restaurants by cuisine, location, price range, and dietary preferences
+- **AR Menu Preview**: View 3D models of dishes before you even order.
 - **Real-Time Availability**: See live table availability and book instantly
 - **Interactive Maps**: Visualize restaurant locations with integrated mapping
 - **Favorites System**: Save your favorite restaurants for quick access
@@ -116,6 +118,7 @@ To test the application, you must be on our early access list. Follow these step
 - **Achievement System**: Earn badges and rewards for your dining activities
 - **Review & Rating**: Share your experiences with half-star precision
 - **Preferences Management**: Save dietary restrictions and cuisine preferences
+- **Identity Protection**: Secure account linking and activity tracking for peace of mind.
 
 ### 💬 Social & Engagement Features
 - **Restaurant Reviews**: Rate and review restaurants with emoji support
@@ -220,7 +223,6 @@ To test the application, you must be on our early access list. Follow these step
 - Node.js 18 or higher
 - MongoDB database (local or Atlas)
 - Firebase project for authentication
-- Gmail account for email notifications (optional)
 
 ### Installation Steps
 
@@ -267,7 +269,6 @@ To test the application, you must be on our early access list. Follow these step
    # Security Secrets (REQUIRED)
    JWT_SECRET=your_jwt_secret_key_min_32_characters
    SESSION_SECRET=your_session_secret_key_min_32_characters
-   ADMIN_CODE=your_admin_code
    
    # Firebase Configuration
    FIREBASE_API_KEY=your_firebase_api_key
@@ -284,7 +285,6 @@ To test the application, you must be on our early access list. Follow these step
    
    # Frontend URLs
    FRONTEND_URL=http://localhost:5173
-   ADMIN_URL=http://localhost:3000
    ```
 
    See [backend/.env.example](backend/.env.example) for all available options.
@@ -309,7 +309,6 @@ To test the application, you must be on our early access list. Follow these step
 6. **Access the Application**
    - Frontend: http://localhost:5173
    - Backend API: http://localhost:5001
-   - Admin Dashboard: http://localhost:3000 (if configured)
 
 ---
 
@@ -538,43 +537,22 @@ Found a security vulnerability? Please report it responsibly:
 To participate in the Beta V-1.0 testing phase, please follow the [Access Steps](#-access-steps) at the top of this document.
 
 ### What to Test
-- Restaurant discovery and search functionality
-- Table booking and reservation management
-- Event registration and seating selection
-- Review system with half-star ratings and emoji support
-- Real-time updates and notifications
-- User profile and preferences
-- Business owner dashboard
-- Event management features
-- Security features (rate limiting, input validation)
-
-### Known Limitations
-- Some advanced analytics features are in development
-- AR menu preview is in beta
-- Voice search requires microphone permissions
-- Some email templates may need customization
-
-### Reporting Issues
-- Report bugs via GitHub Issues
-- Include detailed steps to reproduce
-- Provide screenshots or error logs
-- Mention your browser and OS version
+- AR menu preview and dish visualization.
+- Table booking and real-time floor plan updates.
+- Event registration and seating chart selection.
+- Activity tracking and account preference synchronization.
 
 ---
 
 ## 📝 Version History
 
 ### V1.0 Beta (Current)
-- ✅ Core restaurant booking system
-- ✅ Event booking and management
-- ✅ Review system with half-star ratings
-- ✅ Real-time updates via Socket.IO
-- ✅ Enterprise-grade security
-- ✅ Business owner dashboard
-- ✅ Multi-floor support
-- ✅ Event seating charts
-- ✅ Capacity tracking
-- ✅ Email notifications
+- ✅ 3D AR Menu Engine
+- ✅ Interactive Seating Charts
+- ✅ Real-Time Communication Suite
+- ✅ Identity Bonding & Account Linking
+- ✅ Multi-Floor Venue Management
+- ✅ Professional PDF Invoice System
 
 ### Upcoming Features
 - Advanced analytics and reporting
@@ -608,7 +586,7 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) file for 
 ## 📧 Support & Feedback
 
 For questions, issues, or feedback:
-- **Email**: sec.dinelngo.team@gmail.com
+- **Email**: sec.dineingo.team@gmail.com
 - **GitHub Issues**: [Report a bug](https://github.com/sujithputta02/DineInGo/issues)
 - **Documentation**: [SECURITY.md](backend/SECURITY.md) | [SECURITY_CHECKLIST.md](backend/SECURITY_CHECKLIST.md)
 
@@ -633,4 +611,4 @@ Built with modern technologies and best practices to deliver an exceptional dini
 
 © DineInGo 2026. All rights reserved. | **Version 1.0 Beta** 🚀
 
-**Status**: Ready for Beta Testing | **Last Updated**: March 2025
+**Status**: Ready for Beta Testing | **Last Updated**: May 2026

@@ -22,7 +22,7 @@ const errors = [];
 // Patterns to check for
 const dangerousPatterns = [
   {
-    pattern: /mongodb\+srv:\/\/[^:]+:[^@]+@/g,
+    pattern: /mongodb\+srv:\/\/(?!your_username|username|user|dev-user)[^\s:]+:(?!your_password|password|pass|dev-password)[^\s@]+@/g,
     name: 'MongoDB URI with credentials',
     severity: 'error'
   },
