@@ -43,28 +43,11 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           50%, 74.99% { background-position: 66.66% 45%; }
           75%, 100% { background-position: 100% 45%; }
         }
-        .dino-sprite-anim {
-          background-image: url('/stickers/dino_walk_sheet.png');
-          background-size: 400% 400%;
-          image-rendering: pixelated;
-          animation: dino-walk-cycle 0.8s infinite;
-          mix-blend-mode: screen;
-          filter: brightness(1.5) contrast(1.2);
-        }
-        
         @keyframes item-bob-cycle {
           0%, 24.99% { transform: translateY(0) translateX(48px) rotate(-15deg); }
           25%, 49.99% { transform: translateY(-5px) translateX(52px) rotate(15deg); }
           50%, 74.99% { transform: translateY(0) translateX(48px) rotate(-15deg); }
           75%, 100% { transform: translateY(5px) translateX(44px) rotate(15deg); }
-        }
-        .item-sprite-anim {
-          background-image: url('/stickers/pixel_items_sheet.png');
-          background-size: 400% 400%;
-          image-rendering: pixelated;
-          animation: item-bob-cycle 0.8s infinite;
-          mix-blend-mode: screen;
-          filter: brightness(1.5);
         }
       `}</style>
 
@@ -87,13 +70,29 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
         >
           {/* Walking Dino Sprite - CSS Animation */}
           <div 
-            className="absolute inset-0 w-full h-full dino-sprite-anim"
+            className="absolute inset-0 w-full h-full"
+            style={{
+              backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
+              backgroundSize: '400% 400%',
+              imageRendering: 'pixelated',
+              animation: 'dino-walk-cycle 0.8s infinite',
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.5) contrast(1.2)'
+            }}
           />
 
           {/* Held Item Overlay */}
           <div
-            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24 item-sprite-anim"
-            style={{ backgroundPosition: `${itemBgX} 45%` }}
+            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24"
+            style={{
+              backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
+              backgroundSize: '400% 400%',
+              backgroundPosition: `${itemBgX} 45%`,
+              imageRendering: 'pixelated',
+              animation: 'item-bob-cycle 0.8s infinite',
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.5)'
+            }}
           />
         </motion.div>
       </div>
