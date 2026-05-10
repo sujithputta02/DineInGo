@@ -9,7 +9,7 @@
       "destination": "https://dineingo-backend.onrender.com/uploads/:path*"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api/v1|uploads|.*\\..*).*)",
       "destination": "/index.html"
     }
   ],
