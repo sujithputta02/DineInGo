@@ -8,11 +8,11 @@ import ARMenuPage from './pages/ARMenuPage';
 import BusinessLandingPage from './BusinessLandingPage';
 import LoginPage from './LoginPage';
 import SignupPage from './SignupPage';
-import DashboardPage from './pages/DashboardPage';
-import RestaurantDetails from './pages/RestaurantDetails';
-import ReservationPreview from './pages/ReservationPreview';
-import TableSelection from './pages/TableSelection';
-import ReservationDetailsPage from './pages/ReservationDetailsPage';
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage'));
+const RestaurantDetails = React.lazy(() => import('./pages/RestaurantDetails'));
+const ReservationPreview = React.lazy(() => import('./pages/ReservationPreview'));
+const TableSelection = React.lazy(() => import('./pages/TableSelection'));
+const ReservationDetailsPage = React.lazy(() => import('./pages/ReservationDetailsPage'));
 import TermsPage from './TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import UserFeedbackForm from './components/UserFeedbackForm';
@@ -34,7 +34,7 @@ import MaintenancePage from './pages/MaintenancePage';
 import MaintenanceCheck from './components/MaintenanceCheck';
 import AuthActionHandler from './pages/AuthActionHandler';
 import ImpersonationHandler from './pages/ImpersonationHandler';
-import EventRegistration from './pages/EventRegistration';
+const EventRegistration = React.lazy(() => import('./pages/EventRegistration'));
 import EventPreview from './pages/EventPreview';
 import EventsPage from './pages/EventsPage';
 import BusinessLayout from './layouts/BusinessLayout';
@@ -141,7 +141,20 @@ function App() {
       <SEO />
       <AnalyticsTracker />
       <AppSocketHandler />
-      <AuthProvider>
+      <React.Suspense fallback={
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-16 h-16 bg-emerald-500 rounded-2xl animate-bounce flex items-center justify-center shadow-lg">
+              <img src="/images/Dino Icon.svg" alt="Dino" className="w-10 h-10" />
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
+              <p className="text-sm font-bold text-gray-400 uppercase tracking-widest">Stomping into position...</p>
+            </div>
+          </div>
+        </div>
+      }>
+        <AuthProvider>
         <FeatureFlagProvider>
         <UserActivityProvider>
           <EntityProvider>
@@ -309,6 +322,7 @@ function App() {
         </UserActivityProvider>
         </FeatureFlagProvider>
       </AuthProvider>
+      </React.Suspense>
     </Router>
   );
 }

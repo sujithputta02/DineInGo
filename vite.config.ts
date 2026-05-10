@@ -80,7 +80,6 @@ export default defineConfig({
             if (id.includes('firebase')) return 'vendor-firebase';
             if (id.includes('framer-motion')) return 'vendor-framer';
             if (id.includes('lucide-react')) return 'vendor-lucide';
-            if (id.includes('react-router-dom') || id.includes('remix-run') || id.includes('@remix-run')) return 'vendor-router';
             if (id.includes('three') || id.includes('@react-three')) return 'vendor-three';
             if (id.includes('@tensorflow') || id.includes('tesseract.js')) return 'vendor-ai';
             if (id.includes('@mui') || id.includes('@emotion')) return 'vendor-ui';

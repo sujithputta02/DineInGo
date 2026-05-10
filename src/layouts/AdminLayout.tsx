@@ -25,6 +25,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import DineInGoLogo from '../components/DineInGoLogo';
 import axios from 'axios';
+import { clearSession } from '../utils/sessionGuard';
 
 function AdminLayout() {
   const navigate = useNavigate();
@@ -67,13 +68,12 @@ function AdminLayout() {
 
   // Helper to check if link is active
   const isActive = (path: string) => location.pathname.startsWith(path);
-
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
     localStorage.removeItem('adminEmail');
     localStorage.removeItem('adminRole');
     localStorage.removeItem('adminLoginTime');
-    import('../utils/sessionGuard').then(module => module.clearSession());
+    clearSession();
     toast.success('Logged out successfully');
     navigate('/');
   };

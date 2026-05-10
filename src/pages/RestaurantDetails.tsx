@@ -4,16 +4,15 @@ import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, M
 import { toast } from 'react-toastify';
 import { getRestaurantById, getMockTotalGuests } from '../services/restaurantService';
 import { getMockEventById, getMockEventCapacity } from '../services/event-service';
-import { businessApi, bookingsApi, userAPI } from '../services/api';
+import { businessApi, bookingsApi, userAPI, normalizeImageUrl } from '../services/api';
+import { favoritesApi } from '../services/favoritesApi';
 import { Restaurant, Event, MenuItem } from '../types';
 import RestaurantMap from '../components/RestaurantMap';
 import StarRating from '../components/StarRating';
 import { DinoStepper } from '../components/DinoStepper';
 import EmojiPicker from '../components/EmojiPicker';
 import { isRestaurantOpen } from '../utils/openStatus';
-import { normalizeImageUrl } from '../services/api';
 import { trackEvent } from '../utils/analytics';
-import { favoritesApi } from '../services/favoritesApi';
 
 
 
