@@ -15,10 +15,17 @@ const itemMap: Record<string, number> = {
 };
 
 const badgeStyles: Record<string, string> = {
-  development: 'bg-emerald-500/10 text-emerald-600 dark:bg-white dark:text-slate-900 border-emerald-500/20 dark:border-white/20',
-  testing: 'bg-blue-500/10 text-blue-600 dark:bg-white dark:text-slate-900 border-blue-500/20 dark:border-white/20',
-  maintenance: 'bg-rose-500/10 text-rose-600 dark:bg-white dark:text-slate-900 border-rose-500/20 dark:border-white/20',
-  coming_soon: 'bg-emerald-400/10 text-emerald-500 dark:bg-white dark:text-slate-900 border-emerald-400/20 dark:border-white/20',
+  development: 'bg-emerald-500/10 text-emerald-600 dark:bg-emerald-400/20 dark:text-emerald-300 border-emerald-500/20 dark:border-emerald-400/20',
+  testing: 'bg-blue-500/10 text-blue-600 dark:bg-blue-400/20 dark:text-blue-300 border-blue-500/20 dark:border-blue-400/20',
+  maintenance: 'bg-rose-500/10 text-rose-600 dark:bg-rose-400/20 dark:text-rose-300 border-rose-500/20 dark:border-rose-400/20',
+  coming_soon: 'bg-emerald-400/10 text-emerald-500 dark:bg-emerald-400/20 dark:text-emerald-300 border-emerald-400/20 dark:border-emerald-400/20',
+};
+
+const captionStyles: Record<string, string> = {
+  development: 'text-emerald-700 dark:text-emerald-400',
+  testing: 'text-blue-700 dark:text-blue-400',
+  maintenance: 'text-rose-700 dark:text-rose-400',
+  coming_soon: 'text-emerald-600 dark:text-emerald-300',
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
@@ -26,6 +33,35 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
 
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
+      <style>{`
+        @keyframes dino-walk-cycle {
+          0%, 24.99% { background-position: 0% 50%; }
+          25%, 49.99% { background-position: 33.33% 50%; }
+          50%, 74.99% { background-position: 66.66% 50%; }
+          75%, 100% { background-position: 100% 50%; }
+        }
+        .dino-sprite-anim {
+          background-image: url(/stickers/dino_walk_sheet.png);
+          background-size: 400% 100%;
+          image-rendering: pixelated;
+          animation: dino-walk-cycle 0.8s infinite;
+        }
+        
+        @keyframes item-bob-cycle {
+          0%, 24.99% { transform: translateY(0) translateX(48px) rotate(-15deg); }
+          25%, 49.99% { transform: translateY(-5px) translateX(52px) rotate(15deg); }
+          50%, 74.99% { transform: translateY(0) translateX(48px) rotate(-15deg); }
+          75%, 100% { transform: translateY(5px) translateX(44px) rotate(15deg); }
+        }
+        .item-sprite-anim {
+          background-image: url(/stickers/pixel_items_sheet.png);
+          background-size: 400% 100%;
+          background-position: calc(-100% * var(--item-index)) 50%;
+          image-rendering: pixelated;
+          animation: item-bob-cycle 0.8s infinite;
+        }
+      `}</style>
+
       <div className="relative w-80 h-80 flex items-center justify-center">
         {/* Universal Background Glow */}
         <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[100px] rounded-full scale-[2]" />
@@ -40,52 +76,18 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           transition={{
             duration: 0.8,
             repeat: Infinity,
-            ease: "steps(2)"
+            ease: "easeInOut"
           }}
         >
-          {/* Walking Dino Sprite - Stationed in Front */}
-          <motion.div 
-            className="absolute inset-0 w-full h-full"
-            animate={{
-              backgroundPositionX: ['0%', '33.33%', '66.66%', '100%']
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: Infinity,
-              ease: "steps(3)"
-            }}
-            style={{
-              backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
-              backgroundSize: '400% 400%',
-              backgroundPositionY: '45%',
-              imageRendering: 'pixelated',
-              // Standard screen blending for dark mode, contrast for light
-              mixBlendMode: 'screen',
-              filter: 'brightness(1.5) contrast(1.2)'
-            }}
+          {/* Walking Dino Sprite - CSS Animation */}
+          <div 
+            className="absolute inset-0 w-full h-full dino-sprite-anim dark:mix-blend-screen dark:brightness-125 mix-blend-normal"
           />
 
           {/* Held Item Overlay */}
-          <motion.div
-            animate={{
-              y: [0, -5, 0, 5, 0],
-              x: [48, 52, 48, 44, 48],
-              rotate: [-15, 15, -15]
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: Infinity,
-              ease: "steps(4)"
-            }}
-            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24"
-            style={{
-              backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
-              backgroundSize: '400% 400%',
-              backgroundPosition: `${-(itemIndex * 100)}% 45%`,
-              imageRendering: 'pixelated',
-              mixBlendMode: 'screen',
-              filter: 'brightness(1.5)',
-            }}
+          <div
+            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24 item-sprite-anim dark:mix-blend-screen dark:brightness-125 mix-blend-normal"
+            style={{ '--item-index': itemIndex } as React.CSSProperties}
           />
         </motion.div>
       </div>
@@ -101,26 +103,28 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           </motion.div>
         </div>
         
-        {/* CUSTOM CAPTION WITH THEME-SPECIFIC GRADIENTS */}
+        {/* CUSTOM CAPTION RESPONSIVE TO THEME */}
         <div className="flex flex-col items-center">
-          <h3 className="text-6xl md:text-7xl font-black leading-[1.1] tracking-tighter uppercase italic drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-800 dark:from-white dark:via-gray-100 dark:to-gray-400"
-              style={{ WebkitBackgroundClip: 'text', display: 'inline-block' }}>
+          <h3 className={`text-5xl md:text-6xl lg:text-7xl font-black leading-[1.1] tracking-tighter uppercase italic drop-shadow-2xl transition-colors duration-300 ${captionStyles[mode] || captionStyles.development}`}>
             {caption}
           </h3>
         </div>
         
-        <p className="text-slate-500 dark:text-slate-400 text-2xl font-bold leading-relaxed max-w-3xl mx-auto">
+        <p className="text-slate-500 dark:text-slate-400 text-xl md:text-2xl font-bold leading-relaxed max-w-3xl mx-auto">
           Our team of dinosaurs is working hard to bring this feature to your expedition.
         </p>
 
         {/* Dynamic Status Indicator */}
         <div className="pt-12 flex flex-col items-center space-y-4">
-           <div className="text-[12px] text-emerald-600 dark:text-emerald-400 font-black tracking-[0.8em] uppercase animate-pulse">Syncing Expedition Data</div>
-           <div className="h-2 w-96 bg-slate-200 dark:bg-slate-800 rounded-full relative overflow-hidden border border-black/5 dark:border-white/10">
+           <div className={`text-[10px] md:text-[12px] font-black tracking-[0.8em] uppercase animate-pulse ${captionStyles[mode] || captionStyles.development}`}>
+             Syncing Expedition Data
+           </div>
+           <div className="h-2 w-72 md:w-96 bg-slate-200 dark:bg-slate-800 rounded-full relative overflow-hidden border border-black/5 dark:border-white/10">
              <motion.div 
                animate={{ left: ['-100%', '100%'] }}
                transition={{ duration: 3, repeat: Infinity, ease: "linear" }}
-               className="absolute top-0 bottom-0 w-48 bg-gradient-to-r from-transparent via-emerald-500 to-transparent"
+               className="absolute top-0 bottom-0 w-48 bg-gradient-to-r from-transparent via-current to-transparent opacity-50"
+               style={{ color: 'inherit' }}
              />
            </div>
         </div>
@@ -128,3 +132,4 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
     </div>
   );
 };
+
