@@ -13,6 +13,15 @@
       "destination": "/index.html"
     }
   ],
+  "headers": [
+    {
+      "source": "/manifest.webmanifest",
+      "headers": [
+        { "key": "Content-Type", "value": "application/manifest+json" },
+        { "key": "Access-Control-Allow-Origin", "value": "*" }
+      ]
+    }
+  ],
   "experimentalServices": {
     "frontend": {
       "routePrefix": "/",

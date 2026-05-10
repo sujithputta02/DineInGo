@@ -8,6 +8,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      useCredentials: true,
       includeAssets: ['favicon.ico', 'robots.txt', 'images/**/*'],
       manifest: {
         name: 'DineInGo - Reserve Dining and Events',
