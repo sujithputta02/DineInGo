@@ -25,42 +25,50 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
   const itemIndex = itemMap[mode] || 0;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[600px] w-full overflow-hidden">
+    <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
       <div className="relative w-80 h-80 flex items-center justify-center">
-        {/* Universal Background Glow - Adapts to Light/Dark */}
-        <div className="absolute inset-0 bg-emerald-500/20 dark:bg-emerald-400/10 blur-[100px] rounded-full scale-[2]" />
+        {/* Universal Background Glow */}
+        <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[100px] rounded-full scale-[2]" />
         
-        {/* THE DINOSAUR - Using Masking for Perfect Transparency in ALL modes */}
+        {/* THE DINOSAUR - STATIONARY WALKING FIGURE */}
         <motion.div 
           className="relative z-10 w-full h-full"
           animate={{
-             y: [0, -12, 0],
+             y: [0, -12, 0], // Bobbing up and down
              scale: [1, 1.05, 1]
           }}
           transition={{
             duration: 0.8,
             repeat: Infinity,
-            ease: "steps(4)"
+            ease: "steps(2)"
           }}
         >
-          {/* Walking Dino Sprite - No Blending modes, uses Masking */}
-          <div 
-            className="absolute inset-0 w-full h-full bg-emerald-500 dark:bg-emerald-400"
+          {/* Walking Dino Sprite - Stationed in Front */}
+          <motion.div 
+            className="absolute inset-0 w-full h-full"
+            animate={{
+              backgroundPositionX: ['0%', '33.33%', '66.66%', '100%']
+            }}
+            transition={{
+              duration: 0.8,
+              repeat: Infinity,
+              ease: "steps(3)"
+            }}
             style={{
-              WebkitMaskImage: 'url(/stickers/dino_walk_sheet.png)',
-              maskImage: 'url(/stickers/dino_walk_sheet.png)',
-              WebkitMaskSize: '400% 400%',
-              maskSize: '400% 400%',
-              maskMode: 'luminance',
+              backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
+              backgroundSize: '400% 400%',
+              backgroundPositionY: '45%',
               imageRendering: 'pixelated',
-              animation: 'dino-walk-cycle 0.8s steps(4) infinite',
-            } as any}
+              // Standard screen blending for dark mode, contrast for light
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.5) contrast(1.2)'
+            }}
           />
 
-          {/* Held Item Overlay - Uses Masking too */}
+          {/* Held Item Overlay */}
           <motion.div
             animate={{
-              y: [0, -6, 0, 6, 0],
+              y: [0, -5, 0, 5, 0],
               x: [48, 52, 48, 44, 48],
               rotate: [-15, 15, -15]
             }}
@@ -69,22 +77,20 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
               repeat: Infinity,
               ease: "steps(4)"
             }}
-            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24 bg-blue-500 dark:bg-blue-300"
+            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24"
             style={{
-              WebkitMaskImage: 'url(/stickers/pixel_items_sheet.png)',
-              maskImage: 'url(/stickers/pixel_items_sheet.png)',
-              WebkitMaskSize: '400% 400%',
-              maskSize: '400% 400%',
-              WebkitMaskPosition: `${-(itemIndex * 100)}% 45%`,
-              maskPosition: `${-(itemIndex * 100)}% 45%`,
-              maskMode: 'luminance',
+              backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
+              backgroundSize: '400% 400%',
+              backgroundPosition: `${-(itemIndex * 100)}% 45%`,
               imageRendering: 'pixelated',
-            } as any}
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.5)',
+            }}
           />
         </motion.div>
       </div>
 
-      <div className="space-y-10 max-w-5xl z-20">
+      <div className="space-y-10 max-w-6xl z-20">
         <div className="flex justify-center">
           <motion.div 
             initial={{ y: 20, opacity: 0 }}
@@ -95,15 +101,15 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           </motion.div>
         </div>
         
-        {/* THE HEADING - FOOLPROOF GRADIENT FOR LIGHT AND DARK MODES */}
-        <div className="relative inline-block">
-          <h3 className="text-6xl md:text-7xl font-black leading-tight tracking-tighter uppercase italic drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-800 dark:from-white dark:via-gray-100 dark:to-gray-400"
-              style={{ WebkitBackgroundClip: 'text' }}>
+        {/* CUSTOM CAPTION WITH THEME-SPECIFIC GRADIENTS */}
+        <div className="flex flex-col items-center">
+          <h3 className="text-6xl md:text-7xl font-black leading-[1.1] tracking-tighter uppercase italic drop-shadow-2xl text-transparent bg-clip-text bg-gradient-to-r from-emerald-600 via-emerald-400 to-emerald-800 dark:from-white dark:via-gray-100 dark:to-gray-400"
+              style={{ WebkitBackgroundClip: 'text', display: 'inline-block' }}>
             {caption}
           </h3>
         </div>
         
-        <p className="text-slate-500 dark:text-slate-400 text-2xl font-bold leading-relaxed max-w-3xl mx-auto opacity-90">
+        <p className="text-slate-500 dark:text-slate-400 text-2xl font-bold leading-relaxed max-w-3xl mx-auto">
           Our team of dinosaurs is working hard to bring this feature to your expedition.
         </p>
 
@@ -119,13 +125,6 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
            </div>
         </div>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        @keyframes dino-walk-cycle {
-          from { -webkit-mask-position: 0% 45%; mask-position: 0% 45%; }
-          to { -webkit-mask-position: 100% 45%; mask-position: 100% 45%; }
-        }
-      `}} />
     </div>
   );
 };
