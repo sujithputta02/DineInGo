@@ -7,11 +7,11 @@ interface FeatureStickerProps {
   mode: string;
 }
 
-const itemMap: Record<string, number> = {
-  development: 0, // Blueprint
-  maintenance: 1, // Wrench
-  testing: 2,     // Test Tube
-  coming_soon: 3, // Sign
+const videoMap: Record<string, string> = {
+  development: '/stickers/dino_development.mp4',
+  maintenance: '/stickers/dino_maintenance.mp4',
+  testing: '/stickers/dino_testing.mp4',
+  coming_soon: '/stickers/dino_coming_soon.mp4',
 };
 
 const badgeStyles: Record<string, string> = {
@@ -29,74 +29,33 @@ const captionStyles: Record<string, string> = {
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
-  const itemIndex = itemMap[mode] || 0;
-  
-  // Calculate exact X percentage for 4-frame sprite sheet
-  const itemBgX = itemIndex === 0 ? '0%' : itemIndex === 1 ? '33.33%' : itemIndex === 2 ? '66.66%' : '100%';
+  const videoSrc = videoMap[mode] || videoMap.development;
 
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
-      <style>{`
-        @keyframes dino-walk-cycle {
-          0%, 24.99% { background-position: 0% 0%; }
-          25%, 49.99% { background-position: 33.33% 0%; }
-          50%, 74.99% { background-position: 66.66% 0%; }
-          75%, 100% { background-position: 100% 0%; }
-        }
-        @keyframes item-bob-cycle {
-          0%, 24.99% { transform: translateY(0) translateX(28px) rotate(-15deg); }
-          25%, 49.99% { transform: translateY(-3px) translateX(32px) rotate(15deg); }
-          50%, 74.99% { transform: translateY(0) translateX(28px) rotate(-15deg); }
-          75%, 100% { transform: translateY(3px) translateX(24px) rotate(15deg); }
-        }
-      `}</style>
+      
+      {/* Dark backing circle so 'screen' blending works securely even on light themes */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-64 h-64 bg-slate-900 rounded-full blur-3xl opacity-100 dark:opacity-0 pointer-events-none" />
 
-      {/* Dark backing circle so 'screen' blending works even on light themes */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-slate-900 rounded-full blur-2xl opacity-0 dark:opacity-0" />
-
-      <div className="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center">
+      <div className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
         {/* Universal Background Glow */}
-        <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[60px] rounded-full scale-[1.5]" />
+        <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[60px] rounded-full scale-[1.5] pointer-events-none" />
         
-        {/* THE DINOSAUR - STATIONARY WALKING FIGURE */}
-        <motion.div 
-          className="relative z-10 w-full h-full"
-          style={{ mixBlendMode: 'screen' }}
-          animate={{
-             y: [0, -8, 0], // Bobbing up and down
-             scale: [1, 1.03, 1]
-          }}
-          transition={{
-            duration: 0.8,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-        >
-          {/* Walking Dino Sprite */}
-          <div 
-            className="absolute inset-0 w-full h-full"
-            style={{
-              backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
-              backgroundSize: '400% 100%',
-              imageRendering: 'pixelated',
-              animation: 'dino-walk-cycle 0.8s infinite',
-              filter: 'brightness(1.3) contrast(1.2)'
+        {/* THE DINOSAUR - ANIMATED VIDEO */}
+        <div className="relative z-10 w-full h-full flex items-center justify-center">
+          <video 
+            src={videoSrc}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-contain pointer-events-none"
+            style={{ 
+              mixBlendMode: 'screen',
+              filter: 'brightness(1.2) contrast(1.1)' 
             }}
           />
-
-          {/* Held Item Overlay */}
-          <div
-            className="absolute top-1/4 left-1/2 -ml-8 w-16 h-16"
-            style={{
-              backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
-              backgroundSize: '400% 100%',
-              backgroundPosition: `${itemBgX} 0%`,
-              imageRendering: 'pixelated',
-              animation: 'item-bob-cycle 0.8s infinite',
-              filter: 'brightness(1.5)'
-            }}
-          />
-        </motion.div>
+        </div>
       </div>
 
       <div className="space-y-10 max-w-6xl z-20">
