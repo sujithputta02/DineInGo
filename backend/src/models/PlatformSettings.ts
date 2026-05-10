@@ -18,14 +18,46 @@ export interface IPlatformSettings extends Document {
   sessionTimeout: number;
   apiRateLimit: boolean;
   featureFlags: {
-    arMenus: boolean;
-    preOrders: boolean;
-    events: boolean;
-    waitlist: boolean;
+    arMenus: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
+    preOrders: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
+    events: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
+    waitlist: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
   };
   updatedBy: string;
   updatedAt: Date;
 }
+
+const FeatureConfigSchema = new Schema({
+  enabled: { type: Boolean, default: true },
+  showIfDisabled: { type: Boolean, default: true },
+  mode: { type: String, default: 'development' }, // development, testing, maintenance
+  caption: { type: String, default: 'Under development, stay tuned for more updates!' },
+  sticker: { type: String, default: 'dino_dev' }
+}, { _id: false });
 
 const PlatformSettingsSchema = new Schema<IPlatformSettings>(
   {
@@ -100,10 +132,10 @@ const PlatformSettingsSchema = new Schema<IPlatformSettings>(
       default: true,
     },
     featureFlags: {
-      arMenus: { type: Boolean, default: true },
-      preOrders: { type: Boolean, default: true },
-      events: { type: Boolean, default: true },
-      waitlist: { type: Boolean, default: true },
+      arMenus: { type: FeatureConfigSchema, default: () => ({}) },
+      preOrders: { type: FeatureConfigSchema, default: () => ({}) },
+      events: { type: FeatureConfigSchema, default: () => ({}) },
+      waitlist: { type: FeatureConfigSchema, default: () => ({}) },
     },
     updatedBy: {
       type: String,

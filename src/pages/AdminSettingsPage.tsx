@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { API_CONFIG } from '../config/api';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -45,10 +46,34 @@ interface PlatformSettings {
   maintenanceMode: boolean;
   maintenanceMessage: string;
   featureFlags: {
-    arMenus: boolean;
-    preOrders: boolean;
-    events: boolean;
-    waitlist: boolean;
+    arMenus: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
+    preOrders: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
+    events: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
+    waitlist: {
+      enabled: boolean;
+      showIfDisabled: boolean;
+      mode: string;
+      caption: string;
+      sticker: string;
+    };
   };
 }
 
@@ -77,10 +102,34 @@ function AdminSettingsPage() {
     maintenanceMode: false,
     maintenanceMessage: '',
     featureFlags: {
-      arMenus: true,
-      preOrders: true,
-      events: true,
-      waitlist: true,
+      arMenus: {
+        enabled: true,
+        showIfDisabled: true,
+        mode: 'development',
+        caption: 'Under development, stay tuned for more updates!',
+        sticker: 'dino_dev'
+      },
+      preOrders: {
+        enabled: true,
+        showIfDisabled: true,
+        mode: 'development',
+        caption: 'Under development, stay tuned for more updates!',
+        sticker: 'dino_dev'
+      },
+      events: {
+        enabled: true,
+        showIfDisabled: true,
+        mode: 'development',
+        caption: 'Under development, stay tuned for more updates!',
+        sticker: 'dino_dev'
+      },
+      waitlist: {
+        enabled: true,
+        showIfDisabled: true,
+        mode: 'development',
+        caption: 'Under development, stay tuned for more updates!',
+        sticker: 'dino_dev'
+      },
     },
   });
 
@@ -166,21 +215,24 @@ function AdminSettingsPage() {
   };
 
   // Real-time update for individual settings (like toggles)
-  const handleToggleChange = async (key: string, value: boolean, isFlag: boolean = false) => {
+  const handleToggleChange = async (key: string, value: any, isFlag: boolean = false) => {
     // URL or Nested Key handling
     if (isFlag) {
+      const currentFlag = (settings.featureFlags as any)[key];
+      const updatedFlag = { ...currentFlag, enabled: value };
+
       setSettings(prev => ({
         ...prev,
         featureFlags: {
           ...prev.featureFlags,
-          [key]: value
+          [key]: updatedFlag
         }
       }));
 
       try {
         await adminApi.updateSingleSetting('featureFlags', {
           ...settings.featureFlags,
-          [key]: value
+          [key]: updatedFlag
         });
       } catch (error) {
         console.error('Error updating feature flag:', error);
@@ -188,7 +240,7 @@ function AdminSettingsPage() {
           ...prev,
           featureFlags: {
             ...prev.featureFlags,
-            [key]: !value
+            [key]: currentFlag
           }
         }));
         toast.error('Failed to update feature flag');
@@ -205,6 +257,36 @@ function AdminSettingsPage() {
         setSettings((prev) => ({ ...prev, [key]: !value }));
         toast.error('Failed to update setting');
       }
+    }
+  };
+
+  const handleFeatureChange = async (featureKey: string, property: string, value: any) => {
+    const currentFlag = (settings.featureFlags as any)[featureKey];
+    const updatedFlag = { ...currentFlag, [property]: value };
+
+    setSettings(prev => ({
+      ...prev,
+      featureFlags: {
+        ...prev.featureFlags,
+        [featureKey]: updatedFlag
+      }
+    }));
+
+    try {
+      await adminApi.updateSingleSetting('featureFlags', {
+        ...settings.featureFlags,
+        [featureKey]: updatedFlag
+      });
+    } catch (error) {
+      console.error('Error updating feature property:', error);
+      setSettings(prev => ({
+        ...prev,
+        featureFlags: {
+          ...prev.featureFlags,
+          [featureKey]: currentFlag
+        }
+      }));
+      toast.error(`Failed to update ${property}`);
     }
   };
 
@@ -624,69 +706,117 @@ function AdminSettingsPage() {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
-                      <div>
-                        <p className="font-semibold text-slate-900">AR Experience (Menu)</p>
-                        <p className="text-sm text-slate-500">Toggle Augmented Reality menus globally</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.featureFlags.arMenus}
-                          onChange={(e) => handleToggleChange('arMenus', e.target.checked, true)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </div>
+                    {/* Feature Flag Row Component */}
+                    {Object.entries({
+                      arMenus: 'AR Experience (Menu)',
+                      preOrders: 'Pre-Order Engine',
+                      events: 'Events & Guestlist',
+                      waitlist: 'Universal Waitlist'
+                    }).map(([key, label]) => {
+                      const flag = (settings.featureFlags as any)[key];
+                      return (
+                        <div key={key} className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-semibold text-slate-900">{label}</p>
+                              <p className="text-sm text-slate-500">Global toggle for this feature</p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={flag.enabled}
+                                onChange={(e) => handleToggleChange(key, e.target.checked, true)}
+                                className="sr-only peer"
+                              />
+                              <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                            </label>
+                          </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
-                      <div>
-                        <p className="font-semibold text-slate-900">Pre-Order Engine</p>
-                        <p className="text-sm text-slate-500">Toggle food pre-ordering capability</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.featureFlags.preOrders}
-                          onChange={(e) => handleToggleChange('preOrders', e.target.checked, true)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </div>
+                          {!flag.enabled && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              className="pt-4 border-t border-slate-200 space-y-4"
+                            >
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                  <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
+                                    Display Status
+                                  </label>
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id={`show-${key}`}
+                                      checked={flag.showIfDisabled}
+                                      onChange={(e) => handleFeatureChange(key, 'showIfDisabled', e.target.checked)}
+                                      className="rounded text-emerald-600 focus:ring-emerald-500"
+                                    />
+                                    <label htmlFor={`show-${key}`} className="text-sm text-slate-700 font-medium">
+                                      Show in UI while disabled
+                                    </label>
+                                  </div>
+                                </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
-                      <div>
-                        <p className="font-semibold text-slate-900">Events & Guestlist</p>
-                        <p className="text-sm text-slate-500">Toggle global events booking system</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.featureFlags.events}
-                          onChange={(e) => handleToggleChange('events', e.target.checked, true)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </div>
+                                <div>
+                                  <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
+                                    Status Mode
+                                  </label>
+                                  <select
+                                    value={flag.mode}
+                                    onChange={(e) => handleFeatureChange(key, 'mode', e.target.value)}
+                                    className="w-full text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                                  >
+                                    <option value="development">Under Development</option>
+                                    <option value="testing">Testing Mode</option>
+                                    <option value="maintenance">Scheduled Maintenance</option>
+                                    <option value="coming_soon">Coming Soon</option>
+                                  </select>
+                                </div>
+                              </div>
 
-                    <div className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl hover:border-emerald-200 transition-colors">
-                      <div>
-                        <p className="font-semibold text-slate-900">Universal Waitlist</p>
-                        <p className="text-sm text-slate-500">Toggle public waitlist registrations</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={settings.featureFlags.waitlist}
-                          onChange={(e) => handleToggleChange('waitlist', e.target.checked, true)}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
-                      </label>
-                    </div>
+                              <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-1 uppercase tracking-wider">
+                                  Custom Caption
+                                </label>
+                                <input
+                                  type="text"
+                                  value={flag.caption}
+                                  onChange={(e) => handleFeatureChange(key, 'caption', e.target.value)}
+                                  placeholder="Enter custom caption..."
+                                  className="w-full text-sm border-slate-300 rounded-lg focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                              </div>
+
+                              <div>
+                                <label className="block text-xs font-medium text-slate-500 mb-2 uppercase tracking-wider">
+                                  Animated Sticker
+                                </label>
+                                <div className="flex gap-4">
+                                  {[
+                                    { id: 'dino_dev', label: 'Dev Dino' },
+                                    { id: 'dino_test', label: 'Test Dino' },
+                                    { id: 'dino_maint', label: 'Maint Dino' },
+                                    { id: 'dino_soon', label: 'Soon Dino' }
+                                  ].map((sticker) => (
+                                    <button
+                                      key={sticker.id}
+                                      onClick={() => handleFeatureChange(key, 'sticker', sticker.id)}
+                                      className={`px-3 py-2 text-xs font-medium rounded-lg border transition-all ${
+                                        flag.sticker === sticker.id
+                                          ? 'bg-emerald-100 border-emerald-600 text-emerald-700'
+                                          : 'bg-white border-slate-200 text-slate-600 hover:border-emerald-400'
+                                      }`}
+                                    >
+                                      {sticker.label}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

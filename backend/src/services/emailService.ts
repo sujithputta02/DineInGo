@@ -21,12 +21,13 @@ export const createTransporter = () => {
   const gmailUser = process.env.EMAIL_USER?.trim();
   const gmailPass = process.env.EMAIL_PASS?.trim();
 
-  // Primary: Brevo SMTP (More reliable for cloud hosting like Render/Koyeb)
+  // Primary: Brevo SMTP (User requested to keep this service)
   if (brevoKey && brevoUser) {
     console.log(`[EmailService] Initializing Brevo SMTP (User: ${brevoUser})`);
     transporterInstance = nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
-      port: 2525, // Using 2525 as 587 is often blocked by cloud providers like Render/Koyeb
+      port: 587, // Standard STARTTLS port
+      secure: false, // true for 465, false for other ports
       auth: {
         user: brevoUser,
         pass: brevoKey,
@@ -35,16 +36,22 @@ export const createTransporter = () => {
       pool: true,
       maxConnections: 5,
       maxMessages: 100,
-      connectionTimeout: 10000, // 10 seconds timeout
-      greetingTimeout: 10000
+      connectionTimeout: 10000, 
+      greetingTimeout: 10000,
+      tls: {
+        // Do not fail on invalid certs
+        rejectUnauthorized: false
+      }
     });
     
     // Verify connection immediately
     transporterInstance.verify((error: any) => {
       if (error) {
         console.error('[EmailService] Brevo SMTP Connection Error:', error);
+        // If Brevo fails and we have Gmail, we could fallback, 
+        // but user specifically asked for Brevo service.
       } else {
-        console.log('[EmailService] Brevo SMTP Server is ready to take our messages');
+        console.log('[EmailService] Brevo SMTP Server is ready');
       }
     });
 

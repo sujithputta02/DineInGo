@@ -35,6 +35,7 @@ import {
   ArrowRight,
   Sparkles,
   Info,
+  ShoppingCart,
 } from "lucide-react";
 import InvoiceModal from "../components/InvoiceModal";
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
@@ -63,6 +64,7 @@ import mixpanel from "mixpanel-browser";
 import { SustainabilityBadge } from "../components/SustainabilityBadge";
 import AchievementsSection from "../components/AchievementsSection";
 import ARMenuSection from "../components/ARMenuSection";
+import { FeatureSticker } from "../components/FeatureSticker";
 import StarRating from "../components/StarRating";
 import EmojiPicker from "../components/EmojiPicker";
 import { menuApi } from "../services/api";
@@ -200,7 +202,9 @@ type Section =
   | "settings"
   | "achievements"
   | "ar-menu"
-  | "reviews";
+  | "reviews"
+  | "pre-orders"
+  | "waitlist";
 type Translations = Record<Language, Translation>;
 
 const translations: Translations = {
@@ -800,7 +804,7 @@ export default function DashboardPage() {
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState<boolean>(false);
   const [userData, setUserData] = useState<UserData | null>(null);
 
-  const { isEnabled } = useFeatureFlags();
+  const { isEnabled, shouldShow, flags } = useFeatureFlags();
 
   // Add listener for system theme changes when in 'system' mode
   useEffect(() => {
@@ -3014,6 +3018,14 @@ const renderSection = () => {
         </div>
       );
     case "events":
+      if (!isEnabled('events')) {
+        if (shouldShow('events')) {
+          const config = flags.events;
+          return <FeatureSticker stickerId={config.sticker} caption={config.caption} mode={config.mode} />;
+        }
+        setActiveSection('home');
+        return null;
+      }
       return (
         <div
           className={`min-h-screen ${isDarkMode ? "bg-gray-900" : "bg-gray-50"} p-4 sm:p-8`}
@@ -3749,6 +3761,10 @@ const renderSection = () => {
       );
     case "ar-menu":
       if (!isEnabled('arMenus')) {
+        if (shouldShow('arMenus')) {
+          const config = flags.arMenus;
+          return <FeatureSticker stickerId={config.sticker} caption={config.caption} mode={config.mode} />;
+        }
         setActiveSection('home');
         return null;
       }
@@ -3761,6 +3777,26 @@ const renderSection = () => {
           isLoading={isArMenuItemsLoading}
         />
       );
+    case "pre-orders":
+      if (!isEnabled('preOrders')) {
+        if (shouldShow('preOrders')) {
+          const config = flags.preOrders;
+          return <FeatureSticker stickerId={config.sticker} caption={config.caption} mode={config.mode} />;
+        }
+        setActiveSection('home');
+        return null;
+      }
+      return <div>Pre-Orders Feature (Coming Soon)</div>;
+    case "waitlist":
+      if (!isEnabled('waitlist')) {
+        if (shouldShow('waitlist')) {
+          const config = flags.waitlist;
+          return <FeatureSticker stickerId={config.sticker} caption={config.caption} mode={config.mode} />;
+        }
+        setActiveSection('home');
+        return null;
+      }
+      return <div>Waitlist Feature (Coming Soon)</div>;
     default:
       return null;
   }
@@ -4060,13 +4096,25 @@ return (
                 icon: <Bell className="w-5 h-5" />,
               },
               {
+                id: "pre-orders",
+                label: "Pre-Order Engine",
+                icon: <ShoppingCart className="w-5 h-5" />,
+              },
+              {
+                id: "waitlist",
+                label: "Universal Waitlist",
+                icon: <Users className="w-5 h-5" />,
+              },
+              {
                 id: "settings",
                 label: translations[language].settings,
                 icon: <Settings className="w-5 h-5" />,
               },
             ].filter(item => {
-              if (item.id === 'ar-menu') return isEnabled('arMenus');
-              if (item.id === 'events') return isEnabled('events');
+              if (item.id === 'ar-menu') return shouldShow('arMenus');
+              if (item.id === 'events') return shouldShow('events');
+              if (item.id === 'pre-orders') return shouldShow('preOrders');
+              if (item.id === 'waitlist') return shouldShow('waitlist');
               return true;
             }).map(({ id, label, icon }) => (
               <button

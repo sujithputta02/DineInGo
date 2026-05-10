@@ -1,11 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { adminApi } from '../utils/adminApi';
 
+interface FeatureFlagConfig {
+  enabled: boolean;
+  showIfDisabled: boolean;
+  mode: 'development' | 'testing' | 'maintenance' | 'coming_soon';
+  caption: string;
+  sticker: string;
+}
+
 interface FeatureFlags {
-  arMenus: boolean;
-  preOrders: boolean;
-  events: boolean;
-  waitlist: boolean;
+  arMenus: FeatureFlagConfig;
+  preOrders: FeatureFlagConfig;
+  events: FeatureFlagConfig;
+  waitlist: FeatureFlagConfig;
 }
 
 interface FeatureFlagContextType {
@@ -13,6 +21,7 @@ interface FeatureFlagContextType {
   loading: boolean;
   refreshFlags: () => Promise<void>;
   isEnabled: (feature: keyof FeatureFlags) => boolean;
+  shouldShow: (feature: keyof FeatureFlags) => boolean;
 }
 
 const FeatureFlagContext = createContext<FeatureFlagContextType | null>(null);
@@ -26,11 +35,19 @@ export function useFeatureFlags() {
 }
 
 export function FeatureFlagProvider({ children }: { children: React.ReactNode }) {
+  const defaultFlag: FeatureFlagConfig = {
+    enabled: true,
+    showIfDisabled: true,
+    mode: 'development',
+    caption: 'Under development, stay tuned for more updates!',
+    sticker: 'dino_dev'
+  };
+
   const [flags, setFlags] = useState<FeatureFlags>({
-    arMenus: true,
-    preOrders: true,
-    events: true,
-    waitlist: true,
+    arMenus: { ...defaultFlag },
+    preOrders: { ...defaultFlag },
+    events: { ...defaultFlag },
+    waitlist: { ...defaultFlag },
   });
   const [loading, setLoading] = useState(true);
 
@@ -52,7 +69,13 @@ export function FeatureFlagProvider({ children }: { children: React.ReactNode })
   }, []);
 
   function isEnabled(feature: keyof FeatureFlags) {
-    return flags[feature] !== false;
+    return flags[feature]?.enabled !== false;
+  }
+
+  function shouldShow(feature: keyof FeatureFlags) {
+    const flag = flags[feature];
+    if (!flag) return false;
+    return flag.enabled || flag.showIfDisabled;
   }
 
   const value = {
@@ -60,6 +83,7 @@ export function FeatureFlagProvider({ children }: { children: React.ReactNode })
     loading,
     refreshFlags: fetchFlags,
     isEnabled,
+    shouldShow,
   };
 
   return (
