@@ -7,11 +7,18 @@ interface FeatureStickerProps {
   mode: string;
 }
 
-const videoMap: Record<string, string> = {
+const lightVideoMap: Record<string, string> = {
   development: '/stickers/dino_development.mp4',
   maintenance: '/stickers/dino_maintenance.mp4',
   testing: '/stickers/dino_testing.mp4',
   coming_soon: '/stickers/dino_coming_soon.mp4',
+};
+
+const darkVideoMap: Record<string, string> = {
+  development: '/stickers/dino_development_dark.mp4',
+  maintenance: '/stickers/dino_maintenance_dark.mp4',
+  testing: '/stickers/dino_testing_dark.mp4',
+  coming_soon: '/stickers/dino_coming_soon_dark.mp4',
 };
 
 const frameColors: Record<string, string> = {
@@ -36,52 +43,50 @@ const captionStyles: Record<string, string> = {
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
-  const videoSrc = videoMap[mode] || videoMap.development;
+  const lightVideoSrc = lightVideoMap[mode] || lightVideoMap.development;
+  const darkVideoSrc = darkVideoMap[mode] || darkVideoMap.development;
   const frameColor = frameColors[mode] || frameColors.development;
 
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
       
-      {/* Light backing spotlight so 'multiply' blending works securely on dark themes */}
-      <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-48 h-48 bg-white rounded-full blur-[50px] opacity-100 pointer-events-none" />
-
-      <div className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
+      <div className="relative w-72 md:w-96 aspect-video flex items-center justify-center">
         {/* Universal Background Glow */}
         <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-400/5 blur-[60px] rounded-full scale-[1.5] pointer-events-none" />
         
-        {/* Pixelated Decorative Frame (SVG) */}
+        {/* Pixelated Decorative Frame (SVG) - 16:9 optimized bounds */}
         <div className="absolute inset-0 z-20 pointer-events-none drop-shadow-2xl">
-          <svg viewBox="0 0 100 100" className="w-full h-full opacity-90" shapeRendering="crispEdges">
+          <svg viewBox="0 0 160 90" className="w-full h-full opacity-90" shapeRendering="crispEdges">
             {/* Dark Drop Shadow Base */}
-            <path d="M 3 9 L 9 9 L 9 3 L 91 3 L 91 9 L 97 9 L 97 91 L 91 91 L 91 97 L 9 97 L 9 91 L 3 91 Z" fill="none" stroke="#020617" strokeWidth="4" />
+            <path d="M 2 5 L 5 5 L 5 2 L 155 2 L 155 5 L 158 5 L 158 85 L 155 85 L 155 88 L 5 88 L 5 85 L 2 85 Z" fill="none" stroke="#020617" strokeWidth="2" />
             
             {/* Main Colored Border */}
-            <path d="M 5 9 L 9 9 L 9 5 L 91 5 L 91 9 L 95 9 L 95 91 L 91 91 L 91 95 L 9 95 L 9 91 L 5 91 Z" fill="none" stroke={frameColor} strokeWidth="2" />
+            <path d="M 3 6 L 6 6 L 6 3 L 154 3 L 154 6 L 157 6 L 157 84 L 154 84 L 154 87 L 6 87 L 6 84 L 3 84 Z" fill="none" stroke={frameColor} strokeWidth="1" />
             
             {/* Inner Dark Frame Layer */}
-            <path d="M 12 16 L 16 16 L 16 12 L 84 12 L 84 16 L 88 16 L 88 84 L 84 84 L 84 88 L 16 88 L 16 84 L 12 84 Z" fill="none" stroke="#0f172a" strokeWidth="1" />
+            <path d="M 7 9 L 9 9 L 9 7 L 151 7 L 151 9 L 153 9 L 153 81 L 151 81 L 151 83 L 9 83 L 9 81 L 7 81 Z" fill="none" stroke="#0f172a" strokeWidth="1" />
 
             {/* Corner Squares */}
-            <rect x="5" y="5" width="4" height="4" fill={frameColor} />
-            <rect x="91" y="5" width="4" height="4" fill={frameColor} />
-            <rect x="5" y="91" width="4" height="4" fill={frameColor} />
-            <rect x="91" y="91" width="4" height="4" fill={frameColor} />
+            <rect x="3" y="3" width="3" height="3" fill={frameColor} />
+            <rect x="154" y="3" width="3" height="3" fill={frameColor} />
+            <rect x="3" y="84" width="3" height="3" fill={frameColor} />
+            <rect x="154" y="84" width="3" height="3" fill={frameColor} />
             
             {/* Retro Tech Lines */}
-            <rect x="40" y="7" width="20" height="2" fill="#0f172a" />
-            <rect x="45" y="93" width="10" height="2" fill={frameColor} />
-            <rect x="7" y="40" width="2" height="20" fill="#0f172a" />
-            <rect x="93" y="40" width="2" height="20" fill="#0f172a" />
+            <rect x="60" y="4" width="40" height="2" fill="#0f172a" />
+            <rect x="70" y="84" width="20" height="2" fill={frameColor} />
+            <rect x="4" y="35" width="2" height="20" fill="#0f172a" />
+            <rect x="154" y="35" width="2" height="20" fill="#0f172a" />
           </svg>
         </div>
 
-        {/* THE DINOSAUR - ANIMATED VIDEO */}
+        {/* LIGHT MODE VIDEO (White BG removed via multiply) */}
         <div 
-          className="relative z-10 w-full h-full flex items-center justify-center p-6 mix-blend-multiply"
+          className="relative z-10 w-full h-full flex items-center justify-center p-4 dark:hidden"
           style={{ mixBlendMode: 'multiply' }}
         >
           <video 
-            src={videoSrc}
+            src={lightVideoSrc}
             autoPlay
             loop
             muted
@@ -89,6 +94,24 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
             className="w-full h-full object-contain pointer-events-none"
             style={{ 
               filter: 'contrast(1.1)' 
+            }}
+          />
+        </div>
+
+        {/* DARK MODE VIDEO (Black BG removed via screen) */}
+        <div 
+          className="relative z-10 w-full h-full hidden dark:flex items-center justify-center p-4"
+          style={{ mixBlendMode: 'screen' }}
+        >
+          <video 
+            src={darkVideoSrc}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="w-full h-full object-contain pointer-events-none"
+            style={{ 
+              filter: 'brightness(1.2) contrast(1.1)' 
             }}
           />
         </div>
