@@ -29,6 +29,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const isDragging = useRef(false);
   const auth = useAuth();
   const { visibleEntities } = useEntity();
 
@@ -180,27 +181,52 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
 
   return (
     <>
-      {/* Chatbot Button - Dino Icon */}
+      {/* Chatbot Button - Dino Icon (Draggable Quickball) */}
       {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 group animate-bounce"
-          aria-label="Open AI Assistant"
-          style={{ animationDuration: '2s' }}
+        <motion.div
+          drag
+          dragMomentum={false}
+          dragElastic={0.1}
+          whileDrag={{ scale: 1.15 }}
+          onDragStart={() => {
+            isDragging.current = true;
+          }}
+          onDragEnd={() => {
+            // Small timeout to ensure the click event is captured/suppressed after drag
+            setTimeout(() => {
+              isDragging.current = false;
+            }, 100);
+          }}
+          onClick={(e) => {
+            if (isDragging.current) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            setIsOpen(true);
+          }}
+          className="fixed bottom-24 right-4 sm:bottom-6 sm:right-6 z-[110] touch-none cursor-grab active:cursor-grabbing"
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
         >
-          {/* Dino Icon Image */}
-          <img
-            src="/images/Dino Icon.svg"
-            alt="Dino Assistant"
-            className="w-12 h-12 object-contain"
-          />
-          <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></span>
+          <div
+            className="bg-gradient-to-r from-emerald-500 to-emerald-600 text-white p-2 sm:p-3 rounded-full shadow-[0_8px_30px_rgba(16,185,129,0.4)] hover:shadow-[0_8px_40px_rgba(16,185,129,0.6)] transition-shadow group animate-bounce relative"
+            style={{ animationDuration: '2.5s' }}
+          >
+            {/* Dino Icon Image */}
+            <img
+              src="/images/Dino Icon.svg"
+              alt="Dino Assistant"
+              className="w-7 h-7 sm:w-12 sm:h-12 object-contain pointer-events-none drop-shadow-md"
+            />
+            <span className="absolute top-0 right-0 sm:-top-1 sm:-right-1 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full animate-pulse border-2 border-emerald-500"></span>
 
-          {/* Tooltip */}
-          <div className="absolute bottom-full right-0 mb-2 px-3 py-1 bg-gray-900 text-white text-sm rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-            🦖 Chat with Dino - Ready to Help!
+            {/* Tooltip */}
+            <div className="absolute top-1/2 right-full -translate-y-1/2 mr-3 px-3 py-1.5 bg-gray-900/90 backdrop-blur-sm text-white text-[10px] sm:text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg">
+              🦖 Chat with Dino - Ready to Help!
+            </div>
           </div>
-        </button>
+        </motion.div>
       )}
 
       {/* Chatbot Window */}

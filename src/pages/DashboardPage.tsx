@@ -3949,7 +3949,7 @@ return (
     >
       {/* Sidebar */}
       <aside
-        className={`fixed top-0 left-0 h-full w-[280px] transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+        className={`hidden lg:flex flex-col fixed top-0 left-0 h-full w-[280px] transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
           } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 ${isDarkMode ? "bg-gray-900/80" : "bg-white/80"
           } backdrop-blur-xl border-r ${isDarkMode ? "border-gray-800" : "border-gray-200"} shadow-2xl overflow-y-auto`}
       >
@@ -4100,16 +4100,6 @@ return (
                 icon: <Bell className="w-5 h-5" />,
               },
               {
-                id: "pre-orders",
-                label: "Pre-Order Engine",
-                icon: <ShoppingCart className="w-5 h-5" />,
-              },
-              {
-                id: "waitlist",
-                label: "Universal Waitlist",
-                icon: <Users className="w-5 h-5" />,
-              },
-              {
                 id: "settings",
                 label: translations[language].settings,
                 icon: <Settings className="w-5 h-5" />,
@@ -4117,8 +4107,6 @@ return (
             ].filter(item => {
               if (item.id === 'ar-menu') return shouldShow('arMenus');
               if (item.id === 'events') return shouldShow('events');
-              if (item.id === 'pre-orders') return shouldShow('preOrders');
-              if (item.id === 'waitlist') return shouldShow('waitlist');
               return true;
             }).map(({ id, label, icon }) => (
               <button
@@ -4236,7 +4224,7 @@ return (
 
       {/* Main Content */}
       <div
-        className={`min-h-screen transition-all duration-500 ease-in-out ${isSidebarOpen ? "lg:pl-72" : ""}`}
+        className={`min-h-screen pb-20 lg:pb-0 transition-all duration-500 ease-in-out ${isSidebarOpen ? "lg:pl-72" : ""}`}
       >
         {/* Header */}
         <header className="px-3 sm:px-4 md:px-6 py-3 sm:py-3 md:py-4 sticky top-0 z-30">
@@ -4271,7 +4259,7 @@ return (
             <div className="flex items-center gap-2 sm:gap-4 min-w-0">
               <button
                 onClick={toggleSidebar}
-                className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl transition-all flex-shrink-0 ${isDarkMode ? "bg-gray-800/50 hover:bg-gray-800 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}
+                className={`hidden lg:flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-2xl transition-all flex-shrink-0 ${isDarkMode ? "bg-gray-800/50 hover:bg-gray-800 text-white" : "bg-white/20 hover:bg-white/30 text-white"}`}
                 aria-label="Toggle menu"
               >
                 <Menu className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -4666,6 +4654,49 @@ return (
       userEmail={userData?.email}
       userName={userData?.displayName || userData?.name}
     />
+
+    {/* Mobile Bottom Navigation (Premium Scrollable Dock) */}
+    <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl border-t border-gray-200/50 dark:border-gray-800/50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
+      <div className="flex items-center gap-0 sm:gap-1 overflow-x-auto hide-scrollbar px-2 sm:px-4 py-1.5 sm:py-2 snap-x snap-mandatory">
+        {[
+          { id: "home", icon: <Compass strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].home || "Explore" },
+          { id: "restaurants", icon: <MapPin strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].restaurants || "Map" },
+          { id: "events", icon: <Globe strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].events || "Events" },
+          { id: "bookings", icon: <Calendar strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].bookings || "Bookings" },
+          { id: "messages", icon: <MessageSquare strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].messages || "Messages" },
+          { id: "ar-menu", icon: <Camera strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].arMenu || "AR Menu" },
+          { id: "reviews", icon: <Star strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].myReviews || "Reviews" },
+          { id: "achievements", icon: <Trophy strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].achievements || "Awards" },
+          { id: "theme", icon: isDarkMode ? <Sun strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" /> : <Moon strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: isDarkMode ? "Light Mode" : "Dark Mode", isAction: true, onClick: toggleDarkMode },
+          { id: "settings", icon: <Settings strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: translations[language].settings || "Settings" },
+          { id: "logout", icon: <svg strokeWidth={1.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5 sm:w-[22px] sm:h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>, label: "Logout", isAction: true, onClick: handleLogout }
+        ].map((item) => {
+          const isActive = !item.isAction && activeSection === item.id;
+          return (
+            <button
+              key={item.id}
+              onClick={() => item.isAction && item.onClick ? item.onClick() : setActiveSection(item.id as Section)}
+              className={`snap-center flex flex-col items-center gap-1 sm:gap-1.5 min-w-[64px] sm:min-w-[76px] transition-all duration-300 ${
+                isActive 
+                  ? "text-emerald-500 dark:text-emerald-400 scale-105" 
+                  : item.id === 'logout' ? "text-rose-500 hover:text-rose-600" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+              }`}
+            >
+              <div className={`p-1.5 sm:p-2 rounded-xl sm:rounded-[14px] transition-all duration-300 ${isActive ? "bg-emerald-500/10 dark:bg-emerald-400/15 shadow-inner" : ""}`}>
+                {item.icon}
+              </div>
+              <span className={`text-[9px] sm:text-[10px] tracking-wide transition-all ${isActive ? "opacity-100 font-bold" : "opacity-80 font-medium"} whitespace-nowrap`}>
+                {item.label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+    </nav>
   </>
   );
 }

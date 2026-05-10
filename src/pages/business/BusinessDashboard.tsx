@@ -62,6 +62,9 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { businessApi, normalizeImageUrl } from '../../services/api';
+import WaitlistManagement from './WaitlistManagement';
+import PreOrderManagement from './PreOrderManagement';
+import { ShoppingCart } from 'lucide-react';
 
 // Types for business dashboard
 interface Business {
@@ -138,11 +141,11 @@ function StarRating({ rating, size = 16, className = "" }: { rating: number | st
 }
 
 // Read URL parameter for initial view mode
-function getInitialViewMode(): 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' {
+function getInitialViewMode(): 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' | 'waitlist' | 'pre-orders' {
   const params = new URLSearchParams(window.location.search);
   const view = params.get('view');
-  if (view && ['overview', 'businesses', 'bookings', 'analytics', 'operations', 'marketing', 'reviews'].includes(view)) {
-    return view as 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews';
+  if (view && ['overview', 'businesses', 'bookings', 'analytics', 'operations', 'marketing', 'reviews', 'waitlist', 'pre-orders'].includes(view)) {
+    return view as 'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' | 'waitlist' | 'pre-orders';
   }
   return 'overview';
 }
@@ -163,7 +166,7 @@ function BusinessDashboard() {
   const [filteredBusinesses, setFilteredBusinesses] = useState<Business[]>([]);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
-  const [viewMode, setViewMode] = useState<'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews'>(getInitialViewMode() as any);
+  const [viewMode, setViewMode] = useState<'overview' | 'businesses' | 'bookings' | 'analytics' | 'operations' | 'marketing' | 'reviews' | 'waitlist' | 'pre-orders'>(getInitialViewMode() as any);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'paused' | 'draft'>('all');
   const [loading, setLoading] = useState(true);
@@ -2206,6 +2209,9 @@ function BusinessDashboard() {
     );
   };
 
+  const renderWaitlist = () => <WaitlistManagement />;
+  const renderPreOrders = () => <PreOrderManagement />;
+
   return (
     <div className="min-h-screen bg-slate-50">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -2240,7 +2246,9 @@ function BusinessDashboard() {
                 { id: 'analytics', label: 'Analytics', icon: TrendingUp },
                 { id: 'operations', label: 'Staff & Ops', icon: Briefcase },
                 { id: 'marketing', label: 'Marketing', icon: Megaphone },
-                { id: 'reviews', label: 'Reviews', icon: MessageSquare }
+                { id: 'reviews', label: 'Reviews', icon: MessageSquare },
+                { id: 'waitlist', label: 'Waitlist', icon: Users },
+                { id: 'pre-orders', label: 'Pre-orders', icon: ShoppingCart }
               ].map(({ id, label, icon: Icon }) => (
                 <button
                   key={id}
@@ -2267,6 +2275,8 @@ function BusinessDashboard() {
           {viewMode === 'operations' && renderOperations()}
           {viewMode === 'marketing' && renderMarketing()}
           {viewMode === 'reviews' && renderReviews()}
+          {viewMode === 'waitlist' && renderWaitlist()}
+          {viewMode === 'pre-orders' && renderPreOrders()}
         </div>
       </div>
     </div>

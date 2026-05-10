@@ -28,19 +28,24 @@ interface WaitlistEntry {
     notifiedAt?: string;
 }
 
-const WaitlistManagement: React.FC = () => {
+interface WaitlistManagementProps {
+    businessId?: string;
+}
+
+const WaitlistManagement: React.FC<WaitlistManagementProps> = ({ businessId }) => {
     const { currentUser } = useAuth();
+    const effectiveBusinessId = businessId || currentUser?.uid;
     const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<'all' | 'waiting' | 'notified'>('waiting');
 
     useEffect(() => {
-        if (currentUser?.uid) {
+        if (effectiveBusinessId) {
             fetchWaitlist();
 
             const socket = socketService.getSocket();
             if (socket) {
-                socket.emit('join-business-room', currentUser.uid);
+                socket.emit('join-business-room', effectiveBusinessId);
 
                 socket.on('waitlist:joined', (data: { entry: WaitlistEntry }) => {
                     setWaitlist(prev => {
@@ -61,9 +66,10 @@ const WaitlistManagement: React.FC = () => {
     }, [currentUser]);
 
     const fetchWaitlist = async () => {
+        if (!effectiveBusinessId) return;
         try {
             setLoading(true);
-            const res = await waitlistApi.getBusinessWaitlist(currentUser!.uid);
+            const res = await waitlistApi.getBusinessWaitlist(effectiveBusinessId);
             if (res.success) {
                 setWaitlist(res.data);
             }

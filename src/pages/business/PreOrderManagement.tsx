@@ -41,20 +41,25 @@ interface PreOrder {
     createdAt: string;
 }
 
-const PreOrderManagement: React.FC = () => {
+interface PreOrderManagementProps {
+    businessId?: string;
+}
+
+const PreOrderManagement: React.FC<PreOrderManagementProps> = ({ businessId }) => {
     const { currentUser } = useAuth();
+    const effectiveBusinessId = businessId || currentUser?.uid;
     const [preOrders, setPreOrders] = useState<PreOrder[]>([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState<string>('all');
     const [expandedId, setExpandedId] = useState<string | null>(null);
 
     useEffect(() => {
-        if (currentUser?.uid) {
+        if (effectiveBusinessId) {
             fetchPreOrders();
 
             const socket = socketService.getSocket();
             if (socket) {
-                socket.emit('join-business-room', currentUser.uid);
+                socket.emit('join-business-room', effectiveBusinessId);
 
                 socket.on('preorder:new', (data: { preOrder: PreOrder }) => {
                     setPreOrders(prev => [data.preOrder, ...prev]);
@@ -69,9 +74,10 @@ const PreOrderManagement: React.FC = () => {
     }, [currentUser]);
 
     const fetchPreOrders = async () => {
+        if (!effectiveBusinessId) return;
         try {
             setLoading(true);
-            const res = await preOrderApi.getBusinessPreOrders(currentUser!.uid);
+            const res = await preOrderApi.getBusinessPreOrders(effectiveBusinessId);
             if (res.success) {
                 setPreOrders(res.data);
             }
