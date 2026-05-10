@@ -7,84 +7,133 @@ interface FeatureStickerProps {
   mode: string;
 }
 
-const stickerMap: Record<string, string> = {
-  dino_dev: '/stickers/dino_dev.png',
-  dino_test: '/stickers/dino_test.png',
-  dino_maint: '/stickers/dino_maint.png',
-  dino_soon: '/stickers/dino_soon.png',
+const itemMap: Record<string, number> = {
+  development: 0, // Blueprint
+  maintenance: 1, // Wrench
+  testing: 2,     // Test Tube
+  coming_soon: 3, // Sign
 };
 
 const modeColors: Record<string, string> = {
-  development: 'bg-amber-100 text-amber-700 border-amber-200',
-  testing: 'bg-blue-100 text-blue-700 border-blue-200',
-  maintenance: 'bg-rose-100 text-rose-700 border-rose-200',
-  coming_soon: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  development: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  testing: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  maintenance: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+  coming_soon: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
-  const stickerPath = stickerMap[stickerId] || stickerMap.dino_dev;
+  const itemIndex = itemMap[mode] || 0;
 
   return (
-    <div className="flex flex-col items-center justify-center p-8 text-center space-y-6">
-      <motion.div
-        animate={{
-          y: [0, -15, 0],
-          rotate: [0, -5, 5, 0],
-          scale: [1, 1.05, 1],
-        }}
-        transition={{
-          duration: 4,
-          repeat: Infinity,
-          ease: "easeInOut"
-        }}
-        className="relative"
-      >
-        {/* Glow effect */}
-        <div className="absolute inset-0 bg-emerald-400/20 blur-3xl rounded-full" />
+    <div className="flex flex-col items-center justify-center p-8 text-center space-y-8">
+      <div className="relative group">
+        {/* Cinematic Ambient Glow */}
+        <div className="absolute inset-0 bg-emerald-500/15 blur-[80px] rounded-full scale-150" />
         
-        <img
-          src={stickerPath}
-          alt="Feature Status"
-          className="w-48 h-48 object-contain relative z-10 drop-shadow-2xl"
-          style={{ mixBlendMode: 'multiply' }} // Removes white background
-        />
-        
-        {/* Floating elements animation */}
-        <motion.div
+        {/* Animated Spritesheet Character */}
+        <motion.div 
+          className="relative z-10 flex flex-col items-center"
           animate={{
-            opacity: [0, 1, 0],
-            y: [0, -40],
-            x: [0, 20]
+             x: [-20, 20, -20],
           }}
-          transition={{ duration: 2, repeat: Infinity, delay: 0.5 }}
-          className="absolute top-0 right-0 text-2xl"
-        >
-          ✨
-        </motion.div>
-        <motion.div
-          animate={{
-            opacity: [0, 1, 0],
-            y: [0, -30],
-            x: [0, -20]
+          transition={{
+            duration: 6,
+            repeat: Infinity,
+            ease: "linear"
           }}
-          transition={{ duration: 2.5, repeat: Infinity, delay: 1 }}
-          className="absolute top-10 left-0 text-xl"
         >
-          🚀
-        </motion.div>
-      </motion.div>
+          {/* Walking Dino Sprite */}
+          <div 
+            className="w-48 h-48"
+            style={{
+              backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
+              backgroundSize: '400% 100%',
+              imageRendering: 'pixelated',
+              animation: 'dino-walk 0.6s steps(4) infinite',
+              mixBlendMode: 'screen', // Removes white background
+              filter: 'brightness(1.2) contrast(1.1)',
+            }}
+          />
 
-      <div className="space-y-3">
-        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border ${modeColors[mode] || modeColors.development}`}>
-          {mode.replace('_', ' ')}
-        </span>
-        <h3 className="text-2xl font-bold text-gray-900 leading-tight">
+          {/* Held Item Overlay */}
+          <motion.div
+            animate={{
+              y: [0, -4, 0, 4, 0],
+              x: [35, 37, 35, 33, 35],
+              rotate: [-5, 5, -5]
+            }}
+            transition={{
+              duration: 0.6,
+              repeat: Infinity,
+              ease: "steps(4)"
+            }}
+            className="absolute top-16 left-1/2 -ml-16 w-16 h-16 pointer-events-none"
+            style={{
+              backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
+              backgroundSize: '400% 100%',
+              backgroundPosition: `${-(itemIndex * 100)}% 0`,
+              imageRendering: 'pixelated',
+              mixBlendMode: 'screen',
+              filter: 'drop-shadow(0 0 8px rgba(255,255,255,0.3))'
+            }}
+          />
+        </motion.div>
+
+        {/* Action Micro-particles */}
+        <div className="absolute inset-0 pointer-events-none">
+          {[...Array(5)].map((_, i) => (
+            <motion.div
+              key={i}
+              animate={{
+                y: [0, -100],
+                x: [0, (i - 2) * 30],
+                opacity: [0, 1, 0],
+                scale: [0, 1.5, 0]
+              }}
+              transition={{
+                duration: 2 + Math.random(),
+                repeat: Infinity,
+                delay: i * 0.4,
+                ease: "easeOut"
+              }}
+              className="absolute left-1/2 bottom-1/2 w-1 h-1 bg-emerald-400 rounded-full blur-[1px]"
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4 max-w-md z-20">
+        <div className="flex justify-center">
+          <motion.span 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-[0.3em] border shadow-2xl backdrop-blur-xl ${modeColors[mode] || modeColors.development}`}
+          >
+            {mode.replace('_', ' ')}
+          </motion.span>
+        </div>
+        
+        <h3 className="text-4xl font-black text-white leading-tight tracking-tighter uppercase italic">
           {caption}
         </h3>
-        <p className="text-gray-500 max-w-xs mx-auto">
+        
+        <p className="text-gray-400 text-lg font-medium leading-relaxed opacity-80">
           Our team of dinosaurs is working hard to bring this feature to your expedition.
         </p>
+
+        <div className="pt-6 flex justify-center space-x-2">
+           <div className="h-1 w-1 bg-emerald-500 rounded-full" />
+           <div className="h-1 w-12 bg-gradient-to-r from-emerald-500 to-transparent rounded-full" />
+           <div className="h-1 w-1 bg-emerald-500/50 rounded-full" />
+        </div>
       </div>
+
+      <style dangerouslySetInnerHTML={{ __html: `
+        @keyframes dino-walk {
+          from { background-position: 0% 0; }
+          to { background-position: 100% 0; }
+        }
+      `}} />
     </div>
   );
 };
