@@ -26,12 +26,15 @@ export const createTransporter = () => {
     console.log(`[EmailService] Initializing Brevo SMTP (User: ${brevoUser})`);
     transporterInstance = nodemailer.createTransport({
       host: 'smtp-relay.brevo.com',
-      port: 465, // Using port 465 (SSL) for better stability on cloud providers
-      secure: true, 
+      port: 2525, // Using port 2525 as an alternative to 587/465 to bypass potential blocks
+      secure: false, 
       auth: {
         user: brevoUser,
         pass: brevoKey,
       },
+      // Debugging
+      logger: true,
+      debug: true,
       // Optimization: Pooled connections
       pool: true,
       maxConnections: 5,
