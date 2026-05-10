@@ -34,12 +34,12 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
   return (
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
       
-      {/* Dark backing circle so 'screen' blending works securely even on light themes */}
-      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-64 h-64 bg-slate-900 rounded-full blur-3xl opacity-100 dark:opacity-0 pointer-events-none" />
+      {/* Light backing spotlight so 'multiply' blending works securely on dark themes */}
+      <div className="absolute top-[15%] left-1/2 -translate-x-1/2 w-48 h-48 bg-white rounded-full blur-[50px] opacity-100 pointer-events-none" />
 
       <div className="relative w-64 h-64 md:w-80 md:h-80 flex items-center justify-center">
         {/* Universal Background Glow */}
-        <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[60px] rounded-full scale-[1.5] pointer-events-none" />
+        <div className="absolute inset-0 bg-emerald-500/10 dark:bg-emerald-400/5 blur-[60px] rounded-full scale-[1.5] pointer-events-none" />
         
         {/* THE DINOSAUR - ANIMATED VIDEO */}
         <div className="relative z-10 w-full h-full flex items-center justify-center">
@@ -49,10 +49,10 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
             loop
             muted
             playsInline
-            className="w-full h-full object-contain pointer-events-none"
+            className="w-full h-full object-contain pointer-events-none mix-blend-multiply"
             style={{ 
-              mixBlendMode: 'screen',
-              filter: 'brightness(1.2) contrast(1.1)' 
+              mixBlendMode: 'multiply',
+              filter: 'contrast(1.1)' 
             }}
           />
         </div>
