@@ -38,29 +38,33 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
     <div className="flex flex-col items-center justify-center p-8 text-center space-y-12 relative min-h-[700px] w-full overflow-hidden bg-transparent">
       <style>{`
         @keyframes dino-walk-cycle {
-          0%, 24.99% { background-position: 0% 45%; }
-          25%, 49.99% { background-position: 33.33% 45%; }
-          50%, 74.99% { background-position: 66.66% 45%; }
-          75%, 100% { background-position: 100% 45%; }
+          0%, 24.99% { background-position: 0% 0%; }
+          25%, 49.99% { background-position: 33.33% 0%; }
+          50%, 74.99% { background-position: 66.66% 0%; }
+          75%, 100% { background-position: 100% 0%; }
         }
         @keyframes item-bob-cycle {
-          0%, 24.99% { transform: translateY(0) translateX(48px) rotate(-15deg); }
-          25%, 49.99% { transform: translateY(-5px) translateX(52px) rotate(15deg); }
-          50%, 74.99% { transform: translateY(0) translateX(48px) rotate(-15deg); }
-          75%, 100% { transform: translateY(5px) translateX(44px) rotate(15deg); }
+          0%, 24.99% { transform: translateY(0) translateX(28px) rotate(-15deg); }
+          25%, 49.99% { transform: translateY(-3px) translateX(32px) rotate(15deg); }
+          50%, 74.99% { transform: translateY(0) translateX(28px) rotate(-15deg); }
+          75%, 100% { transform: translateY(3px) translateX(24px) rotate(15deg); }
         }
       `}</style>
 
-      <div className="relative w-80 h-80 flex items-center justify-center">
+      {/* Dark backing circle so 'screen' blending works even on light themes */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-slate-900 rounded-full blur-2xl opacity-0 dark:opacity-0" />
+
+      <div className="relative w-56 h-56 md:w-64 md:h-64 flex items-center justify-center">
         {/* Universal Background Glow */}
-        <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[100px] rounded-full scale-[2]" />
+        <div className="absolute inset-0 bg-emerald-500/15 dark:bg-emerald-400/10 blur-[60px] rounded-full scale-[1.5]" />
         
         {/* THE DINOSAUR - STATIONARY WALKING FIGURE */}
         <motion.div 
           className="relative z-10 w-full h-full"
+          style={{ mixBlendMode: 'screen' }}
           animate={{
-             y: [0, -12, 0], // Bobbing up and down
-             scale: [1, 1.05, 1]
+             y: [0, -8, 0], // Bobbing up and down
+             scale: [1, 1.03, 1]
           }}
           transition={{
             duration: 0.8,
@@ -68,29 +72,27 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
             ease: "easeInOut"
           }}
         >
-          {/* Walking Dino Sprite - CSS Animation */}
+          {/* Walking Dino Sprite */}
           <div 
             className="absolute inset-0 w-full h-full"
             style={{
               backgroundImage: 'url(/stickers/dino_walk_sheet.png)',
-              backgroundSize: '400% 400%',
+              backgroundSize: '400% 100%',
               imageRendering: 'pixelated',
               animation: 'dino-walk-cycle 0.8s infinite',
-              mixBlendMode: 'screen',
-              filter: 'brightness(1.5) contrast(1.2)'
+              filter: 'brightness(1.3) contrast(1.2)'
             }}
           />
 
           {/* Held Item Overlay */}
           <div
-            className="absolute top-1/4 left-1/2 -ml-12 w-24 h-24"
+            className="absolute top-1/4 left-1/2 -ml-8 w-16 h-16"
             style={{
               backgroundImage: 'url(/stickers/pixel_items_sheet.png)',
-              backgroundSize: '400% 400%',
-              backgroundPosition: `${itemBgX} 45%`,
+              backgroundSize: '400% 100%',
+              backgroundPosition: `${itemBgX} 0%`,
               imageRendering: 'pixelated',
               animation: 'item-bob-cycle 0.8s infinite',
-              mixBlendMode: 'screen',
               filter: 'brightness(1.5)'
             }}
           />
