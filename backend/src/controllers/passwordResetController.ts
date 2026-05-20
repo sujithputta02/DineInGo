@@ -2,7 +2,10 @@ import { Request, Response } from 'express';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import PasswordReset from '../models/PasswordReset';
+import { User } from '../models/User';
+import { Owner } from '../models/Owner';
 import { Business } from '../models/Business';
+import authAdmin from '../utils/firebaseAdmin';
 import { sendEmail, emailService } from '../services/emailService';
 
 // Generate 6-digit OTP
@@ -24,15 +27,17 @@ export const requestPasswordReset = async (req: Request, res: Response) => {
             return res.status(400).json({ success: false, message: 'Email is required' });
         }
 
-        // TODO: Check if business owner exists in proper Owner/User model
-        // For now, we'll send OTP to any email address
-        // const user = await Business.findOne({ ownerId: email.toLowerCase() });
-        // if (!user) {
-        //     return res.status(200).json({ 
-        //         success: true, 
-        //         message: 'If an account exists with this email, an OTP has been sent' 
-        //     });
-        // }
+        // Verify account exists in User, Owner, or Business model (pre-seeded business owner)
+        const userExists = await User.exists({ email: email.toLowerCase() });
+        const ownerExists = await Owner.exists({ email: email.toLowerCase() });
+        const businessExists = await Business.exists({ ownerId: email.toLowerCase() });
+
+        if (!userExists && !ownerExists && !businessExists) {
+            return res.status(404).json({
+                success: false,
+                message: 'No account found with this email address.'
+            });
+        }
 
         // Rate limiting: Check if too many requests in last hour
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
@@ -181,19 +186,119 @@ export const resetPassword = async (req: Request, res: Response) => {
             });
         }
 
-        // TODO: Update password in proper Owner/User authentication model
-        // For now, just delete the reset request and return success
-        // In production, this should update the user's password in the database
+        let updated = false;
 
-        // Placeholder: Hash the password (for demonstration)
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        console.log('Password would be updated for:', email);
-        console.log('Hashed password:', hashedPassword);
+        // 1. Check and update User (Customer/User model)
+        const user = await User.findOne({ email: email.toLowerCase() });
+        if (user) {
+            // Hash the password
+            const salt = await bcrypt.genSalt(10);
+            const hashedPassword = await bcrypt.hash(newPassword, salt);
+            user.password = hashedPassword;
+            user.updatedAt = new Date();
+            await user.save();
+
+            // Sync with Firebase Auth using Admin SDK
+            if (authAdmin) {
+                try {
+                    await authAdmin.auth().updateUser(user.uid, {
+                        password: newPassword
+                    });
+                    console.log(`[PasswordReset] Firebase password updated successfully for user UID: ${user.uid}`);
+                } catch (firebaseError: any) {
+                    console.error(`[PasswordReset] Failed to update Firebase password for user ${user.uid}:`, firebaseError.message);
+                }
+            }
+            updated = true;
+        }
+
+        // 2. Check and update Owner (Business Owner model)
+        let owner = await Owner.findOne({ email: email.toLowerCase() });
+        if (owner) {
+            if (!owner.authProviders.includes('password')) {
+                owner.authProviders.push('password');
+            }
+            owner.hasPassword = true;
+            owner.updatedAt = new Date();
+            await owner.save();
+
+            // Sync with Firebase Auth using Admin SDK
+            if (authAdmin) {
+                try {
+                    await authAdmin.auth().updateUser(owner.uid, {
+                        password: newPassword
+                    });
+                    console.log(`[PasswordReset] Firebase password updated successfully for owner UID: ${owner.uid}`);
+                } catch (firebaseError: any) {
+                    console.error(`[PasswordReset] Failed to update Firebase password for owner ${owner.uid}:`, firebaseError.message);
+                }
+            }
+            updated = true;
+        } else {
+            // If Owner document doesn't exist, check if a Business exists with ownerId = email (pre-seeded business owner)
+            const business = await Business.findOne({ ownerId: email.toLowerCase() });
+            if (business) {
+                // They have a business seeded, but no Owner document yet.
+                // Register them in Firebase and create their Owner document.
+                if (authAdmin) {
+                    try {
+                        let firebaseUser;
+                        try {
+                            firebaseUser = await authAdmin.auth().getUserByEmail(email.toLowerCase());
+                        } catch (err: any) {
+                            if (err.code === 'auth/user-not-found') {
+                                // Create user in Firebase
+                                firebaseUser = await authAdmin.auth().createUser({
+                                    email: email.toLowerCase(),
+                                    password: newPassword,
+                                    emailVerified: true
+                                });
+                                console.log(`[PasswordReset] Created new Firebase user for pre-seeded business owner: ${email}`);
+                            } else {
+                                throw err;
+                            }
+                        }
+
+                        if (firebaseUser && firebaseUser.uid) {
+                            // Update Firebase password to ensure it matches
+                            await authAdmin.auth().updateUser(firebaseUser.uid, {
+                                password: newPassword
+                            });
+
+                            // Create Owner document in MongoDB
+                            owner = await Owner.create({
+                                uid: firebaseUser.uid,
+                                email: email.toLowerCase(),
+                                displayName: business.name || 'Business Owner',
+                                authProviders: ['password'],
+                                hasPassword: true
+                            });
+                            console.log(`[PasswordReset] Created Owner document for UID: ${firebaseUser.uid}`);
+
+                            // Update the Business ownerId to the new Firebase UID
+                            business.ownerId = firebaseUser.uid;
+                            await business.save();
+                            console.log(`[PasswordReset] Updated Business ownerId to UID: ${firebaseUser.uid}`);
+
+                            updated = true;
+                        }
+                    } catch (firebaseError: any) {
+                        console.error(`[PasswordReset] Failed to register pre-seeded business owner:`, firebaseError.message);
+                    }
+                }
+            }
+        }
+
+        if (!updated) {
+            return res.status(404).json({
+                success: false,
+                message: 'Account not found. Password could not be reset.'
+            });
+        }
 
         // Delete the reset request
         await PasswordReset.deleteOne({ _id: resetRequest._id });
 
-        // Return success (in production, only after actually updating the password)
         return res.status(200).json({
             success: true,
             message: 'Password reset successful. You can now login with your new password.'

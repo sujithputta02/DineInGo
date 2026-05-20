@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { Event } from '../models/Event';
 import { Business } from '../models/Business';
+import { Booking } from '../models/Booking';
 
 // Get all events (from both Event collection and Business collection where type is 'event' or 'both')
 export const getAllEvents = async (req: Request, res: Response) => {
@@ -12,6 +13,20 @@ export const getAllEvents = async (req: Request, res: Response) => {
     const businessEvents = await Business.find({
       type: { $in: ['event', 'both'] }
     }).sort({ 'startDate': 1 });
+
+    // Fetch all active bookings for events
+    const activeBookings = await Booking.find({
+      status: { $in: ['confirmed', 'pending', 'checked-in', 'completed'] }
+    });
+
+    // Create a map of event/business IDs to total registered guests/seats
+    const registeredCounts: Record<string, number> = {};
+    for (const booking of activeBookings) {
+      const id = (booking.businessId || booking.eventId || '').toString();
+      if (id) {
+        registeredCounts[id] = (registeredCounts[id] || 0) + (booking.seats || booking.guests || 0);
+      }
+    }
 
     // Transform business events to match event format
     const transformedBusinessEvents = businessEvents.map(business => {
@@ -67,7 +82,7 @@ export const getAllEvents = async (req: Request, res: Response) => {
             ? `${business.locationData.city}, ${business.locationData.state}`
             : business.locationData?.address || 'Location TBD',
         capacity: business.capacity || 100,
-        registeredCount: 0, // TODO: Calculate from bookings
+        registeredCount: registeredCounts[business._id.toString()] || 0,
         price: business.basePrice || 0,
         imageUrl: business.thumbnail || business.coverImage,
         category: business.eventType || 'Event',
@@ -83,7 +98,12 @@ export const getAllEvents = async (req: Request, res: Response) => {
 
     // Add standalone events first
     standaloneEvents.forEach(event => {
-      eventMap.set(event._id.toString(), event);
+      const plainObj = event.toObject ? event.toObject() : event;
+      const dynamicCount = registeredCounts[event._id.toString()];
+      if (dynamicCount !== undefined) {
+        plainObj.registeredCount = dynamicCount;
+      }
+      eventMap.set(event._id.toString(), plainObj);
     });
 
     // Add business events (will override if same ID, which shouldn't happen)
@@ -132,12 +152,27 @@ export const getEventById = async (req: Request, res: Response) => {
       });
     }
 
+    // Fetch active bookings for this event to calculate registered count
+    const eventBookings = await Booking.find({
+      $or: [
+        { businessId: id, status: { $in: ['confirmed', 'pending', 'checked-in', 'completed'] } },
+        { eventId: id, status: { $in: ['confirmed', 'pending', 'checked-in', 'completed'] } }
+      ]
+    });
+    const totalRegistered = eventBookings.reduce((sum, b) => sum + (b.seats || b.guests || 0), 0);
+
     // Try to find in Event collection first
-    let event = await Event.findById(id);
-    console.log('Event collection search result:', event ? 'FOUND' : 'NOT FOUND');
+    let eventDoc = await Event.findById(id);
+    let event: any = null;
+    console.log('Event collection search result:', eventDoc ? 'FOUND' : 'NOT FOUND');
+
+    if (eventDoc) {
+      event = eventDoc.toObject();
+      event.registeredCount = totalRegistered;
+    }
 
     // If not found, try Business collection
-    if (!event) {
+    if (!eventDoc) {
       const business = await Business.findById(id);
       console.log('Business collection search result:', business ? 'FOUND' : 'NOT FOUND');
 
@@ -208,16 +243,16 @@ export const getEventById = async (req: Request, res: Response) => {
               ? `${business.locationData.city}, ${business.locationData.state}`
               : business.locationData?.address || 'Location TBD',
           capacity: business.capacity || 100,
-          registeredCount: 0, // TODO: Calculate from bookings
+          registeredCount: totalRegistered,
           price: business.basePrice || 0,
           imageUrl: business.thumbnail || business.coverImage,
           category: business.eventType || 'Event',
           organizer: business.name,
           hasSeating: normalizedSeatingLayout && (normalizedSeatingLayout.seats?.length > 0 || normalizedSeatingLayout.areas?.length > 0),
           seatingLayout: normalizedSeatingLayout
-        } as any;
-        console.log('Transformed event hasSeating:', (event as any).hasSeating);
-        console.log('Transformed event seatingLayout exists:', !!(event as any).seatingLayout);
+        };
+        console.log('Transformed event hasSeating:', event.hasSeating);
+        console.log('Transformed event seatingLayout exists:', !!event.seatingLayout);
       }
     }
 

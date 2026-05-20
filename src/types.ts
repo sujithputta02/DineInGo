@@ -38,6 +38,7 @@ export interface Restaurant {
   location: Location;
   rating: number;
   image: string;
+  thumbnail?: string;
   cuisine?: string[];
   priceLevel?: number;
   address?: string;

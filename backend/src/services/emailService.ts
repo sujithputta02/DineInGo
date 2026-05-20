@@ -11,72 +11,132 @@ interface ReviewEmailData {
   replyText?: string;
 }
 
+class RobustTransporter {
+  verify(callback?: (error: Error | null, success: true) => void): Promise<true> {
+    const promise = new Promise<true>((resolve, reject) => {
+      const brevoKey = process.env.BREVO_API_KEY?.trim();
+      const brevoUser = process.env.BREVO_SMTP_USER?.trim();
+      const gmailUser = process.env.EMAIL_USER?.trim();
+      const gmailPass = process.env.EMAIL_PASS?.trim();
+
+      if ((brevoKey && brevoUser) || (gmailUser && gmailPass)) {
+        resolve(true);
+      } else {
+        reject(new Error('No email credentials configured in .env'));
+      }
+    });
+
+    if (callback) {
+      promise.then(() => callback(null, true)).catch((err) => callback(err, true));
+    }
+    return promise;
+  }
+
+  async sendMail(mailOptions: any, callback?: (error: Error | null, info: any) => void): Promise<any> {
+    const saveEmailBackup = (to: string, subject: string, html: string, attachments?: any[]) => {
+      try {
+        const logsDir = path.join(__dirname, '../../logs/sent_emails');
+        if (!fs.existsSync(logsDir)) {
+          fs.mkdirSync(logsDir, { recursive: true });
+        }
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const sanitizedTo = String(to || 'unknown').replace(/[@.]/g, '_');
+        const filename = `${timestamp}_${sanitizedTo}_${String(subject || 'no_subject').substring(0, 30).replace(/[^a-zA-Z0-9]/g, '_')}.html`;
+        const filepath = path.join(logsDir, filename);
+
+        let content = `Subject: ${subject}\nTo: ${to}\nDate: ${new Date().toString()}\n\n${html}`;
+        if (attachments && attachments.length > 0) {
+          content += `\n\nAttachments: ${attachments.map(a => a.filename).join(', ')}`;
+        }
+        fs.writeFileSync(filepath, content);
+        console.log(`[EmailService] Saved email backup locally: ${filepath}`);
+      } catch (err) {
+        console.error('[EmailService] Failed to save local email backup:', err);
+      }
+    };
+
+    const runSend = async () => {
+      const brevoKey = process.env.BREVO_API_KEY?.trim();
+      const brevoUser = process.env.BREVO_SMTP_USER?.trim();
+      const gmailUser = process.env.EMAIL_USER?.trim();
+      const gmailPass = process.env.EMAIL_PASS?.trim();
+
+      let lastError: any = null;
+
+      // Attempt 1: Brevo SMTP
+      if (brevoKey && brevoUser) {
+        try {
+          console.log(`[EmailService] Attempting to send email via Brevo SMTP to ${mailOptions.to}...`);
+          const brevoTransporter = nodemailer.createTransport({
+            host: 'smtp-relay.brevo.com',
+            port: 2525,
+            secure: false,
+            auth: {
+              user: brevoUser,
+              pass: brevoKey,
+            },
+            connectionTimeout: 8000, 
+            greetingTimeout: 8000,
+            tls: { rejectUnauthorized: false }
+          });
+          const info = await brevoTransporter.sendMail(mailOptions);
+          console.log(`[EmailService] ✓ Email sent successfully via Brevo to ${mailOptions.to}`);
+          saveEmailBackup(mailOptions.to, mailOptions.subject, mailOptions.html, mailOptions.attachments);
+          return info;
+        } catch (err: any) {
+          console.warn(`[EmailService] Brevo SMTP failed: ${err.message || err}`);
+          lastError = err;
+        }
+      }
+
+      // Attempt 2: Gmail Fallback
+      if (gmailUser && gmailPass) {
+        try {
+          const cleanPass = gmailPass.trim().replace(/\s/g, '');
+          console.log(`[EmailService] Attempting to send email via Gmail SMTP fallback to ${mailOptions.to}...`);
+          const gmailTransporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: gmailUser.trim(),
+              pass: cleanPass,
+            },
+            connectionTimeout: 8000,
+            greetingTimeout: 8000
+          });
+          const info = await gmailTransporter.sendMail(mailOptions);
+          console.log(`[EmailService] ✓ Email sent successfully via Gmail to ${mailOptions.to}`);
+          saveEmailBackup(mailOptions.to, mailOptions.subject, mailOptions.html, mailOptions.attachments);
+          return info;
+        } catch (err: any) {
+          console.error(`[EmailService] Gmail SMTP failed: ${err.message || err}`);
+          lastError = err;
+        }
+      }
+
+      // If both fail, save a local backup so developer can read/debug it and throw
+      saveEmailBackup(mailOptions.to, mailOptions.subject, mailOptions.html, mailOptions.attachments);
+      const finalErr = lastError || new Error('No email credentials configured');
+      throw finalErr;
+    };
+
+    const promise = runSend();
+    if (callback) {
+      promise.then(
+        (info) => callback(null, info),
+        (err) => callback(err, null)
+      );
+    }
+    return promise;
+  }
+}
+
 let transporterInstance: any = null;
 
 export const createTransporter = () => {
-  if (transporterInstance) return transporterInstance;
-
-  const brevoKey = process.env.BREVO_API_KEY?.trim();
-  const brevoUser = process.env.BREVO_SMTP_USER?.trim();
-  const gmailUser = process.env.EMAIL_USER?.trim();
-  const gmailPass = process.env.EMAIL_PASS?.trim();
-
-  // Primary: Brevo SMTP (User requested to keep this service)
-  if (brevoKey && brevoUser) {
-    console.log(`[EmailService] Initializing Brevo SMTP (User: ${brevoUser})`);
-    transporterInstance = nodemailer.createTransport({
-      host: 'smtp-relay.brevo.com',
-      port: 2525, // Using port 2525 as an alternative to 587/465 to bypass potential blocks
-      secure: false, 
-      auth: {
-        user: brevoUser,
-        pass: brevoKey,
-      },
-      // Debugging
-      logger: true,
-      debug: true,
-      // Optimization: Pooled connections
-      pool: true,
-      maxConnections: 5,
-      maxMessages: 100,
-      connectionTimeout: 10000, 
-      greetingTimeout: 10000,
-      tls: {
-        // Do not fail on invalid certs
-        rejectUnauthorized: false
-      }
-    });
-    
-    // Verify connection immediately
-    transporterInstance.verify((error: any) => {
-      if (error) {
-        console.error('[EmailService] Brevo SMTP Connection Error:', error);
-        // If Brevo fails and we have Gmail, we could fallback, 
-        // but user specifically asked for Brevo service.
-      } else {
-        console.log('[EmailService] Brevo SMTP Server is ready');
-      }
-    });
-
-    return transporterInstance;
+  if (!transporterInstance) {
+    transporterInstance = new RobustTransporter();
   }
-
-  // Fallback: Gmail SMTP
-  if (gmailUser && gmailPass) {
-    const cleanPass = gmailPass.trim().replace(/\s/g, '');
-    console.warn(`[EmailService] Falling back to Gmail SMTP (User: ${gmailUser})`);
-    transporterInstance = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: gmailUser.trim(),
-        pass: cleanPass,
-      },
-    });
-    return transporterInstance;
-  }
-
-  console.error('[EmailService] CRITICAL: No email providers configured (BREVO_API_KEY or EMAIL_PASS missing)');
-  return null;
+  return transporterInstance;
 };
 
 export interface ReservationEmailData {
