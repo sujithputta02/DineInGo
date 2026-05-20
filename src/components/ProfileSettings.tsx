@@ -268,18 +268,36 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   const validateForm = useCallback(() => {
     const errors: Record<string, string> = {};
-    if (!formData.name.trim()) errors.name = 'Name is required';
+    
+    console.log('Validating form data:', {
+      name: formData.name,
+      phoneNumber: formData.phoneNumber,
+      displayName: formData.displayName
+    });
+    
+    if (!formData.name.trim()) {
+      errors.name = 'Name is required';
+      console.error('Name validation failed');
+    }
     
     // Only validate phone number if it's provided
     if (formData.phoneNumber.trim()) {
       const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
       if (cleanPhone.length > 0 && !validateIndianPhoneNumber(formData.phoneNumber)) {
         errors.phoneNumber = 'Valid Indian phone number required (10 digits starting with 6-9)';
+        console.error('Phone validation failed:', formData.phoneNumber);
       }
     }
     
+    console.log('Validation errors:', errors);
     setFormData(prev => ({ ...prev, errors }));
-    return Object.keys(errors).length > 0 ? 'Please fix errors' : null;
+    
+    if (Object.keys(errors).length > 0) {
+      const errorMessage = Object.values(errors).join(', ');
+      return errorMessage;
+    }
+    
+    return null;
   }, [formData]);
 
   // Input Change
@@ -661,11 +679,16 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         value={formData.name}
                         onChange={handleChange}
                         disabled={!isEditMode}
-                        className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${isDarkMode
+                        className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${
+                          formData.errors.name ? 'border-red-500' : ''
+                        } ${isDarkMode
                           ? 'bg-gray-900/50 border-gray-700 text-white focus:border-emerald-500'
                           : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                           } disabled:opacity-60 disabled:cursor-not-allowed`}
                       />
+                      {formData.errors.name && (
+                        <p className="text-red-500 text-sm">{formData.errors.name}</p>
+                      )}
                     </div>
 
                     {/* Phone */}
@@ -678,11 +701,16 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                         onChange={handleChange}
                         disabled={!isEditMode}
                         placeholder="+91"
-                        className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${isDarkMode
+                        className={`w-full px-4 py-3 rounded-xl border outline-none transition-all ${
+                          formData.errors.phoneNumber ? 'border-red-500' : ''
+                        } ${isDarkMode
                           ? 'bg-gray-900/50 border-gray-700 text-white focus:border-emerald-500'
                           : 'bg-gray-50 border-gray-200 text-gray-900 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20'
                           } disabled:opacity-60 disabled:cursor-not-allowed`}
                       />
+                      {formData.errors.phoneNumber && (
+                        <p className="text-red-500 text-sm">{formData.errors.phoneNumber}</p>
+                      )}
                     </div>
 
                     {/* Email */}
