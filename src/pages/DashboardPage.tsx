@@ -380,12 +380,19 @@ export default function DashboardPage() {
       ? [{ id: "initials", src: "initials", alt: "Initials Avatar" }]
       : []),
     // Only show avatars that exist in userData.avatars array (uploaded avatars)
-    ...(userData?.avatars || []).map((avatarUrl: string, idx: number) => ({
-      id: `uploaded-${idx + 1}`,
-      src: avatarUrl,
-      alt: `Avatar ${idx + 1}`,
-    })),
+    ...(userData?.avatars || []).map((avatarUrl: string, idx: number) => {
+      console.log(`Avatar ${idx + 1}:`, avatarUrl);
+      return {
+        id: `uploaded-${idx + 1}`,
+        src: avatarUrl,
+        alt: `Avatar ${idx + 1}`,
+      };
+    }),
   ];
+
+  // Debug: Log avatar options
+  console.log('Avatar options:', avatarOptions);
+  console.log('User data avatars:', userData?.avatars);
 
 
 
@@ -1108,61 +1115,150 @@ export default function DashboardPage() {
     }
   }
 
-  // Update the handleAvatarSelect function to handle null values
-  const handleAvatarSelect = async (src: string | null): Promise<void> => {
+  // Handle avatar deletion
+  const handleAvatarDelete = async (avatarUrl: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent triggering the select action
+    
+    if (!userData?.uid) return;
+    
     try {
+      // Confirm deletion
+      if (!window.confirm('Are you sure you want to delete this avatar?')) {
+        return;
+      }
 
+      console.log('Deleting avatar:', avatarUrl);
 
-      // Prepare updated user data
-      const updatedUserData: UserData = {
-        ...userData!,
-        photoURL: src,
-        uid: userData?.uid || "",
-        createdAt: userData?.createdAt || new Date(),
-        lastLogin: new Date(),
-        emailVerified: userData?.emailVerified || false,
-      };
-
-      // Update in MongoDB profile
-      await userAPI.updateUser(userData?.uid || "", {
-        photoURL: src,
+      // Call backend to remove avatar from array
+      const response = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${userData.uid}/avatar/delete`), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ avatarUrl })
       });
 
+      const data = await response.json();
+      console.log('Delete response:', data);
 
-      // Update Firebase auth profile
-      if (auth.currentUser) {
-        // Force a direct update to auth.currentUser
-        await updateProfile(auth.currentUser, {
-          photoURL: src,
-        });
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete avatar');
+      }
 
-
-        // For null (initials) avatar, we need to reassert this value
-        if (src === null) {
-          // Forces a refresh of the Firebase auth token
-          await auth.currentUser.getIdToken(true);
-
+      // If the deleted avatar was the current one, switch to initials
+      if (userData.photoURL === avatarUrl) {
+        await handleAvatarSelect(null);
+      } else {
+        // Just refresh the avatars array
+        if (auth.currentUser) {
+          const profile = await userAPI.fetchUserData(auth.currentUser.uid);
+          if (profile) {
+            setUserData((prev) => {
+              if (!prev) return null;
+              return {
+                ...prev,
+                avatars: (profile.avatars || []).map((url: string) => API_CONFIG.getAssetUrl(url)).filter(Boolean),
+              };
+            });
+          }
         }
       }
 
-      // Update local state immediately
-      setUserData(updatedUserData);
+      toast.success('Avatar deleted successfully');
+    } catch (error) {
+      console.error('Error deleting avatar:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to delete avatar');
+    }
+  };
+
+  // Update the handleAvatarSelect function to handle null values
+  const handleAvatarSelect = async (src: string | null): Promise<void> => {
+    try {
+      console.log('Selecting avatar:', src);
+
+      // If src is null, use initials avatar
+      // If src is a string, it's either a pre-made avatar or a URL
+      const avatarUrl = src;
+
+      // Clear service worker cache for old avatar
+      if ('caches' in window && userData?.photoURL) {
+        try {
+          const cacheNames = await caches.keys();
+          for (const cacheName of cacheNames) {
+            if (cacheName.includes('image-cache') || cacheName.includes('uploads-cache')) {
+              const cache = await caches.open(cacheName);
+              await cache.delete(userData.photoURL);
+              console.log('Cleared cached avatar:', userData.photoURL);
+            }
+          }
+        } catch (cacheError) {
+          console.warn('Failed to clear cache:', cacheError);
+        }
+      }
+
+      // Update in MongoDB profile using the set-avatar endpoint
+      const response = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${userData?.uid}/set-avatar`), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ avatarUrl })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update avatar');
+      }
+
+      const data = await response.json();
+      console.log('Avatar updated:', data);
+
+      // Refetch user data to get updated avatars array
+      if (auth.currentUser) {
+        const profile = await userAPI.fetchUserData(auth.currentUser.uid);
+        if (profile) {
+          const fullAvatarUrl = API_CONFIG.getAssetUrl(avatarUrl || profile.currentAvatar || profile.photoURL);
+          
+          const updatedUserData: UserData = {
+            uid: auth.currentUser.uid,
+            email: auth.currentUser.email || profile.email || "",
+            displayName: profile.displayName || auth.currentUser.displayName || "",
+            name: profile.name || profile.fullName || auth.currentUser.displayName || "",
+            photoURL: fullAvatarUrl,
+            emailVerified: auth.currentUser.emailVerified,
+            avatars: (profile.avatars || []).map((url: string) => API_CONFIG.getAssetUrl(url)).filter(Boolean),
+            location: profile.locationSettings?.city ? {
+              city: profile.locationSettings.city,
+              state: profile.locationSettings.state || "",
+              country: profile.locationSettings.country || "India",
+            } : userData?.location || defaultLocation,
+            lastLogin: new Date(),
+            createdAt: profile.createdAt ? new Date(profile.createdAt) : new Date(),
+          };
+
+          // Update local state
+          setUserData(updatedUserData);
+          
+          // Update localStorage
+          localStorage.setItem('userData', JSON.stringify(updatedUserData));
+
+          // Update Firebase auth profile
+          await updateProfile(auth.currentUser, {
+            photoURL: fullAvatarUrl,
+          });
+        }
+      }
 
       // Close the avatar modal
       setIsAvatarModalOpen(false);
 
       // Add visual feedback
       toast.success(
-        src === null
+        avatarUrl === null
           ? "Using initials for profile picture"
           : "Profile picture updated successfully!",
       );
-
-      // Force UI refresh
-      setTimeout(() => {
-        setUserData({ ...updatedUserData });
-      }, 100);
     } catch (error) {
+      console.error('Error updating avatar:', error);
       setError("Failed to update avatar. Please try again.");
       toast.error("Failed to update profile picture.");
     }
@@ -1576,28 +1672,39 @@ export default function DashboardPage() {
           </div>
           <div className="grid grid-cols-3 gap-6">
             {avatarOptions.map((avatar) => (
-              <button
-                key={avatar.id}
-                onClick={() =>
-                  handleAvatarSelect(
-                    avatar.src === "initials" ? null : avatar.src,
-                  )
-                }
-                className="aspect-square rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
-              >
-                {avatar.src === "initials" ? (
-                  <InitialsAvatar
-                    name={userData?.displayName || ""}
-                    className="w-full h-full"
-                  />
-                ) : (
-                  <img
-                    src={avatar.src}
-                    alt={avatar.alt}
-                    className="w-full h-full object-cover"
-                  />
+              <div key={avatar.id} className="relative group">
+                <button
+                  onClick={() =>
+                    handleAvatarSelect(
+                      avatar.src === "initials" ? null : avatar.src,
+                    )
+                  }
+                  className="w-full aspect-square rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
+                >
+                  {avatar.src === "initials" ? (
+                    <InitialsAvatar
+                      name={userData?.displayName || ""}
+                      className="w-full h-full"
+                    />
+                  ) : (
+                    <img
+                      src={normalizeImageUrl(avatar.src)}
+                      alt={avatar.alt}
+                      className="w-full h-full object-cover"
+                    />
+                  )}
+                </button>
+                {/* Delete button - only show for uploaded avatars, not initials */}
+                {avatar.src !== "initials" && (
+                  <button
+                    onClick={(e) => handleAvatarDelete(avatar.src, e)}
+                    className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 shadow-lg"
+                    title="Delete avatar"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 )}
-              </button>
+              </div>
             ))}
           </div>
         </div>
@@ -2789,6 +2896,9 @@ export default function DashboardPage() {
                       );
                       if (res.ok) {
                         const profile = await res.json();
+                        console.log('Fetched profile after update:', profile);
+                        console.log('Profile avatars:', profile.avatars);
+                        
                         // Update local state with the latest data from backend
                         setUserData((prev) => {
                           if (!prev) return null;
@@ -2798,10 +2908,10 @@ export default function DashboardPage() {
                               profile.displayName || prev.displayName,
                             name: profile.fullName || profile.name || prev.name,
                             photoURL:
-                              profile.currentAvatar ||
+                              API_CONFIG.getAssetUrl(profile.currentAvatar ||
                               profile.avatarUrl ||
-                              profile.photoURL,
-                            avatars: profile.avatars || prev.avatars,
+                              profile.photoURL),
+                            avatars: (profile.avatars || []).map((url: string) => API_CONFIG.getAssetUrl(url)).filter(Boolean),
                             createdAt: prev.createdAt,
                             lastLogin: prev.lastLogin,
                           };
@@ -3420,6 +3530,7 @@ export default function DashboardPage() {
                     typeof userData.photoURL === "string" &&
                     userData.photoURL.trim() !== "" ? (
                     <img
+                      key={userData.photoURL}
                       src={normalizeImageUrl(userData.photoURL as string)}
                       alt="Profile"
                       className="w-12 h-12 rounded-2xl object-cover border-2 border-emerald-500 shadow-lg shadow-emerald-500/20"
@@ -3749,6 +3860,7 @@ export default function DashboardPage() {
                     typeof userData.photoURL === "string" &&
                     userData.photoURL.trim() !== "" ? (
                     <img
+                      key={userData.photoURL}
                       src={normalizeImageUrl(userData.photoURL as string)}
                       alt="profile"
                       className="w-full h-full object-cover"

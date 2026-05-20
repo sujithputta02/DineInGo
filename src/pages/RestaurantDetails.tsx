@@ -372,8 +372,7 @@ const RestaurantDetails = () => {
         const existingImages = reviews.find(r => r._id === editingReviewId)?.images || [];
         // For simplicity, if we are editing, we might want to handle existing vs new images
         // For now, let's just append existing images as JSON if they weren't deleted
-        // (This part needs backend support for 'existingImages' field or similar)
-        formData.append('existingImages', JSON.stringify(imagePreviews.filter(p => p.startsWith('http'))));
+        formData.append('images', JSON.stringify(imagePreviews.filter(p => p.startsWith('http'))));
         await businessApi.updateReview(editingReviewId, formData);
         toast.success('Review updated successfully!');
       } else {
@@ -981,6 +980,86 @@ const RestaurantDetails = () => {
                           <p className="text-sm font-medium italic">
                             "{typeof review.reply === 'object' ? review.reply.text : review.reply}"
                           </p>
+                        </div>
+                      )}
+
+                      {/* Nested Sub-reviews Timeline */}
+                      {review.subReviews && review.subReviews.length > 0 && (
+                        <div className="mt-6 pl-4 border-l-2 border-emerald-500/20 space-y-6">
+                          <div className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} mb-2`}>
+                            Subsequent Booking Visits ({review.subReviews.length})
+                          </div>
+                          {review.subReviews.map((sub: any, sIdx: number) => (
+                            <div key={sub._id || sIdx} className="relative pl-6 before:absolute before:left-0 before:top-2 before:w-2 before:h-2 before:rounded-full before:bg-emerald-500">
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-3">
+                                  <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                                    isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                  }`}>
+                                    Visit #{sIdx + 2}
+                                  </span>
+                                  <span className={`text-[10px] font-bold uppercase tracking-wider opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                    {new Date(sub.createdAt).toLocaleDateString()}
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <StarRating rating={sub.rating} size={11} />
+                                  {localStorage.getItem('userData') && JSON.parse(localStorage.getItem('userData')!).uid === review.userId && (
+                                    <div className="flex items-center gap-1.5">
+                                      <button 
+                                        onClick={() => handleEditReview({
+                                          ...sub,
+                                          _id: sub._id,
+                                          userId: review.userId,
+                                          userName: review.userName,
+                                          userPhoto: review.userPhoto
+                                        })}
+                                        className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-gray-800 text-emerald-400 hover:bg-gray-700' : 'bg-gray-50 text-emerald-600 hover:bg-gray-100'}`}
+                                        title="Edit this visit review"
+                                      >
+                                        <Edit2 size={11} />
+                                      </button>
+                                      <button 
+                                        onClick={() => handleDeleteReview(sub._id)}
+                                        className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-gray-800 text-rose-400 hover:bg-gray-700' : 'bg-gray-50 text-rose-600 hover:bg-gray-100'}`}
+                                        title="Delete this visit review"
+                                      >
+                                        <Trash2 size={11} />
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <p className={`text-sm font-medium leading-relaxed mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{sub.comment}</p>
+                              
+                              {/* Sub-review Images */}
+                              {sub.images && sub.images.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-2">
+                                  {sub.images.map((img: string, idx: number) => (
+                                    <div 
+                                      key={idx} 
+                                      className="relative group cursor-zoom-in w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border border-transparent hover:border-emerald-500 transition-all"
+                                      onClick={() => setActiveLightbox({ 
+                                        images: sub.images, 
+                                        index: idx,
+                                        comment: sub.comment,
+                                        userName: `${review.userName} (Visit #${sIdx + 2})`
+                                      })}
+                                    >
+                                      <img 
+                                        src={normalizeImageUrl(img)} 
+                                        alt={`Sub review ${idx}`} 
+                                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                      />
+                                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                        <Maximize2 className="text-white" size={14} />
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
                         </div>
                       )}
                     </div>

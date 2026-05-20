@@ -22,6 +22,58 @@ const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
   return !!user && typeof (user as any).getIdToken === 'function';
 };
 
+// Helper function to create image from URL
+const createImage = (url: string): Promise<HTMLImageElement> =>
+  new Promise((resolve, reject) => {
+    const image = new Image();
+    image.addEventListener('load', () => resolve(image));
+    image.addEventListener('error', (error) => reject(error));
+    image.setAttribute('crossOrigin', 'anonymous');
+    image.src = url;
+  });
+
+// Helper function to get cropped image
+async function getCroppedImg(
+  imageSrc: string,
+  pixelCrop: { x: number; y: number; width: number; height: number }
+): Promise<Blob> {
+  const image = await createImage(imageSrc);
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    throw new Error('No 2d context');
+  }
+
+  // Set canvas size to match the cropped area
+  canvas.width = pixelCrop.width;
+  canvas.height = pixelCrop.height;
+
+  // Draw the cropped image
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
+  );
+
+  // Convert canvas to blob
+  return new Promise((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (!blob) {
+        reject(new Error('Canvas is empty'));
+        return;
+      }
+      resolve(blob);
+    }, 'image/jpeg', 0.95);
+  });
+}
+
 interface FormDataState {
   displayName: string;
   name: string;
@@ -254,10 +306,27 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
       if ((formData as any)._pendingAvatarBlob) {
         setIsUploading(true);
-        const formDataUpload = new FormData();
-        formDataUpload.append('avatar', (formData as any)._pendingAvatarBlob, 'avatar.jpg');
+        
+        // Convert blob to base64
+        const blob = (formData as any)._pendingAvatarBlob;
+        const reader = new FileReader();
+        
+        const base64Promise = new Promise<string>((resolve, reject) => {
+          reader.onloadend = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+        
+        const base64Image = await base64Promise;
+        console.log('Converted image to base64, length:', base64Image.length);
+        
+        // Send base64 to backend
         const res = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${authUser.uid}/avatar`), {
-          method: 'POST', body: formDataUpload
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ base64Image })
         });
         if (!res.ok) throw new Error('Avatar upload failed');
         const data = await res.json();
@@ -956,33 +1025,87 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
           </form>
         </div>
 
-        {/* Cropper Modal - Kept minimal for length */}
-        <Dialog open={cropModalOpen} onClose={() => setCropModalOpen(false)} maxWidth="xs" fullWidth>
+        {/* Cropper Modal */}
+        <Dialog open={cropModalOpen} onClose={() => setCropModalOpen(false)} maxWidth="sm" fullWidth>
           <DialogContent style={{ position: 'relative', height: 400, background: isDarkMode ? '#222' : '#fff' }}>
             {selectedImage && (
-              <Cropper
-                image={URL.createObjectURL(selectedImage)}
-                crop={crop} zoom={zoom} aspect={1}
-                onCropChange={setCrop} onZoomChange={setZoom}
-                onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
-                style={{ mediaStyle: { filter } }}
-              />
+              <>
+                <Cropper
+                  image={URL.createObjectURL(selectedImage)}
+                  crop={crop} zoom={zoom} aspect={1}
+                  onCropChange={setCrop} onZoomChange={setZoom}
+                  onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
+                  style={{ mediaStyle: { filter } }}
+                />
+                <div style={{ 
+                  position: 'absolute', 
+                  bottom: 20, 
+                  left: '50%', 
+                  transform: 'translateX(-50%)',
+                  width: '80%',
+                  zIndex: 1000
+                }}>
+                  <div style={{ 
+                    background: 'rgba(0,0,0,0.5)', 
+                    padding: '10px 20px', 
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '10px'
+                  }}>
+                    <span style={{ color: 'white', fontSize: '14px', minWidth: '40px' }}>Zoom</span>
+                    <Slider
+                      value={zoom}
+                      min={1}
+                      max={3}
+                      step={0.1}
+                      onChange={(_, value) => setZoom(value as number)}
+                      sx={{
+                        color: '#10b981',
+                        '& .MuiSlider-thumb': {
+                          width: 20,
+                          height: 20,
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              </>
             )}
           </DialogContent>
           <DialogActions>
             <Button onClick={() => setCropModalOpen(false)}>Cancel</Button>
             <Button onClick={async () => {
               if (!selectedImage || !croppedAreaPixels) return;
-              // Tiny duplication of crop logic for brevity in this rewrite
-              const reader = new FileReader();
-              reader.onload = async () => {
-                // This part normally needs getCroppedImg helper, assumed to exist or copied
-                // ideally we just call a helper. I will assume the helper logic is reused or I should include it.
-                // For safety I'll just set the state to trigger upload flow in real submit
+              
+              try {
+                // Get the cropped image as a blob
+                const croppedBlob = await getCroppedImg(
+                  URL.createObjectURL(selectedImage),
+                  croppedAreaPixels
+                );
+                
+                // Store the blob in formData for upload on save
+                setFormData(prev => ({
+                  ...prev,
+                  _pendingAvatarBlob: croppedBlob
+                } as any));
+                
+                // Create preview URL
+                const previewUrl = URL.createObjectURL(croppedBlob);
+                setPreviewUrl(previewUrl);
+                
+                // Close modal
                 setCropModalOpen(false);
-              };
-              reader.readAsDataURL(selectedImage);
-            }}>Save (Mock)</Button>
+                
+                toast.success('Avatar ready! Click Save to upload.');
+              } catch (error) {
+                console.error('Error cropping image:', error);
+                toast.error('Failed to crop image');
+              }
+            }} variant="contained" style={{ background: '#10b981', color: 'white' }}>
+              Save
+            </Button>
           </DialogActions>
         </Dialog>
       </div>

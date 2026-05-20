@@ -81,7 +81,7 @@ define(['./workbox-90f62ff3'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.omra2ns7e18"
+    "revision": "0.09ub4r77qfg"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
@@ -102,6 +102,9 @@ define(['./workbox-90f62ff3'], (function (workbox) { 'use strict';
   workbox.registerRoute(({
     url
   }) => {
+    if (url.pathname.includes("/uploads/")) {
+      return false;
+    }
     const isExternalImage = url.origin !== self.location.origin && /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
     const isLocalImage = url.pathname.includes("/images/") || /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
     return isExternalImage || isLocalImage;
@@ -110,6 +113,18 @@ define(['./workbox-90f62ff3'], (function (workbox) { 'use strict';
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 200,
       maxAgeSeconds: 2592000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
+    })]
+  }), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.pathname.includes("/uploads/"), new workbox.NetworkFirst({
+    "cacheName": "uploads-cache",
+    "networkTimeoutSeconds": 3,
+    plugins: [new workbox.ExpirationPlugin({
+      maxEntries: 50,
+      maxAgeSeconds: 3600
     }), new workbox.CacheableResponsePlugin({
       statuses: [0, 200]
     })]

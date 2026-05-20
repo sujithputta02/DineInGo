@@ -24,6 +24,11 @@ export function normalizeImageUrl(imagePath: string | undefined): string {
   }
 
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    // Add cache busting for user uploads (avatars)
+    if (imagePath.includes('/uploads/')) {
+      const separator = imagePath.includes('?') ? '&' : '?';
+      return `${imagePath}${separator}t=${Date.now()}`;
+    }
     return imagePath;
   }
   if (imagePath.startsWith('/images/')) {
@@ -32,7 +37,14 @@ export function normalizeImageUrl(imagePath: string | undefined): string {
   
   // Ensure path starts with / if it's relative
   const normalizedPath = imagePath.startsWith('/') ? imagePath : `/${imagePath}`;
-  return `${API_URL}${normalizedPath}`;
+  const fullUrl = `${API_URL}${normalizedPath}`;
+  
+  // Add cache busting for user uploads (avatars)
+  if (normalizedPath.includes('/uploads/')) {
+    return `${fullUrl}?t=${Date.now()}`;
+  }
+  
+  return fullUrl;
 }
 
 function wait(ms: number) {

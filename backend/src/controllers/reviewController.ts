@@ -35,7 +35,22 @@ export const getBusinessReviews = async (req: Request, res: Response) => {
             }).sort({ createdAt: -1 });
         }
 
-        res.json(reviews);
+        // Populate reviews with up-to-date user profile information (displayName and photoURL) from User collection
+        const userIds = [...new Set(reviews.map(r => r.userId))];
+        const users = await User.find({ uid: { $in: userIds } });
+        const userMap = new Map(users.map(u => [u.uid, u]));
+
+        const populatedReviews = reviews.map(r => {
+            const reviewObj = r.toObject();
+            const user = userMap.get(r.userId);
+            if (user) {
+                reviewObj.userName = user.displayName || user.name || reviewObj.userName;
+                reviewObj.userPhoto = user.photoURL || reviewObj.userPhoto;
+            }
+            return reviewObj;
+        });
+
+        res.json(populatedReviews);
     } catch (error: any) {
         console.error('[ReviewController] Error in getBusinessReviews:', error);
         res.status(500).json({ message: error.message || 'Failed to fetch reviews' });
@@ -116,6 +131,64 @@ export const addReview = async (req: Request, res: Response) => {
         }
 
         const isEvent = business.type === 'event' || business.type === 'both';
+
+        // Check if there is an existing review by the same user for this entity
+        const existingReview = await Review.findOne({
+            userId,
+            businessId: !isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
+            eventId: isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined
+        });
+
+        if (existingReview) {
+            console.log('[ReviewController] Existing review found. Appending sub-review...');
+            if (!existingReview.subReviews) {
+                existingReview.subReviews = [];
+            }
+            existingReview.subReviews.push({
+                rating: Number(rating),
+                comment,
+                images: finalImages,
+                createdAt: new Date()
+            });
+
+            await existingReview.save();
+            console.log('[ReviewController] Sub-review appended successfully, parent ID:', existingReview._id);
+
+            // Send email notifications
+            try {
+                console.log('[ReviewController] Triggering email notifications for sub-review...');
+                const user = await User.findOne({ uid: userId });
+
+                if (user && business) {
+                    // Notify user: their review was submitted
+                    await emailService.sendReviewSubmissionEmail({
+                        to: user.email,
+                        userName: user.displayName || user.name,
+                        businessName: business.name,
+                        rating,
+                        comment
+                    });
+
+                    // Notify business owner: a new review was received
+                    const owner = await User.findOne({ uid: business.ownerId });
+                    if (owner && owner.email) {
+                        await emailService.sendNewReviewAlertEmail({
+                            to: owner.email,
+                            ownerName: owner.displayName || owner.name || business.name,
+                            userName: user.displayName || user.name || 'A customer',
+                            businessName: business.name,
+                            rating,
+                            comment
+                        });
+                    }
+                    console.log('[ReviewController] Emails sent successfully');
+                }
+            } catch (emailError) {
+                console.error('[ReviewController] Failed to send review email:', emailError);
+            }
+
+            return res.status(200).json(existingReview);
+        }
         
         const review = new Review({
             businessId: !isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
@@ -254,18 +327,32 @@ export const updateReview = async (req: Request, res: Response) => {
         // Combine with new uploads
         finalImages = [...finalImages, ...uploadedImages];
 
-        const review = await Review.findByIdAndUpdate(
+        let review = await Review.findByIdAndUpdate(
             id,
             { rating, comment, images: finalImages, updatedAt: new Date() },
             { new: true }
         );
 
         if (!review) {
+            // Check if this id belongs to a sub-review of an existing review document
+            const parentReview = await Review.findOne({ "subReviews._id": id });
+            if (parentReview && parentReview.subReviews) {
+                // Find and update the sub-review in the array using cast to any
+                const subReview = (parentReview.subReviews as any).id(id);
+                if (subReview) {
+                    subReview.rating = Number(rating);
+                    subReview.comment = comment;
+                    subReview.images = finalImages;
+                    await parentReview.save();
+                    return res.json(parentReview);
+                }
+            }
             return res.status(404).json({ message: 'Review not found' });
         }
 
         res.json(review);
     } catch (error: any) {
+        console.error('Error in updateReview:', error);
         res.status(500).json({ message: error.message });
     }
 };
@@ -327,6 +414,14 @@ export const deleteReview = async (req: Request, res: Response) => {
         const { id } = req.params;
         const review = await Review.findByIdAndDelete(id);
         if (!review) {
+            // Check if this id belongs to a sub-review
+            const parentReview = await Review.findOne({ "subReviews._id": id });
+            if (parentReview) {
+                // Remove the sub-review from the array using cast to any
+                (parentReview.subReviews as any).pull({ _id: id });
+                await parentReview.save();
+                return res.json({ message: 'Sub-review deleted successfully', review: parentReview });
+            }
             return res.status(404).json({ message: 'Review not found' });
         }
         res.json({ message: 'Review deleted successfully' });
@@ -409,13 +504,40 @@ export const getBusinessRatingStats = async (req: Request, res: Response) => {
 export const getEventReviews = async (req: Request, res: Response) => {
     try {
         const { eventId } = req.params;
+        console.log('Fetching reviews for event:', eventId);
+        
         const reviews = await Review.find({
             eventId: new mongoose.Types.ObjectId(eventId),
             entityType: 'event'
         }).sort({ createdAt: -1 });
-        res.json(reviews);
+        
+        console.log(`Found ${reviews.length} reviews`);
+        
+        // Enhance reviews with user profile photos if missing
+        const enhancedReviews = await Promise.all(reviews.map(async (review) => {
+            const reviewObj = review.toObject();
+            
+            // If userPhoto is missing or empty, try to fetch from User collection
+            if (!reviewObj.userPhoto || reviewObj.userPhoto === '') {
+                try {
+                    const user = await User.findOne({ uid: reviewObj.userId });
+                    if (user) {
+                        // Try multiple fields in order of preference
+                        reviewObj.userPhoto = user.photoURL || user.currentAvatar || user.profilePicture?.data?.toString() || '';
+                        console.log(`Enhanced review ${reviewObj._id} with user photo from User collection`);
+                    }
+                } catch (userError) {
+                    console.error('Error fetching user photo:', userError);
+                }
+            }
+            
+            return reviewObj;
+        }));
+        
+        res.json(enhancedReviews);
     } catch (error: any) {
-        res.status(500).json({ message: error.message });
+        console.error('Error in getEventReviews:', error);
+        res.status(500).json({ success: false, message: error.message });
     }
 };
 
@@ -426,19 +548,46 @@ export const addEventReview = async (req: Request, res: Response) => {
     try {
         const eventIdRaw = req.params.eventId || req.body.eventId;
 
-        console.log('addEventReview called with eventId:', eventIdRaw);
-        console.log('Request body:', req.body);
+        console.log('=== addEventReview START ===');
+        console.log('eventId:', eventIdRaw);
+        console.log('Request body keys:', Object.keys(req.body));
+        console.log('Request files:', req.files ? (req.files as any[]).length : 0);
 
         if (!eventIdRaw) {
-            return res.status(400).json({ message: 'Event ID is required' });
+            console.log('ERROR: Event ID is missing');
+            return res.status(400).json({ success: false, message: 'Event ID is required' });
+        }
+
+        // Validate MongoDB ObjectId format
+        if (!mongoose.Types.ObjectId.isValid(eventIdRaw)) {
+            console.log('ERROR: Invalid event ID format:', eventIdRaw);
+            return res.status(400).json({ success: false, message: 'Invalid event ID format' });
         }
 
         let { userId, userName, userPhoto, rating, comment, bookingId, images: bodyImages } = req.body;
+
+        console.log('Parsed fields:', { userId, userName, userPhoto: userPhoto ? 'provided' : 'missing', rating, comment: comment?.substring(0, 50) });
+
+        // If userPhoto is missing, try to fetch from User collection
+        if (!userPhoto || userPhoto === '') {
+            console.log('UserPhoto missing, fetching from User collection...');
+            try {
+                const user = await User.findOne({ uid: userId });
+                if (user) {
+                    // Try multiple fields in order of preference
+                    userPhoto = user.photoURL || user.currentAvatar || user.profilePicture?.data?.toString() || '';
+                    console.log('Fetched userPhoto from User collection:', userPhoto ? 'found' : 'not found');
+                }
+            } catch (userError) {
+                console.error('Error fetching user photo:', userError);
+            }
+        }
 
         // Handle file uploads
         let uploadedImages: string[] = [];
         if (req.files && Array.isArray(req.files)) {
             uploadedImages = (req.files as Express.Multer.File[]).map(file => file.path);
+            console.log('Uploaded images:', uploadedImages.length);
         }
 
         // Handle existing images
@@ -447,6 +596,7 @@ export const addEventReview = async (req: Request, res: Response) => {
             try {
                 finalImages = JSON.parse(bodyImages);
             } catch (e) {
+                console.log('Failed to parse bodyImages string');
                 finalImages = [];
             }
         } else if (Array.isArray(bodyImages)) {
@@ -455,20 +605,27 @@ export const addEventReview = async (req: Request, res: Response) => {
 
         // Combine uploaded and existing
         finalImages = [...finalImages, ...uploadedImages];
+        console.log('Final images count:', finalImages.length);
 
         // Validate required fields
         if (!userId) {
-            return res.status(400).json({ message: 'User ID is required' });
+            console.log('ERROR: User ID is missing');
+            return res.status(400).json({ success: false, message: 'User ID is required' });
         }
         if (!userName) {
-            return res.status(400).json({ message: 'User name is required' });
+            console.log('ERROR: User name is missing');
+            return res.status(400).json({ success: false, message: 'User name is required' });
         }
         if (!rating || rating < 1 || rating > 5) {
-            return res.status(400).json({ message: 'Rating must be between 1 and 5' });
+            console.log('ERROR: Invalid rating:', rating);
+            return res.status(400).json({ success: false, message: 'Rating must be between 1 and 5' });
         }
         if (!comment || !comment.trim()) {
-            return res.status(400).json({ message: 'Comment is required' });
+            console.log('ERROR: Comment is missing or empty');
+            return res.status(400).json({ success: false, message: 'Comment is required' });
         }
+
+        console.log('All validations passed, checking for existing review...');
 
         // Check if user has already reviewed this event
         const existingReview = await Review.findOne({
@@ -477,82 +634,163 @@ export const addEventReview = async (req: Request, res: Response) => {
         });
 
         if (existingReview) {
-            console.log('User has already reviewed this event, updating existing review:', existingReview._id);
+            console.log('User has already reviewed this event, appending sub-review:', existingReview._id);
 
-            // Update the existing review instead of creating a new one
-            existingReview.rating = rating;
-            existingReview.comment = comment;
-            existingReview.userPhoto = userPhoto;
-            existingReview.userName = userName;
-            existingReview.images = finalImages;
+            if (!existingReview.subReviews) {
+                existingReview.subReviews = [];
+            }
+            existingReview.subReviews.push({
+                rating: Number(rating),
+                comment,
+                images: finalImages,
+                createdAt: new Date()
+            });
 
             await existingReview.save();
+            console.log('Sub-review saved successfully');
 
-            return res.status(200).json({
-                message: 'Review updated successfully',
-                review: existingReview
-            });
+            // Send email notification for sub-review
+            try {
+                const user = await User.findOne({ uid: userId });
+                const event = await Business.findById(eventIdRaw);
+
+                if (user && event) {
+                    // Notify user: their review was submitted
+                    await emailService.sendReviewSubmissionEmail({
+                        to: user.email,
+                        userName: user.displayName || user.name,
+                        businessName: event.name,
+                        rating,
+                        comment
+                    });
+
+                    // Notify event organizer: a new review was received
+                    const owner = await User.findOne({ uid: event.ownerId });
+                    if (owner && owner.email) {
+                        await emailService.sendNewReviewAlertEmail({
+                            to: owner.email,
+                            ownerName: owner.displayName || owner.name || event.name,
+                            userName: user.displayName || user.name || 'A customer',
+                            businessName: event.name,
+                            rating,
+                            comment
+                        });
+                    }
+                }
+            } catch (emailError) {
+                console.error('Failed to send sub-review email:', emailError);
+            }
+
+            console.log('=== addEventReview END (sub-review) ===');
+            return res.status(200).json({ success: true, data: existingReview });
         }
+
+        console.log('Creating new review...');
 
         const review = new Review({
             eventId: new mongoose.Types.ObjectId(eventIdRaw),
             entityType: 'event',
             userId,
             userName,
-            userPhoto,
-            rating,
-            comment,
+            userPhoto: userPhoto || '',
+            rating: Number(rating),
+            comment: comment.trim(),
             bookingId: bookingId ? new mongoose.Types.ObjectId(bookingId) : undefined,
             images: finalImages,
             likes: [],
-            dislikes: []
+            dislikes: [],
+            status: 'published'
         });
 
-        await review.save();
+        console.log('Review object created, attempting to save...');
+        
+        try {
+            await review.save();
+            console.log('New review saved successfully:', review._id);
+        } catch (saveError: any) {
+            console.error('Error saving review to database:', saveError);
+            
+            // Check for duplicate key error
+            if (saveError.code === 11000) {
+                console.error('Duplicate key error - user already reviewed this event');
+                return res.status(400).json({
+                    success: false,
+                    message: 'You have already reviewed this event'
+                });
+            }
+            
+            // Re-throw other errors to be caught by outer catch
+            throw saveError;
+        }
 
         // Send email notifications
         try {
+            console.log('Attempting to send email notifications...');
             const user = await User.findOne({ uid: userId });
             const event = await Business.findById(eventIdRaw);
 
+            console.log('User found:', !!user, 'Event found:', !!event);
+
             if (user && event) {
                 // Notify user: their review was submitted
-                await emailService.sendReviewSubmissionEmail({
-                    to: user.email,
-                    userName: user.displayName || user.name,
-                    businessName: event.name,
-                    rating,
-                    comment
-                });
-
-                // Notify event organizer: a new review was received
-                const owner = await User.findOne({ uid: event.ownerId });
-                if (owner && owner.email) {
-                    await emailService.sendNewReviewAlertEmail({
-                        to: owner.email,
-                        ownerName: owner.displayName || owner.name || event.name,
-                        userName: user.displayName || user.name || 'A customer',
+                try {
+                    await emailService.sendReviewSubmissionEmail({
+                        to: user.email,
+                        userName: user.displayName || user.name,
                         businessName: event.name,
                         rating,
                         comment
                     });
+                    console.log('Review submission email sent to user');
+                } catch (userEmailError) {
+                    console.error('Failed to send review submission email to user:', userEmailError);
                 }
+
+                // Notify event organizer: a new review was received
+                try {
+                    const owner = await User.findOne({ uid: event.ownerId });
+                    if (owner && owner.email) {
+                        await emailService.sendNewReviewAlertEmail({
+                            to: owner.email,
+                            ownerName: owner.displayName || owner.name || event.name,
+                            userName: user.displayName || user.name || 'A customer',
+                            businessName: event.name,
+                            rating,
+                            comment
+                        });
+                        console.log('New review alert email sent to owner');
+                    }
+                } catch (ownerEmailError) {
+                    console.error('Failed to send new review alert email to owner:', ownerEmailError);
+                }
+            } else {
+                console.log('Skipping email notifications - user or event not found');
             }
         } catch (emailError) {
-            console.error('Failed to send review email:', emailError);
+            console.error('Failed to send review email (outer catch):', emailError);
+            // Don't fail the request if email fails
         }
 
-        res.status(201).json(review);
+        console.log('=== addEventReview END (new review) ===');
+        return res.status(201).json({ success: true, data: review });
     } catch (error: any) {
         console.error('Error in addEventReview:', error);
+        console.error('Error stack:', error.stack);
+        
         if (error.code === 11000) {
             console.error('Duplicate key error details:', error.keyPattern, error.keyValue);
             return res.status(400).json({
+                success: false,
                 message: 'You have already reviewed this event',
                 details: error.keyPattern
             });
         }
-        res.status(500).json({ message: error.message });
+        
+        return res.status(500).json({ 
+            success: false,
+            message: error.message || 'Failed to submit review',
+            error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
     }
 };
 

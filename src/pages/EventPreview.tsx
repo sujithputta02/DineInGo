@@ -45,6 +45,52 @@ const EventPreview: React.FC = () => {
     return saved === "true" ? true : false;
   });
 
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    const checkTheme = () => {
+      const themeAttr = root.getAttribute('data-theme');
+      if (themeAttr) {
+        setIsDarkMode(themeAttr === 'dark');
+      } else {
+        const theme = localStorage.getItem("theme");
+        if (theme === 'dark') {
+          setIsDarkMode(true);
+        } else if (theme === 'light') {
+          setIsDarkMode(false);
+        } else {
+          setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+        }
+      }
+    };
+
+    checkTheme();
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          checkTheme();
+        }
+      });
+    });
+
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      const theme = localStorage.getItem("theme");
+      if (theme === 'system' || !theme) {
+        checkTheme();
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemChange);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', handleSystemChange);
+    };
+  }, []);
+
   const selectedSeatIds = location.state?.selectedSeatIds || [];
   const numberOfGuests = location.state?.numberOfGuests || parseInt(searchParams.get('guests') || '1');
   const totalAmount = location.state?.totalAmount || 0;

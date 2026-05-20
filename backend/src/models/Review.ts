@@ -1,5 +1,13 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+export interface ISubReview {
+    _id?: mongoose.Types.ObjectId;
+    rating: number;
+    comment: string;
+    images: string[];
+    createdAt: Date;
+}
+
 export interface IReview extends Document {
     businessId?: mongoose.Types.ObjectId; // Optional for backward compatibility
     eventId?: mongoose.Types.ObjectId; // New: for event reviews
@@ -15,6 +23,7 @@ export interface IReview extends Document {
         repliedAt: Date;
     };
     images: string[];
+    subReviews?: ISubReview[];
     status: 'published' | 'hidden';
     likes: string[]; // Array of user IDs who liked
     dislikes: string[]; // Array of user IDs who disliked
@@ -37,6 +46,12 @@ const reviewSchema = new Schema<IReview>({
         repliedAt: { type: Date }
     },
     images: [{ type: String }],
+    subReviews: [{
+        rating: { type: Number, required: true },
+        comment: { type: String, required: true },
+        images: [{ type: String }],
+        createdAt: { type: Date, default: Date.now }
+    }],
     status: { type: String, enum: ['published', 'hidden'], default: 'published' },
     likes: { type: [String], default: [] }, // Array of user IDs
     dislikes: { type: [String], default: [] } // Array of user IDs

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { API_CONFIG } from '../config/api';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Heart, CheckCircle, MessageSquare, Star, Send, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Heart, CheckCircle, MessageSquare, Star, Send, ThumbsUp, ThumbsDown, Camera, X, Maximize2, Edit2, Trash2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import SeatingChart from '../components/SeatingChart';
 import IndividualSeatingChart from '../components/IndividualSeatingChart';
@@ -12,6 +12,7 @@ import EmojiPicker from '../components/EmojiPicker';
 import { seatsToRows } from '../utils/seatUtils';
 import { Seat, SeatingLayout } from '../types/seating';
 import { io, Socket } from 'socket.io-client';
+import { normalizeImageUrl } from '../services/api';
 
 interface TicketType {
   _id: string;
@@ -74,11 +75,66 @@ const EventRegistration: React.FC = () => {
   const [newRating, setNewRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [newComment, setNewComment] = useState('');
+  const [selectedImages, setSelectedImages] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [editingReviewId, setEditingReviewId] = useState<string | null>(null);
+  const [activeLightbox, setActiveLightbox] = useState<{
+    images: string[];
+    index: number;
+    comment?: string;
+    userName?: string;
+  } | null>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("dineInGoDarkMode");
     return saved === "true" ? true : false;
   });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    const checkTheme = () => {
+      const themeAttr = root.getAttribute('data-theme');
+      if (themeAttr) {
+        setIsDarkMode(themeAttr === 'dark');
+      } else {
+        const theme = localStorage.getItem("theme");
+        if (theme === 'dark') {
+          setIsDarkMode(true);
+        } else if (theme === 'light') {
+          setIsDarkMode(false);
+        } else {
+          setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
+        }
+      }
+    };
+
+    checkTheme();
+
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.attributeName === 'data-theme') {
+          checkTheme();
+        }
+      });
+    });
+
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = () => {
+      const theme = localStorage.getItem("theme");
+      if (theme === 'system' || !theme) {
+        checkTheme();
+      }
+    };
+    mediaQuery.addEventListener('change', handleSystemChange);
+
+    return () => {
+      observer.disconnect();
+      mediaQuery.removeEventListener('change', handleSystemChange);
+    };
+  }, []);
 
 
   useEffect(() => {
@@ -357,6 +413,11 @@ const EventRegistration: React.FC = () => {
       setReviewsLoading(true);
       const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}/reviews`);
       const data = await response.json();
+      console.log('Fetched reviews:', data);
+      if (data && data.length > 0) {
+        console.log('First review userPhoto:', data[0]?.userPhoto);
+        console.log('First review userName:', data[0]?.userName);
+      }
       setReviews(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching reviews:', error);
@@ -428,6 +489,53 @@ const EventRegistration: React.FC = () => {
     }
   };
 
+  const handleEditReview = (review: any) => {
+    setEditingReviewId(review._id);
+    setNewRating(review.rating);
+    setNewComment(review.comment);
+    setImagePreviews(review.images || []);
+    // selectedImages will stay empty until new files are picked
+    document.getElementById('review-form')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleDeleteReview = async (reviewId: string) => {
+    if (!window.confirm('Are you sure you want to delete this review?')) return;
+
+    try {
+      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/reviews/${reviewId}`, {
+        method: 'DELETE'
+      });
+
+      if (response.ok) {
+        toast.success('Review deleted');
+        fetchReviews();
+      } else {
+        toast.error('Failed to delete review');
+      }
+    } catch (err) {
+      toast.error('Failed to delete review');
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const files = Array.from(e.target.files);
+      const newImages = [...selectedImages, ...files].slice(0, 5);
+      setSelectedImages(newImages);
+      const newPreviews = newImages.map(file => URL.createObjectURL(file));
+      setImagePreviews(newPreviews);
+    }
+  };
+
+  const removeImage = (index: number) => {
+    const newImages = [...selectedImages];
+    newImages.splice(index, 1);
+    setSelectedImages(newImages);
+    const newPreviews = [...imagePreviews];
+    newPreviews.splice(index, 1);
+    setImagePreviews(newPreviews);
+  };
+
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!id) return;
@@ -450,32 +558,58 @@ const EventRegistration: React.FC = () => {
 
     try {
       setIsSubmittingReview(true);
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}/reviews`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          userId: auth.currentUser.uid,
-          userName: auth.currentUser.displayName || 'Anonymous',
-          userPhoto: auth.currentUser.photoURL,
-          rating: newRating,
-          comment: newComment
-        })
+      
+      // Get user data from localStorage or Firebase
+      const userData = localStorage.getItem('userData') ? JSON.parse(localStorage.getItem('userData')!) : null;
+      const userPhoto = auth.currentUser.photoURL || userData?.photoURL || userData?.currentAvatar || '';
+      
+      console.log('Submitting review with userPhoto:', userPhoto);
+      
+      const formData = new FormData();
+      formData.append('userId', auth.currentUser.uid);
+      formData.append('userName', auth.currentUser.displayName || userData?.displayName || userData?.name || 'Anonymous');
+      formData.append('userPhoto', userPhoto);
+      formData.append('rating', newRating.toString());
+      formData.append('comment', newComment);
+
+      // Append new file uploads
+      selectedImages.forEach(image => {
+        formData.append('images', image);
       });
 
+      let response;
+      if (editingReviewId) {
+        // Editing an existing review or sub-review → PUT
+        formData.append('images', JSON.stringify(imagePreviews.filter(p => p.startsWith('http'))));
+        response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/reviews/${editingReviewId}`, {
+          method: 'PUT',
+          body: formData
+        });
+      } else {
+        // New review → POST
+        response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${id}/reviews`, {
+          method: 'POST',
+          body: formData
+        });
+      }
+
       if (response.ok) {
-        const data = await response.json();
-        if (data.message && data.message.includes('updated')) {
-          toast.success('Review updated successfully!');
-        } else {
-          toast.success('Review submitted successfully!');
-        }
+        toast.success(editingReviewId ? 'Review updated successfully!' : 'Review submitted successfully!');
         setNewRating(0);
         setNewComment('');
+        setSelectedImages([]);
+        setImagePreviews([]);
+        setEditingReviewId(null);
         fetchReviews();
       } else {
-        const error = await response.json();
+        let error;
+        try {
+          error = await response.json();
+        } catch (jsonError) {
+          console.error('Failed to parse error response:', jsonError);
+          error = { message: `Server error: ${response.status} ${response.statusText}` };
+        }
+        
         console.error('Review submission error:', error);
 
         // Check if user already reviewed
@@ -872,12 +1006,12 @@ const EventRegistration: React.FC = () => {
 
                     {/* Guest count selector for area */}
                     {selectedSeatIds.length > 0 && (
-                      <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                        <h4 className="font-semibold text-emerald-800 mb-2">Number of Guests:</h4>
+                      <div className={`mt-4 p-4 rounded-lg border ${isDarkMode ? 'bg-emerald-950/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}>
+                        <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-800'}`}>Number of Guests:</h4>
                         <select
                           value={numberOfGuests}
                           onChange={(e) => setNumberOfGuests(Number(e.target.value))}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                         >
                           {(() => {
                             const area = event.seatingLayout!.areas.find((a: any) => a.id === selectedSeatIds[0]);
@@ -913,8 +1047,8 @@ const EventRegistration: React.FC = () => {
 
                     {/* Selected Seats Summary */}
                     {selectedSeatIds.length > 0 && (
-                      <div className="mt-4 p-4 bg-emerald-50 rounded-lg border border-emerald-200">
-                        <h4 className="font-semibold text-emerald-800 mb-2">Selected Seats:</h4>
+                      <div className={`mt-4 p-4 rounded-lg border ${isDarkMode ? 'bg-emerald-950/20 border-emerald-800' : 'bg-emerald-50 border-emerald-200'}`}>
+                        <h4 className={`font-semibold mb-2 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-800'}`}>Selected Seats:</h4>
                         <div className="flex flex-wrap gap-2">
                           {selectedSeatIds.map(seatId => {
                             const seat = event.seatingLayout!.seats.find((s: any) => s.id === seatId);
@@ -939,15 +1073,15 @@ const EventRegistration: React.FC = () => {
               <div className="mb-6">
                 {event.tickets && event.tickets.length > 0 && (
                   <>
-                    <h3 className="text-lg font-semibold mb-4">Select Tickets</h3>
+                    <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Select Tickets</h3>
                     <div className="space-y-4">
                       {event.tickets.map(ticket => (
-                        <div key={ticket._id} className="flex justify-between items-center p-4 border rounded-lg hover:border-emerald-500 transition bg-white">
+                        <div key={ticket._id} className={`flex justify-between items-center p-4 border rounded-lg hover:border-emerald-500 transition ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-900'}`}>
                           <div>
                             <h4 className="font-semibold">{ticket.name}</h4>
-                            <p className="text-sm text-gray-500">{ticket.description}</p>
-                            <p className="text-emerald-600 font-bold mt-1">₹{ticket.price}</p>
-                            <p className={`text-xs mt-1 ${ticket.quantity - ticket.sold > 0 ? 'text-gray-500' : 'text-red-500 font-medium'}`}>
+                            <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{ticket.description}</p>
+                            <p className={`font-bold mt-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>₹{ticket.price}</p>
+                            <p className={`text-xs mt-1 ${ticket.quantity - ticket.sold > 0 ? (isDarkMode ? 'text-gray-400' : 'text-gray-500') : 'text-red-500 font-medium'}`}>
                               {ticket.quantity - ticket.sold > 0 ? `${ticket.quantity - ticket.sold} left` : 'Sold Out'}
                             </p>
                           </div>
@@ -955,7 +1089,7 @@ const EventRegistration: React.FC = () => {
                             <button
                               onClick={() => updateTicketQuantity(ticket._id, -1)}
                               disabled={!selectedTickets[ticket._id]}
-                              className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+                              className={`w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-50 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
                             >
                               -
                             </button>
@@ -963,7 +1097,7 @@ const EventRegistration: React.FC = () => {
                             <button
                               onClick={() => updateTicketQuantity(ticket._id, 1, ticket.quantity - ticket.sold)}
                               disabled={ticket.quantity - ticket.sold <= (selectedTickets[ticket._id] || 0)}
-                              className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200 disabled:opacity-50 disabled:bg-gray-100 disabled:text-gray-400"
+                              className={`w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-50 ${isDarkMode ? 'bg-emerald-950 text-emerald-400 hover:bg-emerald-900 disabled:bg-gray-850 disabled:text-gray-600' : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200 disabled:bg-gray-100 disabled:text-gray-400'}`}
                             >
                               +
                             </button>
@@ -976,11 +1110,11 @@ const EventRegistration: React.FC = () => {
 
                 {(!event.tickets || event.tickets.length === 0) && (
                   <>
-                    <label className="block text-sm font-semibold mb-2 mt-4">Number of Guests</label>
+                    <label className={`block text-sm font-semibold mb-2 mt-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Number of Guests</label>
                     <select
                       value={numberOfGuests}
                       onChange={(e) => setNumberOfGuests(Number(e.target.value))}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                      className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
                     >
                       {spotsLeft > 0 ? [...Array(Math.min(10, spotsLeft))].map((_, i) => (
                         <option key={i + 1} value={i + 1}>
@@ -996,31 +1130,31 @@ const EventRegistration: React.FC = () => {
 
             {/* Add-on Services */}
             {event.addOns && event.addOns.length > 0 && (
-              <div className="mb-6 pt-6 border-t border-gray-200">
-                <h3 className="text-lg font-semibold mb-4">Add-on Services</h3>
+              <div className={`mb-6 pt-6 border-t ${isDarkMode ? 'border-gray-800' : 'border-gray-200'}`}>
+                <h3 className={`text-lg font-semibold mb-4 ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>Add-on Services</h3>
                 <div className="space-y-4">
                   {event.addOns.map(addon => (
-                    <div key={addon._id} className="flex justify-between items-center p-4 border rounded-lg hover:border-emerald-500 transition bg-white">
+                    <div key={addon._id} className={`flex justify-between items-center p-4 border rounded-lg hover:border-emerald-500 transition ${isDarkMode ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-950'}`}>
                       <div>
                         <div className="flex items-center gap-2">
                           <h4 className="font-semibold">{addon.name}</h4>
-                          {addon.isRequired && <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">Required</span>}
+                          {addon.isRequired && <span className={`text-xs px-2 py-0.5 rounded-full ${isDarkMode ? 'bg-orange-950/40 text-orange-400' : 'bg-orange-100 text-orange-700'}`}>Required</span>}
                         </div>
-                        <p className="text-sm text-gray-500">{addon.description}</p>
-                        <p className="text-emerald-600 font-bold mt-1">₹{addon.price}</p>
+                        <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{addon.description}</p>
+                        <p className={`font-bold mt-1 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>₹{addon.price}</p>
                       </div>
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => updateAddOnQuantity(addon._id, -1)}
                           disabled={!selectedAddOns[addon._id]}
-                          className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50"
+                          className={`w-8 h-8 rounded-full flex items-center justify-center disabled:opacity-50 ${isDarkMode ? 'bg-gray-700 hover:bg-gray-600 text-white' : 'bg-gray-100 hover:bg-gray-200 text-gray-800'}`}
                         >
                           -
                         </button>
                         <span className="w-8 text-center font-semibold">{selectedAddOns[addon._id] || 0}</span>
                         <button
                           onClick={() => updateAddOnQuantity(addon._id, 1)}
-                          className="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center hover:bg-emerald-200"
+                          className={`w-8 h-8 rounded-full flex items-center justify-center ${isDarkMode ? 'bg-emerald-950 text-emerald-400 hover:bg-emerald-900' : 'bg-emerald-100 text-emerald-600 hover:bg-emerald-200'}`}
                         >
                           +
                         </button>
@@ -1032,7 +1166,7 @@ const EventRegistration: React.FC = () => {
             )}
 
             {/* Price Summary */}
-            <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className={`mb-6 p-4 rounded-lg ${isDarkMode ? 'bg-gray-900 border border-gray-800' : 'bg-gray-50'}`}>
               {event.hasSeating && event.seatingLayout ? (
                 <>
                   {(() => {
@@ -1044,16 +1178,16 @@ const EventRegistration: React.FC = () => {
                       return (
                         <>
                           <div className="flex justify-between items-center mb-2">
-                            <span className="text-gray-600">Selected Area</span>
-                            <span className="font-semibold">{selectedArea?.name || selectedArea?.label || 'Area'}</span>
+                            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Selected Area</span>
+                            <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedArea?.name || selectedArea?.label || 'Area'}</span>
                           </div>
                           <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Guests</span>
-                            <span className="font-semibold">{numberOfGuests}</span>
+                            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Guests</span>
+                            <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{numberOfGuests}</span>
                           </div>
-                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
-                            <span className="font-semibold">Total</span>
-                            <span className="text-2xl font-bold text-emerald-600">
+                          <div className={`flex justify-between items-center mt-2 pt-2 border-t ${isDarkMode ? 'border-gray-850' : 'border-gray-200'}`}>
+                            <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total</span>
+                            <span className={`text-2xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                               ₹{(selectedArea?.price || 0) * numberOfGuests}
                             </span>
                           </div>
@@ -1063,12 +1197,12 @@ const EventRegistration: React.FC = () => {
                       return (
                         <>
                           <div className="flex justify-between items-center">
-                            <span className="text-gray-600">Selected Seats</span>
-                            <span className="font-semibold">{selectedSeatIds.length}</span>
+                            <span className={isDarkMode ? 'text-gray-400' : 'text-gray-600'}>Selected Seats</span>
+                            <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{selectedSeatIds.length}</span>
                           </div>
-                          <div className="flex justify-between items-center mt-2 pt-2 border-t border-gray-200">
-                            <span className="font-semibold">Total</span>
-                            <span className="text-2xl font-bold text-emerald-600">
+                          <div className={`flex justify-between items-center mt-2 pt-2 border-t ${isDarkMode ? 'border-gray-850' : 'border-gray-200'}`}>
+                            <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total</span>
+                            <span className={`text-2xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                               ₹{event.seatingLayout.seats
                                 .filter((seat: any) => selectedSeatIds.includes(seat.id))
                                 .reduce((sum: number, seat: any) => sum + seat.price, 0)}
@@ -1091,15 +1225,15 @@ const EventRegistration: React.FC = () => {
                         const ticket = event.tickets?.find(t => t._id === ticketId);
                         return (
                           <div key={ticketId} className="flex justify-between text-sm">
-                            <span className="text-gray-600">{ticket?.name} x {qty}</span>
-                            <span>₹{(ticket?.price || 0) * qty}</span>
+                            <span className={isDarkMode ? 'text-gray-450' : 'text-gray-600'}>{ticket?.name} x {qty}</span>
+                            <span className={isDarkMode ? 'text-white' : 'text-gray-900'}>₹{(ticket?.price || 0) * qty}</span>
                           </div>
                         );
                       })
                     ) : (
                       <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Price per person</span>
-                        <span className="font-semibold">₹{event.price}</span>
+                        <span className={isDarkMode ? 'text-gray-450' : 'text-gray-600'}>Price per person</span>
+                        <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{event.price}</span>
                       </div>
                     )}
 
@@ -1109,17 +1243,17 @@ const EventRegistration: React.FC = () => {
                       if (qty === 0) return null;
                       const addon = event.addOns?.find(a => a._id === addOnId);
                       return (
-                        <div key={addOnId} className="flex justify-between text-sm text-gray-500">
+                        <div key={addOnId} className={`flex justify-between text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
                           <span>+ {addon?.name} x {qty}</span>
-                          <span>₹{(addon?.price || 0) * qty}</span>
+                          <span className={isDarkMode ? 'text-white' : 'text-gray-905'}>₹{(addon?.price || 0) * qty}</span>
                         </div>
                       );
                     })}
                   </div>
 
-                  <div className="flex justify-between items-center mt-3 pt-3 border-t border-gray-200">
-                    <span className="font-semibold">Total</span>
-                    <span className="text-2xl font-bold text-emerald-600">
+                  <div className={`flex justify-between items-center mt-3 pt-3 border-t ${isDarkMode ? 'border-gray-850' : 'border-gray-200'}`}>
+                    <span className={`font-semibold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Total</span>
+                    <span className={`text-2xl font-bold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                       ₹{(() => {
                         let total = 0;
                         if (event.tickets && event.tickets.length > 0) {
@@ -1151,7 +1285,7 @@ const EventRegistration: React.FC = () => {
                 (!event.hasSeating && spotsLeft === 0) ||
                 (event.hasSeating && selectedSeatIds.length === 0)
               }
-              className="w-full bg-emerald-500 text-white py-3 rounded-lg font-semibold hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full bg-emerald-500 text-white py-3 rounded-lg font-semibold hover:bg-emerald-600 transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed disabled:text-gray-500 dark:disabled:bg-gray-800 dark:disabled:text-gray-600 flex items-center justify-center gap-2"
             >
               {!event.hasSeating && spotsLeft === 0 ? (
                 'Event Full'
@@ -1165,14 +1299,14 @@ const EventRegistration: React.FC = () => {
         </div>
 
         {/* Reviews Section */}
-        <div className="bg-white rounded-2xl shadow-lg mt-8">
+        <div className={`rounded-2xl shadow-lg mt-8 ${isDarkMode ? 'bg-gray-900 text-white border-2 border-gray-800' : 'bg-white text-gray-900'}`}>
           <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-semibold flex items-center gap-2">
-                <MessageSquare className="text-emerald-500" size={24} />
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
+                <MessageSquare className="text-emerald-500 animate-pulse" size={24} />
                 Event Reviews
               </h2>
-              <div className="flex items-center gap-2 bg-emerald-50 px-4 py-2 rounded-xl">
+              <div className={`flex items-center gap-2 px-4 py-2 rounded-xl ${isDarkMode ? 'bg-emerald-950/30' : 'bg-emerald-50'}`}>
                 {(() => {
                   const avgRating = reviews.length > 0
                     ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
@@ -1180,148 +1314,365 @@ const EventRegistration: React.FC = () => {
                   return avgRating > 0 ? (
                     <>
                       <StarRating rating={avgRating} size={20} />
-                      <span className="text-xl font-bold text-emerald-900">{avgRating.toFixed(1)}</span>
+                      <span className={`text-xl font-bold ${isDarkMode ? 'text-emerald-300' : 'text-emerald-900'}`}>{avgRating.toFixed(1)}</span>
                     </>
                   ) : null;
                 })()}
-                <span className="text-emerald-600 text-sm">({reviews?.length || 0} reviews)</span>
+                <span className={`text-sm font-semibold ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>({reviews?.length || 0} reviews)</span>
               </div>
             </div>
 
             {/* Review Submission Form */}
-            <div className="mb-10 bg-gray-50 rounded-2xl p-6 border border-gray-100">
-              <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Send className="text-emerald-500" size={18} />
-                Share Your Experience
+            <div id="review-form" className={`mb-10 rounded-3xl p-6 border-2 ${isDarkMode ? 'bg-gray-950/50 border-gray-800' : 'bg-gray-50 border-gray-100'}`}>
+              <h3 className={`text-xs font-black uppercase tracking-widest mb-6 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
+                {editingReviewId ? 'AMEND YOUR MARK' : 'LEAVE YOUR MARK'}
               </h3>
-              <form onSubmit={handleReviewSubmit} className="space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-sm font-medium text-gray-700 mr-2">Your Rating:</span>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <div key={star} className="relative inline-block">
-                      {/* Left half of star (0.5 rating) */}
-                      <button
-                        type="button"
-                        onClick={() => setNewRating(star - 0.5)}
-                        onMouseEnter={() => setHoverRating(star - 0.5)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        className="absolute left-0 top-0 w-1/2 h-full z-10"
-                        style={{ cursor: 'pointer' }}
-                      />
-                      {/* Right half of star (full rating) */}
-                      <button
-                        type="button"
-                        onClick={() => setNewRating(star)}
-                        onMouseEnter={() => setHoverRating(star)}
-                        onMouseLeave={() => setHoverRating(0)}
-                        className="absolute right-0 top-0 w-1/2 h-full z-10"
-                        style={{ cursor: 'pointer' }}
-                      />
-                      {/* Star display */}
-                      <div className="relative pointer-events-none">
-                        {(hoverRating || newRating) >= star ? (
-                          <Star size={28} className="text-emerald-400 fill-emerald-400" />
-                        ) : (hoverRating || newRating) >= star - 0.5 ? (
-                          <div className="relative">
-                            <Star size={28} className="text-gray-300" />
-                            <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
-                              <Star size={28} className="text-emerald-400 fill-emerald-400" />
+              <form onSubmit={handleReviewSubmit} className="space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <h3 className={`text-lg font-black ${isDarkMode ? 'text-white' : 'text-gray-900'} tracking-tight uppercase`}>
+                    {editingReviewId ? 'REVISE LOGGED EXPEDITION' : 'LOG YOUR EXPEDITION'}
+                  </h3>
+                  <div className="flex gap-1">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <div key={star} className="relative cursor-pointer group">
+                        <button
+                          type="button"
+                          onClick={() => setNewRating(star - 0.5)}
+                          onMouseEnter={() => setHoverRating(star - 0.5)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className="absolute left-0 top-0 w-1/2 h-full z-10"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setNewRating(star)}
+                          onMouseEnter={() => setHoverRating(star)}
+                          onMouseLeave={() => setHoverRating(0)}
+                          className="absolute right-0 top-0 w-1/2 h-full z-10"
+                        />
+                        <div className="transition-transform group-hover:scale-110 active:scale-95">
+                          {(hoverRating || newRating) >= star ? (
+                            <Star size={28} className="text-emerald-400 fill-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
+                          ) : (hoverRating || newRating) >= star - 0.5 ? (
+                            <div className="relative">
+                              <Star size={28} className={`${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
+                              <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+                                <Star size={28} className="text-emerald-400 fill-emerald-400" />
+                              </div>
                             </div>
-                          </div>
-                        ) : (
-                          <Star size={28} className="text-gray-300" />
-                        )}
+                          ) : (
+                            <Star size={28} className={`${isDarkMode ? 'text-gray-700' : 'text-gray-300'}`} />
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                  <span className="ml-2 text-sm font-semibold text-gray-600">
-                    {newRating > 0 ? newRating.toFixed(1) : '0.0'}
-                  </span>
+                    ))}
+                  </div>
                 </div>
+
                 <div className="relative">
                   <textarea
                     value={newComment}
                     onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Tell us about your experience at this event..."
-                    className="w-full p-4 pr-12 border border-gray-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] text-sm"
+                    placeholder="What were the highlights of your event expedition?"
+                    className={`w-full p-5 pr-14 border-2 rounded-2xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[120px] text-base font-medium transition-all ${
+                      isDarkMode ? 'bg-transparent border-gray-800 text-white placeholder-gray-500' : 'bg-white border-gray-100 text-gray-900'
+                    }`}
                   />
-                  <div className="absolute bottom-2 right-2">
+                  <div className="absolute bottom-3 right-3 scale-110 flex items-center gap-2">
                     <EmojiPicker
                       onEmojiSelect={(emoji) => setNewComment(prev => prev + emoji)}
                     />
                   </div>
                 </div>
-                <button
-                  type="submit"
-                  disabled={isSubmittingReview}
-                  className="bg-emerald-500 text-white font-bold py-3 px-8 rounded-xl hover:bg-emerald-600 transition-all shadow-md active:scale-95 disabled:opacity-50 flex items-center gap-2"
-                >
-                  {isSubmittingReview ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : null}
-                  Submit Review
-                </button>
+
+                {/* Image Upload Area */}
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <label className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                      Visual Evidence (Optional)
+                    </label>
+                    <span className="text-[10px] font-bold text-gray-400">{imagePreviews.length}/5 photos</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-4">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative w-24 h-24 group">
+                        <img 
+                          src={preview} 
+                          alt="Preview" 
+                          className="w-full h-full object-cover rounded-2xl border-2 border-emerald-500/20"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-rose-500 text-white p-1 rounded-full shadow-lg hover:bg-rose-600 transition-colors"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    ))}
+
+                    {imagePreviews.length < 5 && (
+                      <label className={`w-24 h-24 rounded-2xl border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all ${
+                        isDarkMode 
+                          ? 'bg-transparent border-gray-800 hover:border-emerald-500 hover:bg-emerald-500/5' 
+                          : 'bg-gray-55 border-gray-200 hover:border-emerald-500 hover:bg-emerald-50'
+                      }`}>
+                        <Camera className="text-gray-500 mb-1" size={24} />
+                        <span className="text-[10px] font-bold text-gray-550 uppercase">Add Photo</span>
+                        <input 
+                          type="file" 
+                          accept="image/jpeg,image/png,image/webp,image/avif" 
+                          multiple 
+                          onChange={handleImageChange} 
+                          className="hidden" 
+                        />
+                      </label>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    disabled={isSubmittingReview}
+                    className="flex-1 group relative bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-sm py-4 px-10 rounded-2xl transition-all shadow-xl shadow-emerald-500/20 active:scale-95 disabled:opacity-50 overflow-hidden"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                    <span className="relative flex items-center justify-center gap-3">
+                      {isSubmittingReview ? (
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      ) : (
+                        <Send size={18} />
+                      )}
+                      {editingReviewId ? 'UPDATE REPORT' : 'POST REVIEW'}
+                    </span>
+                  </button>
+                  {editingReviewId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingReviewId(null);
+                        setNewRating(0);
+                        setNewComment('');
+                        setImagePreviews([]);
+                        setSelectedImages([]);
+                      }}
+                      className={`px-8 rounded-2xl font-black uppercase tracking-widest text-xs border-2 ${
+                        isDarkMode ? 'border-gray-700 text-gray-400 hover:bg-gray-800/30' : 'border-gray-200 text-gray-500 hover:bg-gray-100'
+                      } transition-colors active:scale-95`}
+                    >
+                      CANCEL
+                    </button>
+                  )}
+                </div>
               </form>
             </div>
 
             {reviewsLoading ? (
-              <div className="flex justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500"></div>
+              <div className="flex justify-center py-16">
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-emerald-500"></div>
               </div>
             ) : (!reviews || !Array.isArray(reviews) || reviews.length === 0) ? (
-              <div className="text-center py-12 bg-gray-50 rounded-xl">
-                <p className="text-gray-500">No reviews yet. Be the first to attend!</p>
+              <div className={`text-center py-16 rounded-3xl border-2 border-dashed ${isDarkMode ? 'bg-gray-950/20 border-gray-800' : 'bg-gray-50 border-gray-100'}`}>
+                <p className={`text-lg font-bold opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>No reviews yet. Be the first to attend!</p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {reviews.map((review) => (
-                  <div key={review._id} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold">
-                          {review.userName?.charAt(0) || 'U'}
+                  <div key={review._id} className={`p-6 rounded-3xl border-2 transition-all ${isDarkMode ? 'bg-gray-950/30 border-gray-800 hover:border-emerald-500/20' : 'bg-white border-gray-50 hover:border-emerald-100'}`}>
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-4">
+                        {review.userPhoto && review.userPhoto.includes('http') ? (
+                          <img 
+                            src={normalizeImageUrl(review.userPhoto)} 
+                            alt={review.userName} 
+                            className="w-12 h-12 rounded-2xl object-cover shadow-lg"
+                            onError={(e) => {
+                              // If image fails to load, show initials
+                              e.currentTarget.style.display = 'none';
+                              const initialsDiv = e.currentTarget.nextElementSibling as HTMLElement;
+                              if (initialsDiv) initialsDiv.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className={`w-12 h-12 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg ${
+                            isDarkMode ? 'bg-indigo-600 text-white' : 'bg-indigo-600 text-white'
+                          }`}
+                          style={{ display: review.userPhoto && review.userPhoto.includes('http') ? 'none' : 'flex' }}
+                        >
+                          {review.userName?.split(' ').map(n => n.charAt(0)).join('').toUpperCase().substring(0, 2) || 'U'}
                         </div>
                         <div>
-                          <div className="font-semibold text-gray-900">{review.userName || 'Anonymous'}</div>
-                          <div className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</div>
+                          <div className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>{review.userName || 'Anonymous'}</div>
+                          <div className={`text-[10px] font-bold uppercase tracking-widest opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                            AUTHENTICATED EXPLORER • {new Date(review.createdAt).toLocaleDateString()}
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <StarRating rating={review.rating} size={14} />
+                      <div className="flex items-center gap-3">
+                        <div className="scale-90">
+                          <StarRating rating={review.rating} size={14} />
+                        </div>
+                        {localStorage.getItem('userData') && JSON.parse(localStorage.getItem('userData')!).uid === review.userId && (
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleEditReview(review)}
+                              className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-gray-800 text-emerald-400 hover:bg-gray-700' : 'bg-gray-50 text-emerald-600 hover:bg-gray-100'}`}
+                              title="Edit Review"
+                            >
+                              <Edit2 size={14} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteReview(review._id)}
+                              className={`p-2 rounded-xl transition-all ${isDarkMode ? 'bg-gray-800 text-rose-400 hover:bg-gray-700' : 'bg-gray-50 text-rose-600 hover:bg-gray-100'}`}
+                              title="Delete Review"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed">{review.comment}</p>
+                    <p className={`text-base font-medium leading-relaxed mb-4 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{review.comment}</p>
+
+                    {/* Review Images Gallery */}
+                    {review.images && review.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {review.images.map((img: string, idx: number) => (
+                          <div 
+                            key={idx} 
+                            className="relative group cursor-zoom-in w-24 h-24 md:w-32 md:h-32 rounded-2xl overflow-hidden border-2 border-transparent hover:border-emerald-500 transition-all"
+                            onClick={() => setActiveLightbox({ 
+                              images: review.images, 
+                              index: idx,
+                              comment: review.comment,
+                              userName: review.userName
+                            })}
+                          >
+                            <img 
+                              src={normalizeImageUrl(img)} 
+                              alt={`Review ${idx}`} 
+                              className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                            />
+                            <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                              <Maximize2 className="text-white" size={20} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     {/* Like/Dislike buttons */}
                     <div className="flex items-center gap-4 mt-3">
                       <button
                         onClick={() => handleLikeReview(review._id)}
-                        className={`flex items-center gap-1 text-sm transition-colors ${review.likes?.includes(auth.currentUser?.uid || '')
-                          ? 'text-emerald-600 font-semibold'
-                          : 'text-gray-500 hover:text-emerald-600'
+                        className={`flex items-center gap-1.5 text-sm transition-colors ${review.likes?.includes(auth.currentUser?.uid || '')
+                          ? 'text-emerald-500 font-bold'
+                          : isDarkMode ? 'text-gray-400 hover:text-emerald-500' : 'text-gray-500 hover:text-emerald-600'
                           }`}
                       >
-                        <ThumbsUp size={16} className={review.likes?.includes(auth.currentUser?.uid || '') ? 'fill-emerald-600' : ''} />
+                        <ThumbsUp size={16} className={review.likes?.includes(auth.currentUser?.uid || '') ? 'fill-emerald-500 text-emerald-500' : ''} />
                         <span>{review.likes?.length || 0}</span>
                       </button>
                       <button
                         onClick={() => handleDislikeReview(review._id)}
-                        className={`flex items-center gap-1 text-sm transition-colors ${review.dislikes?.includes(auth.currentUser?.uid || '')
-                          ? 'text-red-600 font-semibold'
-                          : 'text-gray-500 hover:text-red-600'
+                        className={`flex items-center gap-1.5 text-sm transition-colors ${review.dislikes?.includes(auth.currentUser?.uid || '')
+                          ? 'text-rose-500 font-bold'
+                          : isDarkMode ? 'text-gray-400 hover:text-rose-500' : 'text-gray-500 hover:text-rose-600'
                           }`}
                       >
-                        <ThumbsDown size={16} className={review.dislikes?.includes(auth.currentUser?.uid || '') ? 'fill-red-600' : ''} />
+                        <ThumbsDown size={16} className={review.dislikes?.includes(auth.currentUser?.uid || '') ? 'fill-rose-500 text-rose-500' : ''} />
                         <span>{review.dislikes?.length || 0}</span>
                       </button>
                     </div>
 
                     {review.reply && (
-                      <div className="mt-4 bg-gray-50 rounded-xl p-4 border-l-4 border-emerald-500">
-                        <div className="text-xs font-bold text-emerald-700 mb-1">Owner Response</div>
-                        <p className="text-gray-600 text-sm">
-                          {typeof review.reply === 'object' ? review.reply.text : review.reply}
+                      <div className={`mt-6 rounded-2xl p-5 border-l-4 border-emerald-500 ${isDarkMode ? 'bg-emerald-950/20 text-emerald-400 border-emerald-800' : 'bg-emerald-50/50 text-emerald-800'}`}>
+                        <div className="text-[10px] font-black uppercase tracking-[0.2em] mb-2 opacity-60">Organizer Response</div>
+                        <p className="text-sm font-medium italic">
+                          "{typeof review.reply === 'object' ? review.reply.text : review.reply}"
                         </p>
+                      </div>
+                    )}
+
+                    {/* Nested Sub-reviews Timeline */}
+                    {review.subReviews && review.subReviews.length > 0 && (
+                      <div className="mt-6 pl-4 border-l-2 border-emerald-500/20 space-y-6">
+                        <div className={`text-xs font-black uppercase tracking-widest ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'} mb-2`}>
+                          Subsequent Event Visits ({review.subReviews.length})
+                        </div>
+                        {review.subReviews.map((sub: any, sIdx: number) => (
+                          <div key={sub._id || sIdx} className="relative pl-6 before:absolute before:left-0 before:top-2 before:w-2 before:h-2 before:rounded-full before:bg-emerald-500">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center gap-3">
+                                <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                                  isDarkMode ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                                }`}>
+                                  Visit #{sIdx + 2}
+                                </span>
+                                <span className={`text-[10px] font-bold uppercase tracking-wider opacity-40 ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>
+                                  {new Date(sub.createdAt).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <StarRating rating={sub.rating} size={11} />
+                                {localStorage.getItem('userData') && JSON.parse(localStorage.getItem('userData')!).uid === review.userId && (
+                                  <div className="flex items-center gap-1.5">
+                                    <button 
+                                      onClick={() => handleEditReview({
+                                        ...sub,
+                                        _id: sub._id,
+                                        userId: review.userId,
+                                        userName: review.userName,
+                                        userPhoto: review.userPhoto
+                                      })}
+                                      className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-gray-800 text-emerald-400 hover:bg-gray-700' : 'bg-gray-50 text-emerald-600 hover:bg-gray-100'}`}
+                                      title="Edit this visit review"
+                                    >
+                                      <Edit2 size={11} />
+                                    </button>
+                                    <button 
+                                      onClick={() => handleDeleteReview(sub._id)}
+                                      className={`p-1.5 rounded-lg transition-all ${isDarkMode ? 'bg-gray-800 text-rose-400 hover:bg-gray-700' : 'bg-gray-50 text-rose-600 hover:bg-gray-100'}`}
+                                      title="Delete this visit review"
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <p className={`text-sm font-medium leading-relaxed mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-600'}`}>{sub.comment}</p>
+                            
+                            {/* Sub-review Images */}
+                            {sub.images && sub.images.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mb-2">
+                                {sub.images.map((img: string, idx: number) => (
+                                  <div 
+                                    key={idx} 
+                                    className="relative group cursor-zoom-in w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border border-transparent hover:border-emerald-500 transition-all"
+                                    onClick={() => setActiveLightbox({ 
+                                      images: sub.images, 
+                                      index: idx,
+                                      comment: sub.comment,
+                                      userName: `${review.userName} (Visit #${sIdx + 2})`
+                                    })}
+                                  >
+                                    <img 
+                                      src={normalizeImageUrl(img)} 
+                                      alt={`Sub review ${idx}`} 
+                                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                    />
+                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                      <Maximize2 className="text-white" size={14} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
                   </div>
@@ -1330,6 +1681,64 @@ const EventRegistration: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Lightbox Modal */}
+        {activeLightbox && (
+          <div className="fixed inset-0 bg-black/90 z-50 flex flex-col justify-between p-4 md:p-8 animate-fade-in backdrop-blur-md">
+            <button 
+              onClick={() => setActiveLightbox(null)}
+              className="absolute top-4 right-4 md:top-8 md:right-8 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all hover:scale-110 active:scale-95"
+            >
+              <X size={24} />
+            </button>
+            <div className="flex-1 flex items-center justify-center min-h-0 relative">
+              <button 
+                onClick={() => setActiveLightbox({ ...activeLightbox, index: (activeLightbox.index - 1 + activeLightbox.images.length) % activeLightbox.images.length })}
+                className="absolute left-0 md:left-4 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all hover:scale-110 active:scale-95"
+              >
+                &larr;
+              </button>
+              <img 
+                src={normalizeImageUrl(activeLightbox.images[activeLightbox.index])} 
+                alt="Enlarged review" 
+                className="max-w-full max-h-[70vh] md:max-h-[75vh] object-contain rounded-3xl shadow-2xl border border-white/10"
+              />
+              <button 
+                onClick={() => setActiveLightbox({ ...activeLightbox, index: (activeLightbox.index + 1) % activeLightbox.images.length })}
+                className="absolute right-0 md:right-4 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full transition-all hover:scale-110 active:scale-95"
+              >
+                &rarr;
+              </button>
+            </div>
+            
+            {activeLightbox.comment && (
+              <div className="max-w-3xl mx-auto w-full text-center bg-white/5 border border-white/10 backdrop-blur-md p-6 rounded-3xl mb-4">
+                {activeLightbox.userName && (
+                  <div className="mb-2">
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 text-emerald-400">Scout: {activeLightbox.userName}</span>
+                  </div>
+                )}
+                <p className="text-white text-base font-semibold leading-relaxed">
+                  "{activeLightbox.comment}"
+                </p>
+              </div>
+            )}
+            
+            <div className="flex justify-center gap-3 overflow-x-auto py-2">
+              {activeLightbox.images.map((img, idx) => (
+                <button 
+                  key={idx}
+                  onClick={() => setActiveLightbox({ ...activeLightbox, index: idx })}
+                  className={`w-16 h-16 rounded-xl overflow-hidden border-2 transition-all ${
+                    activeLightbox.index === idx ? 'border-emerald-500 scale-110' : 'border-transparent opacity-50 hover:opacity-100'
+                  }`}
+                >
+                  <img src={normalizeImageUrl(img)} alt="Thumbnail" className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div >
   );

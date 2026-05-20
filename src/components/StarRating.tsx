@@ -20,7 +20,7 @@ const StarRating: React.FC<StarRatingProps> = ({ rating, size = 16, className = 
             ))}
             {hasHalfStar && <StarHalf size={size} className="text-emerald-400 fill-current" />}
             {[...Array(emptyStars > 0 ? emptyStars : 0)].map((_, i) => (
-                <Star key={`empty-${i}`} size={size} className="text-gray-200" />
+                <Star key={`empty-${i}`} size={size} className="text-gray-300 dark:text-gray-700" />
             ))}
         </div>
     );

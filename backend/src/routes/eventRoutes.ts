@@ -51,7 +51,26 @@ router.post('/:id/register', registerForEvent);
 
 // Event Review Routes
 router.get('/:eventId/reviews', getEventReviews);
-router.post('/:eventId/reviews', upload.array('images', 5), addEventReview);
+router.post('/:eventId/reviews', 
+  (req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.log('=== Review POST request received ===');
+    console.log('EventId:', req.params.eventId);
+    console.log('Content-Type:', req.headers['content-type']);
+    next();
+  },
+  upload.array('images', 5), 
+  (err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (err) {
+      console.error('Multer/Upload error:', err);
+      return res.status(400).json({
+        success: false,
+        message: 'File upload error: ' + err.message
+      });
+    }
+    next();
+  },
+  addEventReview
+);
 router.get('/:eventId/reviews/stats', getEventRatingStats);
 router.put('/reviews/:id', upload.array('images', 5), updateReview);
 router.delete('/reviews/:id', deleteReview);

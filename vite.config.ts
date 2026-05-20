@@ -56,6 +56,10 @@ export default defineConfig({
           },
           {
             urlPattern: ({ url }) => {
+              // Exclude user uploads (avatars, etc.) from caching - they change frequently
+              if (url.pathname.includes('/uploads/')) {
+                return false;
+              }
               const isExternalImage = url.origin !== self.location.origin && /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
               const isLocalImage = url.pathname.includes('/images/') || /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
               return isExternalImage || isLocalImage;
@@ -70,6 +74,22 @@ export default defineConfig({
               cacheableResponse: {
                 statuses: [0, 200]
               }
+            }
+          },
+          {
+            // Handle user uploads with NetworkFirst to always get fresh content
+            urlPattern: ({ url }) => url.pathname.includes('/uploads/'),
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'uploads-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 // 1 hour
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              },
+              networkTimeoutSeconds: 3
             }
           },
           {
@@ -120,9 +140,21 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: 'http://localhost:5001',
+        target: 'http://127.0.0.1:5001',
         changeOrigin: true,
         secure: false,
+        ws: true,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, _req, _res) => {
+            console.log('proxy error', err);
+          });
+          proxy.on('proxyReq', (proxyReq, req, _res) => {
+            console.log('Sending Request to the Target:', req.method, req.url);
+          });
+          proxy.on('proxyRes', (proxyRes, req, _res) => {
+            console.log('Received Response from the Target:', proxyRes.statusCode, req.url);
+          });
+        },
       },
     }
   }
