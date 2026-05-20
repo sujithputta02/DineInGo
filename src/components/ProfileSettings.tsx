@@ -307,30 +307,72 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       if ((formData as any)._pendingAvatarBlob) {
         setIsUploading(true);
         
-        // Convert blob to base64
-        const blob = (formData as any)._pendingAvatarBlob;
-        const reader = new FileReader();
-        
-        const base64Promise = new Promise<string>((resolve, reject) => {
-          reader.onloadend = () => resolve(reader.result as string);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-        
-        const base64Image = await base64Promise;
-        console.log('Converted image to base64, length:', base64Image.length);
-        
-        // Send base64 to backend
-        const res = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${authUser.uid}/avatar`), {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ base64Image })
-        });
-        if (!res.ok) throw new Error('Avatar upload failed');
-        const data = await res.json();
-        avatarUrl = API_CONFIG.getAssetUrl(data.profile?.currentAvatar || data.avatarUrl);
+        try {
+          // Convert blob to base64
+          const blob = (formData as any)._pendingAvatarBlob;
+          
+          // Check blob size (limit to 5MB)
+          if (blob.size > 5 * 1024 * 1024) {
+            throw new Error('Image too large. Please use an image smaller than 5MB.');
+          }
+          
+          const reader = new FileReader();
+          
+          const base64Promise = new Promise<string>((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              reject(new Error('Image conversion timeout'));
+            }, 30000); // 30 second timeout
+            
+            reader.onloadend = () => {
+              clearTimeout(timeout);
+              resolve(reader.result as string);
+            };
+            reader.onerror = () => {
+              clearTimeout(timeout);
+              reject(new Error('Failed to read image'));
+            };
+            reader.readAsDataURL(blob);
+          });
+          
+          const base64Image = await base64Promise;
+          console.log('Converted image to base64, length:', base64Image.length);
+          
+          // Send base64 to backend with timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 second timeout
+          
+          const res = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${authUser.uid}/avatar`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ base64Image }),
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            throw new Error(errorData.error || 'Avatar upload failed');
+          }
+          
+          const data = await res.json();
+          avatarUrl = API_CONFIG.getAssetUrl(data.profile?.currentAvatar || data.avatarUrl);
+          
+          toast.success('Avatar uploaded successfully');
+        } catch (uploadError: any) {
+          console.error('Avatar upload error:', uploadError);
+          
+          if (uploadError.name === 'AbortError') {
+            toast.error('Avatar upload timeout. Please try a smaller image.');
+          } else {
+            toast.error(uploadError.message || 'Failed to upload avatar');
+          }
+          
+          // Continue with profile update even if avatar fails
+          setIsUploading(false);
+        }
       }
 
       // 2. Prepare Updates
@@ -699,16 +741,17 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                     <div className="flex gap-4 pt-6">
                       <button
                         type="submit"
-                        disabled={isLoading}
-                        className="flex-1 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2"
+                        disabled={isLoading || isUploading}
+                        className="flex-1 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
                       >
-                        {isLoading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
-                        {t('saveChanges')}
+                        {isLoading || isUploading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+                        {isUploading ? 'Uploading Avatar...' : isLoading ? 'Saving...' : t('saveChanges')}
                       </button>
                       <button
                         type="button"
                         onClick={() => { setIsEditMode(false); loadUserData(); }}
-                        className={`px-6 py-3 rounded-xl font-bold transition-colors ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
+                        disabled={isLoading || isUploading}
+                        className={`px-6 py-3 rounded-xl font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isDarkMode ? 'bg-gray-700 text-white hover:bg-gray-600' : 'bg-gray-200 text-gray-800 hover:bg-gray-300'
                           }`}
                       >
                         {t('cancel')}
