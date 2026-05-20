@@ -36,19 +36,19 @@
   --color-primary-dark: #34d399;
   --color-primary-light: #059669;
   
-  --color-background: #111827;
-  --color-background-secondary: #1f2937;
-  --color-background-tertiary: #374151;
+  --color-background: #000000;
+  --color-background-secondary: #0a0a0a;
+  --color-background-tertiary: #141414;
   
   --color-text-primary: #f9fafb;
   --color-text-secondary: #d1d5db;
   --color-text-tertiary: #9ca3af;
   
-  --color-border: #374151;
-  --color-border-light: #4b5563;
+  --color-border: #141414;
+  --color-border-light: #222222;
   
-  --color-card: #1f2937;
-  --color-card-hover: #374151;
+  --color-card: #0a0a0a;
+  --color-card-hover: #141414;
   
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);

@@ -163,8 +163,10 @@ export class SlotService {
                 // We use create with array for transaction support
                 const bookings = await Booking.create([{
                     userId: hold.userId,
-                    restaurantId: slot.type === 'restaurant' ? slot.resourceId : 'EVENT_PLACEHOLDER', // TODO: fix type
+                    restaurantId: slot.type === 'restaurant' ? slot.resourceId : undefined,
                     eventId: slot.type === 'event' ? slot.resourceId : undefined,
+                    businessId: slot.resourceId,
+                    businessType: slot.type,
                     date: slot.startTime,
                     time: slot.startTime.toTimeString(), // format as needed
                     guests: hold.qty,

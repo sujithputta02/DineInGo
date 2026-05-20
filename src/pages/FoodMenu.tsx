@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ChevronLeft, Plus, Minus, ShoppingCart, Calendar, Clock, Users } from 'lucide-react';
+import { ChevronLeft, Plus, Minus, ShoppingCart, Calendar, Clock, Users, Utensils } from 'lucide-react';
 import { getRestaurantById } from '../services/restaurantService';
 import type { MenuItem } from '../types';
 import { DinoStepper } from '../components/DinoStepper';
@@ -16,6 +16,7 @@ export default function FoodMenu() {
   const [restaurant, setRestaurant] = useState<any>(null);
   const [selectedItems, setSelectedItems] = useState<{ [key: string]: number }>({});
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
   const [theme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
@@ -108,10 +109,10 @@ export default function FoodMenu() {
     navigate(`/restaurant/${id}/preview?${queryParams.toString()}`);
   };
 
-  const categories = [t('allCategories', 'All'), ...new Set(restaurant?.menu?.map((item: MenuItem) => item.category) || [])] as string[];
+  const categories = ['All', ...new Set(restaurant?.menu?.map((item: MenuItem) => item.category) || [])] as string[];
 
   const filteredMenu = restaurant?.menu.filter((item: MenuItem) => {
-    return activeCategory === t('allCategories', 'All') || item.category === activeCategory;
+    return activeCategory === 'All' || item.category === activeCategory;
   });
 
   if (loading) {
@@ -182,7 +183,7 @@ export default function FoodMenu() {
                     : 'bg-white border-gray-100 text-gray-600 hover:bg-gray-50'
               }`}
             >
-              {category}
+              {category === 'All' ? t('allCategories', 'All') : category}
             </button>
           ))}
         </div>
@@ -195,14 +196,23 @@ export default function FoodMenu() {
                 isDarkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-50'
               }`}>
                 <div className="relative aspect-[16/10] overflow-hidden">
-                  <img
-                    src={normalizeImageUrl(item.image)}
-                    alt={item.name}
-                    className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
-                    onError={(e) => {
-                      e.currentTarget.src = 'https://placehold.co/400x250?text=Food';
-                    }}
-                  />
+                  {item.image && !item.image.includes('placeholder-food.svg') && !imageErrors[item.id] ? (
+                    <img
+                      src={normalizeImageUrl(item.image)}
+                      alt={item.name}
+                      className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
+                      onError={() => {
+                        setImageErrors(prev => ({ ...prev, [item.id]: true }));
+                      }}
+                    />
+                  ) : (
+                    <div className={`w-full h-full flex flex-col items-center justify-center gap-3 transition-colors ${
+                      isDarkMode ? 'bg-zinc-900 text-zinc-500' : 'bg-gray-100 text-gray-400'
+                    }`}>
+                      <Utensils className="w-12 h-12 stroke-[1.5]" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">{t('foodImage', 'Food Image')}</span>
+                    </div>
+                  )}
                   <div className="absolute top-4 right-4">
                     {item.isVegetarian && (
                       <div className="bg-white/90 backdrop-blur-sm p-1.5 rounded-lg border border-green-500 shadow-lg">

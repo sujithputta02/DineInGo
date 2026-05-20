@@ -135,6 +135,7 @@ export interface Translation {
   vaultIsEmpty: string;
   vaultEmptyDescription: string;
   returnToSite: string;
+  foodImage: string;
   tableSelection: string;
   available: string;
   selected: string;
@@ -478,6 +479,7 @@ export const translations: Record<Language, Translation> = {
     vaultIsEmpty: "The Vault is Empty",
     vaultEmptyDescription: "The restaurant owner hasn't added their menu items yet. Please check back later or contact the restaurant directly.",
     returnToSite: "Return to Site",
+    foodImage: "Food Image",
     tableSelection: "Table Selection",
     available: "Available",
     selected: "Selected",

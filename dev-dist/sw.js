@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-8d0d8005'], (function (workbox) { 'use strict';
+define(['./workbox-90f62ff3'], (function (workbox) { 'use strict';
 
   self.skipWaiting();
   workbox.clientsClaim();
@@ -81,13 +81,16 @@ define(['./workbox-8d0d8005'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "index.html",
-    "revision": "0.9b13s3vdhlg"
+    "revision": "0.okssfil8cd"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html"), {
-    allowlist: [/^\/$/]
+    allowlist: [/^\/$/],
+    denylist: [/^\/api/, /^\/socket.io/, /^\/translations/]
   }));
-  workbox.registerRoute(/^https:\/\/api\..*/i, new workbox.NetworkFirst({
+  workbox.registerRoute(({
+    url
+  }) => url.pathname.startsWith("/api/v1/translations"), new workbox.NetworkFirst({
     "cacheName": "api-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 100,
@@ -96,12 +99,23 @@ define(['./workbox-8d0d8005'], (function (workbox) { 'use strict';
       statuses: [0, 200]
     })]
   }), 'GET');
-  workbox.registerRoute(/^https:\/\/.*\.(?:png|jpg|jpeg|svg|gif|webp)$/, new workbox.CacheFirst({
+  workbox.registerRoute(({
+    url
+  }) => {
+    const isExternalImage = url.origin !== self.location.origin && /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
+    const isLocalImage = url.pathname.includes("/images/") || /\.(?:png|jpg|jpeg|svg|gif|webp)$/.test(url.pathname);
+    return isExternalImage || isLocalImage;
+  }, new workbox.CacheFirst({
     "cacheName": "image-cache",
     plugins: [new workbox.ExpirationPlugin({
       maxEntries: 200,
       maxAgeSeconds: 2592000
+    }), new workbox.CacheableResponsePlugin({
+      statuses: [0, 200]
     })]
   }), 'GET');
+  workbox.registerRoute(({
+    url
+  }) => url.origin.includes("amplitude.com") || url.origin.includes("google-analytics.com") || url.origin.includes("posthog.com") || url.origin.includes("mixpanel.com") || url.pathname.startsWith("/socket.io"), new workbox.NetworkOnly(), 'GET');
 
 }));

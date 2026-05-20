@@ -1,6 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
-import { ArrowLeft, MapPin, Calendar, Users } from "lucide-react";
+import { ArrowLeft, MapPin, Calendar, Users, Utensils } from "lucide-react";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { getRestaurantById, getMockRestaurantById } from "../services/restaurantService";
 import { getMockEventById } from "../services/event-service";
@@ -60,6 +60,7 @@ const ReservationPreview: React.FC = () => {
   const [selectedMenuItems, setSelectedMenuItems] = useState<{ [key: string]: number }>({});
   const [showMenuItems, setShowMenuItems] = useState(false);
   const [dataReady, setDataReady] = useState(false);
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
   const [theme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
@@ -305,15 +306,29 @@ const ReservationPreview: React.FC = () => {
       <div className="relative h-[400px] md:h-[500px] overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10" />
         <div className="absolute inset-0 grid grid-cols-2 md:grid-cols-4 gap-2">
-          {type === 'restaurant' && restaurant && restaurantPreviewImages[restaurant.name]?.slice(0, 4).map((image, index) => (
-            <div key={index} className={`relative overflow-hidden ${index === 0 ? 'col-span-2 row-span-2' : 'hidden md:block'}`}>
-              <img
-                src={image}
-                alt={`${restaurant.name} ambiance ${index + 1}`}
-                className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
-              />
-            </div>
-          ))}
+          {type === 'restaurant' && restaurant && (
+            restaurantPreviewImages[restaurant.name] ? (
+              restaurantPreviewImages[restaurant.name].slice(0, 4).map((image, index) => (
+                <div key={index} className={`relative overflow-hidden ${index === 0 ? 'col-span-2 row-span-2' : 'hidden md:block'}`}>
+                  <img
+                    src={image}
+                    alt={`${restaurant.name} ambiance ${index + 1}`}
+                    className="w-full h-full object-cover transition-transform duration-700 hover:scale-110"
+                  />
+                </div>
+              ))
+            ) : (
+              (restaurant.image || restaurant.thumbnail) ? (
+                <div className="col-span-4 row-span-2 h-full">
+                  <img
+                    src={normalizeImageUrl(restaurant.image || restaurant.thumbnail)}
+                    alt={restaurant.name}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : null
+            )
+          )}
           {type === 'event' && event && (
             <div className="col-span-4 row-span-2 h-full">
               <img
@@ -637,16 +652,24 @@ const ReservationPreview: React.FC = () => {
                       <div key={itemId} className={`flex items-center gap-6 p-4 rounded-[2rem] border-2 transition-all group ${
                         isDarkMode ? 'bg-gray-800 border-gray-700 hover:border-emerald-500/30' : 'bg-white border-gray-50 hover:border-emerald-500/30 shadow-sm'
                       }`}>
-                        <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-500/10">
+                        <div className="w-20 h-20 rounded-2xl overflow-hidden flex-shrink-0 bg-gray-500/10 flex items-center justify-center">
                           {item ? (
-                            <img
-                              src={normalizeImageUrl(item.image)}
-                              alt={item.name}
-                              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                              onError={(e) => {
-                                e.currentTarget.src = 'https://placehold.co/100x100?text=Food';
-                              }}
-                            />
+                            item.image && !item.image.includes('placeholder-food.svg') && !imageErrors[item.id] ? (
+                              <img
+                                src={normalizeImageUrl(item.image)}
+                                alt={item.name}
+                                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                                onError={() => {
+                                  setImageErrors(prev => ({ ...prev, [item.id]: true }));
+                                }}
+                              />
+                            ) : (
+                              <div className={`w-full h-full flex flex-col items-center justify-center transition-colors ${
+                                isDarkMode ? 'text-zinc-500 bg-zinc-900/40' : 'text-gray-400 bg-gray-100'
+                              }`}>
+                                <Utensils className="w-8 h-8 stroke-[1.5]" />
+                              </div>
+                            )
                           ) : (
                             <div className="w-full h-full flex items-center justify-center font-black text-gray-400">?</div>
                           )}

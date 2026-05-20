@@ -67,7 +67,7 @@ export const apiLimiter = rateLimit({
  */
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: 100,
   message: 'Too many authentication attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -108,7 +108,7 @@ export const passwordResetLimiter = rateLimit({
  */
 export const otpLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 5,
+  max: 50,
   message: 'Too many OTP requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -223,7 +223,7 @@ export const strictAiLimiter = rateLimit({
  */
 export const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5,
+  max: 50,
   message: 'Too many admin login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

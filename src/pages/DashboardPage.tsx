@@ -1792,10 +1792,10 @@ export default function DashboardPage() {
         return (
           <div className="space-y-12 pb-12">
             {/* Premium Header 2.0: Immersive Greeting */}
-            <div className="relative mb-12 rounded-[3rem] overflow-hidden group shadow-2xl">
+            <div className={`relative mb-12 rounded-[3rem] overflow-hidden group shadow-2xl border-2 ${isDarkMode ? "border-emerald-500/20" : "border-transparent"}`}>
               <div
                 className={`absolute inset-0 bg-gradient-to-br transition-all duration-700 ${isDarkMode
-                    ? "from-emerald-950 via-zinc-900 to-black"
+                    ? "from-emerald-950 via-zinc-900 to-emerald-950/30"
                     : "from-emerald-600 via-emerald-500 to-emerald-400"
                   }`}
               >
