@@ -127,12 +127,16 @@ const BookingCard: React.FC<BookingCardProps> = ({
 
     return (
         <div
-            className="bg-white rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer"
+            className={`rounded-3xl overflow-hidden shadow-md transition-all duration-300 hover:shadow-xl hover:scale-[1.02] hover:border-2 hover:border-emerald-500/30 cursor-pointer border ${
+                isEvent 
+                    ? 'bg-white dark:bg-[#151327] text-gray-900 dark:text-purple-100 border-transparent dark:border-purple-900/30' 
+                    : 'bg-white dark:bg-[#071311] text-gray-900 dark:text-emerald-100 border-transparent dark:border-emerald-900/30'
+            }`}
             onClick={() => onGenerateInvoice && onGenerateInvoice(booking)}
         >
             {/* Header with Gradient and Status */}
             <div className={`relative h-48 flex items-center justify-center p-6 ${isEvent ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
-                <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 backdrop-blur-sm text-emerald-700 shadow-sm uppercase tracking-wider">
+                <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-emerald-700 dark:text-emerald-400 shadow-sm uppercase tracking-wider">
                     {booking.status}
                 </div>
                 <div className="text-center">
@@ -150,7 +154,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
                 <div className="space-y-4">
                     {/* Date and Time */}
                     <div className="flex items-center justify-between">
-                        <div className="flex items-center text-gray-700">
+                        <div className={`flex items-center text-gray-700 ${isEvent ? 'dark:text-purple-200/80' : 'dark:text-emerald-200/80'}`}>
                             <Calendar className="w-5 h-5 mr-3 text-emerald-500" />
                             <span className="font-medium">
                                 {new Date(dateStr).toLocaleDateString('en-US', {
@@ -160,26 +164,26 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                 })}
                             </span>
                         </div>
-                        <div className="flex items-center text-gray-700">
+                        <div className={`flex items-center text-gray-700 ${isEvent ? 'dark:text-purple-200/80' : 'dark:text-emerald-200/80'}`}>
                             <Clock className="w-5 h-5 mr-2 text-emerald-500" />
                             <span className="font-semibold">{booking.time}</span>
                         </div>
                     </div>
 
                     {/* Guests and Details */}
-                    <div className="flex items-center gap-6 py-3 border-y border-gray-50">
-                        <div className="flex items-center text-gray-600">
+                    <div className={`flex items-center gap-6 py-3 border-y border-gray-50 ${isEvent ? 'dark:border-purple-900/20' : 'dark:border-emerald-900/20'}`}>
+                        <div className={`flex items-center text-gray-600 ${isEvent ? 'dark:text-purple-300/70' : 'dark:text-emerald-300/70'}`}>
                             <Users className="w-4 h-4 mr-2" />
                             <span className="text-sm font-medium">{booking.guests || booking.numberOfGuests || 1} Raptors</span>
                         </div>
                         {booking.table && (
-                            <div className="flex items-center text-gray-600">
-                                <span className="w-4 h-4 mr-2 text-xs flex items-center justify-center border-2 border-gray-400 rounded-sm font-bold">#</span>
+                            <div className={`flex items-center text-gray-600 ${isEvent ? 'dark:text-purple-300/70' : 'dark:text-emerald-300/70'}`}>
+                                <span className="w-4 h-4 mr-2 text-xs flex items-center justify-center border-2 border-gray-400 dark:border-gray-500 rounded-sm font-bold">#</span>
                                 <span className="text-sm font-medium">Table {booking.table}</span>
                             </div>
                         )}
                         {booking.bookingNumber && (
-                            <div className="text-[10px] text-gray-400 font-mono ml-auto">
+                            <div className="text-[10px] text-gray-400 dark:text-gray-500 font-mono ml-auto">
                                 {booking.bookingNumber}
                             </div>
                         )}
@@ -199,7 +203,7 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                 </button>
                                 <button
                                     onClick={(e) => { e.stopPropagation(); handleCancel(); }}
-                                    className="py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 transition-all font-bold active:scale-95 text-sm"
+                                    className="py-2.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl hover:bg-gray-200 dark:hover:bg-gray-700 transition-all font-bold active:scale-95 text-sm"
                                     disabled={localIsCancelling}
                                 >
                                     {localIsCancelling ? '...' : 'Cancel'}
@@ -212,14 +216,14 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                 {canCancel ? (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleCancel(); }}
-                                        className="w-full py-2.5 bg-rose-50 text-rose-600 rounded-xl hover:bg-rose-600 hover:text-white transition-all font-bold active:scale-95 text-sm border border-rose-100"
+                                        className="w-full py-2.5 bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 rounded-xl hover:bg-rose-600 hover:text-white transition-all font-bold active:scale-95 text-sm border border-rose-100 dark:border-rose-900/50"
                                         disabled={localIsCancelling}
                                     >
                                         {localIsCancelling ? 'Aborting...' : `Abort ${isEvent ? 'Expedition' : 'Expedition'}`}
                                     </button>
                                 ) : !isVisitCompleted && (
-                                    <div className="text-center p-2 rounded-xl bg-amber-50 border border-amber-100">
-                                        <p className="text-[11px] text-amber-700 font-medium flex items-center justify-center gap-1">
+                                    <div className="text-center p-2 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-100 dark:border-amber-900/50">
+                                        <p className="text-[11px] text-amber-700 dark:text-amber-400 font-medium flex items-center justify-center gap-1">
                                             <Clock size={12} /> Non-cancellable (Within {isEvent ? '24 hours' : '1 hour'})
                                         </p>
                                     </div>
@@ -239,9 +243,13 @@ const BookingCard: React.FC<BookingCardProps> = ({
 
                         {/* Special Requests or Notes */}
                         {(booking.specialRequests || booking.specialRequest) && (
-                            <div className="bg-gray-50 p-3 rounded-xl border border-gray-100">
-                                <p className="text-[11px] text-gray-500 leading-relaxed">
-                                    <span className="font-bold text-gray-700">Request:</span> {booking.specialRequests || booking.specialRequest}
+                            <div className={`bg-gray-50 p-3 rounded-xl border border-gray-100 ${
+                                isEvent 
+                                    ? 'dark:bg-purple-950/20 dark:border-purple-900/30' 
+                                    : 'dark:bg-emerald-950/20 dark:border-emerald-900/30'
+                            }`}>
+                                <p className={`text-[11px] text-gray-500 leading-relaxed ${isEvent ? 'dark:text-purple-300/80' : 'dark:text-emerald-300/80'}`}>
+                                    <span className="font-bold text-gray-700 dark:text-gray-300">Request:</span> {booking.specialRequests || booking.specialRequest}
                                 </p>
                             </div>
                         )}
@@ -280,7 +288,11 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                 {(isPast || booking.status === 'cancelled') && (
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleDelete(); }}
-                                        className="p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all"
+                                        className={`p-2 text-gray-400 hover:text-rose-500 hover:bg-rose-50 rounded-lg transition-all ${
+                                            isEvent
+                                                ? 'dark:hover:bg-purple-900/20'
+                                                : 'dark:hover:bg-emerald-900/20'
+                                        }`}
                                         title="Delete from History"
                                     >
                                         <Trash2 size={18} />
