@@ -225,6 +225,17 @@ const HARVEST_WINDOW_MS = 60 * 1000;
 
 export const dataHarvestGuard = (req: Request, res: Response, next: NextFunction) => {
   const ip = req.ip || 'unknown';
+  
+  // Bypass loopback/localhost IPs to prevent warning spam in local dev environment
+  if (
+    ip === '127.0.0.1' || 
+    ip === '::1' || 
+    ip === '::ffff:127.0.0.1' || 
+    ip.startsWith('::ffff:127.0.0.1')
+  ) {
+    return next();
+  }
+
   const now = Date.now();
 
   const tracker = ipRequestMap.get(ip);
