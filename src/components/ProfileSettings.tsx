@@ -269,11 +269,15 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   const validateForm = useCallback(() => {
     const errors: Record<string, string> = {};
     if (!formData.name.trim()) errors.name = 'Name is required';
-    if (!formData.phoneNumber.trim()) {
-      errors.phoneNumber = 'Phone number is required';
-    } else if (!validateIndianPhoneNumber(formData.phoneNumber)) {
-      errors.phoneNumber = 'Valid Indian Internal phone number required';
+    
+    // Only validate phone number if it's provided
+    if (formData.phoneNumber.trim()) {
+      const cleanPhone = formData.phoneNumber.replace(/\D/g, '');
+      if (cleanPhone.length > 0 && !validateIndianPhoneNumber(formData.phoneNumber)) {
+        errors.phoneNumber = 'Valid Indian phone number required (10 digits starting with 6-9)';
+      }
     }
+    
     setFormData(prev => ({ ...prev, errors }));
     return Object.keys(errors).length > 0 ? 'Please fix errors' : null;
   }, [formData]);
@@ -295,7 +299,17 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   // Save Logic (simplified for readability, mostly same as original but cleaner)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (validateForm()) return;
+    
+    console.log('Form submitted, validating...');
+    const validationError = validateForm();
+    
+    if (validationError) {
+      console.error('Validation failed:', validationError);
+      toast.error(validationError);
+      return;
+    }
+    
+    console.log('Validation passed, starting save...');
 
     try {
       setIsLoading(true);
