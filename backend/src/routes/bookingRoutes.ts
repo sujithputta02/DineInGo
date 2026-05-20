@@ -7,7 +7,8 @@ import {
   cancelBooking,
   confirmBooking,
   checkInBooking,
-  deleteBooking
+  deleteBooking,
+  getDynamicTableFeeController
 } from '../controllers/bookingController';
 import { Tracking } from '../models/Tracking';
 import { TableBooking } from '../models/TableBooking';
@@ -177,6 +178,9 @@ router.post('/track-slot', async (req, res) => {
     res.status(500).json({ error: 'Failed to track slot' });
   }
 });
+
+// Get dynamic table fee based on occupancy
+router.get('/dynamic-fee', getDynamicTableFeeController);
 
 // Create a new booking
 router.post('/', createBooking);

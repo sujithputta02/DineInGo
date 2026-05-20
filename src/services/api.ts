@@ -871,6 +871,11 @@ async function cancelTableBooking(data: { restaurantId: string; tableId: string;
   return apiRequest(url, 'POST', data);
 }
 
+async function getDynamicTableFee(restaurantId: string, date: string, time: string) {
+  const url = `${API_URL}/api/v1/bookings/dynamic-fee?restaurantId=${encodeURIComponent(restaurantId)}&date=${encodeURIComponent(date)}&time=${encodeURIComponent(time)}`;
+  return apiRequest(url, 'GET');
+}
+
 // Booking API combined object
 export const bookingsApi = {
   getAll: getAllBookings,
@@ -887,6 +892,7 @@ export const bookingsApi = {
   getTableBookings: getTableBookingsInApi,
   getBookedTables: getBookedTablesInApi,
   cancelTable: cancelTableBooking,
+  getDynamicTableFee,
 };
 
 // Menu API implementation functions

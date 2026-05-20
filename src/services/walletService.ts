@@ -279,92 +279,61 @@ class WalletService {
 
     let items: InvoiceItem[] = [];
     let subtotal = 0;
+    let tax = 0;
+    let total = 0;
 
-    // Check if it's an event booking with seats
     const isEvent = !!(booking.eventId || booking.eventName);
 
-    // Determine items based on booking type
-    if (isEvent && booking.selectedSeats && booking.selectedSeats.length > 0) {
-      // Event booking with seat selection
-      items = booking.selectedSeats.map((seatId: string) => ({
-        name: `Seat ${seatId}`,
-        description: `Event: ${booking.eventName || 'Event Ticket'}`,
-        quantity: 1,
-        unitPrice: booking.totalAmount ? Math.round(booking.totalAmount / booking.selectedSeats.length) : 0,
-        total: booking.totalAmount ? Math.round(booking.totalAmount / booking.selectedSeats.length) : 0
-      }));
-    } else if (isEvent) {
-      // Event booking without seat selection (general admission)
-      const guests = booking.guests || booking.numberOfGuests || 1;
-      const pricePerPerson = booking.totalAmount ? Math.round(booking.totalAmount / guests) : 0;
-      items = [{
-        name: `${booking.eventName || 'Event'} - General Admission`,
-        description: `${guests} ${guests === 1 ? 'Ticket' : 'Tickets'}`,
-        quantity: guests,
-        unitPrice: pricePerPerson,
-        total: booking.totalAmount || 0
-      }];
-    } else {
-      // Restaurant booking
-      items = [];
-
-      // 1. Add Food Items if present
-      if (booking.selectedItems && booking.selectedItems.length > 0) {
-        const foodItems = booking.selectedItems.map((item: any) => ({
-          name: item.name,
-          description: item.description || '',
-          quantity: Number(item.quantity) || 1,
-          unitPrice: Number(item.price) || 0,
-          total: (Number(item.price) || 0) * (Number(item.quantity) || 1)
+    if (isEvent) {
+      if (booking.selectedSeats && booking.selectedSeats.length > 0) {
+        items = booking.selectedSeats.map((seatId: string) => ({
+          name: `Seat ${seatId}`,
+          description: `Event: ${booking.eventName || 'Event Ticket'}`,
+          quantity: 1,
+          unitPrice: booking.totalAmount ? Math.round((booking.totalAmount / 1.18) / booking.selectedSeats.length) : 0,
+          total: booking.totalAmount ? Math.round((booking.totalAmount / 1.18) / booking.selectedSeats.length) : 0
         }));
-        items = [...items, ...foodItems];
+      } else {
+        const guests = booking.guests || booking.numberOfGuests || 1;
+        const totalTaxable = booking.totalAmount ? (booking.totalAmount / 1.18) : 0;
+        const pricePerPerson = Math.round(totalTaxable / guests);
+        items = [{
+          name: `${booking.eventName || 'Event'} - General Admission`,
+          description: `${guests} ${guests === 1 ? 'Ticket' : 'Tickets'}`,
+          quantity: guests,
+          unitPrice: pricePerPerson,
+          total: Number(totalTaxable.toFixed(2))
+        }];
       }
+      subtotal = items.reduce((sum: number, item: InvoiceItem) => sum + item.total, 0);
+      total = booking.totalAmount || (subtotal * 1.18);
+      tax = total - subtotal;
+      // Restaurant Booking
+      const tableFee = Number((booking as any).basePrice) || 25.00;
+      items.push({
+        name: `Table Reservation - ${booking.restaurantName || 'Venue'}`,
+        description: '0% GST',
+        quantity: 1,
+        unitPrice: tableFee,
+        total: tableFee
+      });
 
-      // 2. Add Reservation Fee / Base Cost if applicable
-      // Check if there's a base cost separate from food items.
-      // If booking.totalAmount exists, we need to reconcile it.
-      // Typically, booking.totalAmount is the final charged amount.
-      // If items exist, summing them usually gives the subtotal.
+      const foodItems = (booking.selectedItems || []).map((item: any) => ({
+        name: item.name,
+        description: '5% GST Food Item',
+        quantity: Number(item.quantity) || 1,
+        unitPrice: Number(item.price) || 0,
+        total: (Number(item.price) || 0) * (Number(item.quantity) || 1)
+      }));
+      items = [...items, ...foodItems];
 
-      // In the reported issue, it seems "Dining Reservation" is an item.
-      // We should detect if we need to add a "Table Reservation" item.
-      // If items sum is less than totalAmount (minus tax), maybe there is a base fee?
-      // OR, we just explicitly add a reservation item if the data supports it.
+      const foodSubtotal = foodItems.reduce((sum: number, item: InvoiceItem) => sum + item.total, 0);
+      const foodTax = foodSubtotal * 0.05;
 
-      // Let's assume for now that if the user has a specific reservation cost that is NOT food, it should be added.
-      // BUT we don't have a specific field for "reservationFee".
-      // However, the screenshot proved a "Dining Reservation" item exists. 
-      // This implies it might have been passed in selectedItems in the broken case, OR we should add it.
-
-      // Safe fallback: 
-      // Identify if we need a reservation item. 
-      // If `booking.totalAmount` is significantly larger than `foodItems` total, add the difference as "Reservation Fee"?
-
-      // Actually, simplest fix for "Calculation is wrong" (Subtotal only captures one item)
-      // is faithfully summing ALL items.
-
-      // If the "Dining Reservation" was already in `selectedItems` (as suspected), simple reduction fixes it.
-      // If it wasn't, we add it. 
-      // Let's ensure we account for everything.
-
-      // Note: If the screenshot showed "Dining Reservation" AND food, and the code was entering the `selectedItems` block,
-      // then "Dining Reservation" MUST be in `selectedItems`.
-      // So the issue was likely just the Reduce logic or bad data types.
-      // I am enforcing Number() casting above to fix potential string concat issues.
+      subtotal = tableFee + foodSubtotal;
+      tax = foodTax;
+      total = tableFee + foodSubtotal + foodTax;
     }
-
-    // Recalculate subtotal from ALL items
-    subtotal = items.reduce((sum: number, item: InvoiceItem) => sum + item.total, 0);
-
-    // If totalAmount is provided, it already includes tax
-    // Calculate tax backwards from total
-    // Calculate tax (18%) and total based on the calculated subtotal
-    const tax = subtotal * 0.18;
-    const total = subtotal + tax;
-
-    // Note: We ignore booking.totalAmount for the calculation to ensure the invoice is mathematically consistent.
-    // If booking.totalAmount stored the "paid" amount and it differs, that's a separate reconciliation issue,
-    // but the Invoice document itself must be self-consistent (Items -> Subtotal -> Total).
 
     return {
       id: `invoice-${Date.now()}`,
@@ -378,9 +347,9 @@ class WalletService {
       restaurantName: booking.restaurantName,
       eventName: booking.eventName,
       items,
-      subtotal,
-      tax,
-      total,
+      subtotal: Number(subtotal.toFixed(2)),
+      tax: Number(tax.toFixed(2)),
+      total: Number(total.toFixed(2)),
       status: 'pending',
       notes: booking.specialRequest || ''
     };

@@ -135,15 +135,19 @@ const BookingCard: React.FC<BookingCardProps> = ({
             onClick={() => onGenerateInvoice && onGenerateInvoice(booking)}
         >
             {/* Header with Gradient and Status */}
-            <div className={`relative h-48 flex items-center justify-center p-6 ${isEvent ? 'bg-gradient-to-br from-purple-500 to-indigo-600' : 'bg-gradient-to-br from-emerald-400 to-teal-600'}`}>
-                <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm text-emerald-700 dark:text-emerald-400 shadow-sm uppercase tracking-wider">
+            <div className={`relative h-48 flex items-center justify-center p-6 ${
+                isEvent 
+                    ? 'bg-gradient-to-br from-purple-500 to-indigo-600 dark:from-purple-900 dark:to-indigo-950' 
+                    : 'bg-gradient-to-br from-emerald-400 to-teal-600 dark:from-emerald-900 dark:to-teal-950'
+            }`}>
+                <div className="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-bold bg-white/90 dark:bg-black/40 backdrop-blur-sm text-emerald-700 dark:text-emerald-400 shadow-sm uppercase tracking-wider border border-white/20 dark:border-white/10">
                     {booking.status}
                 </div>
                 <div className="text-center">
                     <h3 className="text-2xl font-bold text-white mb-1 drop-shadow-sm">
                         {name}
                     </h3>
-                    <p className="text-white/80 text-xs font-medium uppercase tracking-[0.2em]">
+                    <p className="text-white/90 dark:text-white/60 text-xs font-medium uppercase tracking-[0.2em]">
                         {type}
                     </p>
                 </div>
@@ -251,6 +255,21 @@ const BookingCard: React.FC<BookingCardProps> = ({
                                 <p className={`text-[11px] text-gray-500 leading-relaxed ${isEvent ? 'dark:text-purple-300/80' : 'dark:text-emerald-300/80'}`}>
                                     <span className="font-bold text-gray-700 dark:text-gray-300">Request:</span> {booking.specialRequests || booking.specialRequest}
                                 </p>
+                            </div>
+                        )}
+
+                        {/* Pre-ordered Food Items */}
+                        {!isEvent && booking.selectedItems && booking.selectedItems.length > 0 && (
+                            <div className="bg-emerald-50/50 dark:bg-emerald-950/10 p-3 rounded-2xl border border-emerald-100/50 dark:border-emerald-900/20 space-y-2">
+                                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Pre-ordered Provisioning:</p>
+                                <div className="space-y-1.5 max-h-24 overflow-y-auto pr-1">
+                                    {booking.selectedItems.map((item: any, idx: number) => (
+                                        <div key={idx} className="flex justify-between items-center text-xs">
+                                            <span className="font-medium text-gray-700 dark:text-emerald-200/80 truncate max-w-[150px]">{item.name}</span>
+                                            <span className="font-bold text-gray-900 dark:text-white">{item.quantity}x <span className="text-[10px] font-normal text-gray-400">@ ₹{item.price}</span></span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 

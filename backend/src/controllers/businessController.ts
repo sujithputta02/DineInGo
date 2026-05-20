@@ -12,6 +12,9 @@ const getImageUrl = (imagePath: string | undefined, req: Request): string => {
   if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
     return imagePath;
   }
+  if (imagePath.startsWith('/images/')) {
+    return imagePath;
+  }
   const protocol = req.protocol;
   const host = req.get('host');
   return `${protocol}://${host}${imagePath}`;
@@ -146,6 +149,8 @@ const transformBusinessData = (business: any, req: Request): any => {
 
     // Pricing
     basePrice: business.basePrice || 100,
+    normalCost: business.normalCost !== undefined ? business.normalCost : (business.basePrice || 25.00),
+    peakTimeCost: business.peakTimeCost !== undefined ? business.peakTimeCost : 50.00,
     priceLevel: Math.ceil((business.basePrice || 100) / 100),
     tierPricing: business.tierPricing,
 

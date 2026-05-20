@@ -101,23 +101,31 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
   const isEvent = !!(booking.eventId || booking.eventName);
   const bookingName = booking.eventName || booking.restaurantName || 'Booking';
 
-  // Use totalAmount from booking if available, otherwise calculate
   let subtotal = 0;
+  let tax = 0;
   let total = 0;
+  let tableFee = 0;
+  let foodSubtotal = 0;
+  let foodTax = 0;
 
-  if (booking.totalAmount) {
-    total = Number(booking.totalAmount);
-    subtotal = total / 1.18; // Remove 18% tax
+  if (isEvent) {
+    total = Number(booking.totalAmount || (booking as any).amount || 0);
+    subtotal = total / 1.18;
+    tax = total - subtotal;
   } else {
-    const itemsTotal = (booking.selectedItems ?? []).reduce(
-      (sum: number, item: { price: number; quantity: number }) => sum + item.price * item.quantity,
+    tableFee = Number((booking as any).basePrice) || 25.00;
+    const foodItems = booking.selectedItems || [];
+    foodSubtotal = foodItems.reduce(
+      (sum: number, item: any) => sum + (Number(item.price) * Number(item.quantity)),
       0
     );
-    subtotal = itemsTotal;
-    total = subtotal * 1.18;
+    foodTax = foodSubtotal * 0.05; // 5% GST added on top of food items
+
+    subtotal = tableFee + foodSubtotal;
+    tax = foodTax;
+    total = tableFee + foodSubtotal + foodTax;
   }
 
-  const tax = total - subtotal;
   const pricePerUnit = Number(booking.guests) > 0 ? subtotal / Number(booking.guests) : subtotal;
 
   const invoiceNumber = `INV-${booking._id || booking.id}-${new Date().getFullYear()}`;
@@ -269,25 +277,38 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
                 </tr>
               </thead>
               <tbody>
-                {/* Display main booking item */}
-                <tr className={`border-b ${isDarkTheme ? 'border-gray-800' : 'border-gray-200'}`}>
-                  <td className="py-3">
-                    {isEvent ? 'Event Registration' : 'Dining Reservation'} - {bookingName}
-                  </td>
-                  <td className="py-3 text-right">{booking.guests}</td>
-                  <td className="py-3 text-right">₹{pricePerUnit.toFixed(2)}</td>
-                  <td className="py-3 text-right">₹{subtotal.toFixed(2)}</td>
-                </tr>
-
-                {/* Display Selected Food Items if any */}
-                {(booking.selectedItems ?? []).map((item: { id: string; name: string; price: number; quantity: number }, idx: number) => (
-                  <tr key={item.id || idx} className={`border-b ${isDarkTheme ? 'border-gray-800' : 'border-gray-200'}`}>
-                    <td className="py-3">{item.name}</td>
-                    <td className="py-3 text-right">{item.quantity}</td>
-                    <td className="py-3 text-right">₹{item.price.toFixed(2)}</td>
-                    <td className="py-3 text-right">₹{(item.price * item.quantity).toFixed(2)}</td>
+                {isEvent ? (
+                  /* Display event booking item */
+                  <tr className={`border-b ${isDarkTheme ? 'border-gray-800' : 'border-gray-200'}`}>
+                    <td className="py-3">
+                      Event Registration - {bookingName}
+                    </td>
+                    <td className="py-3 text-right">{booking.guests}</td>
+                    <td className="py-3 text-right">₹{pricePerUnit.toFixed(2)}</td>
+                    <td className="py-3 text-right">₹{subtotal.toFixed(2)}</td>
                   </tr>
-                ))}
+                ) : (
+                  /* Display Table Reservation (0% GST) */
+                  <>
+                    <tr className={`border-b ${isDarkTheme ? 'border-gray-800' : 'border-gray-200'}`}>
+                      <td className="py-3">
+                        Table Reservation - {bookingName}
+                      </td>
+                      <td className="py-3 text-right">1</td>
+                      <td className="py-3 text-right">₹{tableFee.toFixed(2)}</td>
+                      <td className="py-3 text-right">₹{tableFee.toFixed(2)}</td>
+                    </tr>
+                    {/* Display Selected Food Items if any */}
+                    {(booking.selectedItems ?? []).map((item: { id: string; name: string; price: number; quantity: number }, idx: number) => (
+                      <tr key={item.id || idx} className={`border-b ${isDarkTheme ? 'border-gray-800' : 'border-gray-200'}`}>
+                        <td className="py-3">{item.name}</td>
+                        <td className="py-3 text-right">{item.quantity}</td>
+                        <td className="py-3 text-right">₹{Number(item.price).toFixed(2)}</td>
+                        <td className="py-3 text-right">₹{(item.price * item.quantity).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </>
+                )}
               </tbody>
             </table>
           </div>
@@ -300,7 +321,7 @@ const InvoiceModal: React.FC<InvoiceModalProps> = ({ booking, onClose, isDarkMod
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
               <div className={`flex justify-between py-2 border-b ${isDarkTheme ? 'border-gray-800' : 'border-gray-200'}`}>
-                <span className={isDarkTheme ? 'text-gray-300' : 'text-gray-700'}>Tax (18%):</span>
+                <span className={isDarkTheme ? 'text-gray-300' : 'text-gray-700'}>GST ({isEvent ? '18%' : '5% on Food'}):</span>
                 <span>₹{tax.toFixed(2)}</span>
               </div>
               <div className="flex justify-between py-2 font-bold text-lg">

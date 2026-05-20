@@ -48,6 +48,9 @@ export interface Restaurant {
   timeSlots?: any[]; // Business time slots
   floorPlan?: any; // Business floor plan data
   seatingLayout?: any; // Business seating layout data
+  basePrice?: number;
+  normalCost?: number;
+  peakTimeCost?: number;
 }
 
 export interface Event {
@@ -88,6 +91,7 @@ export interface Booking {
   fullName?: string;
   email?: string;
   phoneNumber?: string;
+  basePrice?: number;
   table?: string;
   specialRequest?: string;
   occasion?: string;

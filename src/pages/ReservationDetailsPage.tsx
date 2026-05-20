@@ -23,6 +23,8 @@ const ReservationDetailsPage: React.FC = () => {
   const [selectedMenuItems, setSelectedMenuItems] = useState<{ [key: string]: number }>({});
   const [showMenuItems, setShowMenuItems] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dynamicTableFee, setDynamicTableFee] = useState<number | null>(null);
+  const [isPeakTime, setIsPeakTime] = useState<boolean>(false);
   const [theme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
@@ -94,6 +96,24 @@ const ReservationDetailsPage: React.FC = () => {
           menuItems[itemId] = parseInt(count);
         });
         setSelectedMenuItems(menuItems);
+
+        // Fetch dynamic table fee based on occupancy
+        if (type !== 'event') {
+          try {
+            const date = searchParams.get('date') || '';
+            const time = searchParams.get('time') || '';
+            if (id && date && time) {
+              const feeResponse = await bookingsApi.getDynamicTableFee(id, date, time);
+              if (feeResponse && feeResponse.fee !== undefined) {
+                setDynamicTableFee(Number(feeResponse.fee));
+                setIsPeakTime(!!feeResponse.isPeak);
+                console.log('Successfully loaded dynamic table fee:', feeResponse);
+              }
+            }
+          } catch (feeError) {
+            console.error('Error fetching dynamic table fee, falling back to business basePrice:', feeError);
+          }
+        }
       } catch (error) {
         console.error('Error fetching data:', error);
         setError('Failed to fetch restaurant');
@@ -111,6 +131,29 @@ const ReservationDetailsPage: React.FC = () => {
       const item = restaurant.menu?.find(m => m.id === itemId);
       return sum + (item?.price || 0) * count;
     }, 0);
+  };
+
+  const getPricingBreakdown = () => {
+    const isEvent = type === 'event';
+    const guests = parseInt(searchParams.get('guests') || '1', 10);
+    if (isEvent) {
+      const eventPrice = parseFloat(searchParams.get('eventPrice') || '0');
+      const subtotal = eventPrice * guests;
+      const tax = subtotal * 0.18;
+      const total = subtotal + tax;
+      return { subtotal, tax, tableFee: 0, total, isEvent: true };
+    } else {
+      const foodSubtotal = Object.entries(selectedMenuItems).reduce((sum, [itemId, quantity]) => {
+        const item = restaurant?.menu?.find(m => m.id === itemId);
+        return sum + (item?.price || 0) * quantity;
+      }, 0);
+      const foodTax = foodSubtotal * 0.05;
+      const tableFee = dynamicTableFee !== null 
+        ? dynamicTableFee 
+        : (restaurant ? (Number((restaurant as any).normalCost) ?? Number((restaurant as any).basePrice) ?? Number((restaurant as any).tablePrice) ?? 25.00) : 25.00);
+      const total = foodSubtotal + foodTax + tableFee;
+      return { subtotal: foodSubtotal, tax: foodTax, tableFee, total, isEvent: false };
+    }
   };
 
   const handleAddToAppleWallet = async () => {
@@ -201,23 +244,45 @@ const ReservationDetailsPage: React.FC = () => {
         if (!user) {
           throw new Error('You must be logged in to make a reservation');
         }
+        const isEvent = type === 'event';
+        const guests = parseInt(searchParams.get('guests') || '1', 10);
+        const selectedItemsList = Object.entries(selectedMenuItems).map(([itemId, quantity]) => {
+          const item = restaurant?.menu?.find(m => m.id === itemId);
+          return item ? { id: itemId, name: item.name, price: item.price, quantity } : null;
+        }).filter(Boolean);
+
+        let finalTotalAmount = 0;
+        let tableFee = 25.00;
+        if (isEvent) {
+          const eventPrice = parseFloat(searchParams.get('eventPrice') || '0');
+          const subtotal = eventPrice * guests;
+          finalTotalAmount = subtotal * 1.18; // 18% GST on event registrations
+        } else {
+          tableFee = dynamicTableFee !== null 
+            ? dynamicTableFee 
+            : (restaurant ? (Number((restaurant as any).normalCost) ?? Number((restaurant as any).basePrice) ?? Number((restaurant as any).tablePrice) ?? 25.00) : 25.00);
+          const foodSubtotal = selectedItemsList.reduce((sum, item: any) => sum + (item.price * item.quantity), 0);
+          const foodTax = foodSubtotal * 0.05; // 5% GST on food items
+          finalTotalAmount = foodSubtotal + foodTax + tableFee;
+        }
+
         // Build booking object from reservation details
         const bookingData = {
-          restaurantId: restaurant?.id,
-          restaurantName: restaurant?.name || searchParams.get('restaurantName') || 'Restaurant',
+          restaurantId: !isEvent ? (restaurant?.id || id) : undefined,
+          eventId: isEvent ? id : undefined,
+          restaurantName: !isEvent ? (restaurant?.name || searchParams.get('restaurantName') || 'Restaurant') : undefined,
+          eventName: isEvent ? (searchParams.get('eventName') || 'Event') : undefined,
           date: searchParams.get('date') || '',
           time: searchParams.get('time') || '',
-          guests: parseInt(searchParams.get('guests') || '1', 10),
+          guests: guests,
           table: searchParams.get('table') || '',
           specialRequests: searchParams.get('specialRequest') || '',
           fullName: user.displayName || searchParams.get('fullName') || '',
           email: searchParams.get('email') || user.email || '',
           phoneNumber: searchParams.get('phoneNumber') || '',
-          selectedItems: Object.entries(selectedMenuItems).map(([itemId, quantity]) => {
-            const item = restaurant?.menu?.find(m => m.id === itemId);
-            return item ? { id: itemId, name: item.name, price: item.price, quantity } : null;
-          }).filter(Boolean),
-          totalAmount: getTotalPrice()
+          selectedItems: selectedItemsList,
+          totalAmount: Number(finalTotalAmount.toFixed(2)),
+          basePrice: !isEvent ? tableFee : parseFloat(searchParams.get('eventPrice') || '0')
         };
         // Save booking through API
         const savedBooking = await bookingsApi.create(bookingData);
@@ -513,11 +578,40 @@ const ReservationDetailsPage: React.FC = () => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
                     </svg>
                   </div>
-                  Provisioning Details
+                  {type === 'event' ? 'Pricing Details' : 'Provisioning Details'}
                 </h3>
                 <div className="text-right">
                   <p className={`text-[10px] font-black uppercase tracking-widest mb-1 ${isDarkMode ? 'text-gray-500' : 'text-gray-400'}`}>Total Valuation</p>
-                  <p className="text-2xl font-black text-emerald-500">₹{getTotalPrice()}</p>
+                  <p className="text-2xl font-black text-emerald-500">₹{getPricingBreakdown().total.toFixed(2)}</p>
+                </div>
+              </div>
+
+              {/* Breakdown details */}
+              <div className={`rounded-[2rem] p-6 mb-6 border-2 transition-all ${isDarkMode ? 'bg-gray-850 border-gray-800' : 'bg-white border-gray-100 shadow-sm'} flex flex-col gap-3 text-sm`}>
+                <div className="flex justify-between">
+                  <span className={`font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>{type === 'event' ? 'Ticket Subtotal' : 'Food Subtotal'}:</span>
+                  <span className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getPricingBreakdown().subtotal.toFixed(2)}</span>
+                </div>
+                {type !== 'event' && (
+                  <div className="flex justify-between items-center">
+                    <span className={`font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                      Table Reservation Fee (No GST):
+                      {isPeakTime && (
+                        <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-500 text-white rounded-full animate-pulse shadow-sm">
+                          ⚡ PEAK TIME SURGE
+                        </span>
+                      )}
+                    </span>
+                    <span className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getPricingBreakdown().tableFee.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className={`font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>GST ({type === 'event' ? '18%' : '5%'}):</span>
+                  <span className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getPricingBreakdown().tax.toFixed(2)}</span>
+                </div>
+                <div className={`border-t pt-3 mt-1 flex justify-between font-black text-lg ${isDarkMode ? 'border-gray-800 text-white' : 'border-gray-200 text-gray-900'}`}>
+                  <span>Grand Total:</span>
+                  <span className="text-emerald-500">₹{getPricingBreakdown().total.toFixed(2)}</span>
                 </div>
               </div>
               

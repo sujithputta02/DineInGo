@@ -38,6 +38,8 @@ interface Business {
     coverImage?: string | File | null;
     status: 'active' | 'paused' | 'draft';
     basePrice: number;
+    normalCost?: number;
+    peakTimeCost?: number;
     cuisine: string[];
     weeklySchedule: any;
     dailySlots: any[];
@@ -127,10 +129,19 @@ function BusinessSettings() {
         if (!businessForm || !selectedBusinessId) return;
         try {
             setSaving(true);
-            await businessApi.update(selectedBusinessId, businessForm);
+            
+            // Ensure location is a string to match backend schema
+            const payloadToSave = { ...businessForm };
+            if (typeof payloadToSave.location === 'object' && payloadToSave.location !== null) {
+                payloadToSave.location = (payloadToSave.location as any).address || 
+                                         (payloadToSave.location as any).city || 
+                                         JSON.stringify(payloadToSave.location);
+            }
+            
+            await businessApi.update(selectedBusinessId, payloadToSave);
 
             // Update local state
-            setBusinesses(prev => prev.map(b => b.id === selectedBusinessId ? businessForm : b));
+            setBusinesses(prev => prev.map(b => b.id === selectedBusinessId ? payloadToSave : b));
             toast.success('Business settings updated successfully');
         } catch (error) {
             console.error('Error updating business:', error);
@@ -484,6 +495,41 @@ function BusinessSettings() {
                         <DollarSign className="text-emerald-500" size={24} />
                         Pricing Configuration
                     </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 bg-slate-50/50 p-6 rounded-3xl border border-slate-100">
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 ml-1">Normal Table Reservation Fee (₹)</label>
+                            <input
+                                type="number"
+                                value={businessForm.normalCost ?? businessForm.basePrice ?? 25}
+                                onChange={e => {
+                                    const val = parseInt(e.target.value) || 0;
+                                    setBusinessForm({ 
+                                        ...businessForm, 
+                                        normalCost: val,
+                                        basePrice: val // Sync for legacy queries
+                                    });
+                                }}
+                                className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800"
+                                placeholder="Ex: 25"
+                            />
+                            <p className="text-[10px] text-slate-500 ml-1">Standard flat fee charged for standard table reservations.</p>
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-semibold text-slate-700 ml-1">Peak Time Surge Reservation Fee (₹)</label>
+                            <input
+                                type="number"
+                                value={businessForm.peakTimeCost ?? 50}
+                                onChange={e => setBusinessForm({ 
+                                    ...businessForm, 
+                                    peakTimeCost: parseInt(e.target.value) || 0 
+                                })}
+                                className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800"
+                                placeholder="Ex: 50"
+                            />
+                            <p className="text-[10px] text-slate-500 ml-1">Dynamically triggered surge fee when the venue bookings are close to full (occupancy ≥ 70%).</p>
+                        </div>
+                    </div>
+
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {['standard', 'premium', 'vip'].map((tier) => (
                             <div key={tier} className="bg-slate-50 border border-slate-200 rounded-3xl p-6 hover:shadow-md transition-all">
@@ -498,10 +544,10 @@ function BusinessSettings() {
                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Price (₹)</label>
                                         <input
                                             type="number"
-                                            value={(businessForm.tierPricing as any)[tier].price}
+                                            value={(businessForm.tierPricing as any)[tier].price ?? 0}
                                             onChange={e => {
                                                 const newPricing = { ...businessForm.tierPricing };
-                                                (newPricing as any)[tier].price = parseInt(e.target.value);
+                                                (newPricing as any)[tier].price = parseInt(e.target.value) || 0;
                                                 setBusinessForm({ ...businessForm, tierPricing: newPricing });
                                             }}
                                             className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800"
@@ -511,10 +557,10 @@ function BusinessSettings() {
                                         <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">Default Capacity</label>
                                         <input
                                             type="number"
-                                            value={(businessForm.tierPricing as any)[tier].defaultCapacity}
+                                            value={(businessForm.tierPricing as any)[tier].defaultCapacity ?? 0}
                                             onChange={e => {
                                                 const newPricing = { ...businessForm.tierPricing };
-                                                (newPricing as any)[tier].defaultCapacity = parseInt(e.target.value);
+                                                (newPricing as any)[tier].defaultCapacity = parseInt(e.target.value) || 0;
                                                 setBusinessForm({ ...businessForm, tierPricing: newPricing });
                                             }}
                                             className="w-full px-4 py-3 bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-emerald-500 outline-none font-bold text-slate-800"
@@ -570,7 +616,11 @@ function BusinessSettings() {
                                 className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-emerald-100 transition-all group overflow-hidden relative cursor-pointer"
                                 onClick={() => {
                                     setSelectedBusinessId(biz.id);
-                                    setBusinessForm(JSON.parse(JSON.stringify(biz))); // Deep clone for editing
+                                    const formClone = JSON.parse(JSON.stringify(biz)); // Deep clone for editing
+                                    if (typeof formClone.location === 'object' && formClone.location !== null) {
+                                        formClone.location = formClone.location.address || formClone.location.city || JSON.stringify(formClone.location);
+                                    }
+                                    setBusinessForm(formClone);
                                 }}
                             >
                                 <div className="flex items-start justify-between mb-4">

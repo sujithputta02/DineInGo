@@ -4,6 +4,7 @@ import { Event } from '../models/Event';
 import { UserStats } from '../models/UserStats';
 import { Restaurant } from '../models/Restaurant';
 import { TableBooking } from '../models/TableBooking';
+import { Business } from '../models/Business';
 import { generateBothWalletPasses } from '../utils/walletPassGenerator';
 import mongoose from 'mongoose';
 import { emailService } from '../services/emailService';
@@ -186,38 +187,62 @@ const generateInvoicePdfBuffer = async (bookingData: any): Promise<Buffer> => {
       let rowY = tableTop + 30;
       doc.font('Helvetica').fillColor('#4b5563');
 
-      // Base Reservation Item
-      const basePrice = bookingData.amount ? 0 : 25.00; // Mock base if no items
-      if (basePrice > 0 || bookingData.amount) {
+      // Item details and pricing based on booking type
+      const isEvent = !!(bookingData.eventId || bookingData.eventName);
+
+      let subtotal = 0;
+      let tax = 0;
+      let total = 0;
+
+      if (isEvent) {
+        // Event booking: 18% GST
+        const guests = Number(bookingData.guests || 1);
+        total = Number(bookingData.totalAmount || bookingData.amount || 0);
+        subtotal = total / 1.18;
+        tax = total - subtotal;
+        const unitPrice = subtotal / guests;
+
+        doc.text(`${bookingData.eventName || 'Event Registration'}`, 40, rowY);
+        doc.text(`${guests}`, 300, rowY, { width: 50, align: 'center' });
+        doc.text(`₹${unitPrice.toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
+        doc.text(`₹${subtotal.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+        rowY += 25;
+      } else {
+        // Restaurant booking: 5% GST on food, 0% GST on table reservation fee (flat ₹25.00)
+        const tableFee = Number(bookingData.basePrice) || 25.00;
         doc.text(`Table Reservation - ${bookingData.restaurantName || 'Venue'}`, 40, rowY);
         doc.text('1', 300, rowY, { width: 50, align: 'center' });
-        doc.text(`₹${(bookingData.amount || basePrice).toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
-        doc.text(`₹${(bookingData.amount || basePrice).toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+        doc.text(`₹${tableFee.toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
+        doc.text(`₹${tableFee.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
         rowY += 25;
-      }
 
-      // Pre-ordered items
-      (bookingData.selectedItems || []).forEach((item: any) => {
-        doc.text(item.name, 40, rowY);
-        doc.text(`${item.quantity}`, 300, rowY, { width: 50, align: 'center' });
-        doc.text(`₹${Number(item.price).toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
-        doc.text(`₹${(item.price * item.quantity).toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
-        rowY += 25;
-      });
+        // Pre-ordered food items
+        const foodItems = bookingData.selectedItems || [];
+        foodItems.forEach((item: any) => {
+          doc.text(item.name, 40, rowY);
+          doc.text(`${item.quantity}`, 300, rowY, { width: 50, align: 'center' });
+          doc.text(`₹${Number(item.price).toFixed(2)}`, 380, rowY, { width: 70, align: 'right' });
+          doc.text(`₹${(item.price * item.quantity).toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
+          rowY += 25;
+        });
+
+        const foodSubtotal = foodItems.reduce((acc: number, item: any) => acc + (Number(item.price) * Number(item.quantity)), 0);
+        const foodTax = foodSubtotal * 0.05;
+
+        subtotal = tableFee + foodSubtotal;
+        tax = foodTax;
+        total = tableFee + foodSubtotal + foodTax;
+      }
 
       doc.moveTo(40, rowY + 5).lineTo(555, rowY + 5).strokeColor('#f3f4f6').stroke();
 
       // --- TOTALS ---
-      const subtotal = bookingData.amount || (bookingData.selectedItems || []).reduce((acc: number, item: any) => acc + (item.price * item.quantity), 0);
-      const tax = subtotal * 0.05; // 5% GST
-      const total = subtotal + tax;
-
       rowY += 20;
       doc.fontSize(10).font('Helvetica').fillColor('#6b7280').text('Subtotal', 380, rowY, { width: 70, align: 'right' });
       doc.fillColor('#111827').text(`₹${subtotal.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
 
       rowY += 20;
-      doc.fillColor('#6b7280').text('GST (5%)', 380, rowY, { width: 70, align: 'right' });
+      doc.fillColor('#6b7280').text(`GST (${isEvent ? '18%' : '5% on Food'})`, 380, rowY, { width: 70, align: 'right' });
       doc.fillColor('#111827').text(`₹${tax.toFixed(2)}`, 480, rowY, { width: 75, align: 'right' });
 
       rowY += 25;
@@ -297,9 +322,24 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
       eventName: req.body.eventName,
       selectedItems: req.body.selectedItems,
       totalAmount: req.body.totalAmount,
+      basePrice: req.body.basePrice,
       createdAt: new Date(),
       updatedAt: new Date()
     };
+
+    if (!bookingData.basePrice && !bookingData.eventId && bookingData.restaurantId) {
+      try {
+        const feeResponse = await getDynamicTableFee(
+          String(bookingData.restaurantId),
+          String(bookingData.date || new Date().toISOString().split('T')[0]),
+          String(bookingData.time || '18:00')
+        );
+        bookingData.basePrice = feeResponse.fee;
+        console.log('Fetched dynamic fallback table price:', bookingData.basePrice);
+      } catch (err) {
+        console.log('Error fetching dynamic table price on backend fallback:', err);
+      }
+    }
 
     // Try to convert to ObjectId if it looks like one (24 hex characters)
     if (bookingData.restaurantId && typeof bookingData.restaurantId === 'string') {
@@ -1215,6 +1255,7 @@ export const confirmBooking = async (req: Request, res: Response): Promise<void>
             guests: booking.seats || booking.guests || 1,
             selectedSeats: booking.seatNumbers || booking.selectedSeats || [],
             totalAmount: booking.amount || booking.totalAmount,
+            selectedItems: booking.selectedItems || [],
             fullName: booking.customerName || (booking as any).fullName,
             email: email,
             phoneNumber: booking.customerPhone || (booking as any).phoneNumber,
@@ -1324,5 +1365,79 @@ export const deleteBooking = async (req: Request, res: Response): Promise<void> 
   } catch (error) {
     console.error('Error deleting booking:', error);
     res.status(500).json({ message: 'Error deleting booking' });
+  }
+};
+
+// Calculate dynamic table fee based on current slot bookings occupancy
+export const getDynamicTableFee = async (restaurantId: string, date: string, time: string): Promise<{ fee: number; isPeak: boolean; normalCost: number; peakTimeCost: number; occupancyRate: number; totalTables: number; bookedCount: number }> => {
+  try {
+    const business = await Business.findOne({
+      $or: [
+        { _id: mongoose.Types.ObjectId.isValid(restaurantId) ? new mongoose.Types.ObjectId(restaurantId) : undefined },
+        { restaurantId: String(restaurantId) }
+      ].filter(q => q !== undefined)
+    });
+
+    if (!business) {
+      return { fee: 25.00, isPeak: false, normalCost: 25.00, peakTimeCost: 50.00, occupancyRate: 0, totalTables: 8, bookedCount: 0 };
+    }
+
+    const normalCost = Number((business as any).normalCost) || Number(business.basePrice) || 25.00;
+    const peakTimeCost = Number((business as any).peakTimeCost) || (normalCost * 2) || 50.00;
+
+    // Calculate booked tables count for this specific date and time from TableBooking collection
+    const bookedCount = await TableBooking.countDocuments({
+      restaurantId: String(restaurantId),
+      date: String(date),
+      time: String(time),
+      status: { $in: ['reserved', 'confirmed', 'blocked'] }
+    });
+
+    // Get total tables count from floorPlan
+    let totalTables = 8; // Default mock count
+    if (business.floorPlan && business.floorPlan.floors) {
+      let tablesCount = 0;
+      business.floorPlan.floors.forEach((floor: any) => {
+        if (floor.tables && Array.isArray(floor.tables)) {
+          tablesCount += floor.tables.length;
+        }
+      });
+      if (tablesCount > 0) totalTables = tablesCount;
+    }
+
+    // Trigger peak time if occupancy is >= 70% (i.e. close to full!)
+    const occupancyRate = totalTables > 0 ? (bookedCount / totalTables) : 0;
+    const isPeak = occupancyRate >= 0.70;
+
+    console.log(`Dynamic Fee calculation for ${restaurantId} at ${date} ${time}: occupancy=${bookedCount}/${totalTables} (${(occupancyRate * 100).toFixed(1)}%), isPeak=${isPeak}, fee=${isPeak ? peakTimeCost : normalCost}`);
+
+    return {
+      fee: isPeak ? peakTimeCost : normalCost,
+      isPeak,
+      normalCost,
+      peakTimeCost,
+      occupancyRate,
+      totalTables,
+      bookedCount
+    };
+  } catch (err) {
+    console.error('Error calculating dynamic table fee:', err);
+    return { fee: 25.00, isPeak: false, normalCost: 25.00, peakTimeCost: 50.00, occupancyRate: 0, totalTables: 8, bookedCount: 0 };
+  }
+};
+
+// API Endpoint Controller
+export const getDynamicTableFeeController = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { restaurantId, date, time } = req.query;
+    if (!restaurantId || !date || !time) {
+      res.status(400).json({ error: 'Missing required query parameters' });
+      return;
+    }
+    const result = await getDynamicTableFee(String(restaurantId), String(date), String(time));
+    res.status(200).json(result);
+  } catch (error) {
+    console.error('Error in dynamic fee controller:', error);
+    res.status(500).json({ error: 'Failed to calculate dynamic table fee' });
   }
 }; 

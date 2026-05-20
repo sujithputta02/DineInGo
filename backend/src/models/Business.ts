@@ -41,6 +41,8 @@ export interface IBusiness extends Document {
   timeSlots: ITimeSlot[];
   capacity: number;
   basePrice: number;
+  normalCost?: number;
+  peakTimeCost?: number;
   
   // Pricing configuration
   tierPricing: {
@@ -202,6 +204,8 @@ const BusinessSchema = new Schema<IBusiness>({
   timeSlots: [TimeSlotSchema],
   capacity: { type: Number, default: 0 },
   basePrice: { type: Number, required: true },
+  normalCost: { type: Number, default: 25.00 },
+  peakTimeCost: { type: Number, default: 50.00 },
   
   // Pricing configuration
   tierPricing: {
@@ -236,5 +240,10 @@ const BusinessSchema = new Schema<IBusiness>({
 BusinessSchema.index({ ownerId: 1, status: 1 });
 BusinessSchema.index({ type: 1, status: 1 });
 BusinessSchema.index({ location: 1 });
+
+// Force delete the model to ensure clean slate
+if (mongoose.models.Business) {
+  delete mongoose.models.Business;
+}
 
 export const Business = mongoose.model<IBusiness>('Business', BusinessSchema);
