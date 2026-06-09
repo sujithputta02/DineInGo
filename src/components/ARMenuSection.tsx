@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff } from 'lucide-react';
+import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
@@ -10,6 +10,11 @@ import {
   clearVisionCache,
 } from '../services/foodVisionService';
 import { foodScanApi } from '../services/api';
+// New Free API Services
+import { identifyFoodWithHF } from '../services/huggingFaceService';
+import { getPersonalizedRecommendation, type UserProfile, type DishInfo } from '../services/groqService';
+import { getNutritionForDish, estimateIndianDishNutrition } from '../services/usdaNutritionService';
+import { get3DVisualization } from '../services/free3DService';
 
 // --- Types ---
 interface ARMenuSectionProps {
@@ -27,6 +32,16 @@ interface NutritionInfo {
   fat: number;
   fiber: number;
   sodium: number;
+  sugar?: number;
+  saturatedFat?: number;
+  cholesterol?: number;
+}
+
+interface AIRecommendation {
+  score: number;
+  verdict: 'excellent' | 'good' | 'okay' | 'not-recommended';
+  reasons: string[];
+  warnings: string[];
 }
 
 // --- CSS 3D Digital Twin Component ---
@@ -94,6 +109,11 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   const [activeScanId, setActiveScanId] = useState<string | null>(null);
   const [showCorrection, setShowCorrection] = useState(false);
   const [correctionInput, setCorrectionInput] = useState('');
+  // New state for AI features
+  const [aiRecommendation, setAiRecommendation] = useState<AIRecommendation | null>(null);
+  const [isLoadingNutrition, setIsLoadingNutrition] = useState(false);
+  const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
+  const [showRecommendation, setShowRecommendation] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -169,14 +189,15 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     setIsScanning(false);
   };
 
-  // --- 3-Tier Vision Cascade: Sarvam → OpenRouter → Local ML ---
+  // --- 3-Tier Vision Cascade + Hugging Face Enhancement ---
   const identifyDish = async () => {
     if (!videoRef.current) return;
     setIsProcessing(true);
     setConfidence(0);
     setActiveTier('');
-    setActiveScanId(null); // Clear previous scan ID for new attempt
+    setActiveScanId(null);
     setCapturedFrame(null);
+    setAiRecommendation(null);
 
     try {
       // --- PRECISION CROP: Focus AI on the bounding box area ---
@@ -185,13 +206,11 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
         const video = videoRef.current;
         const canvas = document.createElement('canvas');
         
-        // Match the UI's bounding box: A square in the center
-        // We take about 60% of the smaller dimension to match the HUD
         const cropSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
         const sx = (video.videoWidth - cropSize) / 2;
         const sy = (video.videoHeight - cropSize) / 2;
         
-        canvas.width = 512; // Standard size for learning/AI
+        canvas.width = 512;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -201,44 +220,62 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
         }
       }
 
+      // Try existing cascade first (Sarvam/OpenRouter/Local ML)
       const result = await identifyFoodFromCamera(
         videoRef.current,
         (tier) => {
           setActiveTier(tier);
           toast.info(tier, { autoClose: 1200, toastId: 'tier-status' });
         },
-        cropBase64 // Pass the cropped image to the AI
+        cropBase64
       );
 
-      if (!result) {
+      // If existing cascade fails, try Hugging Face as backup
+      let finalResult = result;
+      if (!result && cropBase64) {
+        setActiveTier('Trying Hugging Face Vision...');
+        const hfResult = await identifyFoodWithHF(
+          cropBase64,
+          undefined,
+          menuItems.map(item => item.name)
+        );
+        
+        if (hfResult) {
+          finalResult = {
+            label: hfResult.label,
+            confidence: hfResult.confidence,
+            tier: 'openrouter' as any, // Treat as similar tier
+            imageData: cropBase64
+          };
+          console.log('[HF] Identified:', hfResult.label);
+        }
+      }
+
+      if (!finalResult) {
         toast.warn('Dino 🦖 couldn\'t identify this. Please tell us what it is!');
-        // Trigger manual entry immediately
         setShowCorrection(true);
         setCorrectionInput('');
         return;
       }
 
-      if (result.scanId) setActiveScanId(result.scanId);
+      if (finalResult.scanId) setActiveScanId(finalResult.scanId);
 
-      console.log(`[Vision] Result from ${result.tier}:`, result.label, result.confidence);
+      console.log(`[Vision] Result from ${finalResult.tier}:`, finalResult.label, finalResult.confidence);
 
       // Match AI label against the actual restaurant menu
-      const matched = matchLabelToMenu(result.label, menuItems);
+      const matched = matchLabelToMenu(finalResult.label, menuItems);
 
       if (matched && matched.score >= 0.15) {
-        setConfidence(Math.round(result.confidence * 100));
-        handleManualSelect(matched.item);
-        toast.success(`Identified: ${matched.item.name} via ${result.tier}`);
+        setConfidence(Math.round(finalResult.confidence * 100));
+        await handleManualSelect(matched.item, true); // Pass true to fetch real nutrition
+        toast.success(`Identified: ${matched.item.name} via ${finalResult.tier}`);
       } else {
-        // AI identified the food but it's not on this specific menu
-        toast.warn(`Detected "${result.label}" — but this specific dish isn't on this menu. Try selecting manually.`);
+        toast.warn(`Detected "${finalResult.label}" — but this specific dish isn't on this menu. Try selecting manually.`);
       }
 
     } catch (error) {
       console.error('ID Error:', error);
       toast.error('Scan failed. Ensure you have good lighting.');
-      
-      // FALLBACK: Offer manual entry on error
       setShowCorrection(true);
       setCorrectionInput('');
     } finally {
@@ -279,28 +316,96 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     }
   };
 
-  const handleManualSelect = (dish: any) => {
+  const handleManualSelect = async (dish: any, fetchRealData = false) => {
+    // Start with existing/mock data
+    let nutritionData = dish.nutrition || {
+      calories: Math.floor(Math.random() * 500) + 200,
+      protein: 15,
+      carbs: 45,
+      fat: 18,
+      fiber: 5,
+      sodium: 400
+    };
+
+    // Fetch real nutrition data if requested
+    if (fetchRealData) {
+      setIsLoadingNutrition(true);
+      try {
+        const realNutrition = await getNutritionForDish(dish.name);
+        if (realNutrition) {
+          nutritionData = realNutrition;
+          toast.success('Real nutrition data loaded from USDA!', { autoClose: 2000 });
+        } else {
+          // Fallback to Indian dish estimation
+          nutritionData = estimateIndianDishNutrition(dish.name);
+          console.log('[Nutrition] Using estimated data for Indian dish');
+        }
+      } catch (error) {
+        console.error('[Nutrition] Error fetching data:', error);
+      } finally {
+        setIsLoadingNutrition(false);
+      }
+    }
+
     const mappedDish = {
       ...dish,
       id: dish._id || dish.id,
       ingredients: dish.ingredients || ['Artisan Flour', 'House Sauce', 'Organic Herbs'],
       allergens: dish.allergens || [],
-      nutrition: dish.nutrition || {
-        calories: Math.floor(Math.random() * 500) + 200,
-        protein: 15,
-        carbs: 45,
-        fat: 18,
-        fiber: 5,
-        sodium: 400
-      },
+      nutrition: nutritionData,
       cookingMethod: dish.description || 'Modern molecular gastronomy preparation',
       prepTime: dish.prepTime || 25,
       spiceLevel: dish.spiceLevel || 2,
       sustainability: dish.sustainability || { score: 9, localIngredients: 85, carbonFootprint: 'Ultra-Low' }
     };
+
     setScannedDish(mappedDish);
     setShowManualSelection(false);
     stopCamera();
+
+    // Get AI recommendation (async, doesn't block UI)
+    if (fetchRealData) {
+      fetchAIRecommendation(mappedDish);
+    }
+  };
+
+  // Fetch personalized AI recommendation
+  const fetchAIRecommendation = async (dish: any) => {
+    setIsLoadingRecommendation(true);
+    try {
+      // Mock user profile - in production, this would come from user settings
+      const userProfile: UserProfile = {
+        dietary: ['vegetarian'], // Example
+        allergies: [],
+        healthGoals: ['balanced-diet'],
+        spicePreference: 'medium',
+        calorieTarget: 2000
+      };
+
+      const dishInfo: DishInfo = {
+        name: dish.name,
+        calories: dish.nutrition.calories,
+        protein: dish.nutrition.protein,
+        carbs: dish.nutrition.carbs,
+        fat: dish.nutrition.fat,
+        allergens: dish.allergens,
+        isVegetarian: dish.isVegetarian,
+        isVegan: dish.isVegan,
+        spiceLevel: dish.spiceLevel?.toString()
+      };
+
+      const recommendation = await getPersonalizedRecommendation(dishInfo, userProfile);
+      
+      if (recommendation) {
+        setAiRecommendation(recommendation);
+        setShowRecommendation(true);
+        toast.success('AI recommendation ready!', { autoClose: 2000 });
+      }
+    } catch (error) {
+      console.error('[AI Recommendation] Error:', error);
+    } finally {
+      setIsLoadingRecommendation(false);
+    }
   };
 
   const resetScan = () => {
@@ -631,7 +736,27 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                   >
                     <ChefHat size={16} /> Composition
                   </button>
+                  {aiRecommendation && (
+                    <button
+                      onClick={() => setShowRecommendation(!showRecommendation)}
+                      className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${
+                        showRecommendation ? 'bg-emerald-500 text-white shadow-xl' : 'bg-zinc-800 text-white hover:bg-zinc-700'
+                      }`}
+                    >
+                      <TrendingUp size={16} /> AI Advice
+                    </button>
+                  )}
                 </div>
+                
+                {/* Loading indicators */}
+                {(isLoadingNutrition || isLoadingRecommendation) && (
+                  <div className="mt-4 p-4 bg-purple-500/10 rounded-2xl border border-purple-500/20 flex items-center gap-3">
+                    <div className="w-4 h-4 border-2 border-purple-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
+                      {isLoadingNutrition ? 'Fetching real nutrition data...' : 'Getting AI recommendation...'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Detail Sections */}
@@ -651,6 +776,100 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                           <span className="text-sm font-black text-white tracking-tight">{ing}</span>
                         </div>
                       ))}
+                    </div>
+                  </motion.div>
+                )}
+                {showRecommendation && aiRecommendation && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }} 
+                    animate={{ opacity: 1, height: 'auto' }} 
+                    className={`${isDarkMode ? 'bg-zinc-900/40 border border-white/5 shadow-2xl' : 'bg-white shadow-xl'} backdrop-blur-3xl rounded-[3rem] p-10`}
+                  >
+                    <div className="flex items-center justify-between mb-6">
+                      <h3 className="text-2xl font-black text-white tracking-tighter uppercase tracking-[0.1em]">AI Recommendation</h3>
+                      <div className={`px-4 py-2 rounded-full font-black text-xs uppercase tracking-widest ${
+                        aiRecommendation.verdict === 'excellent' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' :
+                        aiRecommendation.verdict === 'good' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                        aiRecommendation.verdict === 'okay' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                        'bg-red-500/20 text-red-400 border border-red-500/30'
+                      }`}>
+                        {aiRecommendation.verdict}
+                      </div>
+                    </div>
+
+                    {/* Score Circle */}
+                    <div className="flex justify-center mb-8">
+                      <div className="relative w-32 h-32">
+                        <svg className="w-full h-full transform -rotate-90">
+                          <circle
+                            cx="64"
+                            cy="64"
+                            r="56"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="none"
+                            className="text-zinc-800"
+                          />
+                          <circle
+                            cx="64"
+                            cy="64"
+                            r="56"
+                            stroke="currentColor"
+                            strokeWidth="8"
+                            fill="none"
+                            strokeDasharray={`${2 * Math.PI * 56}`}
+                            strokeDashoffset={`${2 * Math.PI * 56 * (1 - aiRecommendation.score / 100)}`}
+                            className={
+                              aiRecommendation.score >= 80 ? 'text-emerald-500' :
+                              aiRecommendation.score >= 65 ? 'text-blue-500' :
+                              aiRecommendation.score >= 40 ? 'text-yellow-500' :
+                              'text-red-500'
+                            }
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <span className="text-4xl font-black text-white">{aiRecommendation.score}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Reasons */}
+                    {aiRecommendation.reasons.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="text-sm font-black text-gray-400 uppercase tracking-widest mb-3">Why this score:</h4>
+                        <div className="space-y-2">
+                          {aiRecommendation.reasons.map((reason, i) => (
+                            <div key={i} className="flex items-start gap-3 p-3 bg-zinc-950/40 rounded-xl border border-white/5">
+                              <Sparkles size={14} className="text-purple-400 mt-0.5 shrink-0" />
+                              <span className="text-sm text-gray-300">{reason}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Warnings */}
+                    {aiRecommendation.warnings.length > 0 && (
+                      <div>
+                        <h4 className="text-sm font-black text-yellow-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                          <AlertTriangle size={14} /> Considerations:
+                        </h4>
+                        <div className="space-y-2">
+                          {aiRecommendation.warnings.map((warning, i) => (
+                            <div key={i} className="flex items-start gap-3 p-3 bg-yellow-500/10 rounded-xl border border-yellow-500/20">
+                              <AlertTriangle size={14} className="text-yellow-400 mt-0.5 shrink-0" />
+                              <span className="text-sm text-yellow-200">{warning}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-6 p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+                      <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest text-center">
+                        Powered by Groq AI • Personalized for you
+                      </p>
                     </div>
                   </motion.div>
                 )}

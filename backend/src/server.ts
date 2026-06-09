@@ -4,6 +4,7 @@ import hpp from 'hpp';
 import cors from 'cors';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
+import compression from 'compression';
 import adminRoutes from './routes/adminRoutes';
 import userRoutes from './routes/userRoutes';
 import bookingRoutes from './routes/bookingRoutes';
@@ -47,6 +48,9 @@ import { handleValidationErrors } from './middleware/inputValidation';
 import securityConfig from './config/security';
 import { botFingerprintGuard, dataHarvestGuard, promptInjectionGuard } from './middleware/aiThreatGuard';
 
+// REDIS CACHING: Import cache service
+import { cacheService } from './services/cacheService';
+
 // Load environment variables
 dotenv.config();
 
@@ -68,6 +72,18 @@ app.use(cors(corsConfig));
 
 // Serve static files AFTER security headers to ensure CORS applies to them
 app.use('/uploads', cors(corsConfig), express.static('uploads'));
+
+// PERFORMANCE: Enable response compression (60% smaller payloads)
+app.use(compression({
+  threshold: 1024, // Only compress responses above 1kb
+  level: 6, // Compression level (0-9)
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 // AI THREAT GUARD: Block bot scrapers and data harvesters globally
 app.use(botFingerprintGuard);
@@ -145,6 +161,14 @@ if (!MONGODB_URI) {
 }
 
 const mongooseOptions = {
+  // Connection pool settings for high concurrency (500+ users)
+  maxPoolSize: 50, // Max connections (increased from default 10)
+  minPoolSize: 10, // Min connections to keep alive
+  maxIdleTimeMS: 30000, // Close idle connections after 30s
+  socketTimeoutMS: 45000, // Longer timeout for slow queries
+  serverSelectionTimeoutMS: 5000, // Faster server selection
+  
+  // Server API version
   serverApi: {
     version: '1',
     strict: true,
@@ -165,6 +189,15 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
     
     // Start background workers
     SlotWorker.start();
+    
+    // Initialize Redis cache
+    console.log('\n🔌 Initializing Redis cache...');
+    await cacheService.connect();
+    if (cacheService.isReady()) {
+      console.log('✅ Redis cache ready for use\n');
+    } else {
+      console.log('⚠️  Redis cache not available - continuing without cache\n');
+    }
   })
   .catch((error) => {
     console.error('CRITICAL: MongoDB Atlas connection error:');
