@@ -35,7 +35,7 @@ export function cacheMiddleware(ttl?: number) {
 
       // Intercept res.json to cache the response
       const originalJson = res.json.bind(res);
-      res.json = (body: any) => {
+      res.json = ((body: any) => {
         // Cache successful responses only (2xx status codes)
         if (res.statusCode >= 200 && res.statusCode < 300) {
           cacheService.set(cacheKey, body, ttl).catch(err => {
@@ -43,7 +43,7 @@ export function cacheMiddleware(ttl?: number) {
           });
         }
         return originalJson(body);
-      };
+      }) as any;
 
       next();
     } catch (error) {
@@ -79,8 +79,8 @@ export function invalidateCacheMiddleware(patterns: string[]) {
       return responder(body);
     };
 
-    res.send = (body: any) => invalidateAndRespond(body, originalSend);
-    res.json = (body: any) => invalidateAndRespond(body, originalJson);
+    res.send = ((body: any) => invalidateAndRespond(body, originalSend)) as any;
+    res.json = ((body: any) => invalidateAndRespond(body, originalJson)) as any;
 
     next();
   };
