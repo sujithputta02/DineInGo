@@ -692,11 +692,13 @@ export default function LandingPage() {
                   Features
                 </button>
                 <button 
+                  onClick={() => { /* TODO: Navigate to About Us */ setMobileMenuOpen(false); }}
                   style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
                 >
                   About Us
                 </button>
                 <button 
+                  onClick={() => { /* TODO: Navigate to Contact */ setMobileMenuOpen(false); }}
                   style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
                 >
                   Contact

@@ -95,19 +95,13 @@ body {
   background: white !important;
 }
 
-/* Accessibility Focus States for Keyboard Navigation */
-:focus-visible {
-  outline: 3px solid #047857 !important; /* High contrast emerald-700 */
-  outline-offset: 2px !important;
-}
-
-/* Ensure inputs, buttons, and select fields show clear focus state when navigated */
+/* Accessibility Focus States for Keyboard Navigation - Specific selectors to target focusable elements explicitly */
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [role="button"]:focus-visible {
-  outline: 3px solid #047857 !important;
+  outline: 3px solid #047857 !important; /* High contrast emerald-700 */
   outline-offset: 2px !important;
 }
