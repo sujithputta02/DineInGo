@@ -723,7 +723,7 @@ export default function LoginPage() {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="Email"
-                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                      className={`w-full px-5 py-4 rounded-xl border text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                       required
                     />
                   </motion.div>
@@ -741,7 +741,7 @@ export default function LoginPage() {
                       onChange={(e) => setResetOTP(e.target.value)}
                       placeholder="Enter 6-digit OTP"
                       maxLength={6}
-                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent text-center tracking-widest font-bold`}
+                      className={`w-full px-5 py-4 rounded-xl border text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all text-center tracking-widest font-bold`}
                       required
                     />
                   </motion.div>
@@ -758,7 +758,7 @@ export default function LoginPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="New Password"
-                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                      className={`w-full px-5 py-4 rounded-xl border text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                       required
                     />
                     <button
@@ -771,7 +771,16 @@ export default function LoginPage() {
                   </motion.div>
                 )}
 
-                {errors.general && <p className="text-red-500 text-xs text-center">{errors.general}</p>}
+                {errors.general && (
+                  <div role="alert" className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2.5 my-2">
+                    <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <div className="text-red-800 text-sm font-medium text-left">{errors.general}</div>
+                  </div>
+                )}
 
                 <motion.button
                   type="submit"
@@ -810,6 +819,17 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-3 md:space-y-4">
+              {errors.general && (
+                <div role="alert" className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2.5 my-2">
+                  <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <div className="text-red-800 text-sm font-medium text-left">{errors.general}</div>
+                </div>
+              )}
+
               {/* Email Input */}
               <motion.div
                 initial={{ x: -20, opacity: 0 }}
@@ -823,10 +843,19 @@ export default function LoginPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email"
-                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                  className={`w-full px-5 py-4 rounded-xl border text-base ${errors.email ? "border-red-500" : "border-gray-300"} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                   required
                 />
-                {errors.email && <p className="text-red-500 text-xs ml-4">{errors.email}</p>}
+                {errors.email && (
+                  <div role="alert" className="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-red-800 text-xs font-semibold text-left">{errors.email}</span>
+                  </div>
+                )}
               </motion.div>
 
               {/* Password Input */}
@@ -843,7 +872,7 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Password"
-                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                    className={`w-full px-5 py-4 rounded-xl border text-base ${errors.password ? "border-red-500" : "border-gray-300"} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                     required
                   />
                   <button
@@ -854,7 +883,16 @@ export default function LoginPage() {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
-                {errors.password && <p className="text-red-500 text-xs ml-4">{errors.password}</p>}
+                {errors.password && (
+                  <div role="alert" className="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-red-800 text-xs font-semibold text-left">{errors.password}</span>
+                  </div>
+                )}
               </motion.div>
 
               {/* Forgot Password Link */}

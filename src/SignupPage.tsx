@@ -949,6 +949,17 @@ const SignupPage: React.FC = () => {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-2.5 md:space-y-4">
+              {errors.general && (
+                <div role="alert" className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2.5 my-2">
+                  <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  <div className="text-red-800 text-sm font-medium text-left">{errors.general}</div>
+                </div>
+              )}
+
               <motion.div
                 className="space-y-1"
                 initial={{ x: -20, opacity: 0 }}
@@ -961,11 +972,18 @@ const SignupPage: React.FC = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="Name"
-                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                  className={`w-full px-5 py-4 rounded-xl border text-base ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                   required
                 />
                 {errors.name && (
-                  <p className="text-red-500 text-xs ml-4">{errors.name}</p>
+                  <div role="alert" className="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-red-800 text-xs font-semibold text-left">{errors.name}</span>
+                  </div>
                 )}
               </motion.div>
 
@@ -981,11 +999,18 @@ const SignupPage: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="Email ID"
-                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                  className={`w-full px-5 py-4 rounded-xl border text-base ${errors.email ? 'border-red-500' : 'border-gray-300'} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                   required
                 />
                 {errors.email && (
-                  <p className="text-red-500 text-xs ml-4">{errors.email}</p>
+                  <div role="alert" className="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-red-800 text-xs font-semibold text-left">{errors.email}</span>
+                  </div>
                 )}
               </motion.div>
 
@@ -1002,7 +1027,7 @@ const SignupPage: React.FC = () => {
                     value={formData.password}
                     onChange={handlePasswordChange}
                     placeholder="Password"
-                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                    className={`w-full px-5 py-4 rounded-xl border text-base ${errors.password ? 'border-red-500' : 'border-gray-300'} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                     required
                   />
                   <button
@@ -1041,7 +1066,14 @@ const SignupPage: React.FC = () => {
                 )}
 
                 {errors.password && (
-                  <p className="text-red-500 text-xs ml-4">{errors.password}</p>
+                  <div role="alert" className="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-red-800 text-xs font-semibold text-left">{errors.password}</span>
+                  </div>
                 )}
               </motion.div>
 
@@ -1058,7 +1090,7 @@ const SignupPage: React.FC = () => {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="Confirm Password"
-                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.confirmPassword ? 'border-red-500' : (passwordsMatch === false ? 'border-red-500' : (passwordsMatch === true ? 'border-green-500' : 'border-gray-300'))} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
+                    className={`w-full px-5 py-4 rounded-xl border text-base ${errors.confirmPassword ? 'border-red-500' : (passwordsMatch === false ? 'border-red-500' : (passwordsMatch === true ? 'border-green-500' : 'border-gray-300'))} bg-gray-50/50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all`}
                     required
                   />
                   {/* Password match indicator */}
@@ -1090,7 +1122,14 @@ const SignupPage: React.FC = () => {
                 )}
 
                 {errors.confirmPassword && (
-                  <p className="text-red-500 text-xs ml-4">{errors.confirmPassword}</p>
+                  <div role="alert" className="p-2.5 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                    <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      <circle cx="12" cy="12" r="10" />
+                      <line x1="12" y1="8" x2="12" y2="12" />
+                      <line x1="12" y1="16" x2="12.01" y2="16" />
+                    </svg>
+                    <span className="text-red-800 text-xs font-semibold text-left">{errors.confirmPassword}</span>
+                  </div>
                 )}
               </motion.div>
 
@@ -1114,7 +1153,14 @@ const SignupPage: React.FC = () => {
                     <Link to="/terms" className="text-blue-600 hover:underline ml-1">Terms and Conditions</Link>
                   </label>
                   {errors.agreeToTerms && (
-                    <p className="text-red-500 text-xs">{errors.agreeToTerms}</p>
+                    <div role="alert" className="p-2 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-start gap-2 mt-1">
+                      <svg className="w-4 h-4 text-red-500 shrink-0 mt-0.5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="8" x2="12" y2="12" />
+                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                      </svg>
+                      <span className="text-red-800 text-xs font-semibold text-left">{errors.agreeToTerms}</span>
+                    </div>
                   )}
                 </div>
               </motion.div>
