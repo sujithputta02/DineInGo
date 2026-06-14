@@ -191,7 +191,7 @@ function BusinessLogin() {
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
+                                className="w-full px-5 py-4 rounded-xl border border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all text-base"
                                 placeholder="you@restaurant.com"
                             />
                         </div>
@@ -205,7 +205,7 @@ function BusinessLogin() {
                                     value={formData.password}
                                     onChange={handleChange}
                                     required
-                                    className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
+                                    className="w-full px-5 py-4 rounded-xl border border-gray-300 bg-gray-50/50 focus:bg-white focus:ring-2 focus:ring-emerald-700 focus:border-transparent outline-none transition-all text-base"
                                     placeholder="••••••••"
                                 />
                             </div>

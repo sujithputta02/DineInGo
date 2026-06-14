@@ -289,11 +289,18 @@ function BusinessSignup() {
                                         setFormData(prev => ({ ...prev, referralCode: e.target.value.toUpperCase() }));
                                         setReferralError('');
                                     }}
-                                    className={`w-full px-6 py-5 text-center text-2xl md:text-3xl font-black tracking-[0.2em] rounded-2xl border-3 ${referralError ? 'border-red-500 bg-red-50' : 'border-emerald-200 bg-white focus:border-emerald-500'} outline-none transition-all uppercase shadow-inner`}
+                                    className={`w-full px-6 py-5 text-center text-2xl md:text-3xl font-black tracking-[0.2em] rounded-xl border ${referralError ? 'border-red-500 bg-red-50' : 'border-emerald-200 bg-white focus:border-emerald-500'} outline-none transition-all uppercase shadow-inner`}
                                     placeholder="DINO-XXXX"
                                 />
                                 {referralError && (
-                                    <p className="text-red-500 text-sm text-center font-bold mt-2">{referralError}</p>
+                                    <div role="alert" className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-center justify-center gap-2 mt-2">
+                                        <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <line x1="12" y1="8" x2="12" y2="12" />
+                                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                                        </svg>
+                                        <span className="text-red-800 text-sm font-semibold">{referralError}</span>
+                                    </div>
                                 )}
                             </div>
 
@@ -334,7 +341,7 @@ function BusinessSignup() {
                                 value={formData.name}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
+                                className="w-full px-5 py-4 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base"
                                 placeholder="Restaurant Owner Name"
                             />
                         </div>
@@ -347,7 +354,7 @@ function BusinessSignup() {
                                 value={formData.email}
                                 onChange={handleChange}
                                 required
-                                className="w-full px-5 py-4 md:py-5 rounded-2xl border-2 border-slate-100 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg"
+                                className="w-full px-5 py-4 rounded-xl border border-slate-200 bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base"
                                 placeholder="you@restaurant.com"
                             />
                         </div>
@@ -360,7 +367,7 @@ function BusinessSignup() {
                                 value={formData.password}
                                 onChange={handleChange}
                                 required
-                                className={`w-full px-5 py-4 md:py-5 rounded-2xl border-2 ${passwordStrength.label === 'Strong' ? 'border-emerald-500' : 'border-slate-100'} bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg`}
+                                className={`w-full px-5 py-4 rounded-xl border ${passwordStrength.label === 'Strong' ? 'border-emerald-500' : 'border-slate-200'} bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base`}
                                 placeholder="••••••••"
                             />
                             {formData.password && (
@@ -390,7 +397,7 @@ function BusinessSignup() {
                                 value={formData.confirmPassword}
                                 onChange={handleChange}
                                 required
-                                className={`w-full px-5 py-4 md:py-5 rounded-2xl border-2 ${passwordsMatch === true ? 'border-emerald-500 text-emerald-600' : passwordsMatch === false ? 'border-red-500' : 'border-slate-100'} bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base md:text-lg`}
+                                className={`w-full px-5 py-4 rounded-xl border ${passwordsMatch === true ? 'border-emerald-500 text-emerald-600' : passwordsMatch === false ? 'border-red-500' : 'border-slate-200'} bg-slate-50/50 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 focus:border-emerald-500 outline-none transition-all text-base`}
                                 placeholder="••••••••"
                             />
                             {formData.confirmPassword && (
@@ -415,11 +422,18 @@ function BusinessSignup() {
                                     setReferralError('');
                                 }}
                                 required
-                                className={`w-full px-5 py-4 md:py-5 rounded-xl border-2 ${referralError ? 'border-red-500 bg-red-50' : 'border-emerald-200 bg-white focus:border-emerald-500'} outline-none transition-all text-lg font-black tracking-widest uppercase text-center`}
+                                className={`w-full px-5 py-4 rounded-xl border ${referralError ? 'border-red-500 bg-red-50' : 'border-emerald-200 bg-white focus:border-emerald-500'} outline-none transition-all text-lg font-black tracking-widest uppercase text-center`}
                                 placeholder="DINO-XXXX"
                             />
                             {referralError && (
-                                <p className="text-red-500 text-xs md:text-sm font-bold mt-2 ml-1 text-center">{referralError}</p>
+                                <div role="alert" className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-xl flex items-center justify-center gap-2 mt-2">
+                                    <svg className="w-5 h-5 text-red-500 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" />
+                                        <line x1="12" y1="8" x2="12" y2="12" />
+                                        <line x1="12" y1="16" x2="12.01" y2="16" />
+                                    </svg>
+                                    <span className="text-red-800 text-sm font-semibold">{referralError}</span>
+                                </div>
                             )}
                         </div>
 

@@ -246,7 +246,7 @@ export default function BusinessLandingPage() {
                             color: "#374151", // High contrast Gray 700 text copy
                             maxWidth: "700px",
                             marginBottom: "50px",
-                            lineHeight: "1.7",
+                            lineHeight: "1.75",
                         }}
                     >
                         Join the future of dining with interactive table selection, real-time analytics, and seamless event management for your restaurant
@@ -279,7 +279,7 @@ export default function BusinessLandingPage() {
                                 boxShadow: "0 10px 30px rgba(0, 242, 157, 0.45)",
                             }}
                         >
-                            Start Free Trial
+                            Start 14-Day Free Trial
                         </motion.button>
 
                         <motion.button
@@ -300,7 +300,7 @@ export default function BusinessLandingPage() {
                                 boxShadow: "0 10px 30px rgba(217, 119, 6, 0.15)",
                             }}
                         >
-                            See How It Works
+                            Explore Reservation Features
                         </motion.button>
                     </motion.div>
 
@@ -318,9 +318,9 @@ export default function BusinessLandingPage() {
                         }}
                     >
                         {[
-                            { value: "500+", label: "Partner Restaurants", color: "#00F29D" },
-                            { value: "1M+", label: "Monthly Bookings", color: "#facc15" },
-                            { value: "98%", label: "Customer Satisfaction", color: "#FF6B6B" },
+                            { value: "500+", label: "Partner Restaurants", color: "#047857" },
+                            { value: "1M+", label: "Monthly Bookings", color: "#b45309" },
+                            { value: "98%", label: "Customer Satisfaction", color: "#b91c1c" },
                         ].map((stat, i) => (
                             <motion.div
                                 key={i}
@@ -378,7 +378,7 @@ export default function BusinessLandingPage() {
                             fontWeight: "800",
                             color: "#1a1a2e",
                             marginBottom: "16px",
-                            lineHeight: "1.1",
+                            lineHeight: "1.15",
                         }}
                     >
                         Everything You Need to <span style={{ color: "#00F29D" }}>Succeed</span>
@@ -389,7 +389,7 @@ export default function BusinessLandingPage() {
                             color: "#374151", // High contrast Gray 700 text copy
                             maxWidth: "600px",
                             margin: "0 auto",
-                            lineHeight: "1.5",
+                            lineHeight: "1.75",
                         }}
                     >
                         Powerful features designed for modern restaurants and event venues
@@ -484,7 +484,7 @@ export default function BusinessLandingPage() {
                                 style={{
                                     fontSize: "1.05rem",
                                     color: "#374151", // High contrast Gray 700 copy
-                                    lineHeight: "1.6",
+                                    lineHeight: "1.75",
                                 }}
                             >
                                 {feature.description}
@@ -514,6 +514,7 @@ export default function BusinessLandingPage() {
                             fontWeight: "800",
                             color: "#1a1a2e",
                             marginBottom: "20px",
+                            lineHeight: "1.15",
                         }}
                     >
                         Get Started in <span style={{ color: "#d97706" }}>3 Simple Steps</span>
@@ -524,6 +525,7 @@ export default function BusinessLandingPage() {
                             color: "#374151", // High contrast Gray 700 text copy
                             maxWidth: "600px",
                             margin: "0 auto",
+                            lineHeight: "1.75",
                         }}
                     >
                         Launch your digital reservation system in minutes
@@ -606,7 +608,7 @@ export default function BusinessLandingPage() {
                                     style={{
                                         fontSize: "1.15rem",
                                         color: "#374151", // High contrast Gray 700 text copy
-                                        lineHeight: "1.7",
+                                        lineHeight: "1.75",
                                     }}
                                 >
                                     {item.description}
@@ -661,6 +663,7 @@ export default function BusinessLandingPage() {
                             fontWeight: "900",
                             color: "#000",
                             marginBottom: "24px",
+                            lineHeight: "1.15",
                         }}
                     >
                         Ready to Transform Your Business?
@@ -672,6 +675,7 @@ export default function BusinessLandingPage() {
                             marginBottom: "40px",
                             maxWidth: "700px",
                             margin: "0 auto 40px",
+                            lineHeight: "1.75",
                         }}
                     >
                         Join hundreds of restaurants already using DineInGo to boost their reservations
@@ -692,7 +696,7 @@ export default function BusinessLandingPage() {
                             boxShadow: "0 15px 40px rgba(0, 0, 0, 0.3)",
                         }}
                     >
-                        Start Your Free Trial →
+                        Start 14-Day Free Trial →
                     </motion.button>
                     <p
                         style={{

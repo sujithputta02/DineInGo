@@ -178,7 +178,7 @@ const SectionHeading: React.FC<SectionHeadingProps & { glassStyles: any }> = ({ 
         fontSize: "clamp(2.5rem, 8vw, 4.5rem)",
         fontWeight: "900",
         color: glassStyles.colors.black,
-        lineHeight: "0.95",
+        lineHeight: "1.15",
         letterSpacing: "-0.05em",
         margin: 0
       }}
@@ -471,7 +471,7 @@ const FeatureCard: React.FC<FeatureCardProps & { glassStyles: any }> = ({ icon, 
       {icon}
     </div>
     <h3 style={{ fontSize: "1.5rem", fontWeight: "700", marginBottom: "14px", color: glassStyles.colors.black, letterSpacing: "-0.01em" }}>{title}</h3>
-    <p style={{ color: glassStyles.colors.gray, lineHeight: "1.7", margin: 0, fontSize: "1.05rem", fontWeight: "500" }}>{description}</p>
+    <p style={{ color: glassStyles.colors.gray, lineHeight: "1.75", margin: 0, fontSize: "1.05rem", fontWeight: "500" }}>{description}</p>
   </motion.div>
 );
 
@@ -753,7 +753,7 @@ export default function LandingPage() {
                 maxWidth: isMobile ? "100%" : "90%",
                 color: glassStyles.colors.black,
                 letterSpacing: "-0.05em",
-                lineHeight: "1.1",
+                lineHeight: "1.15",
                 transform: `translateY(${scrollY * 0.05}px)`,
               }}
             >
@@ -777,7 +777,7 @@ export default function LandingPage() {
                 maxWidth: isMobile ? "100%" : "90%",
                 marginBottom: isMobile ? "30px" : "40px",
                 fontWeight: "500",
-                lineHeight: "1.6"
+                lineHeight: "1.75"
               }}
             >
               {t('heroDescription', "Select exact tables or specific seats with India's first truly interactive booking platform.")}
@@ -802,15 +802,15 @@ export default function LandingPage() {
                 style={{
                   ...glassStyles.button,
                   backgroundColor: glassStyles.colors.primary,
-                  padding: "clamp(12px, 3vw, 18px) clamp(24px, 5vw, 40px)",
+                  padding: "clamp(14px, 3.5vw, 20px) clamp(28px, 6vw, 48px)",
                   fontSize: "clamp(0.9rem, 2vw, 1.15rem)",
-                  fontWeight: "700",
+                  fontWeight: "900",
                   border: "none",
                   cursor: "pointer",
                   color: "white"
                 }}
               >
-                {t('reserveNow', 'Reserve Now')}
+                {t('reserveNow', 'Reserve Your Perfect Table')}
               </motion.button>
 
               <motion.button
@@ -1399,14 +1399,15 @@ export default function LandingPage() {
               ...glassStyles.button,
               backgroundColor: glassStyles.colors.black,
               color: "white",
-              padding: isMobile ? "18px 40px" : "24px 60px",
+              padding: isMobile ? "20px 48px" : "26px 72px",
               fontSize: isMobile ? "1.1rem" : "1.3rem",
-              fontWeight: "700",
+              fontWeight: "900",
               border: "none",
               cursor: "pointer",
+              boxShadow: `0 20px 40px -10px ${glassStyles.colors.black}50`
             }}
           >
-            Claim Early Access
+            Get Early Access Pass
           </motion.button>
         </motion.div>
       </motion.div>
