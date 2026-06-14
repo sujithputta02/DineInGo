@@ -810,7 +810,7 @@ const SignupPage: React.FC = () => {
                     setReferralError('');
                   }}
                   placeholder="e.g. DINO-A4X2"
-                  className={`w-full p-4 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-200'} focus:outline-none focus:border-emerald-500 transition-colors uppercase`}
+                  className={`w-full p-4 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-300'} focus:outline-none focus:border-emerald-700 transition-colors uppercase`}
                 />
                 {referralError && (
                   <p className="text-red-500 text-xs text-center font-medium mt-2">{referralError}</p>
@@ -819,7 +819,7 @@ const SignupPage: React.FC = () => {
 
               <motion.button
                 onClick={handleVerifyReferral}
-                className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                className="w-full bg-emerald-700 text-white py-4 rounded-xl font-bold hover:bg-emerald-800 transition-colors shadow-lg shadow-emerald-700/20"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
@@ -861,7 +861,7 @@ const SignupPage: React.FC = () => {
                     maxLength={1}
                     value={otpFormData[field]}
                     onChange={(e) => handleOTPChange(e, field)}
-                    className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none transition-colors"
+                    className="w-12 h-12 text-center text-xl font-bold border-2 border-gray-200 rounded-xl focus:border-emerald-700 focus:outline-none transition-colors"
                   />
                 ))}
               </div>
@@ -872,7 +872,7 @@ const SignupPage: React.FC = () => {
 
               <motion.button
                 onClick={handleVerifyOTP}
-                className="w-full bg-emerald-500 text-white py-3 rounded-full font-medium text-sm hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                className="w-full bg-emerald-700 text-white py-3 rounded-full font-bold text-sm hover:bg-emerald-800 transition-colors shadow-lg shadow-emerald-700/20"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
@@ -890,7 +890,7 @@ const SignupPage: React.FC = () => {
                         startResendTimer();
                       }
                     }}
-                    className={`font-medium ${resendTimer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-emerald-600 hover:text-emerald-700'}`}
+                    className={`font-medium ${resendTimer > 0 ? 'text-gray-400 cursor-not-allowed' : 'text-emerald-700 hover:text-emerald-800'}`}
                     disabled={resendTimer > 0 || isLoading}
                   >
                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : 'Resend Code'}
@@ -924,7 +924,7 @@ const SignupPage: React.FC = () => {
                 Didn't receive the email?{' '}
                 <button
                   onClick={handleResendVerification}
-                  className="text-emerald-600 font-medium hover:text-emerald-700"
+                  className="text-emerald-700 font-bold hover:text-emerald-800"
                   disabled={isLoading}
                 >
                   Resend Email
@@ -933,7 +933,7 @@ const SignupPage: React.FC = () => {
               <div className="mt-4">
                 <Link
                   to="/login"
-                  className="text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-sm font-bold text-emerald-700 hover:text-emerald-800"
                 >
                   Return to Login
                 </Link>
@@ -961,7 +961,7 @@ const SignupPage: React.FC = () => {
                   value={formData.name}
                   onChange={handleInputChange}
                   placeholder="Name"
-                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.name ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                   required
                 />
                 {errors.name && (
@@ -981,7 +981,7 @@ const SignupPage: React.FC = () => {
                   value={formData.email}
                   onChange={handleInputChange}
                   placeholder="Email ID"
-                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                   required
                 />
                 {errors.email && (
@@ -1002,7 +1002,7 @@ const SignupPage: React.FC = () => {
                     value={formData.password}
                     onChange={handlePasswordChange}
                     placeholder="Password"
-                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? 'border-red-500' : 'border-gray-300'} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                     required
                   />
                   <button
@@ -1058,7 +1058,7 @@ const SignupPage: React.FC = () => {
                     value={formData.confirmPassword}
                     onChange={handleInputChange}
                     placeholder="Confirm Password"
-                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.confirmPassword ? 'border-red-500' : (passwordsMatch === false ? 'border-red-500' : (passwordsMatch === true ? 'border-green-500' : 'border-gray-300'))} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.confirmPassword ? 'border-red-500' : (passwordsMatch === false ? 'border-red-500' : (passwordsMatch === true ? 'border-green-500' : 'border-gray-300'))} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                     required
                   />
                   {/* Password match indicator */}
@@ -1123,7 +1123,7 @@ const SignupPage: React.FC = () => {
                 type="submit"
                 className={`w-full py-2.5 md:py-3 rounded-full font-bold text-sm md:text-base transition-all duration-300 min-h-[44px] ${
                   (passwordStrength.label === 'Strong' && passwordsMatch && formData.agreeToTerms && !isLoading)
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg shadow-emerald-200' 
+                    ? 'bg-emerald-700 text-white hover:bg-emerald-800 shadow-lg shadow-emerald-700/20' 
                     : 'bg-gray-200 text-gray-400 cursor-not-allowed opacity-70'
                 }`}
                 whileHover={passwordStrength.label === 'Strong' && passwordsMatch && formData.agreeToTerms ? { scale: 1.02 } : {}}
@@ -1159,7 +1159,7 @@ const SignupPage: React.FC = () => {
                 <span className="text-xs md:text-sm text-gray-600">Already have an account? </span>
                 <Link
                   to="/login"
-                  className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-xs md:text-sm font-bold text-emerald-700 hover:text-emerald-800"
                   onClick={() => {
                     // Clear any existing errors when navigating to login
                     setErrors({

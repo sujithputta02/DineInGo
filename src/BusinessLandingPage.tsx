@@ -3,13 +3,16 @@ import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SEO from "./components/SEO";
 
-// DineInGo Logo Component
+// DineInGo Logo Component (Polished for dynamic theme-aware contrast)
 const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15" }: any) => {
     const fontSize = size === "large" ? "4rem" : size === "medium" ? "3rem" : "2rem";
     const dotSize = size === "large" ? "15px" : size === "medium" ? "12px" : "8px";
     const dotTop = size === "large" ? "22px" : size === "medium" ? "18px" : "11px";
     const businessFontSize = size === "large" ? "1.8rem" : size === "medium" ? "1.2rem" : "0.9rem";
     const businessMarginTop = size === "large" ? "4px" : size === "medium" ? "3px" : "2px";
+
+    const isDarkBackground = color === "white" || color === "#ffffff" || color === "#fff";
+    const businessTextColor = isDarkBackground ? "#00F29D" : "#047857";
 
     return (
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
@@ -53,7 +56,7 @@ const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15"
                     fontSize: businessFontSize,
                     fontWeight: "700",
                     letterSpacing: "0.3em",
-                    color: "#00F29D",
+                    color: businessTextColor,
                     fontFamily: "'Poppins', sans-serif",
                 }}
             >
@@ -162,8 +165,8 @@ export default function BusinessLandingPage() {
                             onClick={() => navigate('/business/businessLogin')}
                             style={{
                                 backgroundColor: "transparent",
-                                border: "2px solid #00F29D",
-                                color: "#00F29D",
+                                border: "2px solid #047857",
+                                color: "#047857",
                                 padding: "clamp(8px, 2vw, 10px) clamp(16px, 4vw, 24px)",
                                 fontSize: "clamp(0.85rem, 2vw, 1rem)",
                                 fontWeight: "bold",
@@ -240,7 +243,7 @@ export default function BusinessLandingPage() {
                         transition={{ delay: 0.4, duration: 0.8 }}
                         style={{
                             fontSize: "clamp(1rem, 3vw, 1.3rem)",
-                            color: "#555",
+                            color: "#374151", // High contrast Gray 700 text copy
                             maxWidth: "700px",
                             marginBottom: "50px",
                             lineHeight: "1.7",
@@ -268,12 +271,12 @@ export default function BusinessLandingPage() {
                                 backgroundColor: "#00F29D",
                                 padding: "clamp(14px, 3vw, 18px) clamp(28px, 5vw, 40px)",
                                 fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
-                                fontWeight: "700",
+                                fontWeight: "800",
                                 borderRadius: "16px",
                                 border: "none",
                                 cursor: "pointer",
-                                color: "#fff",
-                                boxShadow: "0 10px 30px rgba(0, 242, 157, 0.3)",
+                                color: "#0f172a", // High contrast dark slate text on light green background
+                                boxShadow: "0 10px 30px rgba(0, 242, 157, 0.45)",
                             }}
                         >
                             Start Free Trial
@@ -289,12 +292,12 @@ export default function BusinessLandingPage() {
                                 backgroundColor: "#fff",
                                 padding: "clamp(14px, 3vw, 18px) clamp(28px, 5vw, 40px)",
                                 fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
-                                fontWeight: "700",
+                                fontWeight: "800",
                                 borderRadius: "16px",
-                                border: "2px solid #facc15",
+                                border: "2px solid #d97706", // Darker gold/amber border for high visibility
                                 cursor: "pointer",
-                                color: "#000",
-                                boxShadow: "0 10px 30px rgba(250, 204, 21, 0.2)",
+                                color: "#0f172a",
+                                boxShadow: "0 10px 30px rgba(217, 119, 6, 0.15)",
                             }}
                         >
                             See How It Works
@@ -333,7 +336,7 @@ export default function BusinessLandingPage() {
                                 >
                                     {stat.value}
                                 </div>
-                                <div style={{ fontSize: "clamp(0.85rem, 2vw, 1rem)", color: "#666", marginTop: "8px", fontWeight: "500" }}>
+                                <div style={{ fontSize: "clamp(0.85rem, 2vw, 1rem)", color: "#374151", marginTop: "8px", fontWeight: "600" }}>
                                     {stat.label}
                                 </div>
                             </motion.div>
@@ -346,7 +349,7 @@ export default function BusinessLandingPage() {
             <section
                 data-section="features"
                 style={{
-                    padding: "120px 5%",
+                    padding: "clamp(60px, 10vw, 120px) 5%",
                     background: "linear-gradient(180deg, #f6f9ff 0%, #ffffff 100%)",
                     position: "relative",
                 }}
@@ -383,7 +386,7 @@ export default function BusinessLandingPage() {
                     <p
                         style={{
                             fontSize: "clamp(1rem, 2vw, 1.2rem)",
-                            color: "#666",
+                            color: "#374151", // High contrast Gray 700 text copy
                             maxWidth: "600px",
                             margin: "0 auto",
                             lineHeight: "1.5",
@@ -398,7 +401,7 @@ export default function BusinessLandingPage() {
                     style={{
                         display: "grid",
                         gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-                        gap: "24px sm:40px",
+                        gap: "clamp(20px, 4vw, 32px)", // Polished responsive gap
                         maxWidth: "1400px",
                         margin: "0 auto",
                     }}
@@ -480,7 +483,7 @@ export default function BusinessLandingPage() {
                             <p
                                 style={{
                                     fontSize: "1.05rem",
-                                    color: "#666",
+                                    color: "#374151", // High contrast Gray 700 copy
                                     lineHeight: "1.6",
                                 }}
                             >
@@ -494,7 +497,7 @@ export default function BusinessLandingPage() {
             {/* How It Works Section */}
             <section
                 style={{
-                    padding: "120px 5%",
+                    padding: "clamp(60px, 10vw, 120px) 5%",
                     background: "linear-gradient(180deg, #ffffff 0%, #fff5e6 100%)",
                     position: "relative",
                 }}
@@ -513,12 +516,12 @@ export default function BusinessLandingPage() {
                             marginBottom: "20px",
                         }}
                     >
-                        Get Started in <span style={{ color: "#facc15" }}>3 Simple Steps</span>
+                        Get Started in <span style={{ color: "#d97706" }}>3 Simple Steps</span>
                     </h2>
                     <p
                         style={{
                             fontSize: "1.3rem",
-                            color: "#666",
+                            color: "#374151", // High contrast Gray 700 text copy
                             maxWidth: "600px",
                             margin: "0 auto",
                         }}
@@ -602,7 +605,7 @@ export default function BusinessLandingPage() {
                                 <p
                                     style={{
                                         fontSize: "1.15rem",
-                                        color: "#666",
+                                        color: "#374151", // High contrast Gray 700 text copy
                                         lineHeight: "1.7",
                                     }}
                                 >

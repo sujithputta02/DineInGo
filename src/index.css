@@ -94,3 +94,14 @@ body {
 .leaflet-popup-tip {
   background: white !important;
 }
+
+/* Accessibility Focus States for Keyboard Navigation - Specific selectors to target focusable elements explicitly */
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[role="button"]:focus-visible {
+  outline: 3px solid #047857 !important; /* High contrast emerald-700 */
+  outline-offset: 2px !important;
+}
