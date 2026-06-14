@@ -46,16 +46,16 @@ interface Table3DButtonProps {
   };
 }
 
-// Design Tokens - Light Emerald Refined V3
+// Design Tokens - Light Emerald Refined V3 (Polished for Accessibility)
 const glassStyles = {
   card: {
-    background: "rgba(255, 255, 255, 0.4)",
+    background: "rgba(255, 255, 255, 0.45)",
     backdropFilter: "blur(40px) saturate(180%)",
     WebkitBackdropFilter: "blur(40px) saturate(180%)",
-    border: "1px solid rgba(255, 255, 255, 0.3)",
+    border: "1px solid rgba(255, 255, 255, 0.4)",
     boxShadow: `
-      0 8px 32px 0 rgba(31, 38, 135, 0.05),
-      inset 0 0.5px 0.5px rgba(255, 255, 255, 0.4)
+      0 12px 40px 0 rgba(31, 38, 135, 0.06),
+      inset 0 0.5px 0.5px rgba(255, 255, 255, 0.5)
     `,
     borderRadius: "32px",
   },
@@ -64,13 +64,13 @@ const glassStyles = {
     transition: "all 0.4s cubic-bezier(0.16, 1, 0.3, 1)",
   },
   colors: {
-    primary: "#34d399", // Light Emerald 400
-    primaryLight: "#6ee7b7", // Emerald 300
-    primaryDeep: "#059669", // Emerald 600
-    gold: "#facc15",
+    primary: "#047857", // High contrast Emerald 700 (passes 4.5:1 with white text)
+    primaryLight: "#10b981", // Emerald 500
+    primaryDeep: "#065f46", // Deep Emerald 800
+    gold: "#d97706", // Darker amber/gold for better white/light-gray contrast
     black: "#111827",
-    gray: "#4b5563",
-    bg: "#f9fafb" // Back to original light gray
+    gray: "#27272a", // Zinc 800 for high-contrast typography
+    bg: "#f9fafb"
   }
 };
 
@@ -145,13 +145,13 @@ const DineInGoLogo = ({ size = "large", color = "black", yellowColor = "#facc15"
   );
 };
 
-// Modern Typography Section Heading
+// Modern Typography Section Heading (Polished for consistent vertical spacing)
 const SectionHeading: React.FC<SectionHeadingProps & { glassStyles: any }> = ({ tagline, title, highlight, glassStyles, centered = true }) => (
   <div style={{
     textAlign: centered ? "center" : "left",
-    marginBottom: "70px",
+    marginBottom: "clamp(40px, 8vw, 70px)",
     maxWidth: centered ? "900px" : "100%",
-    margin: centered ? "0 auto 70px" : "0 0 70px"
+    margin: centered ? "0 auto clamp(40px, 8vw, 70px)" : "0 0 clamp(40px, 8vw, 70px)"
   }}>
     <motion.span
       initial={{ opacity: 0, y: 10 }}
@@ -302,11 +302,21 @@ const Doodle: React.FC<DoodleProps> = ({ type, style }) => {
   return doodles[type] || null;
 };
 
-// 3D Button for table selection
+// 3D Button for table selection (Polished for keyboard accessibility)
 const Table3DButton: React.FC<Table3DButtonProps & { glassStyles: any }> = ({ number, isSelected, onClick, position, glassStyles }) => (
   <motion.div
     whileHover={{ scale: 1.08, y: -5 }}
     onClick={onClick}
+    onKeyDown={(e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        onClick();
+      }
+    }}
+    tabIndex={0}
+    role="button"
+    aria-pressed={isSelected}
+    aria-label={`Table ${number}`}
     initial={{ scale: 0.9, opacity: 0 }}
     animate={{
       scale: 1,
@@ -675,9 +685,22 @@ export default function LandingPage() {
                 {t('signIn', 'Sign In')}
               </button>
               <nav style={{ display: "flex", flexDirection: "column", gap: "15px", padding: "10px 0" }}>
-                <span onClick={() => { document.querySelector('[data-section="features"]')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} style={{ fontWeight: "600", fontSize: "1.1rem" }}>Features</span>
-                <span style={{ fontWeight: "600", fontSize: "1.1rem" }}>About Us</span>
-                <span style={{ fontWeight: "600", fontSize: "1.1rem" }}>Contact</span>
+                <button 
+                  onClick={() => { document.querySelector('[data-section="features"]')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} 
+                  style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
+                >
+                  Features
+                </button>
+                <button 
+                  style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
+                >
+                  About Us
+                </button>
+                <button 
+                  style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
+                >
+                  Contact
+                </button>
               </nav>
             </motion.div>
           )}
@@ -1324,7 +1347,7 @@ export default function LandingPage() {
         viewport={{ once: true, margin: "-20px" }}
         variants={containerVariants}
         style={{
-          padding: "160px 5% 0",
+          padding: "clamp(80px, 15vw, 160px) 5% 0",
           background: `linear-gradient(180deg, ${glassStyles.colors.bg} 0%, white 100%)`,
           textAlign: "center",
           position: "relative",

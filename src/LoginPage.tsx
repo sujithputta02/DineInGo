@@ -656,7 +656,7 @@ export default function LoginPage() {
                     setReferralError('');
                   }}
                   placeholder="e.g. DINO-A4X2"
-                  className={`w-full p-4 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-200'} focus:outline-none focus:border-emerald-500 transition-colors uppercase`}
+                  className={`w-full p-4 text-center text-xl font-bold tracking-widest rounded-xl border-2 ${referralError ? 'border-red-500' : 'border-emerald-300'} focus:outline-none focus:border-emerald-700 transition-colors uppercase`}
                 />
                 {referralError && (
                   <p className="text-red-500 text-xs text-center font-medium mt-2">{referralError}</p>
@@ -665,7 +665,7 @@ export default function LoginPage() {
 
               <motion.button
                 onClick={handleVerifyReferral}
-                className="w-full bg-emerald-500 text-white py-4 rounded-xl font-bold hover:bg-emerald-600 transition-colors shadow-lg shadow-emerald-200"
+                className="w-full bg-emerald-700 text-white py-4 rounded-xl font-bold hover:bg-emerald-800 transition-colors shadow-lg shadow-emerald-700/20"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
@@ -723,7 +723,7 @@ export default function LoginPage() {
                       value={resetEmail}
                       onChange={(e) => setResetEmail(e.target.value)}
                       placeholder="Email"
-                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                       required
                     />
                   </motion.div>
@@ -741,7 +741,7 @@ export default function LoginPage() {
                       onChange={(e) => setResetOTP(e.target.value)}
                       placeholder="Enter 6-digit OTP"
                       maxLength={6}
-                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-center tracking-widest font-bold`}
+                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent text-center tracking-widest font-bold`}
                       required
                     />
                   </motion.div>
@@ -758,7 +758,7 @@ export default function LoginPage() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="New Password"
-                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                      className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.general ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                       required
                     />
                     <button
@@ -775,7 +775,7 @@ export default function LoginPage() {
 
                 <motion.button
                   type="submit"
-                  className="w-full bg-emerald-500 text-white py-2.5 md:py-3 rounded-full font-medium text-sm md:text-base hover:bg-emerald-600 transition-colors min-h-[44px]"
+                  className="w-full bg-emerald-700 text-white py-2.5 md:py-3 rounded-full font-bold text-sm md:text-base hover:bg-emerald-800 transition-colors min-h-[44px]"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   disabled={isLoading}
@@ -787,14 +787,14 @@ export default function LoginPage() {
               </form>
             ) : (
               <div className="text-center">
-                <p className="text-emerald-600 mb-3 md:mb-4 text-sm md:text-base">Reset link sent successfully!</p>
+                <p className="text-emerald-700 mb-3 md:mb-4 text-sm md:text-base">Reset link sent successfully!</p>
                 <button
                   onClick={() => {
                     setShowForgotPassword(false);
                     setResetEmailSent(false);
                     setResetEmail("");
                   }}
-                  className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-xs md:text-sm font-bold text-emerald-700 hover:text-emerald-800"
                 >
                   Return to Login
                 </button>
@@ -823,7 +823,7 @@ export default function LoginPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Email"
-                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                  className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.email ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                   required
                 />
                 {errors.email && <p className="text-red-500 text-xs ml-4">{errors.email}</p>}
@@ -843,7 +843,7 @@ export default function LoginPage() {
                     value={formData.password}
                     onChange={handleChange}
                     placeholder="Password"
-                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent`}
+                    className={`w-full p-2.5 md:p-3 rounded-full border text-sm md:text-base ${errors.password ? "border-red-500" : "border-gray-300"} bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent`}
                     required
                   />
                   <button
@@ -865,7 +865,7 @@ export default function LoginPage() {
                     setShowForgotPassword(true);
                     setResetEmail(formData.email);
                   }}
-                  className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700"
+                  className="text-xs md:text-sm font-bold text-emerald-700 hover:text-emerald-800"
                 >
                   Forgot password?
                 </button>
@@ -874,7 +874,7 @@ export default function LoginPage() {
               {/* Login Button */}
               <motion.button
                 type="submit"
-                className="w-full bg-emerald-500 text-white py-2.5 md:py-3 rounded-full font-medium text-sm md:text-base hover:bg-emerald-600 transition-colors min-h-[44px]"
+                className="w-full bg-emerald-700 text-white py-2.5 md:py-3 rounded-full font-bold text-sm md:text-base hover:bg-emerald-800 transition-colors min-h-[44px]"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 disabled={isLoading}
@@ -914,7 +914,7 @@ export default function LoginPage() {
               {/* Sign-Up Link */}
               <div className="text-center mt-3 md:mt-4">
                 <span className="text-xs md:text-sm text-gray-600">Don't have an account? </span>
-                <Link to="/signup" className="text-xs md:text-sm font-medium text-emerald-600 hover:text-emerald-700">
+                <Link to="/signup" className="text-xs md:text-sm font-bold text-emerald-700 hover:text-emerald-800">
                   Sign Up
                 </Link>
               </div>
