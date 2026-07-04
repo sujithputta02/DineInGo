@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, Check, X } from 'lucide-react';
 import { motion } from "framer-motion";
 import {
@@ -63,6 +63,9 @@ const API_URL = API_CONFIG.BASE_URL;
 
 const SignupPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectUrl = searchParams.get('redirect');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [passwordsMatch, setPasswordsMatch] = useState<boolean | null>(null);
@@ -131,9 +134,17 @@ const SignupPage: React.FC = () => {
             const isNewUser = localStorage.getItem('isNewUser') === 'true';
             if (isNewUser) {
               localStorage.removeItem('isNewUser'); // clear flag
-              navigate('/onboarding');
+              if (redirectUrl) {
+                navigate(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`);
+              } else {
+                navigate('/onboarding');
+              }
             } else {
-              navigate('/dashboard'); // fallback for existing user
+              if (redirectUrl) {
+                navigate(redirectUrl);
+              } else {
+                navigate('/dashboard'); // fallback for existing user
+              }
             }
           }
         }
@@ -202,10 +213,13 @@ const SignupPage: React.FC = () => {
             // User exists in backend, они should probably be on the dashboard
             const stored = localStorage.getItem('userData');
             const token = stored ? (JSON.parse(stored).token || createSession(user.uid)) : createSession(user.uid);
-            
-            // Sync the backend data to storage
-            updateSessionStorage(backendUser);
-            navigate(`/dashboard/${token}`);
+                        // Sync the backend data to storage
+             updateSessionStorage(backendUser);
+             if (redirectUrl) {
+               navigate(redirectUrl);
+             } else {
+               navigate(`/dashboard/${token}`);
+             }
           }
         } catch (error: any) {
           // If the error is "User data not found", it means this is a new Google user
@@ -646,7 +660,11 @@ const SignupPage: React.FC = () => {
       setTempFormData(null);
 
       // Navigate to onboarding
-      navigate("/onboarding");
+      if (redirectUrl) {
+        navigate(`/onboarding?redirect=${encodeURIComponent(redirectUrl)}`);
+      } else {
+        navigate("/onboarding");
+      }
 
     } catch (error: any) {
       console.error("Referral verification or User Creation failed:", error);
@@ -932,7 +950,7 @@ const SignupPage: React.FC = () => {
               </p>
               <div className="mt-4">
                 <Link
-                  to="/login"
+                  to={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"}
                   className="text-sm font-bold text-emerald-700 hover:text-emerald-800"
                 >
                   Return to Login
@@ -1204,7 +1222,7 @@ const SignupPage: React.FC = () => {
               <div className="text-center mt-3 md:mt-4">
                 <span className="text-xs md:text-sm text-gray-600">Already have an account? </span>
                 <Link
-                  to="/login"
+                  to={redirectUrl ? `/login?redirect=${encodeURIComponent(redirectUrl)}` : "/login"}
                   className="text-xs md:text-sm font-bold text-emerald-700 hover:text-emerald-800"
                   onClick={() => {
                     // Clear any existing errors when navigating to login

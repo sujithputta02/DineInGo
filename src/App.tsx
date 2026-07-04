@@ -224,25 +224,27 @@ function App() {
                   } 
                 />
 
+                {/* Public Guest-Browsable Restaurant & Event Routes */}
+                <Route path="/restaurant/:id" element={<RestaurantDetails />} />
+                <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
+                <Route 
+                  path="/events" 
+                  element={
+                    <FeatureRouteGuard feature="events">
+                      <EventsPage />
+                    </FeatureRouteGuard>
+                  } 
+                />
+                <Route path="/event/:id/register" element={<EventRegistration />} />
+
                 {/* Customer Protected Routes (Redirect Owners to Business) */}
                 <Route element={<CustomerRoute />}>
                   {/* Bare /dashboard redirects to login — valid sessions use /dashboard/:sessionToken */}
                   <Route path="/dashboard" element={<Navigate to="/login" replace />} />
                   <Route path="/dashboard/:sessionToken" element={<DashboardPage />} />
-                  <Route path="/restaurant/:id" element={<RestaurantDetails />} />
                   <Route path="/restaurant/:id/preview" element={<ReservationPreview />} />
                   <Route path="/restaurant/:id/table-selection" element={<TableSelection />} />
                   <Route path="/restaurant/:id/reservation" element={<ReservationDetailsPage />} />
-                  <Route path="/restaurant/:id/menu" element={<FoodMenu />} />
-                  <Route 
-                    path="/events" 
-                    element={
-                      <FeatureRouteGuard feature="events">
-                        <EventsPage />
-                      </FeatureRouteGuard>
-                    } 
-                  />
-                  <Route path="/event/:id/register" element={<EventRegistration />} />
                   <Route path="/event/:id/preview" element={<EventPreview />} />
                 </Route>
 

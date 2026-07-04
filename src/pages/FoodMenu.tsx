@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { ChevronLeft, Plus, Minus, ShoppingCart, Calendar, Clock, Users, Utensils } from 'lucide-react';
 import { getRestaurantById } from '../services/restaurantService';
+import { toast } from 'react-toastify';
 import type { MenuItem } from '../types';
 import { DinoStepper } from '../components/DinoStepper';
 import { normalizeImageUrl } from '../services/api';
@@ -106,7 +107,14 @@ export default function FoodMenu() {
     console.log('Selected items being passed:', selectedItems); // Debug log
     console.log('URL parameters:', queryParams.toString()); // Debug log
 
-    navigate(`/restaurant/${id}/preview?${queryParams.toString()}`);
+    const targetUrl = `/restaurant/${id}/preview?${queryParams.toString()}`;
+
+    if (!localStorage.getItem('userData')) {
+      toast.info('Please log in to proceed with your booking');
+      navigate(`/login?redirect=${encodeURIComponent(targetUrl)}`);
+    } else {
+      navigate(targetUrl);
+    }
   };
 
   const categories = ['All', ...new Set(restaurant?.menu?.map((item: MenuItem) => item.category) || [])] as string[];

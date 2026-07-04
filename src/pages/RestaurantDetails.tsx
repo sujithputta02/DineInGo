@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ChevronRight, ShoppingCart, Star, StarHalf, Tag, Percent, MessageSquare, Send, Eye, Camera, Image as ImageIcon, X, Trash2, Edit2, Maximize2 } from 'lucide-react';
+import { MapPin, Heart, Clock, Phone, Globe, ArrowLeft, Calendar, Users, Plus, Minus, ChevronLeft, ChevronRight, ShoppingCart, Star, StarHalf, Tag, Percent, MessageSquare, Send, Eye, Camera, Image as ImageIcon, X, Trash2, Edit2, Maximize2, Lock, Share2 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { getRestaurantById, getMockTotalGuests } from '../services/restaurantService';
 import { getMockEventById, getMockEventCapacity } from '../services/event-service';
@@ -8,6 +8,8 @@ import { businessApi, bookingsApi, userAPI, normalizeImageUrl } from '../service
 import { favoritesApi } from '../services/favoritesApi';
 import { Restaurant, Event, MenuItem } from '../types';
 import RestaurantMap from '../components/RestaurantMap';
+import SEO from '../components/SEO';
+import { ShareModal } from '../components/ShareModal';
 import StarRating from '../components/StarRating';
 import { DinoStepper } from '../components/DinoStepper';
 import EmojiPicker from '../components/EmojiPicker';
@@ -30,6 +32,7 @@ const RestaurantDetails = () => {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [blockedSlots, setBlockedSlots] = useState<string[]>([]);
   const [blockedDates, setBlockedDates] = useState<string[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
@@ -448,7 +451,8 @@ const RestaurantDetails = () => {
   const toggleFavorite = async () => {
     const userStr = localStorage.getItem('userData');
     if (!userStr) {
-      toast.error('Please login to save favorites');
+      toast.info('Please log in to save favorites');
+      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
 
@@ -477,6 +481,10 @@ const RestaurantDetails = () => {
       console.error('Error toggling favorite:', err);
       toast.error('Failed to update favorites');
     }
+  };
+
+  const handleShare = () => {
+    setIsShareModalOpen(true);
   };
 
 
@@ -512,8 +520,23 @@ const RestaurantDetails = () => {
 
   // Render restaurant details
   if (restaurant) {
+    const cleanUrl = `${window.location.origin}/restaurant/${id}`;
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'}`}>
+        <SEO 
+          title={restaurant.name}
+          description={`${restaurant.cuisine?.join(', ')} Cuisine in ${restaurant.location?.city || 'India'}. Address: ${restaurant.address}`}
+          image={normalizeImageUrl(restaurant.image)}
+          url={cleanUrl}
+        />
+        <ShareModal 
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          url={cleanUrl}
+          title={restaurant.name}
+          text={`Discover ${restaurant.name} on DineInGo - reserve exact tables with interactive floor plans!`}
+          isDarkMode={isDarkMode}
+        />
         {/* Back Button */}
         <button
           onClick={() => navigate('/dashboard')}
@@ -749,8 +772,55 @@ const RestaurantDetails = () => {
                 </div>
               </div>
 
-              {/* Review Submission Form */}
-              <div className={`mb-10 rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
+              {/* Review Submission Form & List Gated */}
+              {!localStorage.getItem('userData') ? (
+                <div className={`mb-10 rounded-3xl p-8 border-2 border-dashed relative overflow-hidden text-center backdrop-blur-md ${
+                  isDarkMode 
+                    ? 'bg-gray-800/40 border-gray-700 text-gray-200' 
+                    : 'bg-white/60 border-gray-200 text-gray-800'
+                }`}>
+                  {/* Subtle decorative elements */}
+                  <div className="absolute -right-10 -top-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl" />
+                  <div className="absolute -left-10 -bottom-10 w-40 h-40 bg-teal-500/10 rounded-full blur-3xl" />
+
+                  <div className="relative z-10 max-w-md mx-auto space-y-6 py-6">
+                    <div className="mx-auto w-16 h-16 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500">
+                      <Lock size={32} className="animate-pulse" />
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <h3 className="text-2xl font-black tracking-tight uppercase">
+                        Experiences Locked
+                      </h3>
+                      <p className={`text-sm font-medium leading-relaxed ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                        Log in or create a DineInGo account to read detailed ratings, view photos, and read descriptions from other dining explorers.
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
+                      <button
+                        onClick={() => navigate(`/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white font-black uppercase tracking-widest text-xs py-3.5 px-6 rounded-xl transition-all shadow-lg shadow-emerald-500/20 active:scale-95"
+                      >
+                        Sign In
+                      </button>
+                      <button
+                        onClick={() => navigate(`/signup?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
+                        className={`flex-1 font-black uppercase tracking-widest text-xs py-3.5 px-6 rounded-xl transition-all border-2 active:scale-95 ${
+                          isDarkMode 
+                            ? 'border-gray-700 text-gray-300 hover:bg-gray-700/50' 
+                            : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        Create Account
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  {/* Review Submission Form */}
+                  <div className={`mb-10 rounded-2xl p-6 border-2 ${isDarkMode ? 'bg-gray-700/30 border-gray-600' : 'bg-gray-50 border-gray-100'}`}>
                 <h3 className={`text-sm font-black uppercase tracking-widest mb-6 flex items-center gap-2 ${isDarkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
                   {t('leaveYourMark')}
                 </h3>
@@ -1066,6 +1136,8 @@ const RestaurantDetails = () => {
                   ))}
                 </div>
               )}
+                </>
+              )}
             </div>
           </div>
 
@@ -1117,10 +1189,10 @@ const RestaurantDetails = () => {
                 />
               </div>
 
-              <div className="mt-10">
+              <div className="mt-10 flex gap-3">
                 <button
                   onClick={toggleFavorite}
-                  className={`w-full group flex items-center justify-center gap-3 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all duration-500 border-2 active:scale-95 ${
+                  className={`flex-1 group flex items-center justify-center gap-3 py-5 rounded-[1.5rem] font-black uppercase tracking-widest text-xs transition-all duration-500 border-2 active:scale-95 ${
                     isFavorite
                       ? 'bg-rose-500 border-rose-400 text-white shadow-xl shadow-rose-500/20'
                       : isDarkMode
@@ -1130,6 +1202,17 @@ const RestaurantDetails = () => {
                 >
                   <Heart fill={isFavorite ? "currentColor" : "none"} className={`w-5 h-5 ${isFavorite ? 'animate-bounce' : ''}`} />
                   <span>{isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}</span>
+                </button>
+                <button
+                  onClick={handleShare}
+                  className={`p-5 rounded-[1.5rem] flex items-center justify-center transition-all duration-500 border-2 active:scale-95 ${
+                    isDarkMode
+                      ? 'border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 bg-transparent'
+                      : 'border-emerald-500 text-emerald-500 hover:bg-emerald-50 shadow-lg shadow-emerald-500/5 bg-white'
+                  }`}
+                  title="Share Site"
+                >
+                  <Share2 className="w-5 h-5" />
                 </button>
               </div>
             </div>
@@ -1210,8 +1293,23 @@ const RestaurantDetails = () => {
 
   // Render event details
   if (event) {
+    const cleanUrl = `${window.location.origin}/event/${id}/register`;
     return (
       <div className="min-h-screen bg-gray-50">
+        <SEO 
+          title={event.title}
+          description={`Join us at "${event.title}" on DineInGo. Location: ${event.location}. Price: ₹${event.price}`}
+          image={normalizeImageUrl(event.imageUrl)}
+          url={cleanUrl}
+        />
+        <ShareModal 
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          url={cleanUrl}
+          title={event.title}
+          text={`Join me at ${event.title}! Register now on DineInGo.`}
+          isDarkMode={isDarkMode}
+        />
         {/* Back Button */}
         <button
           onClick={() => navigate(-1)}
