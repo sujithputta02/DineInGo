@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Eye, EyeOff, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -47,6 +47,25 @@ interface DoodleItem {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  const redirectUrl = searchParams.get('redirect');
+
+  // Helper to handle smart routing/redirection on success
+  const handleSuccessRedirect = (token: string, onboardingCompleted: boolean) => {
+    if (onboardingCompleted) {
+      if (redirectUrl) {
+        navigate(redirectUrl);
+      } else if (token) {
+        navigate(`/dashboard/${token}`);
+      } else {
+        console.error("Critical: Session creation failed! Falling back to onboarding.");
+        navigate('/onboarding');
+      }
+    } else {
+      navigate('/onboarding');
+    }
+  };
   const [isLoading, setIsLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -96,7 +115,12 @@ export default function LoginPage() {
         if (storedUser) {
           const existingToken = getSessionToken();
           if (existingToken) {
-            navigate(`/dashboard/${existingToken}`);
+            const currentRedirect = new URLSearchParams(window.location.search).get('redirect');
+            if (currentRedirect) {
+              navigate(currentRedirect);
+            } else {
+              navigate(`/dashboard/${existingToken}`);
+            }
             return;
           }
         }
@@ -232,16 +256,7 @@ export default function LoginPage() {
           const token = persistUserSession(updatedUserData, user.uid);
           
           // 🛡️ IRON GATE: Smart Routing
-          if (updatedUserData.onboardingCompleted) {
-            if (token) {
-              navigate(`/dashboard/${token}`);
-            } else {
-              console.error("Critical: Session creation failed! Falling back to onboarding.");
-              navigate('/onboarding');
-            }
-          } else {
-            navigate('/onboarding');
-          }
+          handleSuccessRedirect(token || '', updatedUserData.onboardingCompleted);
           return;
         }
       } catch (error: any) {
@@ -350,16 +365,7 @@ export default function LoginPage() {
           const token = persistUserSession(updatedUserData, user.uid);
           
           // 🛡️ IRON GATE: Smart Routing
-          if (updatedUserData.onboardingCompleted) {
-            if (token) {
-              navigate(`/dashboard/${token}`);
-            } else {
-              console.error("Critical: Session creation failed! Falling back to onboarding.");
-              navigate('/onboarding');
-            }
-          } else {
-            navigate('/onboarding');
-          }
+          handleSuccessRedirect(token || '', updatedUserData.onboardingCompleted);
           return;
         }
       } catch (error: any) {

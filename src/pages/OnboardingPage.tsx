@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence, useScroll, useTransform } from 'framer-motion';
 import confetti from 'canvas-confetti';
 import {
@@ -53,6 +53,21 @@ const ALLERGENS = [
 
 const OnboardingPage: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const searchParams = new URLSearchParams(location.search);
+    const redirectUrl = searchParams.get('redirect');
+
+    const handleNavigationAfterOnboarding = (token: string | null) => {
+        if (token) {
+            if (redirectUrl) {
+                navigate(redirectUrl, { replace: true });
+            } else {
+                navigate(`/dashboard/${token}`, { replace: true });
+            }
+        } else {
+            navigate('/login', { replace: true });
+        }
+    };
     const { currentUser } = useAuth();
     const [step, setStep] = useState(1);
     const [direction, setDirection] = useState(0);
@@ -199,11 +214,7 @@ const OnboardingPage: React.FC = () => {
                 const token = persistUserSession(freshUser, currentUser.uid);
                 
                 setTimeout(() => {
-                    if (token) {
-                        navigate(`/dashboard/${token}`, { replace: true });
-                    } else {
-                        navigate('/login', { replace: true });
-                    }
+                    handleNavigationAfterOnboarding(token);
                 }, 2000);
             } else {
                 console.warn("Could not fetch fresh user token after onboarding");
@@ -211,23 +222,19 @@ const OnboardingPage: React.FC = () => {
                 const token = getSessionToken();
                 
                 setTimeout(() => {
-                    if (token) {
-                        navigate(`/dashboard/${token}`, { replace: true });
-                    } else {
-                        navigate('/login', { replace: true });
-                    }
+                    handleNavigationAfterOnboarding(token);
                 }, 2000);
             }
         } catch (error) {
             console.error("Error saving preferences:", error);
-            toast.error("Failed to save preferences. Redirecting to dashboard...");
+            toast.error("Failed to save preferences. Redirecting...");
             
             // Fallback redirect even on error
             try {
                 const freshUser = await userAPI.fetchUserData(currentUser.uid);
                 if (freshUser) {
                     const token = persistUserSession(freshUser, currentUser.uid);
-                    navigate(`/dashboard/${token}`, { replace: true });
+                    handleNavigationAfterOnboarding(token);
                     return;
                 }
             } catch (e) {
@@ -235,11 +242,7 @@ const OnboardingPage: React.FC = () => {
             }
 
             const token = getSessionToken();
-            if (token) {
-                navigate(`/dashboard/${token}`, { replace: true });
-            } else {
-                navigate('/login', { replace: true });
-            }
+            handleNavigationAfterOnboarding(token);
         } finally {
             setLoading(false);
         }

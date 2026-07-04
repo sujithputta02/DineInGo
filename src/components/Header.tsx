@@ -90,27 +90,46 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
                 </svg>
               </button>
 
-              {/* Notification Bell */}
-              <button className="p-2 sm:p-2.5 text-white hover:bg-white/20 rounded-lg transition">
-                <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
-              </button>
+              {auth.currentUser ? (
+                <>
+                  {/* Notification Bell */}
+                  <button className="p-2 sm:p-2.5 text-white hover:bg-white/20 rounded-lg transition">
+                    <svg className="w-6 h-6 sm:w-7 sm:h-7 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </button>
 
-              {/* Settings Icon (Desktop) */}
-              <button className="hidden md:block p-2 text-white hover:bg-white/20 rounded-lg transition">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-              </button>
+                  {/* Settings Icon (Desktop) */}
+                  <button className="hidden md:block p-2 text-white hover:bg-white/20 rounded-lg transition">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
 
-              {/* Profile Avatar */}
-              <button className="p-1.5 sm:p-2 rounded-full bg-white/20 hover:bg-white/30 transition flex-shrink-0">
-                <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-8 md:h-8 rounded-full bg-white/40 flex items-center justify-center text-white font-semibold text-sm sm:text-base">
-                  {auth.currentUser?.email?.[0].toUpperCase() || 'U'}
+                  {/* Profile Avatar */}
+                  <button className="p-1.5 sm:p-2 rounded-full bg-white/20 hover:bg-white/30 transition flex-shrink-0">
+                    <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-8 md:h-8 rounded-full bg-white/40 flex items-center justify-center text-white font-semibold text-sm sm:text-base">
+                      {auth.currentUser?.email?.[0].toUpperCase() || 'U'}
+                    </div>
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Link
+                    to={window.location.pathname.includes('/login') ? '/login' : `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                    className="px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-600 bg-white hover:bg-emerald-50 rounded-xl transition shadow-md shadow-black/5"
+                  >
+                    Log In
+                  </Link>
+                  <Link
+                    to={window.location.pathname.includes('/signup') ? '/signup' : `/signup?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                    className="px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white border border-white/30 hover:bg-white/10 rounded-xl transition"
+                  >
+                    Sign Up
+                  </Link>
                 </div>
-              </button>
+              )}
 
               {/* Theme Toggle */}
               <div className="hidden md:block">
@@ -149,19 +168,38 @@ const Header: React.FC<HeaderProps> = ({ handleLogout }) => {
             >
               {t('dashboard')}
             </Link>
-            <button className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium">
-              {t('settings')}
-            </button>
-            <button className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium">
-              {t('theme')}
-            </button>
-            {auth.currentUser && (
-              <button
-                onClick={onLogout}
-                className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-red-500/30 rounded-lg transition text-base sm:text-lg font-medium"
-              >
-                {t('logout')}
-              </button>
+            {auth.currentUser ? (
+              <>
+                <button className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium">
+                  {t('settings')}
+                </button>
+                <button className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium">
+                  {t('theme')}
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="w-full text-left px-4 py-2.5 sm:py-3 text-white hover:bg-red-500/30 rounded-lg transition text-base sm:text-lg font-medium"
+                >
+                  {t('logout')}
+                </button>
+              </>
+            ) : (
+              <div className="space-y-1">
+                <Link
+                  to={window.location.pathname.includes('/login') ? '/login' : `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                  className="block px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Log In
+                </Link>
+                <Link
+                  to={window.location.pathname.includes('/signup') ? '/signup' : `/signup?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`}
+                  className="block px-4 py-2.5 sm:py-3 text-white hover:bg-white/20 rounded-lg transition text-base sm:text-lg font-medium"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Sign Up
+                </Link>
+              </div>
             )}
           </div>
         </div>
