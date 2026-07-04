@@ -15,6 +15,8 @@ interface Restaurant {
     address: string;
     cuisine: string[];
     rating: number;
+    sentimentScore?: number;
+    sentimentRating?: number;
     image: string;
 }
 

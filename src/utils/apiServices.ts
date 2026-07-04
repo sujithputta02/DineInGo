@@ -25,6 +25,8 @@ export interface Restaurant {
     country: string;
   };
   rating: number;
+  sentimentScore?: number;
+  sentimentRating?: number;
   image: string;
   cuisine: string[];
   priceLevel: number;
