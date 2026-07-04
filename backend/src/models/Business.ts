@@ -59,6 +59,8 @@ export interface IBusiness extends Document {
   totalBookings: number;
   revenue: number;
   rating: number;
+  sentimentScore: number; // Rolling sentiment score [-1.0, 1.0]
+  sentimentRating: number; // Sentiment rating mapped to standard star scale [1.0, 5.0]
   utilizationRate: number;
   
   createdAt: Date;
@@ -231,6 +233,8 @@ const BusinessSchema = new Schema<IBusiness>({
   totalBookings: { type: Number, default: 0 },
   revenue: { type: Number, default: 0 },
   rating: { type: Number, default: 0 },
+  sentimentScore: { type: Number, default: 0 },
+  sentimentRating: { type: Number, default: 4.0 },
   utilizationRate: { type: Number, default: 0 }
 }, {
   timestamps: true

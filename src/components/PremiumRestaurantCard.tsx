@@ -15,6 +15,8 @@ interface Restaurant {
     longitude?: number;
   };
   rating: number;
+  sentimentScore?: number;
+  sentimentRating?: number;
   image: string;
   cuisine?: string[];
   priceLevel?: number;
@@ -77,13 +79,24 @@ export const PremiumRestaurantCard: React.FC<PremiumRestaurantCardProps> = ({
         {/* Top Badges Layer */}
         <div className="absolute top-5 inset-x-5 z-20 flex justify-between items-start">
           <div className="flex flex-col gap-2">
-            <div className="bg-black/40 backdrop-blur-xl border border-white/20 text-white px-3 py-1.5 rounded-2xl flex items-center shadow-2xl">
-              <span className="text-yellow-400 mr-2 text-sm drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
-                ★
-              </span>
-              <span className="font-black text-sm tracking-tight">
-                {Number(restaurant.averageRating ?? restaurant.rating).toFixed(1)}
-              </span>
+            <div className="flex gap-2">
+              <div className="bg-black/40 backdrop-blur-xl border border-white/20 text-white px-3 py-1.5 rounded-2xl flex items-center shadow-2xl">
+                <span className="text-yellow-400 mr-2 text-sm drop-shadow-[0_0_8px_rgba(250,204,21,0.6)]">
+                  ★
+                </span>
+                <span className="font-black text-sm tracking-tight">
+                  {Number(restaurant.averageRating ?? restaurant.rating).toFixed(1)}
+                </span>
+              </div>
+
+              {restaurant.sentimentRating !== undefined && restaurant.sentimentRating > 0 && (
+                <div className="bg-emerald-500/90 backdrop-blur-xl border border-emerald-400/30 text-white px-3 py-1.5 rounded-2xl flex items-center shadow-2xl gap-1">
+                  <span className="text-white text-xs">💬</span>
+                  <span className="font-black text-sm tracking-tight">
+                    {restaurant.sentimentRating.toFixed(1)}
+                  </span>
+                </div>
+              )}
             </div>
 
             {showDinoPick && (

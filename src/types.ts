@@ -37,6 +37,8 @@ export interface Restaurant {
   name: string;
   location: Location;
   rating: number;
+  sentimentScore?: number;
+  sentimentRating?: number;
   image: string;
   thumbnail?: string;
   cuisine?: string[];

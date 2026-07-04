@@ -18,6 +18,7 @@ export interface IReview extends Document {
     bookingId?: mongoose.Types.ObjectId;
     rating: number;
     comment: string;
+    sentimentScore?: number; // Offline sentiment score ranging from -1.0 to 1.0
     reply?: {
         text: string;
         repliedAt: Date;
@@ -41,6 +42,7 @@ const reviewSchema = new Schema<IReview>({
     bookingId: { type: Schema.Types.ObjectId, ref: 'TableBooking' },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, required: true },
+    sentimentScore: { type: Number, default: 0 },
     reply: {
         text: { type: String },
         repliedAt: { type: Date }

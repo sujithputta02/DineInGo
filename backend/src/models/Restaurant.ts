@@ -24,6 +24,8 @@ export interface IRestaurant extends Document {
   cuisine: string[];
   address: string;
   rating: number;
+  sentimentScore: number;
+  sentimentRating: number;
   image: string;
   location: ILocation;
   priceLevel: number;
@@ -64,6 +66,8 @@ const restaurantSchema = new Schema<IRestaurant>({
   cuisine: { type: [String], required: true },
   address: { type: String, required: true },
   rating: { type: Number, required: true, min: 0, max: 5 },
+  sentimentScore: { type: Number, default: 0 },
+  sentimentRating: { type: Number, default: 4.0 },
   image: { type: String, required: true },
   location: { type: locationSchema, required: true },
   priceLevel: { type: Number, required: true, min: 1, max: 5 },

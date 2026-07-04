@@ -187,6 +187,8 @@ const transformBusinessData = (business: any, req: Request): any => {
 
     // Stats
     rating: business.rating || 4.0,
+    sentimentScore: business.sentimentScore !== undefined ? business.sentimentScore : 0,
+    sentimentRating: business.sentimentRating !== undefined ? business.sentimentRating : 4.0,
     totalBookings: business.totalBookings || 0,
     revenue: business.revenue || 0,
     utilizationRate: business.utilizationRate || 0
@@ -273,7 +275,7 @@ export { upload };
 // Get all active businesses (for public dashboard)
 export const getAllBusinesses = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { type, location, cuisine } = req.query;
+    const { type, location, cuisine, sortBy } = req.query;
 
     const query: any = {
       status: 'active' // Only show active/deployed businesses
@@ -298,9 +300,14 @@ export const getAllBusinesses = async (req: Request, res: Response): Promise<voi
       query.cuisine = { $in: [cuisine] };
     }
 
+    let sortObj: any = { createdAt: -1 };
+    if (sortBy === 'sentiment') {
+      sortObj = { sentimentScore: -1 };
+    }
+
     const businesses = await Business.find(query)
-      .select('name location locationData type description thumbnail coverImage cuisine menu slotMode weeklySchedule dailySlots timeSlots rating basePrice status ownerId createdAt updatedAt capacity eventType duration bookingType floorPlan seatingLayout totalBookings revenue utilizationRate')
-      .sort({ createdAt: -1 })
+      .select('name location locationData type description thumbnail coverImage cuisine menu slotMode weeklySchedule dailySlots timeSlots rating sentimentScore sentimentRating basePrice status ownerId createdAt updatedAt capacity eventType duration bookingType floorPlan seatingLayout totalBookings revenue utilizationRate')
+      .sort(sortObj)
       .lean();
 
     console.log(`Fetched ${businesses.length} businesses for public display`);

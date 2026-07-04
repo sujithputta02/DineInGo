@@ -5,7 +5,13 @@ import mongoose from 'mongoose';
 // Get all restaurants
 export const getAllRestaurants = async (req: Request, res: Response) => {
   try {
-    const restaurants = await Restaurant.find({ isPublished: true }).sort({ createdAt: -1 });
+    const { sortBy } = req.query;
+    let sortObj: any = { createdAt: -1 };
+    if (sortBy === 'sentiment') {
+      sortObj = { sentimentScore: -1 };
+    }
+
+    const restaurants = await Restaurant.find({ isPublished: true }).sort(sortObj);
     res.status(200).json({
       success: true,
       count: restaurants.length,
@@ -191,7 +197,7 @@ export const deleteRestaurant = async (req: Request, res: Response) => {
 // Search restaurants
 export const searchRestaurants = async (req: Request, res: Response) => {
   try {
-    const { query, cuisine } = req.query;
+    const { query, cuisine, sortBy } = req.query;
 
     let searchCriteria: any = { isPublished: true };
 
@@ -207,7 +213,12 @@ export const searchRestaurants = async (req: Request, res: Response) => {
       searchCriteria.cuisine = { $regex: cuisine as string, $options: 'i' };
     }
 
-    const restaurants = await Restaurant.find(searchCriteria).sort({ createdAt: -1 });
+    let sortObj: any = { createdAt: -1 };
+    if (sortBy === 'sentiment') {
+      sortObj = { sentimentScore: -1 };
+    }
+
+    const restaurants = await Restaurant.find(searchCriteria).sort(sortObj);
 
     res.status(200).json({
       success: true,

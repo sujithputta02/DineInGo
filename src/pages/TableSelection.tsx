@@ -90,13 +90,14 @@ function FeatureRenderer({ feature }: { feature: any }) {
   }
 }
 
-function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTables, onTableSelect, isFilteredOut }: {
+function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTables, onTableSelect, isFilteredOut, isSuggested }: {
   tableData: any;
   selectedTable: string | null;
   unavailableTables: string[];
   loadingTables: boolean;
   onTableSelect: (id: string) => void;
   isFilteredOut?: boolean;
+  isSuggested?: boolean;
 }) {
   const isSelected = selectedTable === tableData.id;
   const isUnavailable = Array.isArray(unavailableTables) && unavailableTables.includes(tableData.id);
@@ -150,6 +151,9 @@ function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTab
         zIndex: isSelected ? 20 : 10 
       }}
     >
+      {isSuggested && !isSelected && !isUnavailable && (
+        <div className="absolute -inset-2 rounded-xl bg-emerald-500/10 animate-pulse border-2 border-emerald-400/30 pointer-events-none z-0"></div>
+      )}
       {Array.from({ length: tableData.seats }).map((_: unknown, i: number) => {
         const angle = (i * (360 / tableData.seats)) * (Math.PI / 180);
         const radius = isCircle ? 60 : 70;
@@ -547,6 +551,128 @@ const TableSelection: React.FC = () => {
 
   const activeFloor = useMemo(() => floors.find(f => f.id === activeFloorId), [floors, activeFloorId]);
 
+  const suggestedTableInfo = useMemo(() => {
+    if (!activeFloor || !activeFloor.layout || activeFloor.layout.length === 0) return null;
+    const date = searchParams.get('date');
+    const time = searchParams.get('time') || '';
+    const guests = Number(searchParams.get('guests')) || 1;
+
+    // Filter available tables
+    const available = activeFloor.layout.filter((table: any) => {
+      const isBooked = Array.isArray(unavailableTables) && unavailableTables.includes(table.id);
+      return !isBooked;
+    });
+
+    if (available.length === 0) return null;
+
+    // Helper to calculate proximity of table to a feature type
+    const getProximityToFeature = (table: any, featureType: string): number => {
+      if (!activeFloor.features || activeFloor.features.length === 0) return 9999;
+      let minDistance = 9999;
+      activeFloor.features.forEach((feat: any) => {
+        if (feat.type === featureType) {
+          const dx = table.x - feat.x;
+          const dy = table.y - feat.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          if (dist < minDistance) minDistance = dist;
+        }
+      });
+      return minDistance;
+    };
+
+    // Parse hour of day
+    let hour = 19; // default dinner
+    if (time) {
+      const parts = time.match(/^(\d+):(\d+)\s*(AM|PM)?/i);
+      if (parts) {
+        let h = parseInt(parts[1]);
+        const m = parseInt(parts[2]);
+        const amp = parts[3];
+        if (amp) {
+          if (amp.toUpperCase() === 'PM' && h < 12) h += 12;
+          if (amp.toUpperCase() === 'AM' && h === 12) h = 0;
+        }
+        hour = h;
+      }
+    }
+
+    const scoredTables = available.map((table: any) => {
+      let score = 0;
+      const reasons: string[] = [];
+
+      // 1. Capacity Fit
+      if (table.seats === guests) {
+        score += 40;
+        reasons.push('Perfect capacity match');
+      } else if (table.seats === guests + 1 || table.seats === guests + 2) {
+        score += 20;
+        reasons.push('Comfortable capacity fit');
+      } else if (table.seats < guests) {
+        score -= 100; // Too small
+      } else {
+        score -= 15; // Oversized table
+        reasons.push('Oversized table');
+      }
+
+      // 2. Feature / Time context
+      const isSunset = hour >= 17 && hour <= 19; // 5 PM to 7 PM
+      const isNight = hour >= 20 || hour <= 4; // 8 PM to 4 AM
+      const isLunch = hour >= 11 && hour <= 15; // 11 AM to 3 PM
+
+      // Window/Outdoor proximity
+      const winDist = getProximityToFeature(table, 'window');
+      const nearWindow = winDist < 25; // within 25% of canvas width/height
+
+      if (isSunset && nearWindow) {
+        score += 35;
+        reasons.push('Window proximity for sunset views 🌅');
+      } else if (isLunch && nearWindow) {
+        score += 15;
+        reasons.push('Bright natural daylight seating ☀️');
+      } else if (nearWindow) {
+        score += 10;
+        reasons.push('Window-side seating');
+      }
+
+      // Bar/Lounge proximity
+      const barDist = getProximityToFeature(table, 'bar');
+      const nearBar = barDist < 25;
+      if (isNight && nearBar) {
+        score += 25;
+        reasons.push('Close to main bar area for late-night vibes 🍹');
+      }
+
+      // Entrance/Reception proximity (want to avoid drafty/crowded host areas)
+      const entDist = getProximityToFeature(table, 'entrance');
+      const recDist = getProximityToFeature(table, 'reception');
+      const nearEntry = entDist < 20 || recDist < 20;
+      if (nearEntry) {
+        score -= 15; // Penalize for high traffic / noise
+        reasons.push('Near high-traffic entrance');
+      } else {
+        score += 10;
+        reasons.push('Quiet zone away from entrance host desk 🤫');
+      }
+
+      // 3. Category Match
+      if (activeFilter === 'booth' && (table.category === 'vip' || table.category === 'premium')) {
+        score += 25;
+        reasons.push('VIP/Premium booth matching filter');
+      }
+
+      return { table, score, reason: reasons[0] || 'Dino-approved comfort index' };
+    });
+
+    // Sort descending by score
+    scoredTables.sort((a, b) => b.score - a.score);
+
+    const best = scoredTables[0];
+    if (best && best.score > 0) {
+      return best;
+    }
+    return null;
+  }, [activeFloor, unavailableTables, searchParams, activeFilter]);
+
   const handleProceed = async () => {
     if (!selectedTable) {
       alert(t('selectToProceed', 'Please select a table to proceed'));
@@ -730,6 +856,28 @@ const TableSelection: React.FC = () => {
         </button>
       </div>
 
+      {suggestedTableInfo && (
+        <div className="mx-6 mb-4 p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/20 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top duration-300">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl mt-0.5">🦖</span>
+            <div>
+              <h4 className="text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                Dino's Smart Suggestion
+              </h4>
+              <p className="text-slate-300 text-xs sm:text-sm mt-0.5 font-medium">
+                We recommend <strong className="text-emerald-400">Table {suggestedTableInfo.table.label || suggestedTableInfo.table.id}</strong>: {suggestedTableInfo.reason}.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setSelectedTable(suggestedTableInfo.table.id)}
+            className="w-full sm:w-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-500/10 active:scale-95 transition-all whitespace-nowrap"
+          >
+            Claim Suggestion
+          </button>
+        </div>
+      )}
+
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* MAP CANVAS */}
         <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex flex-col items-center justify-center p-4 sm:p-8">
@@ -744,6 +892,7 @@ const TableSelection: React.FC = () => {
               {/* Tables Layer */}
               {activeFloor?.layout.map((table: any) => {
                 const isFilteredOut = !isTableMatchingFilter(table);
+                const isSuggested = suggestedTableInfo?.table.id === table.id;
                 return (
                   <TableRenderer 
                     key={table.id} 
@@ -753,6 +902,7 @@ const TableSelection: React.FC = () => {
                     loadingTables={loadingTables}
                     onTableSelect={handleTableSelect}
                     isFilteredOut={isFilteredOut}
+                    isSuggested={isSuggested}
                   />
                 );
               })}

@@ -3,7 +3,85 @@ import { Review } from '../models/Review';
 import { User } from '../models/User';
 import { Business } from '../models/Business';
 import { emailService } from '../services/emailService';
+import { analyzeSentiment } from '../utils/sentimentAnalyzer';
 import mongoose from 'mongoose';
+
+/**
+ * Recalculates and updates rolling average sentiment ratings for a business/event
+ */
+const updateBusinessSentimentAndRating = async (businessId: string, isEvent: boolean) => {
+    try {
+        console.log(`[SentimentUpdate] Recalculating scores for business ID: ${businessId}, isEvent: ${isEvent}`);
+        const matchCondition = isEvent 
+            ? { eventId: new mongoose.Types.ObjectId(businessId), status: 'published' }
+            : { businessId: new mongoose.Types.ObjectId(businessId), status: 'published' };
+        
+        const reviews = await Review.find(matchCondition);
+        if (reviews.length === 0) {
+            console.log('[SentimentUpdate] No reviews found, setting default neutral scores');
+            await Business.findByIdAndUpdate(businessId, {
+                rating: 0,
+                sentimentScore: 0,
+                sentimentRating: 4.0
+            });
+            return;
+        }
+
+        let totalRatingSum = 0;
+        let totalReviewsCount = 0;
+        let totalSentimentSum = 0;
+
+        for (const r of reviews) {
+            totalRatingSum += r.rating;
+            totalSentimentSum += r.sentimentScore || 0;
+            totalReviewsCount++;
+
+            if (r.subReviews && r.subReviews.length > 0) {
+                for (const sub of r.subReviews) {
+                    totalRatingSum += sub.rating;
+                    const subSentiment = analyzeSentiment(sub.comment);
+                    totalSentimentSum += subSentiment;
+                    totalReviewsCount++;
+                }
+            }
+        }
+
+        const averageRating = totalRatingSum / totalReviewsCount;
+        const averageSentiment = totalSentimentSum / totalReviewsCount;
+        const sentimentRating = 3.0 + (averageSentiment * 2.0); // Map [-1, 1] to [1, 5]
+
+        console.log(`[SentimentUpdate] Computed: Avg Rating = ${averageRating}, Avg Sentiment = ${averageSentiment}, Sentiment Rating = ${sentimentRating}`);
+
+        await Business.findByIdAndUpdate(businessId, {
+            rating: Math.round(averageRating * 10) / 10,
+            sentimentScore: Math.round(averageSentiment * 100) / 100,
+            sentimentRating: Math.round(sentimentRating * 10) / 10
+        });
+
+        // Sync legacy Restaurant collection if compiled and exists
+        try {
+            const RestaurantModel = mongoose.model('Restaurant');
+            if (RestaurantModel) {
+                const business = await Business.findById(businessId);
+                if (business) {
+                    await RestaurantModel.findOneAndUpdate(
+                        { name: business.name },
+                        {
+                            rating: Math.round(averageRating * 10) / 10,
+                            sentimentScore: Math.round(averageSentiment * 100) / 100,
+                            sentimentRating: Math.round(sentimentRating * 10) / 10
+                        }
+                    );
+                    console.log(`[SentimentUpdate] Synced legacy Restaurant collection: ${business.name}`);
+                }
+            }
+        } catch (e) {
+            // Suppress error if model or restaurant is not found
+        }
+    } catch (error) {
+        console.error('[SentimentUpdate] Error updating business sentiment:', error);
+    }
+};
 
 /**
  * Get all reviews for a business
@@ -154,6 +232,9 @@ export const addReview = async (req: Request, res: Response) => {
             await existingReview.save();
             console.log('[ReviewController] Sub-review appended successfully, parent ID:', existingReview._id);
 
+            // Trigger overall rating and sentiment updates
+            await updateBusinessSentimentAndRating(businessIdRaw, isEvent);
+
             // Send email notifications
             try {
                 console.log('[ReviewController] Triggering email notifications for sub-review...');
@@ -190,6 +271,7 @@ export const addReview = async (req: Request, res: Response) => {
             return res.status(200).json(existingReview);
         }
         
+        const sentimentVal = analyzeSentiment(comment);
         const review = new Review({
             businessId: !isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
             eventId: isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
@@ -199,6 +281,7 @@ export const addReview = async (req: Request, res: Response) => {
             userPhoto,
             rating,
             comment,
+            sentimentScore: sentimentVal,
             bookingId: bookingId && mongoose.isValidObjectId(bookingId) ? new mongoose.Types.ObjectId(bookingId) : undefined,
             images: finalImages,
             likes: [],
@@ -207,6 +290,9 @@ export const addReview = async (req: Request, res: Response) => {
 
         await review.save();
         console.log('[ReviewController] Review saved successfully, ID:', review._id);
+
+        // Recalculate business rolling ratings and sentiment scores
+        await updateBusinessSentimentAndRating(businessIdRaw, isEvent);
 
         // Send email notifications
         try {
@@ -327,9 +413,11 @@ export const updateReview = async (req: Request, res: Response) => {
         // Combine with new uploads
         finalImages = [...finalImages, ...uploadedImages];
 
+        const sentimentScore = analyzeSentiment(comment);
+
         let review = await Review.findByIdAndUpdate(
             id,
-            { rating, comment, images: finalImages, updatedAt: new Date() },
+            { rating, comment, images: finalImages, sentimentScore, updatedAt: new Date() },
             { new: true }
         );
 
@@ -344,10 +432,20 @@ export const updateReview = async (req: Request, res: Response) => {
                     subReview.comment = comment;
                     subReview.images = finalImages;
                     await parentReview.save();
+                    
+                    const targetId = parentReview.businessId || parentReview.eventId;
+                    if (targetId) {
+                        await updateBusinessSentimentAndRating(targetId.toString(), parentReview.entityType === 'event');
+                    }
                     return res.json(parentReview);
                 }
             }
             return res.status(404).json({ message: 'Review not found' });
+        }
+
+        const targetId = review.businessId || review.eventId;
+        if (targetId) {
+            await updateBusinessSentimentAndRating(targetId.toString(), review.entityType === 'event');
         }
 
         res.json(review);
@@ -420,10 +518,21 @@ export const deleteReview = async (req: Request, res: Response) => {
                 // Remove the sub-review from the array using cast to any
                 (parentReview.subReviews as any).pull({ _id: id });
                 await parentReview.save();
+                
+                const targetId = parentReview.businessId || parentReview.eventId;
+                if (targetId) {
+                    await updateBusinessSentimentAndRating(targetId.toString(), parentReview.entityType === 'event');
+                }
                 return res.json({ message: 'Sub-review deleted successfully', review: parentReview });
             }
             return res.status(404).json({ message: 'Review not found' });
         }
+
+        const targetId = review.businessId || review.eventId;
+        if (targetId) {
+            await updateBusinessSentimentAndRating(targetId.toString(), review.entityType === 'event');
+        }
+
         res.json({ message: 'Review deleted successfully' });
     } catch (error: any) {
         res.status(500).json({ message: error.message });

@@ -100,6 +100,8 @@ interface Restaurant {
     longitude?: number;
   };
   rating: number;
+  sentimentScore?: number;
+  sentimentRating?: number;
   image: string;
   cuisine?: string[];
   priceLevel?: number;
@@ -225,6 +227,7 @@ export default function DashboardPage() {
   });
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<Section>("home");
+  const [sortBy, setSortBy] = useState<'default' | 'sentiment'>('default');
   const { language, setLanguage, t } = useLanguage();
   
   // Create a translations object that always reflects the current state of t
@@ -556,14 +559,14 @@ export default function DashboardPage() {
 
 
           const [restaurantsResponse, businessesResponse] = await Promise.all([
-            fetch(`${apiUrl}/api/v1/restaurants?_t=${timestamp}`).catch(
+            fetch(`${apiUrl}/api/v1/restaurants?sortBy=${sortBy}&_t=${timestamp}`).catch(
               (err) => {
 
                 return null;
               },
             ),
             fetch(
-              `${apiUrl}/api/v1/business?type=restaurant&_t=${timestamp}`,
+              `${apiUrl}/api/v1/business?type=restaurant&sortBy=${sortBy}&_t=${timestamp}`,
             ).catch((err) => {
 
               return null;
@@ -606,8 +609,14 @@ export default function DashboardPage() {
           // Add mock data LAST as fallback/examples
           allRestaurants = [...allRestaurants, ...mockRestaurants];
 
-          // Sort restaurants based on preferences if available
-          if (userPreferences) {
+          // Sort restaurants based on preferences or sentiment rating
+          if (sortBy === 'sentiment') {
+            allRestaurants.sort((a, b) => {
+              const ratingA = (a as any).sentimentRating !== undefined ? (a as any).sentimentRating : (a.rating || 0);
+              const ratingB = (b as any).sentimentRating !== undefined ? (b as any).sentimentRating : (b.rating || 0);
+              return ratingB - ratingA;
+            });
+          } else if (userPreferences) {
             allRestaurants.sort((a, b) => {
               const scoreA = getPersonalizationScore(a, userPreferences);
               const scoreB = getPersonalizationScore(b, userPreferences);
@@ -700,7 +709,7 @@ export default function DashboardPage() {
     };
 
     loadUserWithValidation();
-  }, []);
+  }, [sortBy]);
 
   // Fetch real-time ratings for business restaurants (ObjectIDs only)
   useEffect(() => {
@@ -2455,12 +2464,36 @@ export default function DashboardPage() {
             {/* Content based on selection */}
             {homeSection === "restaurants" ? (
               <div className="mb-12">
-                <h2
-                  className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"} mb-8 flex items-center gap-3`}
-                >
-                  <Utensils className="text-emerald-500" />
-                  {t('featuredRestaurants')}
-                </h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                  <h2
+                    className={`text-3xl font-black tracking-tight ${isDarkMode ? "text-white" : "text-gray-900"} flex items-center gap-3`}
+                  >
+                    <Utensils className="text-emerald-500" />
+                    {t('featuredRestaurants')}
+                  </h2>
+                  <div className="flex bg-slate-800/20 dark:bg-slate-800/50 p-1.5 rounded-2xl border border-gray-200 dark:border-white/5 backdrop-blur-md self-start sm:self-auto">
+                    <button
+                      onClick={() => setSortBy('default')}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${
+                        sortBy === 'default'
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      Default
+                    </button>
+                    <button
+                      onClick={() => setSortBy('sentiment')}
+                      className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
+                        sortBy === 'sentiment'
+                          ? 'bg-emerald-500 text-white shadow-lg shadow-emerald-500/10'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                      }`}
+                    >
+                      🔥 Smart Sentiment
+                    </button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {restaurants.length > 0 ? (
                     restaurants.map((restaurant, idx) => (
