@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { API_CONFIG } from '../config/api';
 import { useParams, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Ticket, CreditCard } from 'lucide-react';
+import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Ticket, CreditCard, X, Info, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
+import mixpanel from 'mixpanel-browser';
 
 interface Event {
   _id: string;
@@ -40,6 +41,11 @@ const EventPreview: React.FC = () => {
     phoneNumber: '',
     specialRequest: ''
   });
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentCardNumber, setPaymentCardNumber] = useState('4242 •••• •••• 4242');
+  const [paymentExpiry, setPaymentExpiry] = useState('12/28');
+  const [paymentCvv, setPaymentCvv] = useState('***');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem("dineInGoDarkMode");
     return saved === "true" ? true : false;
@@ -118,123 +124,138 @@ const EventPreview: React.FC = () => {
     }
   };
 
-  const handleConfirmBooking = async () => {
+  const handleConfirmBooking = () => {
     if (!auth.currentUser || !event) return;
-
-    // Validate form
     if (!formData.fullName || !formData.email || !formData.phoneNumber) {
       toast.error('Please fill in all required fields');
       return;
     }
+    setShowPaymentModal(true);
+  };
 
-    setSubmitting(true);
+  const executeBookingCompletion = async () => {
+    setIsProcessingPayment(true);
+    setTimeout(async () => {
+      setShowPaymentModal(false);
+      setIsProcessingPayment(false);
+      setSubmitting(true);
 
-    try {
-      const bookingData = {
-        userId: auth.currentUser.uid,
-        eventId: event._id,
-        eventName: event.title,
-        date: new Date(event.date).toISOString(),
-        time: event.time,
-        guests: numberOfGuests,
-        status: 'confirmed',
-        totalAmount,
-        selectedSeats: event.hasSeating ? selectedSeatIds : undefined,
-        selectedTickets: selectedTickets.length > 0 ? selectedTickets : undefined,
-        selectedAddOns: selectedAddOns.length > 0 ? selectedAddOns : undefined,
-        fullName: formData.fullName,
-        email: formData.email,
-        phoneNumber: formData.phoneNumber,
-        specialRequest: formData.specialRequest
-      };
+      try {
+        const bookingData = {
+          userId: auth.currentUser!.uid,
+          eventId: event!._id,
+          eventName: event!.title,
+          date: new Date(event!.date).toISOString(),
+          time: event!.time,
+          guests: numberOfGuests,
+          status: 'confirmed',
+          totalAmount,
+          selectedSeats: event!.hasSeating ? selectedSeatIds : undefined,
+          selectedTickets: selectedTickets.length > 0 ? selectedTickets : undefined,
+          selectedAddOns: selectedAddOns.length > 0 ? selectedAddOns : undefined,
+          fullName: formData.fullName,
+          email: formData.email,
+          phoneNumber: formData.phoneNumber,
+          specialRequest: formData.specialRequest
+        };
 
-      console.log('Sending booking data:', bookingData);
+        console.log('Sending booking data:', bookingData);
 
-      const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/bookings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(bookingData)
-      });
+        const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/bookings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(bookingData)
+        });
 
-      const data = await response.json();
+        const data = await response.json();
 
-      if (response.ok) {
-        // Update event (register count and seat status)
-        try {
-          // Determine if this is an area-based booking (concert areas) or individual seat booking
-          const isAreaBooking = event.hasSeating &&
-            event.seatingLayout?.areas &&
-            event.seatingLayout.areas.length > 0 &&
-            selectedSeatIds.length > 0;
+        if (response.ok) {
+          try {
+            const isAreaBooking = event!.hasSeating &&
+              event!.seatingLayout?.areas &&
+              event!.seatingLayout.areas.length > 0 &&
+              selectedSeatIds.length > 0;
 
-          let updatePayload: any;
-          if (isAreaBooking) {
-            // Area-based: send areaId + guests so backend increments area.booked
-            updatePayload = {
-              areaId: selectedSeatIds[0],
-              guests: numberOfGuests,
-              userId: auth.currentUser.uid
-            };
-          } else if (event.hasSeating) {
-            // Individual seat-based
-            updatePayload = { seatIds: selectedSeatIds, userId: auth.currentUser.uid };
-          } else {
-            // Non-seating (ticket/headcount based)
-            updatePayload = { guests: numberOfGuests };
+            let updatePayload: any;
+            if (isAreaBooking) {
+              updatePayload = {
+                areaId: selectedSeatIds[0],
+                guests: numberOfGuests,
+                userId: auth.currentUser!.uid
+              };
+            } else if (event!.hasSeating) {
+              updatePayload = { seatIds: selectedSeatIds, userId: auth.currentUser!.uid };
+            } else {
+              updatePayload = { guests: numberOfGuests };
+            }
+
+            const eventResponse = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${event!._id}/register`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(updatePayload)
+            });
+
+            const eventData = await eventResponse.json();
+
+            if (!eventResponse.ok) {
+              if (eventResponse.status === 409) {
+                toast.error('Some seats were just booked by another user. Please select different seats.');
+                setTimeout(() => {
+                  navigate(`/event/${event!._id}/register`);
+                }, 2000);
+                return;
+              } else if (eventResponse.status === 400) {
+                toast.error(eventData.message || 'Not enough spots available');
+                setTimeout(() => {
+                  navigate(`/event/${event!._id}/register`);
+                }, 2000);
+                return;
+              }
+              throw new Error(eventData.message || 'Failed to update event seats');
+            }
+          } catch (err: any) {
+            console.error('Error updating event:', err);
+            toast.warn('Reservation saved, but seat status update failed. Support has been notified.');
           }
 
-          const eventResponse = await fetch(`${API_CONFIG.BASE_URL}/api/v1/events/${event._id}/register`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(updatePayload)
+          toast.success('Event booked successfully!');
+
+          mixpanel.track('Purchase', {
+            'item_id': event!._id,
+            'item_name': event!.title,
+            'item_type': 'event',
+            'amount': totalAmount,
+            'currency': 'INR',
+            'guests': numberOfGuests,
+            'date': new Date(event!.date).toISOString().split('T')[0],
+            'time': event!.time
           });
 
-          const eventData = await eventResponse.json();
+          mixpanel.track('Conversion', {
+            'type': 'booking',
+            'category': 'event'
+          });
 
-          if (!eventResponse.ok) {
-            // Handle conflict - seats were taken by someone else
-            if (eventResponse.status === 409) {
-              toast.error('Some seats were just booked by another user. Please select different seats.');
-              setTimeout(() => {
-                navigate(`/event/${event._id}/register`);
-              }, 2000);
-              return;
-            } else if (eventResponse.status === 400) {
-              toast.error(eventData.message || 'Not enough spots available');
-              setTimeout(() => {
-                navigate(`/event/${event._id}/register`);
-              }, 2000);
-              return;
+          navigate('/dashboard', {
+            state: {
+              bookingSuccess: true,
+              newBooking: data
             }
-            throw new Error(eventData.message || 'Failed to register for event');
-          }
-        } catch (err: any) {
-          console.error('Failed to update event:', err);
-          toast.error(err.message || 'Failed to complete registration');
-          return;
+          });
+        } else {
+          throw new Error(data.message || 'Failed to confirm booking');
         }
-
-        toast.success('Successfully registered for the event!');
-        navigate('/dashboard', {
-          state: {
-            bookingSuccess: true,
-            newBooking: data
-          }
-        });
-      } else {
-        console.error('Booking error response:', data);
-        throw new Error(data.message || 'Registration failed');
+      } catch (error: any) {
+        console.error('Error confirming booking:', error);
+        toast.error(error.message || 'Failed to confirm booking. Please try again.');
+      } finally {
+        setSubmitting(false);
       }
-    } catch (error: any) {
-      console.error('Error registering for event:', error);
-      toast.error(error.message || 'Failed to register for event');
-    } finally {
-      setSubmitting(false);
-    }
+    }, 1500);
   };
 
   if (loading) {
@@ -535,6 +556,139 @@ const EventPreview: React.FC = () => {
           </div>
         </div>
       </div>
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !isProcessingPayment && setShowPaymentModal(false)} />
+          
+          <div className={`relative z-10 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl border-2 transition-all duration-300 transform scale-100 ${
+            isDarkMode 
+              ? 'bg-slate-900 border-slate-800 text-white shadow-black/80' 
+              : 'bg-white border-gray-100 text-slate-900 shadow-emerald-500/5'
+          }`}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Checkout Portal</span>
+                <h3 className="text-lg font-black uppercase tracking-wider mt-0.5">Stripe Protocol</h3>
+              </div>
+              <button 
+                onClick={() => !isProcessingPayment && setShowPaymentModal(false)}
+                className={`p-2 rounded-xl transition-all ${
+                  isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-slate-500'
+                }`}
+                disabled={isProcessingPayment}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Simulated Payment Alert Banner */}
+            <div className="mb-5 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-start gap-2 text-left">
+              <Info size={16} className="shrink-0 mt-0.5 text-amber-500" />
+              <div className="text-[10px]">
+                <span className="font-bold">Beta Simulation:</span> Payments are mocked during the DineInGo developer preview. Do not enter real card details.
+              </div>
+            </div>
+
+            {/* Total summary card */}
+            <div className={`p-4 rounded-[1.5rem] mb-5 border ${
+              isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-gray-50 border-gray-100'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] text-slate-400 font-medium">Description</span>
+                <span className="text-[10px] text-slate-400 font-medium">Amount</span>
+              </div>
+              <div className="flex items-start justify-between">
+                <div className="text-left">
+                  <h4 className="font-bold text-xs line-clamp-1">{event?.title}</h4>
+                  <p className="text-[9px] text-slate-500 font-mono mt-0.5">
+                    {new Date(event?.date || '').toLocaleDateString()} • {event?.time} • {numberOfGuests} Guests
+                  </p>
+                </div>
+                <span className="font-black text-xs text-emerald-500 whitespace-nowrap">
+                  ₹{totalAmount.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Fields */}
+            <div className="space-y-3.5 text-left">
+              <div>
+                <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Card Number</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={paymentCardNumber}
+                    onChange={(e) => setPaymentCardNumber(e.target.value)}
+                    disabled={isProcessingPayment}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all ${
+                      isDarkMode
+                        ? 'bg-slate-950/50 border-slate-800 focus:border-emerald-500/50 text-white'
+                        : 'bg-white border-gray-200 focus:border-emerald-500 text-slate-900'
+                    }`}
+                  />
+                  <CreditCard className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Expiry Date</label>
+                  <input
+                    type="text"
+                    value={paymentExpiry}
+                    onChange={(e) => setPaymentExpiry(e.target.value)}
+                    disabled={isProcessingPayment}
+                    placeholder="MM/YY"
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all ${
+                      isDarkMode
+                        ? 'bg-slate-950/50 border-slate-800 focus:border-emerald-500/50 text-white'
+                        : 'bg-white border-gray-200 focus:border-emerald-500 text-slate-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">CVV</label>
+                  <input
+                    type="password"
+                    value={paymentCvv}
+                    onChange={(e) => setPaymentCvv(e.target.value)}
+                    disabled={isProcessingPayment}
+                    placeholder="***"
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all ${
+                      isDarkMode
+                        ? 'bg-slate-950/50 border-slate-800 focus:border-emerald-500/50 text-white'
+                        : 'bg-white border-gray-200 focus:border-emerald-500 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Authorize button */}
+            <button
+              onClick={executeBookingCompletion}
+              disabled={isProcessingPayment}
+              className={`w-full mt-6 flex items-center justify-center gap-3 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 border-2 ${
+                isProcessingPayment
+                  ? 'bg-slate-800 border-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-emerald-500 border-emerald-500 text-white shadow-xl shadow-emerald-500/20 hover:bg-emerald-600'
+              }`}
+            >
+              {isProcessingPayment ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Authorizing...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>Pay ₹{totalAmount.toFixed(2)}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

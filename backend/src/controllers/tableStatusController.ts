@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { TableStatus } from '../models/TableStatus';
+import { Booking } from '../models/Booking';
 import mongoose from 'mongoose';
 
 /**
@@ -8,7 +9,8 @@ import mongoose from 'mongoose';
 export const getBusinessTableStatuses = async (req: Request, res: Response) => {
     try {
         const { businessId } = req.params;
-        const statuses = await TableStatus.find({ businessId: new mongoose.Types.ObjectId(businessId) });
+        const statuses = await TableStatus.find({ businessId: new mongoose.Types.ObjectId(businessId) })
+            .populate('currentBookingId');
         res.json(statuses);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
@@ -32,7 +34,7 @@ export const updateTableStatus = async (req: Request, res: Response) => {
                 lastStatusChange: new Date()
             },
             { upsert: true, new: true }
-        );
+        ).populate('currentBookingId');
 
         // Emit real-time update via Socket.io
         const io = req.app.get('io');
@@ -73,5 +75,114 @@ export const batchUpdateTableStatus = async (req: Request, res: Response) => {
         res.json(results);
     } catch (error: any) {
         res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Release an occupied/reserved table early (POS check-out)
+ */
+export const releaseTable = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { businessId, tableId } = req.params;
+
+        // Find the active TableStatus
+        const tableStatus = await TableStatus.findOne({
+            businessId: new mongoose.Types.ObjectId(businessId),
+            tableId
+        });
+
+        if (!tableStatus) {
+            return res.status(404).json({ message: 'Table status not found' });
+        }
+
+        // If there is an active booking, mark it as completed
+        if (tableStatus.currentBookingId) {
+            await Booking.findByIdAndUpdate(tableStatus.currentBookingId, {
+                status: 'completed'
+            });
+        }
+
+        // Reset the table to Ready
+        tableStatus.status = 'Ready';
+        tableStatus.currentBookingId = undefined;
+        tableStatus.lastStatusChange = new Date();
+        await tableStatus.save();
+
+        // Emit real-time update via Socket.io to the business and main rooms
+        const io = req.app.get('io');
+        if (io) {
+            io.to(businessId).emit('tableStatusUpdate', tableStatus);
+            io.emit('tableStatusUpdate', tableStatus); // Also broadcast to customer room for instant unblocking
+            console.log(`Emitted tableStatusUpdate (released) for table ${tableId} in business ${businessId}`);
+        }
+
+        return res.json(tableStatus);
+    } catch (error: any) {
+        console.error('Error releasing table:', error);
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+/**
+ * Create an offline walk-in booking for a table (POS Walk-in)
+ */
+export const createWalkInBooking = async (req: Request, res: Response): Promise<any> => {
+    try {
+        const { businessId, tableId } = req.params;
+        const { customerName, seats, time } = req.body;
+
+        if (!customerName || !seats || !time) {
+            return res.status(400).json({ message: 'Missing customerName, seats, or time' });
+        }
+
+        // 1. Create a Booking record
+        const bookingNumber = 'W' + Math.floor(100000 + Math.random() * 900000);
+        const bookingDate = new Date(); // Walk-ins are always today
+        
+        const booking = new Booking({
+            bookingNumber,
+            userId: 'offline',
+            businessId,
+            businessType: 'restaurant',
+            customerName,
+            customerEmail: 'walkin@dineingo.com',
+            customerPhone: '0000000000',
+            date: bookingDate,
+            time,
+            seats: Number(seats),
+            tableId,
+            tableNumber: tableId,
+            status: 'confirmed',
+            paymentStatus: 'paid',
+            amount: 0,
+            basePrice: 0,
+            taxes: 0,
+            bookingSource: 'offline'
+        });
+        await booking.save();
+
+        // 2. Update TableStatus to Occupied
+        const tableStatus = await TableStatus.findOneAndUpdate(
+            { businessId: new mongoose.Types.ObjectId(businessId), tableId },
+            {
+                status: 'Occupied',
+                currentBookingId: booking._id,
+                lastStatusChange: new Date()
+            },
+            { upsert: true, new: true }
+        ).populate('currentBookingId');
+
+        // 3. Emit real-time Socket updates
+        const io = req.app.get('io');
+        if (io) {
+            io.to(businessId).emit('tableStatusUpdate', tableStatus);
+            io.emit('tableStatusUpdate', tableStatus); // Also broadcast to customer room for instant unblocking
+            console.log(`Emitted tableStatusUpdate (walk-in) for table ${tableId} in business ${businessId}`);
+        }
+
+        return res.status(201).json(tableStatus);
+    } catch (error: any) {
+        console.error('Error creating walk-in booking:', error);
+        return res.status(500).json({ message: error.message });
     }
 };

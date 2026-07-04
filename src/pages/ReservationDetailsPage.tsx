@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, MapPin, Calendar, Clock, Users, Check, Info, CreditCard, Apple, Chrome, FileText } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Clock, Users, Check, Info, CreditCard, Apple, Chrome, FileText, X } from 'lucide-react';
 import { getRestaurantById, getMockRestaurantById } from '../services/restaurantService';
 import type { Restaurant } from '../types';
 import { auth } from '../firebase';
@@ -23,6 +23,11 @@ const ReservationDetailsPage: React.FC = () => {
   const [selectedMenuItems, setSelectedMenuItems] = useState<{ [key: string]: number }>({});
   const [showMenuItems, setShowMenuItems] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [paymentCardNumber, setPaymentCardNumber] = useState('4242 •••• •••• 4242');
+  const [paymentExpiry, setPaymentExpiry] = useState('12/28');
+  const [paymentCvv, setPaymentCvv] = useState('***');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [dynamicTableFee, setDynamicTableFee] = useState<number | null>(null);
   const [isPeakTime, setIsPeakTime] = useState<boolean>(false);
   const [theme] = useState<'light' | 'dark' | 'system'>(() => {
@@ -236,9 +241,17 @@ const ReservationDetailsPage: React.FC = () => {
   };
 
   const handleConfirmReservation = () => {
-    setIsConfirming(true); // Immediate UI feedback
+    setShowPaymentModal(true);
+  };
+
+  const executeBookingCompletion = async () => {
+    setIsProcessingPayment(true);
     setTimeout(async () => {
       try {
+        setIsConfirming(true); // Immediate UI feedback
+        setShowPaymentModal(false);
+        setIsProcessingPayment(false);
+
         // Get current user
         const user = auth.currentUser;
         if (!user) {
@@ -302,7 +315,7 @@ const ReservationDetailsPage: React.FC = () => {
           'item_id': restaurant?.id || id,
           'item_name': restaurant?.name || searchParams.get('restaurantName') || searchParams.get('eventName'),
           'item_type': type,
-          'amount': getTotalPrice() || parseFloat(searchParams.get('eventPrice') || '0'),
+          'amount': getPricingBreakdown().total,
           'currency': 'INR',
           'guests': bookingData.guests,
           'date': bookingData.date,
@@ -324,13 +337,13 @@ const ReservationDetailsPage: React.FC = () => {
               newBooking: savedBooking
             }
           });
-        }, 2000);
+        }, 2500);
       } catch (error: any) {
         console.error('Error in booking process:', error);
         toast.error(error.message || 'Failed to save booking. Please try again.');
         setIsConfirming(false);
       }
-    }, 0);
+    }, 1500);
   };
 
   if (loading) {
@@ -716,6 +729,139 @@ const ReservationDetailsPage: React.FC = () => {
           </div>
         </div>
       </div>
+      {showPaymentModal && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => !isProcessingPayment && setShowPaymentModal(false)} />
+          
+          <div className={`relative z-10 w-full max-w-sm rounded-[2rem] p-6 shadow-2xl border-2 transition-all duration-300 transform scale-100 ${
+            isDarkMode 
+              ? 'bg-slate-900 border-slate-800 text-white shadow-black/80' 
+              : 'bg-white border-gray-100 text-slate-900 shadow-emerald-500/5'
+          }`}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500">Checkout Portal</span>
+                <h3 className="text-lg font-black uppercase tracking-wider mt-0.5">Stripe Protocol</h3>
+              </div>
+              <button 
+                onClick={() => !isProcessingPayment && setShowPaymentModal(false)}
+                className={`p-2 rounded-xl transition-all ${
+                  isDarkMode ? 'hover:bg-slate-800 text-slate-400' : 'hover:bg-gray-100 text-slate-500'
+                }`}
+                disabled={isProcessingPayment}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Simulated Payment Alert Banner */}
+            <div className="mb-5 px-4 py-3 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-start gap-2 text-left">
+              <Info size={16} className="shrink-0 mt-0.5 text-amber-500" />
+              <div className="text-[10px]">
+                <span className="font-bold">Beta Simulation:</span> Payments are mocked during the DineInGo developer preview. Do not enter real card details.
+              </div>
+            </div>
+
+            {/* Total summary card */}
+            <div className={`p-4 rounded-[1.5rem] mb-5 border ${
+              isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-gray-50 border-gray-100'
+            }`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] text-slate-400 font-medium">Description</span>
+                <span className="text-[10px] text-slate-400 font-medium">Amount</span>
+              </div>
+              <div className="flex items-start justify-between">
+                <div className="text-left">
+                  <h4 className="font-bold text-xs line-clamp-1">{type === 'event' ? searchParams.get('eventName') : restaurant?.name}</h4>
+                  <p className="text-[9px] text-slate-500 font-mono mt-0.5">
+                    {searchParams.get('date')} • {searchParams.get('time')} • {searchParams.get('guests')} Guests
+                  </p>
+                </div>
+                <span className="font-black text-xs text-emerald-500 whitespace-nowrap">
+                  ₹{getPricingBreakdown().total.toFixed(2)}
+                </span>
+              </div>
+            </div>
+
+            {/* Payment Fields */}
+            <div className="space-y-3.5 text-left">
+              <div>
+                <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Card Number</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={paymentCardNumber}
+                    onChange={(e) => setPaymentCardNumber(e.target.value)}
+                    disabled={isProcessingPayment}
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all ${
+                      isDarkMode
+                        ? 'bg-slate-950/50 border-slate-800 focus:border-emerald-500/50 text-white'
+                        : 'bg-white border-gray-200 focus:border-emerald-500 text-slate-900'
+                    }`}
+                  />
+                  <CreditCard className="absolute right-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3.5">
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">Expiry Date</label>
+                  <input
+                    type="text"
+                    value={paymentExpiry}
+                    onChange={(e) => setPaymentExpiry(e.target.value)}
+                    disabled={isProcessingPayment}
+                    placeholder="MM/YY"
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all ${
+                      isDarkMode
+                        ? 'bg-slate-950/50 border-slate-800 focus:border-emerald-500/50 text-white'
+                        : 'bg-white border-gray-200 focus:border-emerald-500 text-slate-900'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1">CVV</label>
+                  <input
+                    type="password"
+                    value={paymentCvv}
+                    onChange={(e) => setPaymentCvv(e.target.value)}
+                    disabled={isProcessingPayment}
+                    placeholder="***"
+                    className={`w-full px-4 py-2.5 rounded-xl border text-xs font-semibold tracking-wide transition-all ${
+                      isDarkMode
+                        ? 'bg-slate-950/50 border-slate-800 focus:border-emerald-500/50 text-white'
+                        : 'bg-white border-gray-200 focus:border-emerald-500 text-slate-900'
+                    }`}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Authorize button */}
+            <button
+              onClick={executeBookingCompletion}
+              disabled={isProcessingPayment}
+              className={`w-full mt-6 flex items-center justify-center gap-3 py-3.5 rounded-2xl font-black uppercase tracking-widest text-[10px] transition-all active:scale-95 border-2 ${
+                isProcessingPayment
+                  ? 'bg-slate-800 border-slate-800 text-slate-500 cursor-not-allowed'
+                  : 'bg-emerald-500 border-emerald-500 text-white shadow-xl shadow-emerald-500/20 hover:bg-emerald-600'
+              }`}
+            >
+              {isProcessingPayment ? (
+                <>
+                  <div className="w-3.5 h-3.5 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Authorizing...</span>
+                </>
+              ) : (
+                <>
+                  <Check size={14} />
+                  <span>Pay ₹{getPricingBreakdown().total.toFixed(2)}</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

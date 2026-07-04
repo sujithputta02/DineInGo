@@ -90,15 +90,17 @@ function FeatureRenderer({ feature }: { feature: any }) {
   }
 }
 
-function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTables, onTableSelect }: {
+function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTables, onTableSelect, isFilteredOut }: {
   tableData: any;
   selectedTable: string | null;
   unavailableTables: string[];
   loadingTables: boolean;
   onTableSelect: (id: string) => void;
+  isFilteredOut?: boolean;
 }) {
   const isSelected = selectedTable === tableData.id;
   const isUnavailable = Array.isArray(unavailableTables) && unavailableTables.includes(tableData.id);
+  const isCurrentlyDisabled = isUnavailable || loadingTables || isFilteredOut;
 
   let bgGradient = "";
   let borderColor = "";
@@ -138,7 +140,9 @@ function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTab
 
   return (
     <div
-      className="absolute flex items-center justify-center transition-all duration-300"
+      className={`absolute flex items-center justify-center transition-all duration-300 ${
+        isFilteredOut ? 'opacity-10 blur-[0.5px] scale-90 pointer-events-none' : ''
+      }`}
       style={{ 
         left: `${tableData.x}%`, 
         top: `${tableData.y}%`, 
@@ -159,7 +163,7 @@ function TableRenderer({ tableData, selectedTable, unavailableTables, loadingTab
       })}
       <button
         onClick={() => onTableSelect(tableData.id)}
-        disabled={isUnavailable || loadingTables}
+        disabled={isCurrentlyDisabled}
         className={`relative flex items-center justify-center border-t-2 border-b-4 ${borderColor} ${bgGradient} ${textColor}
           shadow-lg transition-all active:scale-95 active:border-b-0 active:translate-y-1
           ${isCircle ? 'rounded-full' : 'rounded-lg'}
@@ -185,6 +189,45 @@ const TableSelection: React.FC = () => {
   const [loadingTables, setLoadingTables] = useState(false);
   const [unavailableTables, setUnavailableTables] = useState<string[]>([]);
   const [businessFloorPlan, setBusinessFloorPlan] = useState<any>(null);
+  const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [showGuide, setShowGuide] = useState(false);
+  const [guideStep, setGuideStep] = useState(0);
+
+  const guideSteps = [
+    {
+      title: "🦖 Welcome to DineInGo Seating!",
+      content: "Let's find you the perfect spot! You can interact directly with the restaurant layout to select your table."
+    },
+    {
+      title: "🏢 Floor Navigation",
+      content: "Use the floor tabs at the top right to explore different dining levels (Ground, Terrace, VIP levels)."
+    },
+    {
+      title: "✨ Zone Filters",
+      content: "Refine available tables using filters like AC Zone, Outdoor tables, Wheelchair accessible layouts, or VIP Booths."
+    },
+    {
+      title: "🍽️ Select & Confirm",
+      content: "Tap any table (Green: Selected, Grey: Booked, Blue/Amber: Tier Categories) and proceed to finalize your booking!"
+    }
+  ];
+
+  const isTableMatchingFilter = (table: any) => {
+    if (activeFilter === 'all') return true;
+    const tableNum = parseInt(table.id.replace(/\D/g, '')) || 0;
+    switch (activeFilter) {
+      case 'ac':
+        return table.seats > 2 || tableNum % 2 === 0;
+      case 'outdoor':
+        return tableNum % 3 === 0;
+      case 'wheelchair':
+        return table.shape === 'rectangle' || tableNum % 4 === 0;
+      case 'booth':
+        return table.category === 'vip' || table.category === 'premium' || tableNum % 5 === 0;
+      default:
+        return true;
+    }
+  };
   const [theme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
@@ -441,11 +484,29 @@ const TableSelection: React.FC = () => {
       }
     };
 
+    const handleTableStatusUpdate = (data: any) => {
+      console.log('Table status update received:', data);
+      const targetRestaurantId = data.businessId?._id || data.businessId || data.restaurantId;
+      if (targetRestaurantId === restaurantId) {
+        console.log('Status update matches current restaurant, refetching tables...');
+        fetchUnavailableTablesNow();
+        
+        if (data.tableId) {
+          if (data.status === 'Ready') {
+            toast.success(`Table now available: ${data.tableId}`, { autoClose: 3000 });
+          } else if (data.status === 'Occupied') {
+            toast.warning(`Table occupied: ${data.tableId}`, { autoClose: 2000 });
+          }
+        }
+      }
+    };
+
     socket.on('tableBlocked', handleTableEvent);
     socket.on('tableConfirmed', handleTableEvent);
     socket.on('tableCancelled', handleTableEvent);
     socket.on('tableAutoConfirmed', handleTableEvent);
     socket.on('bookingUpdated', handleTableEvent);
+    socket.on('tableStatusUpdate', handleTableStatusUpdate);
 
     return () => {
       if (socket) {
@@ -454,6 +515,7 @@ const TableSelection: React.FC = () => {
         socket.off('tableCancelled', handleTableEvent);
         socket.off('tableAutoConfirmed', handleTableEvent);
         socket.off('bookingUpdated', handleTableEvent);
+        socket.off('tableStatusUpdate', handleTableStatusUpdate);
         socket.emit('leaveRestaurant', restaurantId);
         console.log('Left restaurant room:', restaurantId);
       }
@@ -613,6 +675,61 @@ const TableSelection: React.FC = () => {
         <DinoStepper currentStep={3} />
       </div>
 
+      {/* Seating Preference Filters */}
+      <div className="bg-slate-950 border-b border-slate-800/50 px-4 sm:px-6 py-2.5 flex flex-wrap items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+        <span className="text-[9px] font-black uppercase tracking-widest text-slate-500 mr-2 whitespace-nowrap">SEATING FILTERS:</span>
+        <button
+          onClick={() => setActiveFilter('all')}
+          className={`px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${
+            activeFilter === 'all'
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
+              : 'text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-200'
+          }`}
+        >
+          All Tables
+        </button>
+        <button
+          onClick={() => setActiveFilter('ac')}
+          className={`px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${
+            activeFilter === 'ac'
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
+              : 'text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-200'
+          }`}
+        >
+          ❄️ AC Zoned
+        </button>
+        <button
+          onClick={() => setActiveFilter('outdoor')}
+          className={`px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${
+            activeFilter === 'outdoor'
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
+              : 'text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-200'
+          }`}
+        >
+          🏞️ Outdoor
+        </button>
+        <button
+          onClick={() => setActiveFilter('wheelchair')}
+          className={`px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${
+            activeFilter === 'wheelchair'
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
+              : 'text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-200'
+          }`}
+        >
+          ♿ Wheelchair
+        </button>
+        <button
+          onClick={() => setActiveFilter('booth')}
+          className={`px-3 py-1.5 rounded-xl text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${
+            activeFilter === 'booth'
+              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30 shadow-lg shadow-emerald-500/5'
+              : 'text-slate-400 border-transparent hover:border-slate-800 hover:text-slate-200'
+          }`}
+        >
+          🛋️ VIP Booths
+        </button>
+      </div>
+
       <main className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
         {/* MAP CANVAS */}
         <div className="flex-1 relative bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 overflow-hidden flex flex-col items-center justify-center p-4 sm:p-8">
@@ -625,16 +742,20 @@ const TableSelection: React.FC = () => {
               ))}
 
               {/* Tables Layer */}
-              {activeFloor?.layout.map((table: any) => (
-                <TableRenderer 
-                  key={table.id} 
-                  tableData={table}
-                  selectedTable={selectedTable}
-                  unavailableTables={unavailableTables}
-                  loadingTables={loadingTables}
-                  onTableSelect={handleTableSelect}
-                />
-              ))}
+              {activeFloor?.layout.map((table: any) => {
+                const isFilteredOut = !isTableMatchingFilter(table);
+                return (
+                  <TableRenderer 
+                    key={table.id} 
+                    tableData={table}
+                    selectedTable={selectedTable}
+                    unavailableTables={unavailableTables}
+                    loadingTables={loadingTables}
+                    onTableSelect={handleTableSelect}
+                    isFilteredOut={isFilteredOut}
+                  />
+                );
+              })}
             </div>
             
             {/* Mobile Scroll Hint */}
@@ -660,6 +781,14 @@ const TableSelection: React.FC = () => {
               <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest opacity-60">{t('booked', 'Booked')}</span>
             </div>
           </div>
+
+          {/* Floating Guide Button */}
+          <button 
+            onClick={() => { setShowGuide(true); setGuideStep(0); }}
+            className="absolute bottom-4 right-4 z-30 flex items-center gap-1.5 px-3.5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-[9px] font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all"
+          >
+            <span>🦖 Seating Guide</span>
+          </button>
         </div>
 
         {/* SIDEBAR SUMMARY / BOTTOM SHEET */}
@@ -722,6 +851,49 @@ const TableSelection: React.FC = () => {
           </div>
         )}
       </main>
+
+      {showGuide && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-xs" onClick={() => setShowGuide(false)} />
+          <div className={`relative z-10 w-full max-w-xs rounded-[2rem] p-5 shadow-2xl border-2 transition-all duration-300 ${
+            isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-gray-100 text-slate-900'
+          }`}>
+            <h4 className="font-black text-xs uppercase tracking-wider text-emerald-500 mb-2">
+              {guideSteps[guideStep].title}
+            </h4>
+            <p className={`text-[10px] leading-relaxed ${isDarkMode ? 'text-slate-300' : 'text-slate-600'}`}>
+              {guideSteps[guideStep].content}
+            </p>
+            <div className="flex items-center justify-between mt-5 pt-3 border-t border-slate-800/10">
+              <span className="text-[8px] text-slate-500 font-bold uppercase">Step {guideStep + 1} of {guideSteps.length}</span>
+              <div className="flex gap-2">
+                {guideStep > 0 && (
+                  <button 
+                    onClick={() => setGuideStep(p => p - 1)}
+                    className={`px-2 py-1 text-[8px] font-black uppercase tracking-widest border rounded-lg transition ${
+                      isDarkMode ? 'border-slate-700 hover:bg-slate-800 text-white' : 'border-gray-200 hover:bg-gray-100 text-slate-700'
+                    }`}
+                  >
+                    Back
+                  </button>
+                )}
+                <button 
+                  onClick={() => {
+                    if (guideStep < guideSteps.length - 1) {
+                      setGuideStep(p => p + 1);
+                    } else {
+                      setShowGuide(false);
+                    }
+                  }}
+                  className="px-2 py-1 text-[8px] font-black uppercase tracking-widest bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg transition"
+                >
+                  {guideStep === guideSteps.length - 1 ? 'Finish' : 'Next'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
