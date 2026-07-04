@@ -6,6 +6,7 @@ export interface IBooking extends Document {
   userId: string;
   businessId: string;
   businessType: 'restaurant' | 'event';
+  bookingSource?: 'online' | 'offline';
 
   // Customer info
   customerName: string;
@@ -97,6 +98,7 @@ const bookingSchema = new Schema<IBooking>({
   userId: { type: String, required: true, index: true },
   businessId: { type: String, index: true },
   businessType: { type: String, enum: ['restaurant', 'event'] },
+  bookingSource: { type: String, enum: ['online', 'offline'], default: 'online' },
 
   // Customer info
   customerName: String,

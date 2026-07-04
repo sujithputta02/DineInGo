@@ -44,7 +44,7 @@ import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import BookingCard from "../components/BookingCard";
 import { useNavigate, useLocation } from "react-router-dom";
 import { auth } from "../firebase";
-import { userAPI, bookingsApi, userPreferenceApi, normalizeImageUrl, businessApi, menuApi } from "../services/api";
+import { userAPI, bookingsApi, userPreferenceApi, normalizeImageUrl, businessApi, menuApi, waitlistApi } from "../services/api";
 import { API_CONFIG } from "../config/api";
 import { toast } from "react-toastify";
 import { Location as GeoLocation, Event as AppEvent, Booking } from "../types";
@@ -288,6 +288,113 @@ export default function DashboardPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
   const [showInvoice, setShowInvoice] = useState(false);
+
+  // Real-time Waitlist Queue States
+  const [inWaitlist, setInWaitlist] = useState(false);
+  const [waitlistEntryId, setWaitlistEntryId] = useState<string | null>(null);
+  const [waitlistBusinessName, setWaitlistBusinessName] = useState<string>('Bombay Brasserie');
+  const [waitlistPosition, setWaitlistPosition] = useState<number>(1);
+  const [waitTime, setWaitTime] = useState<number>(15);
+  const [waitlistProgress, setWaitlistProgress] = useState<number>(0);
+
+  // 1. Fetch active waitlist status from backend on load/login
+  useEffect(() => {
+    if (!userData?.uid) return;
+
+    const fetchWaitlistStatus = async () => {
+      try {
+        const response = await waitlistApi.getCustomerStatus(userData.uid);
+        if (response && response.success && response.data) {
+          const entry = response.data;
+          setInWaitlist(true);
+          setWaitlistEntryId(entry._id);
+          setWaitlistBusinessName(entry.businessId?.name || 'Bombay Brasserie');
+          setWaitlistPosition(entry.position || 1);
+          setWaitTime(entry.estimatedWaitTime || 15);
+          
+          const progressPct = entry.position > 0 
+            ? Math.max(10, Math.min(95, 100 - (entry.position * 15))) 
+            : 90;
+          setWaitlistProgress(progressPct);
+        } else {
+          setInWaitlist(false);
+        }
+      } catch (err) {
+        console.error('Error loading waitlist status:', err);
+      }
+    };
+
+    fetchWaitlistStatus();
+  }, [userData?.uid]);
+
+  // 2. Real-time Socket.IO Listeners for Waitlist Updates
+  useEffect(() => {
+    if (!userData?.uid || !inWaitlist) return;
+
+    const socket = socketService.connect();
+    
+    // Explicitly join the customer room to receive direct events
+    socket?.emit('joinCustomerRoom', userData.uid);
+
+    const handlePositionUpdate = (data: any) => {
+      toast.info(`🦖 Waitlist Update: You are now position #${data.position} in line!`, {
+        position: "top-right",
+        autoClose: 4000
+      });
+      setWaitlistPosition(data.position);
+      setWaitTime(data.estimatedWaitTime || data.position * 15);
+      const progressPct = data.position > 0 
+        ? Math.max(10, Math.min(95, 100 - (data.position * 15))) 
+        : 90;
+      setWaitlistProgress(progressPct);
+    };
+
+    const handleTableReady = (data: any) => {
+      if (Notification.permission === 'granted') {
+        new Notification("🦖 DineInGo Table Ready!", {
+          body: `Your table at ${waitlistBusinessName} is now ready! Please head to the host desk.`,
+          icon: "/favicon.ico"
+        });
+      }
+      
+      toast.success(`✨ Your table at ${waitlistBusinessName} is ready! Please proceed to the host desk! 🦖`, {
+        position: "top-right",
+        autoClose: 10000
+      });
+      
+      setWaitlistPosition(0);
+      setWaitTime(0);
+      setWaitlistProgress(100);
+    };
+
+    const handleSeated = () => {
+      toast.success("🎉 Welcome! You have been seated. Enjoy your meal!");
+      setInWaitlist(false);
+      setWaitlistEntryId(null);
+    };
+
+    const handleCancelled = () => {
+      toast.warn("Your waitlist entry was cancelled.");
+      setInWaitlist(false);
+      setWaitlistEntryId(null);
+    };
+
+    socket?.on('waitlist:position-update', handlePositionUpdate);
+    socket?.on('waitlist:table-ready', handleTableReady);
+    socket?.on('waitlist:seated', handleSeated);
+    socket?.on('waitlist:cancelled', handleCancelled);
+
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+
+    return () => {
+      socket?.off('waitlist:position-update', handlePositionUpdate);
+      socket?.off('waitlist:table-ready', handleTableReady);
+      socket?.off('waitlist:seated', handleSeated);
+      socket?.off('waitlist:cancelled', handleCancelled);
+    };
+  }, [userData?.uid, inWaitlist, waitlistBusinessName]);
   const [error, setError] = useState<string | null>(null);
   const [authLoading, setAuthLoading] = useState<boolean>(false);
 
@@ -2687,6 +2794,84 @@ export default function DashboardPage() {
                       </div>
                     </motion.div>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Waitlist Queue Countdown Simulator Card */}
+            {inWaitlist && (
+              <div className={`mb-8 p-6 rounded-[2rem] border-2 transition-all shadow-xl relative overflow-hidden text-left ${
+                isDarkMode 
+                  ? 'bg-slate-900 border-slate-800 text-white' 
+                  : 'bg-emerald-50/50 border-emerald-100/80 text-slate-900'
+              }`}>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
+                      Active Queue Status (Real-time)
+                    </span>
+                    <h3 className="text-xl font-black uppercase tracking-wider mt-1">{waitlistBusinessName}</h3>
+                    <p className={`text-xs mt-1 ${isDarkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                      Joined via local waitlist protocols. Live queue updates active.
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-4">
+                    {/* Position circle */}
+                    <div className={`px-4 py-3 rounded-2xl flex flex-col items-center justify-center border ${
+                      isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-emerald-100'
+                    }`}>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Position</span>
+                      <span className="text-2xl font-black text-emerald-500 mt-0.5">#{waitlistPosition}</span>
+                    </div>
+
+                    {/* Wait time box */}
+                    <div className={`px-4 py-3 rounded-2xl flex flex-col items-center justify-center border ${
+                      isDarkMode ? 'bg-slate-950/40 border-slate-800' : 'bg-white border-emerald-100'
+                    }`}>
+                      <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Est. Wait</span>
+                      <span className="text-2xl font-black text-emerald-500 mt-0.5">{waitTime}m</span>
+                    </div>
+
+                    {/* Action buttons */}
+                    <button
+                      onClick={async () => {
+                        if (waitlistEntryId) {
+                          try {
+                            await waitlistApi.cancel(waitlistEntryId);
+                            setInWaitlist(false);
+                            setWaitlistEntryId(null);
+                            toast.warn("You left the waitlist queue.");
+                          } catch (err) {
+                            console.error('Failed to cancel waitlist:', err);
+                            toast.error('Failed to leave waitlist. Please try again.');
+                          }
+                        } else {
+                          setInWaitlist(false);
+                        }
+                      }}
+                      className="px-6 py-4.5 bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 rounded-2xl text-xs font-black uppercase tracking-widest transition-all active:scale-95 whitespace-nowrap"
+                    >
+                      Leave Queue
+                    </button>
+                  </div>
+                </div>
+
+                {/* Progress bar */}
+                <div className="mt-6 w-full">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400 font-black uppercase tracking-wider mb-2">
+                    <span>Queue Progress</span>
+                    <span>{waitlistProgress}% complete</span>
+                  </div>
+                  <div className={`w-full h-2 rounded-full overflow-hidden ${isDarkMode ? 'bg-slate-950' : 'bg-gray-100'}`}>
+                    <div 
+                      className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 transition-all duration-1000"
+                      style={{ width: `${waitlistProgress}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             )}

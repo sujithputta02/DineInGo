@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Building2,
   Calendar,
@@ -64,6 +64,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { businessApi, normalizeImageUrl } from '../../services/api';
+import { toast } from 'react-toastify';
 import WaitlistManagement from './WaitlistManagement';
 import PreOrderManagement from './PreOrderManagement';
 
@@ -211,6 +212,49 @@ function BusinessDashboard() {
   const [tableStatuses, setTableStatuses] = useState<any[]>([]);
   const [selectedOpsBusiness, setSelectedOpsBusiness] = useState<string>('');
   const [opsLoading, setOpsLoading] = useState(false);
+
+  // Table Sync & POS states
+  const getClosestTimeSlot = () => {
+    const now = new Date();
+    const hours = now.getHours();
+    const minutes = now.getMinutes();
+    const totalMinutes = hours * 60 + minutes;
+
+    const slots = [
+      { time: '12:00', minutes: 720 },
+      { time: '13:00', minutes: 780 },
+      { time: '18:00', minutes: 1080 },
+      { time: '19:00', minutes: 1140 },
+      { time: '20:00', minutes: 1200 },
+      { time: '21:00', minutes: 1260 }
+    ];
+
+    let closest = slots[3];
+    let minDiff = Math.abs(totalMinutes - slots[3].minutes);
+    for (const slot of slots) {
+      const diff = Math.abs(totalMinutes - slot.minutes);
+      if (diff < minDiff) {
+        minDiff = diff;
+        closest = slot;
+      }
+    }
+    return closest.time;
+  };
+
+  const [tableFilter, setTableFilter] = useState<'all' | 'online' | 'offline' | 'ready'>('all');
+  const [showWalkInModal, setShowWalkInModal] = useState(false);
+  const [walkInTableId, setWalkInTableId] = useState<string | null>(null);
+  const [walkInName, setWalkInName] = useState('');
+  const [walkInSeats, setWalkInSeats] = useState(2);
+  const [walkInTime, setWalkInTime] = useState(getClosestTimeSlot());
+  const [isSubmittingWalkIn, setIsSubmittingWalkIn] = useState(false);
+
+  // Slot Selection & Map Layout States
+  const [activeFloorId, setActiveFloorId] = useState<string>('ground');
+  const [selectedSlotTime, setSelectedSlotTime] = useState<string>(getClosestTimeSlot());
+  const [activeBusinessData, setActiveBusinessData] = useState<any>(null);
+  const [todayBookingsList, setTodayBookingsList] = useState<any[]>([]);
+  const [viewType, setViewType] = useState<'map' | 'list'>('map');
 
   // Marketing & Promotions state
   const [campaigns, setCampaigns] = useState<any[]>([]);
@@ -371,18 +415,125 @@ function BusinessDashboard() {
   const loadOperationsData = async (businessId: string) => {
     setOpsLoading(true);
     try {
-      const [staff, shiftData, statuses] = await Promise.all([
+      const [staff, shiftData, statuses, businessDetails, bookings] = await Promise.all([
         businessApi.getStaff(businessId),
         businessApi.getShifts(businessId),
-        businessApi.getTableStatuses(businessId)
+        businessApi.getTableStatuses(businessId),
+        businessApi.getById(businessId),
+        businessApi.getBookings(businessId)
       ]);
       setStaffList(staff);
       setShifts(shiftData);
       setTableStatuses(statuses);
+      setActiveBusinessData(businessDetails);
+      if (bookings && Array.isArray(bookings)) {
+        setTodayBookingsList(bookings.filter((b: any) => 
+          b.status === 'confirmed' || b.status === 'pending' || b.status === 'checked-in'
+        ));
+      } else {
+        setTodayBookingsList([]);
+      }
     } catch (err: any) {
       console.error('Error loading operations data:', err);
     } finally {
       setOpsLoading(false);
+    }
+  };
+  const getTableSlotOccupancy = (tableId: string) => {
+    const closestSlot = getClosestTimeSlot();
+    const isCurrentSlot = selectedSlotTime === closestSlot;
+
+    if (isCurrentSlot) {
+      const liveStatus = tableStatuses.find(t => t.tableId === tableId);
+      if (liveStatus) {
+        const source = liveStatus.currentBookingId?.bookingSource || 'online';
+        const name = liveStatus.currentBookingId?.customerName || 'Guest';
+        const seats = liveStatus.currentBookingId?.seats || 2;
+        const time = liveStatus.currentBookingId?.time || '19:00';
+        return {
+          status: liveStatus.status as 'Ready' | 'Occupied' | 'Cleaning' | 'Reserved',
+          bookingSource: source as 'online' | 'offline',
+          customerName: name,
+          seats,
+          time
+        };
+      }
+    }
+
+    const booking = todayBookingsList.find(b => 
+      b.tableId === tableId && b.time === selectedSlotTime
+    );
+
+    if (booking) {
+      return {
+        status: 'Occupied' as const,
+        bookingSource: (booking.bookingSource || 'online') as 'online' | 'offline',
+        customerName: booking.customerName || 'Guest',
+        seats: booking.seats || 2,
+        time: booking.time
+      };
+    }
+
+    return {
+      status: 'Ready' as const,
+      bookingSource: 'online' as const,
+      customerName: undefined,
+      seats: undefined,
+      time: undefined
+    };
+  };
+
+  const opsFloors = useMemo(() => {
+    const floorPlan = activeBusinessData?.floorPlan;
+    if (floorPlan && floorPlan.floors && Array.isArray(floorPlan.floors)) {
+      return floorPlan.floors.map((floor: any) => ({
+        id: floor.id,
+        name: floor.name,
+        tables: floor.tables.map((t: any) => t.id),
+        layout: floor.tables,
+        features: floor.features || []
+      }));
+    }
+    return [];
+  }, [activeBusinessData]);
+
+  const activeOpsFloor = useMemo(() => {
+    return opsFloors.find((f: any) => f.id === activeFloorId) || opsFloors[0];
+  }, [opsFloors, activeFloorId]);
+
+  const handleCreateWalkIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!walkInTableId || !selectedOpsBusiness) return;
+    setIsSubmittingWalkIn(true);
+    try {
+      await businessApi.walkIn(selectedOpsBusiness, walkInTableId, {
+        customerName: walkInName,
+        seats: walkInSeats,
+        time: walkInTime
+      });
+      toast.success(`Table ${walkInTableId} blocked for walk-in!`);
+      setShowWalkInModal(false);
+      setWalkInName('');
+      const updatedStatuses = await businessApi.getTableStatuses(selectedOpsBusiness);
+      setTableStatuses(updatedStatuses);
+    } catch (err) {
+      console.error('Error booking walk-in:', err);
+      toast.error('Failed to reserve table for walk-in.');
+    } finally {
+      setIsSubmittingWalkIn(false);
+    }
+  };
+
+  const handleReleaseTable = async (tableId: string) => {
+    if (!selectedOpsBusiness) return;
+    try {
+      await businessApi.releaseTable(selectedOpsBusiness, tableId);
+      toast.success(`Table ${tableId} has been released (marked as completed).`);
+      const updatedStatuses = await businessApi.getTableStatuses(selectedOpsBusiness);
+      setTableStatuses(updatedStatuses);
+    } catch (err) {
+      console.error('Error releasing table:', err);
+      toast.error('Failed to release table.');
     }
   };
 
@@ -2111,69 +2262,298 @@ function BusinessDashboard() {
             {/* Live Table Status Column */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-                <div className="flex items-center justify-between mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                   <div className="flex items-center gap-2">
                     <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <h3 className="text-lg font-bold text-slate-900">Live Table Status</h3>
+                    <h3 className="text-lg font-black uppercase tracking-wider text-slate-900">Live Floor Seating</h3>
                   </div>
-                  <div className="flex gap-2">
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <span className="w-2 h-2 bg-emerald-500 rounded-full"></span> Ready
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <span className="w-2 h-2 bg-red-500 rounded-full"></span> Occupied
-                    </span>
-                    <span className="flex items-center gap-1.5 text-xs font-medium text-slate-500">
-                      <span className="w-2 h-2 bg-yellow-400 rounded-full"></span> Cleaning
-                    </span>
-                  </div>
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {tableStatuses.length > 0 ? tableStatuses.map(table => (
-                    <div
-                      key={table.tableId}
-                      className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${table.status === 'Ready' ? 'bg-emerald-50 border-emerald-100 hover:border-emerald-300' :
-                        table.status === 'Occupied' ? 'bg-red-50 border-red-100 hover:border-red-300' :
-                          'bg-yellow-50 border-yellow-100 hover:border-yellow-300'
-                        }`}
-                      onClick={async () => {
-                        const nextStatusMap: any = { 'Ready': 'Occupied', 'Occupied': 'Cleaning', 'Cleaning': 'Ready' };
-                        const nextStatus = nextStatusMap[table.status] || 'Ready';
-                        try {
-                          await businessApi.updateTableStatus(selectedOpsBusiness, table.tableId, { status: nextStatus });
-                        } catch (err) {
-                          console.error('Failed to update table status');
-                        }
-                      }}
-                    >
-                      <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-1">Table</p>
-                      <p className="text-2xl font-black text-slate-900 mb-3">{table.tableId}</p>
-                      <div className="flex items-center justify-between">
-                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${table.status === 'Ready' ? 'bg-emerald-500 text-white' :
-                          table.status === 'Occupied' ? 'bg-red-500 text-white' :
-                            'bg-yellow-500 text-white'
-                          }`}>
-                          {table.status}
-                        </span>
-                        <Clock size={12} className="text-slate-400" />
-                      </div>
-                    </div>
-                  )) : (
-                    <div className="col-span-full py-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
-                      <p className="text-slate-500 text-sm">No table status data available.</p>
+                  {/* Toggle view between 2D Seating Layout and list cards */}
+                  {activeBusinessData?.floorPlan?.floors?.length > 0 && (
+                    <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
                       <button
-                        onClick={() => {
-                          const mockTableIds = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'];
-                          businessApi.batchUpdateTableStatus(selectedOpsBusiness, mockTableIds.map(id => ({ tableId: id, status: 'Ready' })));
-                        }}
-                        className="mt-4 text-emerald-600 font-bold text-sm hover:underline"
+                        onClick={() => setViewType('map')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                          viewType === 'map'
+                            ? 'bg-white text-slate-800 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
                       >
-                        Initialize Floor Demo
+                        Floor Map
+                      </button>
+                      <button
+                        onClick={() => setViewType('list')}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
+                          viewType === 'list'
+                            ? 'bg-white text-slate-800 shadow-sm'
+                            : 'text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        List view
                       </button>
                     </div>
                   )}
                 </div>
+
+                {/* Slot Selection Row */}
+                <div className="mb-6 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2.5">Time Slot Picker</p>
+                  <div className="flex flex-wrap gap-2">
+                    {[
+                      { time: '12:00', label: '12:00 PM' },
+                      { time: '13:00', label: '01:00 PM' },
+                      { time: '18:00', label: '06:00 PM' },
+                      { time: '19:00', label: '07:00 PM' },
+                      { time: '20:00', label: '08:00 PM' },
+                      { time: '21:00', label: '09:00 PM' }
+                    ].map(slot => {
+                      const isClosest = slot.time === getClosestTimeSlot();
+                      const isSelected = selectedSlotTime === slot.time;
+                      return (
+                        <button
+                          key={slot.time}
+                          onClick={() => {
+                            setSelectedSlotTime(slot.time);
+                            setWalkInTime(slot.time);
+                          }}
+                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                            isSelected
+                              ? 'bg-slate-900 border-slate-900 text-white shadow-md'
+                              : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          <span>{slot.label}</span>
+                          {isClosest && (
+                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* POS Interactive Seating Canvas */}
+                {viewType === 'map' && activeOpsFloor ? (
+                  <div className="flex flex-col items-center justify-center p-2">
+                    {/* Floor tabs */}
+                    {opsFloors.length > 1 && (
+                      <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1 self-start">
+                        {opsFloors.map((floor: any) => (
+                          <button
+                            key={floor.id}
+                            onClick={() => setActiveFloorId(floor.id)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                              activeFloorId === floor.id
+                                ? 'bg-white text-slate-800 shadow-sm'
+                                : 'text-slate-500 hover:text-slate-800'
+                            }`}
+                          >
+                            {floor.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Interactive Canvas container */}
+                    <div className="relative w-full aspect-video bg-slate-950 rounded-[2.5rem] border-[6px] border-slate-900 shadow-2xl p-4 overflow-hidden">
+                      {/* Features Layer */}
+                      {activeOpsFloor.features.map((feat: any, idx: number) => (
+                        <POSFeatureRenderer key={`feat-${idx}`} feature={feat} />
+                      ))}
+
+                      {/* Tables Layer */}
+                      {activeOpsFloor.layout.map((table: any) => {
+                        const occupancy = getTableSlotOccupancy(table.id);
+                        return (
+                          <POSTableRenderer
+                            key={table.id}
+                            tableData={table}
+                            status={occupancy.status}
+                            bookingSource={occupancy.bookingSource}
+                            customerName={occupancy.customerName}
+                            seats={occupancy.seats}
+                            onWalkIn={(id) => {
+                              setWalkInTableId(id);
+                              setWalkInSeats(table.seats || 4);
+                              setWalkInTime(selectedSlotTime);
+                              setShowWalkInModal(true);
+                            }}
+                            onRelease={async (id) => {
+                              await handleReleaseTable(id);
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
+
+                    {/* Seating map legends */}
+                    <div className="flex flex-wrap gap-4 mt-6 text-[10px] font-black uppercase tracking-wider text-slate-500 justify-center">
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> Vacant (Ready)
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> Online Booked
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 bg-orange-500 rounded-full"></span> POS Walk-in
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  // List Cards Mode (slot sensitive!)
+                  <div>
+                    {/* POS Table Filters */}
+                    <div className="flex flex-wrap gap-2 mb-6">
+                      <button
+                        onClick={() => setTableFilter('all')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                          tableFilter === 'all'
+                            ? 'bg-slate-900 border-slate-900 text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        All Tables
+                      </button>
+                      <button
+                        onClick={() => setTableFilter('online')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                          tableFilter === 'online'
+                            ? 'bg-blue-600 border-blue-600 text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Online Reservations
+                      </button>
+                      <button
+                        onClick={() => setTableFilter('offline')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                          tableFilter === 'offline'
+                            ? 'bg-orange-500 border-orange-500 text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Offline Walk-ins
+                      </button>
+                      <button
+                        onClick={() => setTableFilter('ready')}
+                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                          tableFilter === 'ready'
+                            ? 'bg-emerald-600 border-emerald-600 text-white'
+                            : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        Available (Ready)
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      {tableStatuses.filter(table => {
+                        const occupancy = getTableSlotOccupancy(table.tableId);
+                        if (tableFilter === 'ready') return occupancy.status === 'Ready';
+                        if (tableFilter === 'online') {
+                          return occupancy.status !== 'Ready' && occupancy.bookingSource === 'online';
+                        }
+                        if (tableFilter === 'offline') {
+                          return occupancy.status !== 'Ready' && occupancy.bookingSource === 'offline';
+                        }
+                        return true;
+                      }).length > 0 ? tableStatuses.filter(table => {
+                        const occupancy = getTableSlotOccupancy(table.tableId);
+                        if (tableFilter === 'ready') return occupancy.status === 'Ready';
+                        if (tableFilter === 'online') {
+                          return occupancy.status !== 'Ready' && occupancy.bookingSource === 'online';
+                        }
+                        if (tableFilter === 'offline') {
+                          return occupancy.status !== 'Ready' && occupancy.bookingSource === 'offline';
+                        }
+                        return true;
+                      }).map(table => {
+                        const occupancy = getTableSlotOccupancy(table.tableId);
+                        return (
+                          <div
+                            key={table.tableId}
+                            className={`p-4 rounded-3xl border-2 transition-all flex flex-col justify-between min-h-[140px] text-left relative overflow-hidden ${
+                              occupancy.status === 'Ready' ? 'bg-emerald-50/50 border-emerald-100 hover:border-emerald-200' :
+                              occupancy.status === 'Occupied' ? 'bg-red-50/50 border-red-100 hover:border-red-200' :
+                              'bg-yellow-50/50 border-yellow-100 hover:border-yellow-200'
+                            }`}
+                          >
+                            <div>
+                              <div className="flex items-center justify-between">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Table</p>
+                                {occupancy.status !== 'Ready' && (
+                                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${
+                                    occupancy.bookingSource === 'offline'
+                                      ? 'bg-orange-100 text-orange-700'
+                                      : 'bg-blue-100 text-blue-700'
+                                  }`}>
+                                    {occupancy.bookingSource === 'offline' ? 'Walk-in' : 'Online'}
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-2xl font-black text-slate-900 mt-1">{table.tableId}</p>
+                              {occupancy.status !== 'Ready' && (
+                                <p className="text-[10px] text-slate-500 font-bold mt-1.5 truncate">
+                                  👤 {occupancy.customerName || 'Guest'} ({occupancy.seats || 2} seats)
+                                </p>
+                              )}
+                            </div>
+
+                            <div className="mt-4 flex flex-col gap-2">
+                              <div className="flex items-center justify-between text-[10px] text-slate-500">
+                                <span className={`font-extrabold px-1.5 py-0.5 rounded ${
+                                  occupancy.status === 'Ready' ? 'bg-emerald-500 text-white' :
+                                  occupancy.status === 'Occupied' ? 'bg-red-500 text-white' :
+                                  'bg-yellow-500 text-white'
+                                }`}>
+                                  {occupancy.status}
+                                </span>
+                                <span className="font-mono text-[9px] font-bold">{occupancy.status === 'Ready' ? '' : occupancy.time || ''}</span>
+                              </div>
+
+                              {/* Actions */}
+                              <div className="flex gap-1.5 pt-2 border-t border-slate-100/60 mt-1">
+                                {occupancy.status === 'Ready' ? (
+                                  <button
+                                    onClick={() => {
+                                      setWalkInTableId(table.tableId);
+                                      setWalkInSeats(4);
+                                      setWalkInTime(selectedSlotTime);
+                                      setShowWalkInModal(true);
+                                    }}
+                                    className="w-full py-1.5 text-[9px] font-black uppercase bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all active:scale-95 text-center font-bold"
+                                  >
+                                    Walk-in
+                                  </button>
+                                ) : (
+                                  <button
+                                    onClick={() => handleReleaseTable(table.tableId)}
+                                    className="w-full py-1.5 text-[9px] font-black uppercase bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all active:scale-95 text-center font-bold"
+                                  >
+                                    Checkout
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }) : (
+                        <div className="col-span-full py-12 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                          <p className="text-slate-500 text-sm">No matching tables found.</p>
+                          <button
+                            onClick={() => {
+                              const mockTableIds = ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8'];
+                              businessApi.batchUpdateTableStatus(selectedOpsBusiness, mockTableIds.map(id => ({ tableId: id, status: 'Ready' })));
+                            }}
+                            className="mt-4 text-emerald-600 font-bold text-sm hover:underline"
+                          >
+                            Initialize Floor Demo
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
@@ -2279,9 +2659,217 @@ function BusinessDashboard() {
           {viewMode === 'waitlist' && renderWaitlist()}
           {viewMode === 'pre-orders' && renderPreOrders()}
         </div>
+        {/* Host Walk-in Seating Modal */}
+        {showWalkInModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-[2rem] w-full max-w-md p-8 border border-slate-100 shadow-2xl relative text-left">
+              <h3 className="text-xl font-black uppercase tracking-wider text-slate-900 mb-6">Host Walk-in Table {walkInTableId}</h3>
+              
+              <form onSubmit={handleCreateWalkIn} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Guest Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Walk-in Guest"
+                    value={walkInName}
+                    onChange={(e) => setWalkInName(e.target.value)}
+                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Seats</label>
+                    <input
+                      type="number"
+                      min={1}
+                      required
+                      value={walkInSeats}
+                      onChange={(e) => setWalkInSeats(Number(e.target.value))}
+                      className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Time Slot</label>
+                    <select
+                      value={walkInTime}
+                      onChange={(e) => setWalkInTime(e.target.value)}
+                      className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 font-mono"
+                    >
+                      <option value="19:00">07:00 PM</option>
+                      <option value="19:30">07:30 PM</option>
+                      <option value="20:00">08:00 PM</option>
+                      <option value="20:30">08:30 PM</option>
+                      <option value="21:00">09:00 PM</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowWalkInModal(false)}
+                    className="flex-1 py-4 border border-slate-200 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all text-sm"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmittingWalkIn}
+                    className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold transition-all text-sm flex items-center justify-center gap-2"
+                  >
+                    {isSubmittingWalkIn ? 'Reserving...' : 'Seated (Block)'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 export default BusinessDashboard;
+
+// POS Feature Renderer
+function POSFeatureRenderer({ feature }: { feature: any }) {
+  const style: React.CSSProperties = {
+    position: 'absolute',
+    left: `${feature.x}%`,
+    top: `${feature.y}%`,
+    width: `${feature.width}%`,
+    height: `${feature.height}%`,
+    transform: `translate(-50%, -50%) rotate(${feature.rotation || 0}deg) scaleX(${feature.flipX ? -1 : 1}) scaleY(${feature.flipY ? -1 : 1})`,
+  };
+
+  const baseClasses = "transition-all duration-300";
+
+  switch (feature.type) {
+    case 'reception':
+      return (
+        <div style={style} className={`flex flex-col items-center justify-center bg-slate-800 rounded-lg border-2 border-slate-600 shadow-xl ${baseClasses}`}>
+          <span className="text-[8px] font-bold text-slate-300 uppercase tracking-widest">{feature.label || 'Reception'}</span>
+        </div>
+      );
+    case 'window':
+      return (
+        <div style={style} className={`bg-cyan-900/10 border border-cyan-500/20 backdrop-blur-sm flex items-center justify-center overflow-hidden ${baseClasses}`}>
+          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent"></div>
+        </div>
+      );
+    case 'entrance':
+      return (
+        <div style={style} className={`flex flex-col items-center justify-end pb-1 border-b-4 border-emerald-500 ${baseClasses}`}>
+          <span className="text-[8px] text-emerald-500 font-bold uppercase tracking-[0.2em]">ENTRANCE</span>
+        </div>
+      );
+    case 'bar':
+      return (
+        <div style={style} className={`bg-slate-800 rounded-xl flex items-center justify-center shadow-lg border-b-4 border-slate-900 ${baseClasses}`}>
+          <span className="text-purple-200 text-[8px] font-bold tracking-widest uppercase">{feature.label || 'Bar'}</span>
+        </div>
+      );
+    case 'plant':
+      return (
+        <div style={style} className={`bg-emerald-950/40 rounded-full border border-emerald-800/30 flex items-center justify-center ${baseClasses}`}>
+          <div className="w-1 h-1 bg-emerald-500 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"></div>
+        </div>
+      );
+    case 'wall':
+      return (
+        <div style={style} className={`bg-slate-800 border-x border-slate-700 shadow-inner ${baseClasses}`}></div>
+      );
+    default:
+      return null;
+  }
+}
+
+// POS Table Renderer
+function POSTableRenderer({ 
+  tableData, 
+  status, 
+  bookingSource, 
+  customerName, 
+  seats,
+  onWalkIn, 
+  onRelease 
+}: {
+  tableData: any;
+  status: 'Ready' | 'Occupied' | 'Cleaning' | 'Reserved';
+  bookingSource: 'online' | 'offline';
+  customerName?: string;
+  seats?: number;
+  onWalkIn: (id: string) => void;
+  onRelease: (id: string) => void;
+}) {
+  const isCircle = tableData.shape === 'circle';
+  const isRectangle = tableData.shape === 'rectangle';
+
+  let bgGradient = "";
+  let borderColor = "";
+  let textColor = "";
+
+  if (status === 'Ready') {
+    bgGradient = "bg-emerald-50 hover:bg-emerald-100/80";
+    borderColor = "border-emerald-300";
+    textColor = "text-emerald-800";
+  } else if (bookingSource === 'offline') {
+    bgGradient = "bg-orange-50 hover:bg-orange-100/80";
+    borderColor = "border-orange-300";
+    textColor = "text-orange-800";
+  } else {
+    bgGradient = "bg-blue-50 hover:bg-blue-100/80";
+    borderColor = "border-blue-300";
+    textColor = "text-blue-800";
+  }
+
+  return (
+    <div
+      className="absolute flex items-center justify-center transition-all duration-300 group z-10"
+      style={{ 
+        left: `${tableData.x}%`, 
+        top: `${tableData.y}%`, 
+        transform: `translate(-50%, -50%) rotate(${tableData.rotation || 0}deg)`
+      }}
+    >
+      {Array.from({ length: tableData.seats || 2 }).map((_, i) => {
+        const angle = (i * (360 / (tableData.seats || 2))) * (Math.PI / 180);
+        const radius = isCircle ? 50 : 60;
+        return (
+          <div
+            key={`chair-indicator-${tableData.id}-${i}`}
+            className={`absolute w-1 h-1 rounded-full bg-slate-400 opacity-40`}
+            style={{ 
+              top: `${50 + (radius * Math.sin(angle))}%`, 
+              left: `${50 + (radius * Math.cos(angle))}%`, 
+              transform: 'translate(-50%, -50%)' 
+            }}
+          />
+        );
+      })}
+
+      <button
+        onClick={() => status === 'Ready' ? onWalkIn(tableData.id) : onRelease(tableData.id)}
+        className={`relative flex flex-col items-center justify-center border-2 border-dashed ${borderColor} ${bgGradient} ${textColor}
+          shadow-md hover:shadow-lg transition-all active:scale-95 text-left p-1
+          ${isCircle ? 'rounded-full' : 'rounded-xl'}
+          ${isRectangle ? 'w-20 h-10' : 'w-12 h-12'}`}
+      >
+        <span className="font-black text-[9px] drop-shadow-sm">{tableData.label || tableData.id}</span>
+        <span className="text-[7px] opacity-75">{tableData.seats || 2}P</span>
+        
+        {status !== 'Ready' && (
+          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-32 bg-slate-900 text-white rounded-lg p-2 text-[8px] opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-xl border border-slate-700 leading-normal">
+            <p className="font-extrabold uppercase text-[7px] tracking-wider text-emerald-400">
+              {bookingSource === 'offline' ? 'POS Walk-in' : 'Online Booking'}
+            </p>
+            <p className="font-bold truncate mt-0.5">👤 {customerName || 'Guest'}</p>
+            <p className="opacity-75">Seats: {seats || tableData.seats}</p>
+          </div>
+        )}
+      </button>
+    </div>
+  );
+}

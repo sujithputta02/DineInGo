@@ -582,6 +582,14 @@ async function updateBusinessTableStatus(businessId: string, tableId: string, da
   return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status/${tableId}`, 'PUT', data);
 }
 
+async function releaseBusinessTable(businessId: string, tableId: string) {
+  return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status/${tableId}/release`, 'PATCH');
+}
+
+async function createWalkInBooking(businessId: string, tableId: string, data: any) {
+  return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status/${tableId}/walk-in`, 'POST', data);
+}
+
 async function batchUpdateBusinessTableStatus(businessId: string, updates: any[]) {
   return apiRequest(`${API_URL}/api/v1/business/${businessId}/table-status/batch`, 'POST', { updates });
 }
@@ -779,6 +787,8 @@ export const businessApi = {
   deleteShift: deleteBusinessShift,
   getTableStatuses: getBusinessTableStatuses,
   updateTableStatus: updateBusinessTableStatus,
+  releaseTable: releaseBusinessTable,
+  walkIn: createWalkInBooking,
   batchUpdateTableStatus: batchUpdateBusinessTableStatus,
   getCampaigns: getBusinessCampaigns,
   createCampaign: createBusinessCampaign,

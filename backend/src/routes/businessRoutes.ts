@@ -21,7 +21,7 @@ import { getBusinessBookings, getBookingAnalytics } from '../controllers/booking
 import { getHeatmapData, getRevenueForecast, getCustomerLoyalty } from '../controllers/analyticsController';
 import { getBusinessStaff, addStaff, updateStaff, removeStaff } from '../controllers/staffController';
 import { getBusinessShifts, createShift, updateShift, deleteShift } from '../controllers/shiftController';
-import { getBusinessTableStatuses, updateTableStatus, batchUpdateTableStatus } from '../controllers/tableStatusController';
+import { getBusinessTableStatuses, updateTableStatus, batchUpdateTableStatus, releaseTable, createWalkInBooking } from '../controllers/tableStatusController';
 import { getBusinessCampaigns, createCampaign, updateCampaign, deleteCampaign, sendCampaign } from '../controllers/marketingController';
 import { getBusinessPromotions, createPromotion, updatePromotion, deletePromotion } from '../controllers/promotionController';
 import { getBusinessReviews, addReview, replyToReview, deleteReview, getBusinessRatingStats, updateReview, updateReply, deleteReply, likeReview, dislikeReview } from '../controllers/reviewController';
@@ -114,6 +114,8 @@ router.delete('/shifts/:id', businessApiLimiter, logBusinessAction, deleteShift)
 
 router.get('/:businessId/table-status', businessApiLimiter, getBusinessTableStatuses);
 router.put('/:businessId/table-status/:tableId', businessApiLimiter, logBusinessAction, updateTableStatus);
+router.patch('/:businessId/table-status/:tableId/release', businessApiLimiter, logBusinessAction, releaseTable);
+router.post('/:businessId/table-status/:tableId/walk-in', businessApiLimiter, logBusinessAction, createWalkInBooking);
 router.post('/:businessId/table-status/batch', businessApiLimiter, logBusinessAction, batchUpdateTableStatus);
 
 // Marketing Engine
