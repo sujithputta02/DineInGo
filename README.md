@@ -55,7 +55,7 @@ To test the application, you must be on our early access list. Follow these step
 
 ### 🏢 Advanced Restaurant Features
 - **3D AR Menu Engine**: Revolutionary augmented reality previews of dishes directly on your table.
-- **Multi-Floor Management**: Support for up to 4 floors with independent table layouts
+- **Multi-Floor Management**: Support for up to 4 floors with an independent table layouts
 - **Real-Time Table Status**: Live updates across all connected users
 - **Interactive Floor Plans**: Drag-and-drop table designer
 - **Booking Management**: Confirm, modify, or cancel reservations
@@ -67,7 +67,7 @@ To test the application, you must be on our early access list. Follow these step
 - **Emoji Support**: Express yourself with emoji reactions in reviews
 - **Like/Dislike Reviews**: Community engagement on reviews
 - **Business Responses**: Restaurant owners can reply to reviews
-- **Achievement System**: Earn badges for dining activities
+- **Achievement System**: Earn badges for a dining activities
 - **Personalized Profiles**: Custom avatars and dietary preferences
 
 ### 📱 Real-Time Features
