@@ -16,6 +16,7 @@ import API_CONFIG from '../config/api';
 import { DietaryAssistant } from './DietaryAssistant';
 import { userPreferenceApi, userAPI } from '../services/api';
 import { useLanguage } from '../contexts/LanguageContext';
+import { applyLiquidGlass } from '../utils/liquidGlass';
 
 // Type guard to check if user has Firebase Auth methods
 const hasFirebaseAuth = (user: User | null): user is User & FirebaseUser => {
@@ -99,6 +100,8 @@ interface ProfileSettingsProps {
   currentTheme?: 'light' | 'dark' | 'system';
   onThemeChange?: (theme: 'light' | 'dark' | 'system') => void;
   onToggleTheme?: () => void;
+  glassLevel?: number;
+  onGlassLevelChange?: (level: number) => void;
 }
 
 type AuthenticatedUser = User & { getIdToken: () => Promise<string> };
@@ -130,7 +133,9 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   onLanguageChange,
   currentTheme = 'system',
   onThemeChange,
-  onToggleTheme
+  onToggleTheme,
+  glassLevel = 100,
+  onGlassLevelChange
 }) => {
   const [activeTab, setActiveTab] = useState<'profile' | 'preferences' | 'app' | 'security'>('profile');
   const { t } = useLanguage();
@@ -150,6 +155,49 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [userPreferences, setUserPreferences] = useState<any>(null);
+
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const activeTabIndicatorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let tabsLg: any = null;
+    let indicatorLg: any = null;
+
+    const computedBlur = 16 * (1 - glassLevel / 100);
+    const baseScale = isDarkMode ? -110 : -75;
+    const computedScale = baseScale * (glassLevel / 100);
+
+    if (tabsRef.current) {
+      tabsLg = applyLiquidGlass(tabsRef.current, {
+        scale: computedScale,
+        chroma: isDarkMode ? 5 : 2,
+        border: 0.08,
+        mapBlur: 14,
+        blur: computedBlur,
+        saturate: 1.6,
+        radius: 35, // matches same capsule shape as footer
+        fallbackBlur: computedBlur,
+      });
+    }
+
+    if (activeTabIndicatorRef.current) {
+      indicatorLg = applyLiquidGlass(activeTabIndicatorRef.current, {
+        scale: (isDarkMode ? -75 : -55) * (glassLevel / 100),
+        chroma: isDarkMode ? 4 : 2,
+        border: 0.08,
+        mapBlur: 10,
+        blur: computedBlur,
+        saturate: isDarkMode ? 1.3 : 1.1,
+        radius: 20, // 40px height is radius 20px
+        fallbackBlur: computedBlur,
+      });
+    }
+
+    return () => {
+      if (tabsLg) tabsLg.destroy();
+      if (indicatorLg) indicatorLg.destroy();
+    };
+  }, [isDarkMode, glassLevel]);
 
   // Type guard to ensure user has required methods
   const authUser = useMemo<AuthenticatedUser | null>(() => {
@@ -540,19 +588,29 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
 
   // --- Render Helpers ---
 
-  const renderTabButton = (id: typeof activeTab, label: string, icon: React.ReactNode) => (
-    <button
-      type="button"
-      onClick={() => setActiveTab(id)}
-      className={`flex-1 flex items-center justify-center gap-2 py-4 text-sm font-semibold transition-all border-b-2 ${activeTab === id
-        ? 'border-emerald-500 text-emerald-500'
-        : `border-transparent ${isDarkMode ? 'text-gray-400 hover:text-gray-200' : 'text-gray-500 hover:text-gray-700'}`
+  const renderTabButton = (id: typeof activeTab, label: string, icon: React.ReactNode) => {
+    const isActive = activeTab === id;
+    return (
+      <button
+        type="button"
+        onClick={() => setActiveTab(id)}
+        className={`relative flex-1 flex items-center justify-center w-full h-11 rounded-full transition-all duration-300 select-none z-20 ${
+          isActive
+            ? isDarkMode ? 'text-white font-bold scale-102' : 'text-emerald-700 font-bold scale-102'
+            : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
         }`}
-    >
-      {icon}
-      {label}
-    </button>
-  );
+      >
+        <span className="relative z-10 flex items-center justify-center gap-1.5 md:gap-2">
+          {icon}
+          <span className="hidden sm:inline whitespace-nowrap">{label}</span>
+        </span>
+      </button>
+    );
+  };
+
+  const activeIndex = activeTab === 'profile' ? 0 : 
+                      activeTab === 'preferences' ? 1 : 
+                      activeTab === 'app' ? 2 : 3;
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-50'} -m-4 md:-m-8 p-4 md:p-8`}>
@@ -599,9 +657,60 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
       <div className={`rounded-[2.5rem] overflow-hidden shadow-xl border ${isDarkMode ? 'bg-gray-800/50 border-gray-700/50' : 'bg-white border-gray-200/50'
         } backdrop-blur-md`}>
 
-        {/* Tabs */}
-        <div className={`px-6 md:px-8 border-b ${isDarkMode ? 'border-gray-700/50' : 'border-gray-200/50'}`}>
-          <div className="flex">
+        {/* Tabs Segmented Control Dock */}
+        <div className="px-4 py-4 md:px-8 md:py-6 max-w-2xl mx-auto w-full">
+          <div
+            ref={tabsRef}
+            className="w-full h-[58px] grid grid-cols-4 items-center px-1.5 relative"
+            style={{
+              borderRadius: "35px",
+              background: isDarkMode
+                ? "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))"
+                : "linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(245, 245, 250, 0.8))",
+              boxShadow: isDarkMode
+                ? `
+                  0 12px 40px rgba(0, 0, 0, 0.4),
+                  inset 0 1px 0px rgba(255, 255, 255, 0.35),
+                  inset 0 0 0 1px rgba(255, 255, 255, 0.1)
+                `
+                : `
+                  0 12px 40px rgba(0, 0, 0, 0.08),
+                  inset 0 1px 0px rgba(255, 255, 255, 0.8),
+                  inset 0 0 0 1px rgba(0, 0, 0, 0.08)
+                `,
+            }}
+          >
+            {/* Persistent Sliding Active Indicator Capsule */}
+            <div className="absolute inset-x-1.5 top-0 bottom-0 pointer-events-none z-10">
+              <motion.div
+                className="absolute top-0 bottom-0 left-0 w-[25%] flex items-center justify-center"
+                animate={{ x: `${activeIndex * 100}%` }}
+                transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              >
+                <div
+                  ref={activeTabIndicatorRef}
+                  className="w-[92%] h-10 rounded-full"
+                  style={{
+                    background: isDarkMode 
+                      ? "linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0.08))"
+                      : "linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.85))",
+                    boxShadow: isDarkMode
+                      ? `
+                        inset 0 1px 0px rgba(255, 255, 255, 0.5),
+                        inset 0 0 0 1px rgba(255, 255, 255, 0.2),
+                        0 4px 12px rgba(0, 0, 0, 0.3)
+                      `
+                      : `
+                        inset 0 1px 0px rgba(255, 255, 255, 0.9),
+                        inset 0 0 0 1px rgba(0, 0, 0, 0.08),
+                        0 4px 12px rgba(0, 0, 0, 0.08)
+                      `,
+                  }}
+                />
+              </motion.div>
+            </div>
+
+            {/* Main Buttons */}
             {renderTabButton('profile', t('personalInfo'), <LucideUser size={18} />)}
             {renderTabButton('preferences', t('preferences'), <Sliders size={18} />)}
             {renderTabButton('app', t('appSettings'), <Save size={18} />)}
@@ -919,6 +1028,56 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                           <Laptop size={20} />
                           <span className="text-xs font-bold">Device</span>
                         </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Liquid Glass Customizer */}
+                  <div className={`p-6 rounded-3xl border ${isDarkMode ? 'bg-gray-900/50 border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
+                    <div className="flex flex-col gap-5">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-xl ${isDarkMode ? 'bg-emerald-500/20 text-emerald-400' : 'bg-emerald-100 text-emerald-600'}`}>
+                          <Sliders size={24} />
+                        </div>
+                        <div>
+                          <h4 className={`font-bold ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>Liquid Glass Customizer</h4>
+                          <p className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            Adjust refraction optics from frosted matte to pure crystal glass
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-col gap-2.5">
+                        <div className="flex justify-between items-center text-xs font-bold text-gray-500 uppercase tracking-wider">
+                          <span>Matte (Frosted)</span>
+                          <span className={isDarkMode ? "text-emerald-400" : "text-emerald-600"}>
+                            {glassLevel}% {glassLevel === 0 ? "(Matte)" : glassLevel === 100 ? "(Pure)" : ""}
+                          </span>
+                          <span>Pure (Refractive)</span>
+                        </div>
+                        <div className="relative flex items-center h-8">
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={glassLevel}
+                            aria-label="Liquid glass intensity"
+                            aria-valuetext={`${glassLevel}%`}
+                            onChange={(e) => onGlassLevelChange?.(parseInt(e.target.value, 10))}
+                            className="w-full h-2 rounded-full appearance-none cursor-pointer focus:outline-none transition-all"
+                            style={{
+                              background: `linear-gradient(to right, #10b981 0%, #10b981 ${glassLevel}%, ${
+                                isDarkMode ? "#374151" : "#e5e7eb"
+                              } ${glassLevel}%, ${isDarkMode ? "#374151" : "#e5e7eb"} 100%)`,
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div className={`text-xs p-3 rounded-xl leading-relaxed ${
+                        isDarkMode ? "bg-gray-800/40 text-gray-400" : "bg-gray-100 text-gray-500"
+                      }`}>
+                        ⚙️ <strong className={isDarkMode ? "text-white" : "text-gray-900"}>How it works:</strong> At 0% the system uses a standard Apple frosted backdrop blur (`blur: 16px`). As you slide toward 100%, the blur reduces to 0px while the displacement refraction maps increase, creating a crystal-clear liquid glass lens.
                       </div>
                     </div>
                   </div>
