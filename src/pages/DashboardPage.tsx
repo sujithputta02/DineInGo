@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { DinoStepper } from "../components/DinoStepper";
@@ -40,6 +40,8 @@ import {
   ChefHat,
 } from "lucide-react";
 import InvoiceModal from "../components/InvoiceModal";
+import { MobileBottomNav } from "../components/MobileBottomNav";
+import { applyLiquidGlass } from "../utils/liquidGlass";
 import { signOut, onAuthStateChanged, updateProfile } from "firebase/auth";
 import BookingCard from "../components/BookingCard";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -214,6 +216,112 @@ const availableLanguages: { code: Language; name: string }[] = [
   { code: "kannada", name: "Kannada" },
 ];
 
+interface MoodButtonProps {
+  mood: any;
+  isSelected: boolean;
+  isDarkMode: boolean;
+  glassLevel: number;
+  onClick: () => void;
+  t: (key: string) => string;
+}
+
+const MoodButton: React.FC<MoodButtonProps> = ({
+  mood,
+  isSelected,
+  isDarkMode,
+  glassLevel,
+  onClick,
+  t
+}) => {
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    let lg: any = null;
+    if (buttonRef.current) {
+      const computedBlur = 16 * (1 - glassLevel / 100);
+      const baseScale = isDarkMode ? -75 : -55;
+      const computedScale = baseScale * (glassLevel / 100);
+
+      lg = applyLiquidGlass(buttonRef.current, {
+        scale: isSelected ? computedScale * 1.25 : computedScale, // slightly stronger bulge when selected
+        chroma: isDarkMode ? 4 : 2,
+        border: 0.06,
+        mapBlur: 10,
+        blur: computedBlur,
+        saturate: isDarkMode ? 1.4 : 1.2,
+        radius: 24, // matches rounded-3xl / 24px border radius
+        fallbackBlur: computedBlur,
+      });
+    }
+    return () => {
+      if (lg) lg.destroy();
+    };
+  }, [isDarkMode, glassLevel, isSelected]);
+
+  return (
+    <motion.button
+      ref={buttonRef}
+      whileHover={{ scale: 1.05, y: -2 }}
+      whileTap={{ scale: 0.95 }}
+      onClick={onClick}
+      className="group relative flex flex-col items-center gap-3 px-6 sm:px-8 py-4 sm:py-6 rounded-3xl font-black transition-all duration-300 whitespace-nowrap border-2"
+      style={{
+        background: isSelected
+          ? isDarkMode
+            ? "linear-gradient(135deg, rgba(59, 130, 246, 0.7), rgba(99, 102, 241, 0.8))"
+            : "linear-gradient(135deg, rgba(59, 130, 246, 0.85), rgba(99, 102, 241, 0.95))"
+          : isDarkMode
+            ? "linear-gradient(180deg, rgba(30, 30, 35, 0.65), rgba(20, 20, 25, 0.8))"
+            : "linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(245, 245, 250, 0.8))",
+        borderColor: isSelected
+          ? "transparent"
+          : isDarkMode
+            ? "rgba(255, 255, 255, 0.08)"
+            : "rgba(0, 0, 0, 0.05)",
+        boxShadow: isSelected
+          ? isDarkMode
+            ? "0 10px 25px rgba(59, 130, 246, 0.35), inset 0 1px 0px rgba(255, 255, 255, 0.3)"
+            : "0 10px 25px rgba(59, 130, 246, 0.2), inset 0 1px 0px rgba(255, 255, 255, 0.5)"
+          : isDarkMode
+            ? "0 4px 12px rgba(0, 0, 0, 0.15)"
+            : "0 4px 12px rgba(0, 0, 0, 0.03)",
+        color: isSelected
+          ? "#ffffff"
+          : isDarkMode
+            ? "#a1a1aa"
+            : "#6b7280"
+      }}
+    >
+      <div
+        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${
+          isSelected
+            ? "bg-white/25 scale-110 rotate-3"
+            : isDarkMode
+              ? "bg-zinc-800/80 group-hover:bg-emerald-500/10 text-emerald-400 border border-white/5"
+              : "bg-gray-100/80 group-hover:bg-emerald-50 text-emerald-600 border border-black/5"
+        }`}
+      >
+        <span
+          className={`${
+            isSelected ? "text-white" : "group-hover:scale-110 transition-transform"
+          }`}
+        >
+          {mood.icon}
+        </span>
+      </div>
+      <span className="text-sm tracking-tight">
+        {mood.label}
+      </span>
+      {isSelected && (
+        <motion.div
+          layoutId="mood-glow"
+          className="absolute inset-0 rounded-3xl bg-blue-500/10 blur-xl -z-10"
+        />
+      )}
+    </motion.button>
+  );
+};
+
 // Use the imported Event type directly
 export default function DashboardPage() {
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>(() => {
@@ -229,6 +337,77 @@ export default function DashboardPage() {
   const [activeSection, setActiveSection] = useState<Section>("home");
   const [sortBy, setSortBy] = useState<'default' | 'sentiment'>('default');
   const { language, setLanguage, t } = useLanguage();
+  
+  const [isSearchExpanded, setIsSearchExpanded] = useState<boolean>(false);
+  const [glassLevel, setGlassLevel] = useState<number>(() => {
+    const saved = localStorage.getItem("liquid-glass-level");
+    return saved ? parseInt(saved, 10) : 100;
+  });
+
+  const handleGlassLevelChange = (level: number) => {
+    setGlassLevel(level);
+    localStorage.setItem("liquid-glass-level", level.toString());
+  };
+
+  const headerRef = useRef<HTMLDivElement>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const searchBarRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let headerLg: any = null;
+    let sidebarLg: any = null;
+    let searchBarLg: any = null;
+
+    // Calculate options dynamically based on glassLevel (from 0% frosted to 100% pure refractive)
+    const baseScaleHeader = isDarkMode ? -110 : -75;
+    const computedScaleHeader = baseScaleHeader * (glassLevel / 100);
+    const computedBlur = 16 * (1 - glassLevel / 100);
+
+    if (headerRef.current) {
+      headerLg = applyLiquidGlass(headerRef.current, {
+        scale: computedScaleHeader,
+        chroma: isDarkMode ? 5 : 2,
+        border: 0.05,
+        mapBlur: 12,
+        blur: computedBlur,
+        saturate: isDarkMode ? 1.5 : 1.2,
+        radius: 32, // matches rounded capsule style
+        fallbackBlur: computedBlur,
+      });
+    }
+
+    if (sidebarRef.current) {
+      sidebarLg = applyLiquidGlass(sidebarRef.current, {
+        scale: computedScaleHeader,
+        chroma: isDarkMode ? 5 : 2,
+        border: 0.05,
+        mapBlur: 14,
+        blur: computedBlur,
+        saturate: isDarkMode ? 1.5 : 1.2,
+        radius: 0, // rectangular sidebar panel
+        fallbackBlur: computedBlur,
+      });
+    }
+
+    if (searchBarRef.current) {
+      searchBarLg = applyLiquidGlass(searchBarRef.current, {
+        scale: -110 * (glassLevel / 100),
+        chroma: 4,
+        border: 0.08,
+        mapBlur: 10,
+        blur: computedBlur,
+        saturate: 1.3,
+        radius: 32, // matches rounded capsule style
+        fallbackBlur: computedBlur,
+      });
+    }
+
+    return () => {
+      if (headerLg) headerLg.destroy();
+      if (sidebarLg) sidebarLg.destroy();
+      if (searchBarLg) searchBarLg.destroy();
+    };
+  }, [isDarkMode, isSearchExpanded, glassLevel]);
   
   // Create a translations object that always reflects the current state of t
   const tProps = new Proxy({} as any, {
@@ -286,7 +465,6 @@ export default function DashboardPage() {
     }
   }, [userData]);
   const [searchTerm, setSearchTerm] = useState<string>("");
-  const [isSearchExpanded, setIsSearchExpanded] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
@@ -2243,43 +2421,15 @@ export default function DashboardPage() {
                       color: "from-orange-500 to-red-600",
                     },
                   ].map((mood) => (
-                    <motion.button
+                    <MoodButton
                       key={mood.id}
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
+                      mood={mood}
+                      isSelected={userMood === mood.id}
+                      isDarkMode={isDarkMode}
+                      glassLevel={glassLevel}
                       onClick={() => setUserMood(mood.id as any)}
-                      className={`group relative flex flex-col items-center gap-3 px-6 sm:px-8 py-4 sm:py-6 rounded-2xl sm:rounded-3xl font-black transition-all duration-500 whitespace-nowrap border-2 ${userMood === mood.id
-                        ? `bg-gradient-to-br ${mood.color} border-transparent text-white shadow-xl shadow-emerald-500/20`
-                        : isDarkMode
-                          ? "bg-zinc-800/80 border-zinc-700 text-gray-400 hover:border-emerald-500/30"
-                          : "bg-white border-gray-100 text-gray-500 hover:border-emerald-200 hover:shadow-lg"
-                        }`}
-                    >
-                      <div
-                        className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all duration-500 ${userMood === mood.id
-                          ? "bg-white/20 scale-110 rotate-3"
-                          : isDarkMode
-                            ? "bg-zinc-700/50 group-hover:bg-emerald-500/10"
-                            : "bg-gray-50 group-hover:bg-emerald-50"
-                          }`}
-                      >
-                        <span
-                          className={`${userMood === mood.id ? "text-white" : "text-emerald-500 group-hover:scale-110 transition-transform"}`}
-                        >
-                          {mood.icon}
-                        </span>
-                      </div>
-                      <span className="text-sm tracking-tight">
-                        {mood.label}
-                      </span>
-
-                      {userMood === mood.id && (
-                        <motion.div
-                          layoutId="mood-glow"
-                          className="absolute inset-0 rounded-3xl bg-white/10 blur-xl -z-10"
-                        />
-                      )}
-                    </motion.button>
+                      t={t}
+                    />
                   ))}
                 </div>
 
@@ -3070,6 +3220,8 @@ export default function DashboardPage() {
                 currentLanguage={language}
                 onLanguageChange={handleLanguageChange}
                 onToggleTheme={toggleDarkMode}
+                glassLevel={glassLevel}
+                onGlassLevelChange={handleGlassLevelChange}
                 onUpdate={async (updates) => {
                   if (!auth.currentUser) return;
                   try {
@@ -3676,9 +3828,18 @@ export default function DashboardPage() {
       >
         {/* Sidebar */}
         <aside
-          className={`hidden lg:flex flex-col fixed top-0 left-0 h-full w-[280px] transform ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-            } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 ${isDarkMode ? "bg-gray-900/80" : "bg-white/80"
-            } backdrop-blur-xl border-r ${isDarkMode ? "border-gray-800" : "border-gray-200"} shadow-2xl overflow-y-auto`}
+          ref={sidebarRef}
+          className={`hidden lg:flex flex-col fixed top-0 left-0 h-full w-[280px] transform ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 overflow-y-auto`}
+          style={{
+            background: isDarkMode
+              ? "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))"
+              : "linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(245, 245, 250, 0.95))",
+            boxShadow: isDarkMode
+              ? "inset -1px 0 0 0 rgba(255, 255, 255, 0.1), 0 24px 60px rgba(0, 0, 0, 0.5)"
+              : "inset -1px 0 0 0 rgba(0, 0, 0, 0.08), 0 24px 60px rgba(0, 0, 0, 0.05)",
+          }}
         >
           <div className="p-6 flex flex-col h-full">
             {/* Dineingo Logo */}
@@ -3961,12 +4122,21 @@ export default function DashboardPage() {
             {/* Mobile Expanded Search */}
             {isSearchExpanded && (
               <div className="sm:hidden mb-3">
-                <div className="relative w-full">
+                <div
+                  ref={searchBarRef}
+                  className="relative w-full flex items-center pr-10"
+                  style={{
+                    borderRadius: "32px",
+                    background: "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))",
+                    boxShadow: "inset 0 1px 0px rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 30px rgba(0, 0, 0, 0.45)",
+                    border: "2px solid #10b981", // Emerald outline
+                  }}
+                >
                   <input
                     type="text"
                     placeholder={t('searchPlaceholder')}
                     autoFocus
-                    className="w-full px-5 py-4 rounded-2xl bg-black/80 backdrop-blur-md border-2 border-white/20 text-white text-lg focus:outline-none focus:ring-2 focus:ring-emerald-500/50 placeholder-white/60 transition-all font-medium"
+                    className="w-full pl-5 pr-10 py-3.5 bg-transparent text-white text-base focus:outline-none placeholder-white/60 transition-all font-medium"
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
@@ -3977,14 +4147,24 @@ export default function DashboardPage() {
                     }}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition"
                   >
-                    <X className="w-6 h-6" />
+                    <X className="w-5 h-5" />
                   </button>
                 </div>
               </div>
             )}
 
             <div
-              className={`${isDarkMode ? "bg-gray-900/60 border-gray-800" : "bg-emerald-500/90 border-white/20"} backdrop-blur-xl rounded-3xl px-3 sm:px-6 py-3 flex items-center justify-between shadow-2xl border gap-2 sm:gap-4 h-16 sm:h-20`}
+              ref={headerRef}
+              className="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 sm:gap-4 h-16 sm:h-20"
+              style={{
+                borderRadius: "32px", // capsule shape to match search bar
+                background: isDarkMode
+                  ? "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))"
+                  : "linear-gradient(180deg, rgba(16, 185, 129, 0.75), rgba(5, 150, 105, 0.9))",
+                boxShadow: isDarkMode
+                  ? "inset 0 1px 0px rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 40px rgba(0, 0, 0, 0.45)"
+                  : "inset 0 1px 0px rgba(255, 255, 255, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 12px 40px rgba(16, 185, 129, 0.2)",
+              }}
             >
               <div className="flex items-center gap-2 sm:gap-4 min-w-0">
                 <button
@@ -4386,48 +4566,18 @@ export default function DashboardPage() {
         userName={userData?.displayName || userData?.name}
       />
 
-      {/* Mobile Bottom Navigation (Premium Scrollable Dock) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden bg-white/80 dark:bg-gray-900/80 backdrop-blur-2xl border-t border-gray-200/50 dark:border-gray-800/50 pb-safe shadow-[0_-10px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_-10px_40px_rgba(0,0,0,0.4)]">
-        <div className="flex items-center gap-0 sm:gap-1 overflow-x-auto hide-scrollbar px-2 sm:px-4 py-1.5 sm:py-2 snap-x snap-mandatory">
-          {[
-            { id: "home", icon: <Compass strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('home') },
-            { id: "restaurants", icon: <MapPin strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('restaurants') },
-            { id: "events", icon: <Globe strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('events') },
-            { id: "bookings", icon: <Calendar strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('bookings') },
-            { id: "messages", icon: <MessageSquare strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('messages') },
-            { id: "ar-menu", icon: <Camera strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('arMenu') },
-            { id: "reviews", icon: <Star strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('myReviews') },
-            { id: "achievements", icon: <Trophy strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('achievements') },
-            { id: "theme", icon: isDarkMode ? <Sun strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" /> : <Moon strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: isDarkMode ? t('lightMode') : t('darkMode'), isAction: true, onClick: toggleDarkMode },
-            { id: "settings", icon: <Settings strokeWidth={1.5} className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />, label: t('settings') },
-            { id: "logout", icon: <svg strokeWidth={1.5} viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-5 h-5 sm:w-[22px] sm:h-[22px]"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75" /></svg>, label: t('logout'), isAction: true, onClick: handleLogout }
-          ].map((item) => {
-            const isActive = !item.isAction && activeSection === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => item.isAction && item.onClick ? item.onClick() : setActiveSection(item.id as Section)}
-                className={`snap-center flex flex-col items-center gap-1 sm:gap-1.5 min-w-[64px] sm:min-w-[76px] transition-all duration-300 ${isActive
-                    ? "text-emerald-500 dark:text-emerald-400 scale-105"
-                    : item.id === 'logout' ? "text-rose-500 hover:text-rose-600" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                  }`}
-              >
-                <div className={`p-1.5 sm:p-2 rounded-xl sm:rounded-[14px] transition-all duration-300 ${isActive ? "bg-emerald-500/10 dark:bg-emerald-400/15 shadow-inner" : ""}`}>
-                  {item.icon}
-                </div>
-                <span className={`text-[9px] sm:text-[10px] tracking-wide transition-all ${isActive ? "opacity-100 font-bold" : "opacity-80 font-medium"} whitespace-nowrap`}>
-                  {item.label}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-        <style>{`
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-      `}</style>
-      </nav>
+      {/* Mobile Bottom Navigation (Premium Liquid Glass floating dock) */}
+      <MobileBottomNav
+        activeSection={activeSection}
+        setActiveSection={setActiveSection}
+        unreadCount={unreadCount}
+        userData={userData}
+        isDarkMode={isDarkMode}
+        toggleDarkMode={toggleDarkMode}
+        handleLogout={handleLogout}
+        t={t}
+        glassLevel={glassLevel}
+      />
     </>
   );
 }
-
