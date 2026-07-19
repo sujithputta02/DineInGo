@@ -4127,8 +4127,12 @@ export default function DashboardPage() {
                   className="relative w-full flex items-center pr-10"
                   style={{
                     borderRadius: "32px",
-                    background: "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))",
-                    boxShadow: "inset 0 1px 0px rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 30px rgba(0, 0, 0, 0.45)",
+                    background: isDarkMode
+                      ? "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))"
+                      : "linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(245, 245, 250, 0.95))",
+                    boxShadow: isDarkMode
+                      ? "inset 0 1px 0px rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.1), 0 12px 30px rgba(0, 0, 0, 0.45)"
+                      : "inset 0 1px 0px rgba(255, 255, 255, 0.5), inset 0 0 0 1px rgba(255, 255, 255, 0.2), 0 12px 30px rgba(16, 185, 129, 0.15)",
                     border: "2px solid #10b981", // Emerald outline
                   }}
                 >
@@ -4136,7 +4140,11 @@ export default function DashboardPage() {
                     type="text"
                     placeholder={t('searchPlaceholder')}
                     autoFocus
-                    className="w-full pl-5 pr-10 py-3.5 bg-transparent text-white text-base focus:outline-none placeholder-white/60 transition-all font-medium"
+                    className={`w-full pl-5 pr-10 py-3.5 bg-transparent text-base focus:outline-none transition-all font-medium ${
+                      isDarkMode 
+                        ? "text-white placeholder-white/60" 
+                        : "text-gray-900 placeholder-gray-500/70"
+                    }`}
                     value={searchTerm}
                     onChange={(e) => handleSearch(e.target.value)}
                   />
@@ -4145,7 +4153,9 @@ export default function DashboardPage() {
                       setIsSearchExpanded(false);
                       setSearchTerm("");
                     }}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/70 hover:text-white transition"
+                    className={`absolute right-4 top-1/2 -translate-y-1/2 transition ${
+                      isDarkMode ? "text-white/70 hover:text-white" : "text-gray-600 hover:text-gray-900"
+                    }`}
                   >
                     <X className="w-5 h-5" />
                   </button>

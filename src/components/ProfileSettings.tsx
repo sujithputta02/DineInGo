@@ -1061,6 +1061,8 @@ const ProfileSettings: React.FC<ProfileSettingsProps> = ({
                             min="0"
                             max="100"
                             value={glassLevel}
+                            aria-label="Liquid glass intensity"
+                            aria-valuetext={`${glassLevel}%`}
                             onChange={(e) => onGlassLevelChange?.(parseInt(e.target.value, 10))}
                             className="w-full h-2 rounded-full appearance-none cursor-pointer focus:outline-none transition-all"
                             style={{
