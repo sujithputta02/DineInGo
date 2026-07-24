@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import SEO from "./components/SEO";
 import { useLanguage } from "./contexts/LanguageContext";
+import DineInGoIntro from "./components/DineInGoIntro";
 
 interface DoodleProps {
   type: 'plate' | 'fork' | 'star' | 'chair' | 'wave' | 'ticket';
@@ -476,6 +477,12 @@ const FeatureCard: React.FC<FeatureCardProps & { glassStyles: any }> = ({ icon, 
 );
 
 export default function LandingPage() {
+  const [showIntro, setShowIntro] = useState(true);
+
+  const handleIntroComplete = () => {
+    setShowIntro(false);
+  };
+
   const [activeTab, setActiveTab] = useState("restaurants");
   const [scrollY, setScrollY] = useState(0);
   const [selectedTable, setSelectedTable] = useState(3);
@@ -507,281 +514,292 @@ export default function LandingPage() {
   ];
 
   return (
-    <div style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", backgroundColor: glassStyles.colors.bg, color: glassStyles.colors.black, overflow: "hidden" }}>
-      <SEO 
-        title="DineInGo - India's First Real-Time Table & Event Selector"
-        description="DineInGo - The ultimate platform for effortless dining and event reservations in India. Book exact tables with real-time floor plans, manage waitlists, and discover top restaurants."
-        keywords="DineInGo, restaurant reservations India, book exact table, real-time floor plan, event booking app, table booking Mumbai, table booking Bangalore, interactive restaurant map"
-      />
-      {/* Hero Section with Parallax and Liquid Glass Theme */}
-      <div
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          minHeight: "100vh",
-          position: "relative",
-          background: glassStyles.colors.bg,
-          overflow: "hidden",
-          padding: "0 2%",
-        }}
-      >
-        {/* Organic Background Blobs */}
-        <motion.div
-          animate={{
-            x: [0, 50, 0],
-            y: [0, -30, 0],
-          }}
-          transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-          style={{
-            position: "absolute",
-            top: "10%",
-            left: "60%",
-            width: "500px",
-            height: "500px",
-            background: `radial-gradient(circle, ${glassStyles.colors.primary}15 0%, transparent 70%)`,
-            filter: "blur(60px)",
-            zIndex: 0
-          }}
-        />
-        <motion.div
-          animate={{
-            x: [0, -40, 0],
-            y: [0, 40, 0],
-          }}
-          transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
-          style={{
-            position: "absolute",
-            bottom: "10%",
-            left: "5%",
-            width: "400px",
-            height: "400px",
-            background: `radial-gradient(circle, ${glassStyles.colors.gold}10 0%, transparent 70%)`,
-            filter: "blur(60px)",
-            zIndex: 0
-          }}
-        />
-        {/* Decorative Doodles in Hero */}
-        {!isMobile && (
-          <>
-            <Doodle type="plate" style={{ position: "absolute", top: "15%", right: "10%", opacity: 0.5 }} />
-            <Doodle type="fork" style={{ position: "absolute", bottom: "10%", left: "5%", opacity: 0.3, transform: "rotate(-15deg)" }} />
-            <Doodle type="star" style={{ position: "absolute", top: "25%", left: "12%", opacity: 0.4 }} />
-
-            {/* Moving doodle based on scroll */}
-            <motion.div
-              style={{
-                position: "absolute",
-                top: "40%",
-                right: "15%",
-                opacity: 0.4,
-                y: scrollY * -0.2,
-              }}
-            >
-              <Doodle type="wave" style={{}} />
-            </motion.div>
-          </>
+    <>
+      <AnimatePresence mode="wait">
+        {showIntro && (
+          <DineInGoIntro onComplete={handleIntroComplete} />
         )}
+      </AnimatePresence>
+      <motion.div
+        initial={showIntro ? { opacity: 0 } : { opacity: 1 }}
+        animate={showIntro ? { opacity: 0 } : { opacity: 1 }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+        style={{ fontFamily: "'Inter', system-ui, -apple-system, sans-serif", backgroundColor: glassStyles.colors.bg, color: glassStyles.colors.black, overflow: "hidden" }}
+      >
+        <SEO
+          title="DineInGo - India's First Real-Time Table & Event Selector"
+          description="DineInGo - The ultimate platform for effortless dining and event reservations in India. Book exact tables with real-time floor plans, manage waitlists, and discover top restaurants."
+          keywords="DineInGo, restaurant reservations India, book exact table, real-time floor plan, event booking app, table booking Mumbai, table booking Bangalore, interactive restaurant map"
+        />
+        {/* Hero Section with Parallax and Liquid Glass Theme */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            minHeight: "100vh",
+            position: "relative",
+            background: glassStyles.colors.bg,
+            overflow: "hidden",
+            padding: "0 2%",
+          }}
+        >
+          {/* Organic Background Blobs */}
+          <motion.div
+            animate={{
+              x: [0, 50, 0],
+              y: [0, -30, 0],
+            }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            style={{
+              position: "absolute",
+              top: "10%",
+              left: "60%",
+              width: "500px",
+              height: "500px",
+              background: `radial-gradient(circle, ${glassStyles.colors.primary}15 0%, transparent 70%)`,
+              filter: "blur(60px)",
+              zIndex: 0
+            }}
+          />
+          <motion.div
+            animate={{
+              x: [0, -40, 0],
+              y: [0, 40, 0],
+            }}
+            transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
+            style={{
+              position: "absolute",
+              bottom: "10%",
+              left: "5%",
+              width: "400px",
+              height: "400px",
+              background: `radial-gradient(circle, ${glassStyles.colors.gold}10 0%, transparent 70%)`,
+              filter: "blur(60px)",
+              zIndex: 0
+            }}
+          />
+          {/* Decorative Doodles in Hero */}
+          {!isMobile && (
+            <>
+              <Doodle type="plate" style={{ position: "absolute", top: "15%", right: "10%", opacity: 0.5 }} />
+              <Doodle type="fork" style={{ position: "absolute", bottom: "10%", left: "5%", opacity: 0.3, transform: "rotate(-15deg)" }} />
+              <Doodle type="star" style={{ position: "absolute", top: "25%", left: "12%", opacity: 0.4 }} />
 
-        {/* Header */}
-        <header style={{
-          padding: isMobile ? "12px 5%" : "clamp(12px, 4vw, 24px) clamp(12px, 5vw, 5%)",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          position: "fixed",
-          top: 0,
-          width: "100%",
-          zIndex: 100,
-          background: scrollY > 50 || mobileMenuOpen ? "rgba(255, 255, 255, 0.9)" : "transparent",
-          backdropFilter: scrollY > 50 || mobileMenuOpen ? "blur(20px) saturate(180%)" : "none",
-          WebkitBackdropFilter: scrollY > 50 || mobileMenuOpen ? "blur(20px) saturate(180%)" : "none",
-          borderBottom: scrollY > 50 ? "1px solid rgba(255, 255, 255, 0.3)" : "none",
-          transition: "all 0.3s ease",
-          minHeight: isMobile ? "70px" : "clamp(60px, 15vw, 80px)",
-          gap: "clamp(8px, 3vw, 20px)",
-          boxSizing: "border-box"
-        }}>
-          <div style={{ flex: "0 0 auto" }}>
-            <DineInGoLogo size={isMobile ? "small" : "small"} />
-          </div>
-
-          {!isMobile ? (
-            <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => navigate('/login')}
-              style={{
-                ...glassStyles.button,
-                backgroundColor: glassStyles.colors.gold,
-                padding: "12px 28px",
-                fontSize: "1rem",
-                fontWeight: "700",
-                border: "none",
-                boxShadow: "0 4px 14px rgba(250, 204, 21, 0.3)",
-                cursor: "pointer",
-                color: glassStyles.colors.black,
-                whiteSpace: "nowrap",
-                flex: "0 0 auto"
-              }}
-            >
-              {t('signIn', 'Sign In')}
-            </motion.button>
-          ) : (
-            <button
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              style={{
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: glassStyles.colors.black,
-                padding: "8px",
-                zIndex: 101
-              }}
-            >
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                {mobileMenuOpen ? (
-                  <path d="M18 6L6 18M6 6l12 12" />
-                ) : (
-                  <path d="M4 6h16M4 12h16M4 18h16" />
-                )}
-              </svg>
-            </button>
+              {/* Moving doodle based on scroll */}
+              <motion.div
+                style={{
+                  position: "absolute",
+                  top: "40%",
+                  right: "15%",
+                  opacity: 0.4,
+                  y: scrollY * -0.2,
+                }}
+              >
+                <Doodle type="wave" style={{}} />
+              </motion.div>
+            </>
           )}
 
-          {/* Mobile Menu Overlay */}
-          {isMobile && mobileMenuOpen && (
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              style={{
-                position: "absolute",
-                top: "100%",
-                left: 0,
-                width: "100%",
-                background: "white",
-                padding: "20px 5%",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-                display: "flex",
-                flexDirection: "column",
-                gap: "15px",
-                zIndex: 99
-              }}
-            >
-              <button
-                onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+          {/* Header */}
+          <header style={{
+            padding: isMobile ? "12px 5%" : "clamp(12px, 4vw, 24px) clamp(12px, 5vw, 5%)",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            position: "fixed",
+            top: 0,
+            width: "100%",
+            zIndex: 100,
+            background: scrollY > 50 || mobileMenuOpen ? "rgba(255, 255, 255, 0.9)" : "transparent",
+            backdropFilter: scrollY > 50 || mobileMenuOpen ? "blur(20px) saturate(180%)" : "none",
+            WebkitBackdropFilter: scrollY > 50 || mobileMenuOpen ? "blur(20px) saturate(180%)" : "none",
+            borderBottom: scrollY > 50 ? "1px solid rgba(255, 255, 255, 0.3)" : "none",
+            transition: "all 0.3s ease",
+            minHeight: isMobile ? "70px" : "clamp(60px, 15vw, 80px)",
+            gap: "clamp(8px, 3vw, 20px)",
+            boxSizing: "border-box"
+          }}>
+            <div style={{ flex: "0 0 auto" }}>
+              <DineInGoLogo size={isMobile ? "small" : "small"} />
+            </div>
+
+            {!isMobile ? (
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => navigate('/login')}
                 style={{
                   ...glassStyles.button,
                   backgroundColor: glassStyles.colors.gold,
-                  padding: "15px",
-                  fontSize: "1.1rem",
+                  padding: "12px 28px",
+                  fontSize: "1rem",
                   fontWeight: "700",
                   border: "none",
+                  boxShadow: "0 4px 14px rgba(250, 204, 21, 0.3)",
                   cursor: "pointer",
                   color: glassStyles.colors.black,
-                  textAlign: "center"
+                  whiteSpace: "nowrap",
+                  flex: "0 0 auto"
                 }}
               >
                 {t('signIn', 'Sign In')}
+              </motion.button>
+            ) : (
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  color: glassStyles.colors.black,
+                  padding: "8px",
+                  zIndex: 101
+                }}
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  {mobileMenuOpen ? (
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  ) : (
+                    <path d="M4 6h16M4 12h16M4 18h16" />
+                  )}
+                </svg>
               </button>
-              <nav style={{ display: "flex", flexDirection: "column", gap: "15px", padding: "10px 0" }}>
-                <button 
-                  onClick={() => { document.querySelector('[data-section="features"]')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }} 
-                  style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
-                >
-                  Features
-                </button>
-                <button 
-                  onClick={() => { /* TODO: Navigate to About Us */ setMobileMenuOpen(false); }}
-                  style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
-                >
-                  About Us
-                </button>
-                <button 
-                  onClick={() => { /* TODO: Navigate to Contact */ setMobileMenuOpen(false); }}
-                  style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
-                >
-                  Contact
-                </button>
-              </nav>
-            </motion.div>
-          )}
-        </header>
+            )}
 
-        {/* Main Hero Content with Scroll Animation */}
-        <div style={{
-          display: "flex",
-          flexDirection: isMobile ? "column" : "row",
-          minHeight: "100vh",
-          position: "relative",
-          alignItems: "center",
-          padding: isMobile ? "90px 4% 40px" : "0 5%",
-          boxSizing: "border-box",
-          textAlign: isMobile ? "center" : "left",
-        }}>
-          {/* Left Side: Text Content */}
+            {/* Mobile Menu Overlay */}
+            {isMobile && mobileMenuOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  width: "100%",
+                  background: "white",
+                  padding: "20px 5%",
+                  boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "15px",
+                  zIndex: 99
+                }}
+              >
+                <button
+                  onClick={() => { navigate('/login'); setMobileMenuOpen(false); }}
+                  style={{
+                    ...glassStyles.button,
+                    backgroundColor: glassStyles.colors.gold,
+                    padding: "15px",
+                    fontSize: "1.1rem",
+                    fontWeight: "700",
+                    border: "none",
+                    cursor: "pointer",
+                    color: glassStyles.colors.black,
+                    textAlign: "center"
+                  }}
+                >
+                  {t('signIn', 'Sign In')}
+                </button>
+                <nav style={{ display: "flex", flexDirection: "column", gap: "15px", padding: "10px 0" }}>
+                  <button
+                    onClick={() => { document.querySelector('[data-section="features"]')?.scrollIntoView({ behavior: 'smooth' }); setMobileMenuOpen(false); }}
+                    style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
+                  >
+                    Features
+                  </button>
+                  <button
+                    onClick={() => { /* TODO: Navigate to About Us */ setMobileMenuOpen(false); }}
+                    style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
+                  >
+                    About Us
+                  </button>
+                  <button
+                    onClick={() => { /* TODO: Navigate to Contact */ setMobileMenuOpen(false); }}
+                    style={{ background: "none", border: "none", textAlign: "left", cursor: "pointer", fontWeight: "600", fontSize: "1.1rem", color: glassStyles.colors.black, padding: "8px 0" }}
+                  >
+                    Contact
+                  </button>
+                </nav>
+              </motion.div>
+            )}
+          </header>
+
+          {/* Main Hero Content with Scroll Animation */}
           <div style={{
-            flex: "1",
             display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            alignItems: isMobile ? "center" : "flex-start",
+            flexDirection: isMobile ? "column" : "row",
+            minHeight: "100vh",
             position: "relative",
-            zIndex: 5,
-            maxWidth: isMobile ? "100%" : "600px",
+            alignItems: "center",
+            padding: isMobile ? "90px 4% 40px" : "0 5%",
+            boxSizing: "border-box",
+            textAlign: isMobile ? "center" : "left",
           }}>
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.6 }}
-              style={{
-                transform: `translateY(${scrollY * 0.1}px)`,
-              }}
-            >
-              <DineInGoLogo size="large" />
-            </motion.div>
+            {/* Left Side: Text Content */}
+            <div style={{
+              flex: "1",
+              display: "flex",
+              flexDirection: "column",
+              justifyContent: "center",
+              alignItems: isMobile ? "center" : "flex-start",
+              position: "relative",
+              zIndex: 5,
+              maxWidth: isMobile ? "100%" : "600px",
+            }}>
+              <motion.div
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.6 }}
+                style={{
+                  transform: `translateY(${scrollY * 0.1}px)`,
+                }}
+              >
+                <DineInGoLogo size="large" />
+              </motion.div>
 
-            <motion.h2
-              initial={{ opacity: 0, x: isMobile ? 0 : -30, y: isMobile ? 20 : 0 }}
-              animate={{ opacity: 1, x: 0, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.6 }}
-              style={{
-                fontSize: "clamp(2.2rem, 8vw, 4rem)",
-                fontWeight: "900",
-                marginTop: "20px",
-                marginBottom: "24px",
-                maxWidth: isMobile ? "100%" : "90%",
-                color: glassStyles.colors.black,
-                letterSpacing: "-0.05em",
-                lineHeight: "1.15",
-                transform: `translateY(${scrollY * 0.05}px)`,
-              }}
-            >
-              {t('theFutureOf', 'The future of')} <br />
-              <span style={{
-                fontStyle: "italic",
-                background: `linear-gradient(120deg, ${glassStyles.colors.primary}, ${glassStyles.colors.primaryDeep})`,
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}>{t('diningAndEvents', 'dining & events')}</span> <br />
-              {t('isFinallyHere', 'is finally here.')}
-            </motion.h2>
+              <motion.h2
+                initial={{ opacity: 0, x: isMobile ? 0 : -30, y: isMobile ? 20 : 0 }}
+                animate={{ opacity: 1, x: 0, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.6 }}
+                style={{
+                  fontSize: "clamp(2.2rem, 8vw, 4rem)",
+                  fontWeight: "900",
+                  marginTop: "20px",
+                  marginBottom: "24px",
+                  maxWidth: isMobile ? "100%" : "90%",
+                  color: glassStyles.colors.black,
+                  letterSpacing: "-0.05em",
+                  lineHeight: "1.15",
+                  transform: `translateY(${scrollY * 0.05}px)`,
+                }}
+              >
+                {t('theFutureOf', 'The future of')} <br />
+                <span style={{
+                  fontStyle: "italic",
+                  background: `linear-gradient(120deg, ${glassStyles.colors.primary}, ${glassStyles.colors.primaryDeep})`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                }}>{t('diningAndEvents', 'dining & events')}</span> <br />
+                {t('isFinallyHere', 'is finally here.')}
+              </motion.h2>
 
-            <motion.p
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5, duration: 0.6 }}
-              style={{
-                fontSize: "clamp(0.9rem, 2.5vw, 1.1rem)",
-                color: glassStyles.colors.gray,
-                maxWidth: isMobile ? "100%" : "90%",
-                marginBottom: isMobile ? "30px" : "40px",
-                fontWeight: "500",
-                lineHeight: "1.75"
-              }}
-            >
-              {t('heroDescription', "Select exact tables or specific seats with India's first truly interactive booking platform.")}
-            </motion.p>
+              <motion.p
+                initial={{ opacity: 0, x: -30 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5, duration: 0.6 }}
+                style={{
+                  fontSize: "clamp(0.9rem, 2.5vw, 1.1rem)",
+                  color: glassStyles.colors.gray,
+                  maxWidth: isMobile ? "100%" : "90%",
+                  marginBottom: isMobile ? "30px" : "40px",
+                  fontWeight: "500",
+                  lineHeight: "1.75"
+                }}
+              >
+                {t('heroDescription', "Select exact tables or specific seats with India's first truly interactive booking platform.")}
+              </motion.p>
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -795,660 +813,661 @@ export default function LandingPage() {
                   width: "100%"
                 }}
               >
-              <motion.button
-                whileHover={{ scale: 1.05, y: -4, boxShadow: `0 12px 28px ${glassStyles.colors.primary}40` }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => navigate('/login')}
-                style={{
-                  ...glassStyles.button,
-                  backgroundColor: glassStyles.colors.primary,
-                  padding: "clamp(14px, 3.5vw, 20px) clamp(28px, 6vw, 48px)",
-                  fontSize: "clamp(0.9rem, 2vw, 1.15rem)",
-                  fontWeight: "900",
-                  border: "none",
-                  cursor: "pointer",
-                  color: "white"
-                }}
-              >
-                {t('reserveNow', 'Reserve Your Perfect Table')}
-              </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -4, boxShadow: `0 12px 28px ${glassStyles.colors.primary}40` }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => navigate('/login')}
+                  style={{
+                    ...glassStyles.button,
+                    backgroundColor: glassStyles.colors.primary,
+                    padding: "clamp(14px, 3.5vw, 20px) clamp(28px, 6vw, 48px)",
+                    fontSize: "clamp(0.9rem, 2vw, 1.15rem)",
+                    fontWeight: "900",
+                    border: "none",
+                    cursor: "pointer",
+                    color: "white"
+                  }}
+                >
+                  {t('reserveNow', 'Reserve Your Perfect Table')}
+                </motion.button>
 
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => {
-                  const featuresSection = document.querySelector('[data-section="features"]');
-                  if (featuresSection) {
-                    featuresSection.scrollIntoView({ behavior: 'smooth' });
-                  }
-                }}
-                style={{
-                  ...glassStyles.button,
-                  backgroundColor: "rgba(255, 255, 255, 0.8)",
-                  backdropFilter: "blur(10px)",
-                  padding: "clamp(12px, 3vw, 16px) clamp(24px, 5vw, 36px)",
-                  fontSize: "clamp(0.9rem, 2vw, 1.1rem)",
-                  fontWeight: "700",
-                  border: "1px solid rgba(0,0,0,0.05)",
-                  boxShadow: "0 8px 20px rgba(0,0,0,0.05)",
-                  cursor: "pointer",
-                  color: glassStyles.colors.black
-                }}
-              >
-                Learn More
-              </motion.button>
-            </motion.div>
-          </div>
+                <motion.button
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    const featuresSection = document.querySelector('[data-section="features"]');
+                    if (featuresSection) {
+                      featuresSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                  }}
+                  style={{
+                    ...glassStyles.button,
+                    backgroundColor: "rgba(255, 255, 255, 0.8)",
+                    backdropFilter: "blur(10px)",
+                    padding: "clamp(12px, 3vw, 16px) clamp(24px, 5vw, 36px)",
+                    fontSize: "clamp(0.9rem, 2vw, 1.1rem)",
+                    fontWeight: "700",
+                    border: "1px solid rgba(0,0,0,0.05)",
+                    boxShadow: "0 8px 20px rgba(0,0,0,0.05)",
+                    cursor: "pointer",
+                    color: glassStyles.colors.black
+                  }}
+                >
+                  Learn More
+                </motion.button>
+              </motion.div>
+            </div>
 
-          {/* Right Side: Interactive Table Selection - Hidden on mobile */}
-          <motion.div
-            variants={itemVariants}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-20px" }}
-            className="hidden md:flex"
-            style={{
-              flex: "1",
-              position: "relative",
-              minHeight: "650px",
-              maxWidth: "480px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              overflow: "visible",
-            }}
-          >
-            {/* New 3D Interactive Floating Interface */}
+            {/* Right Side: Interactive Table Selection - Hidden on mobile */}
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 1 }}
+              variants={itemVariants}
+              initial="hidden"
+              whileInView="visible"
+              viewport={{ once: true, margin: "-20px" }}
+              className="hidden md:flex"
               style={{
+                flex: "1",
                 position: "relative",
-                width: "100%",
-                height: "600px",
-                transform: `perspective(1000px) rotateX(${5 + scrollY * 0.005}deg) rotateY(${-3 + scrollY * 0.003}deg)`,
+                minHeight: "650px",
+                maxWidth: "480px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                overflow: "visible",
               }}
             >
-              {/* Main Floating Card */}
+              {/* New 3D Interactive Floating Interface */}
               <motion.div
-                animate={{
-                  y: [0, -8, 0],
-                }}
-                transition={{
-                  duration: 6,
-                  repeat: Infinity,
-                  ease: "easeInOut",
-                }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 1 }}
                 style={{
-                  width: "100%",
-                  height: "100%",
-                  borderRadius: "20px",
-                  background: "rgba(255, 255, 255, 0.85)",
-                  backdropFilter: "blur(10px)",
-                  boxShadow: "0 15px 50px rgba(0, 0, 0, 0.12), 0 0 25px rgba(0, 242, 157, 0.12)",
-                  border: "1px solid rgba(255, 255, 255, 0.6)",
-                  padding: "22px",
-                  display: "flex",
-                  flexDirection: "column",
                   position: "relative",
-                  transformStyle: "preserve-3d",
-                  transform: "translateZ(0px)",
-                  boxSizing: "border-box",
+                  width: "100%",
+                  height: "600px",
+                  transform: `perspective(1000px) rotateX(${5 + scrollY * 0.005}deg) rotateY(${-3 + scrollY * 0.003}deg)`,
                 }}
               >
+                {/* Main Floating Card */}
                 <motion.div
-                  initial={{ opacity: 0, y: -20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3, duration: 0.6 }}
+                  animate={{
+                    y: [0, -8, 0],
+                  }}
+                  transition={{
+                    duration: 6,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
                   style={{
+                    width: "100%",
+                    height: "100%",
+                    borderRadius: "20px",
+                    background: "rgba(255, 255, 255, 0.85)",
+                    backdropFilter: "blur(10px)",
+                    boxShadow: "0 15px 50px rgba(0, 0, 0, 0.12), 0 0 25px rgba(0, 242, 157, 0.12)",
+                    border: "1px solid rgba(255, 255, 255, 0.6)",
+                    padding: "22px",
                     display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "flex-start",
-                    marginBottom: "18px",
-                    gap: "10px",
-                    flexWrap: "wrap",
+                    flexDirection: "column",
+                    position: "relative",
+                    transformStyle: "preserve-3d",
+                    transform: "translateZ(0px)",
+                    boxSizing: "border-box",
                   }}
                 >
-                  <div style={{ flex: 1, minWidth: "160px" }}>
-                    <h3 style={{ fontSize: "19px", fontWeight: "800", margin: 0, color: glassStyles.colors.black, lineHeight: "1.2" }}>Coastal Breeze Restaurant</h3>
-                    <div style={{ fontSize: "12px", color: glassStyles.colors.gray, display: "flex", alignItems: "center", gap: "10px", marginTop: "5px", flexWrap: "wrap" }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                          <circle cx="12" cy="10" r="3"></circle>
-                        </svg>
-                        Downtown
-                      </span>
-                      <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z" />
-                          <path d="M12 6v6l4 2" />
-                        </svg>
-                        Open now
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{
-                    background: glassStyles.colors.gold,
-                    borderRadius: "11px",
-                    padding: "6px 11px",
-                    fontSize: "13px",
-                    fontWeight: "700",
-                    color: glassStyles.colors.black,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    boxShadow: "0 3px 8px rgba(250, 204, 21, 0.2)",
-                    whiteSpace: "nowrap"
-                  }}>
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
-                      <path d="M12 2l2.2 6.6h7.1l-5.7 4.2 2.2 6.6-5.8-4.2-5.8 4.2 2.2-6.6-5.7-4.2h7.1z" />
-                    </svg>
-                    4.8
-                  </div>
-                </motion.div>
-
-                {/* 3D Floor Plan Title */}
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4, duration: 0.6 }}
-                  style={{
-                    marginBottom: "12px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    gap: "8px",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <div style={{
-                    fontSize: "16px",
-                    fontWeight: "600",
-                    color: "#333",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "7px",
-                  }}>
-                    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
-                      <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4" />
-                      <line x1="12" y1="9" x2="12" y2="21" />
-                    </svg>
-                    Select Your Table
-                  </div>
                   <motion.div
-                    whileHover={{ scale: 1.05 }}
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.6 }}
                     style={{
-                      background: "rgba(0, 242, 157, 0.1)",
-                      padding: "5px 11px",
-                      borderRadius: "9px",
-                      fontSize: "12px",
-                      color: "#00F29D",
-                      fontWeight: "600",
-                      cursor: "pointer",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "flex-start",
+                      marginBottom: "18px",
+                      gap: "10px",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: "160px" }}>
+                      <h3 style={{ fontSize: "19px", fontWeight: "800", margin: 0, color: glassStyles.colors.black, lineHeight: "1.2" }}>Coastal Breeze Restaurant</h3>
+                      <div style={{ fontSize: "12px", color: glassStyles.colors.gray, display: "flex", alignItems: "center", gap: "10px", marginTop: "5px", flexWrap: "wrap" }}>
+                        <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                            <circle cx="12" cy="10" r="3"></circle>
+                          </svg>
+                          Downtown
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z" />
+                            <path d="M12 6v6l4 2" />
+                          </svg>
+                          Open now
+                        </span>
+                      </div>
+                    </div>
+                    <div style={{
+                      background: glassStyles.colors.gold,
+                      borderRadius: "11px",
+                      padding: "6px 11px",
+                      fontSize: "13px",
+                      fontWeight: "700",
+                      color: glassStyles.colors.black,
                       display: "flex",
                       alignItems: "center",
                       gap: "4px",
+                      boxShadow: "0 3px 8px rgba(250, 204, 21, 0.2)",
                       whiteSpace: "nowrap"
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M12 8l4 4-4 4M8 12h8" />
-                    </svg>
-                    3D View
+                    }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2l2.2 6.6h7.1l-5.7 4.2 2.2 6.6-5.8-4.2-5.8 4.2 2.2-6.6-5.7-4.2h7.1z" />
+                      </svg>
+                      4.8
+                    </div>
                   </motion.div>
-                </motion.div>
 
-                {/* Floor Plan Area with 3D Tables */}
-                <div style={{
-                  flex: 1,
-                  position: "relative",
-                  background: "linear-gradient(180deg, rgba(245, 247, 255, 0.6) 0%, rgba(240, 247, 255, 0.9) 100%)",
-                  borderRadius: "14px",
-                  border: "1px solid rgba(0, 0, 0, 0.05)",
-                  overflow: "hidden",
-                  minHeight: "350px",
-                }}>
-                  {/* Floor decoration - grid lines */}
-                  <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0, opacity: 0.2 }}>
-                    <defs>
-                      <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#5B8CD7" strokeWidth="0.5" />
-                      </pattern>
-                      <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <rect width="100" height="100" fill="url(#smallGrid)" />
-                        <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#5B8CD7" strokeWidth="1" />
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-                  </svg>
-
-                  {/* Decorative Elements */}
+                  {/* 3D Floor Plan Title */}
                   <motion.div
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.8 }}
-                    transition={{ delay: 0.8, duration: 0.8 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4, duration: 0.6 }}
                     style={{
-                      position: "absolute",
-                      bottom: "10%",
-                      right: "10%",
-                      width: "180px",
-                      height: "25px",
-                      background: "rgba(0, 242, 157, 0.2)",
-                      borderRadius: "20px",
-                      transform: "perspective(800px) rotateX(60deg)",
-                      border: "1px solid rgba(0, 242, 157, 0.3)",
-                    }}
-                  />
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 0.7 }}
-                    transition={{ delay: 0.9, duration: 0.8 }}
-                    style={{
-                      position: "absolute",
-                      top: "15%",
-                      left: "15%",
-                      width: "150px",
-                      height: "25px",
-                      background: "rgba(250, 204, 21, 0.2)",
-                      borderRadius: "20px",
-                      transform: "perspective(800px) rotateX(60deg)",
-                      border: "1px solid rgba(250, 204, 21, 0.3)",
-                    }}
-                  />
-
-                  {/* Interactive 3D table buttons */}
-                  {tablePositions.map((pos, i) => (
-                    <Table3DButton
-                      key={i}
-                      number={i + 1}
-                      isSelected={selectedTable === i + 1}
-                      onClick={() => setSelectedTable(i + 1)}
-                      position={pos}
-                      glassStyles={glassStyles}
-                    />
-                  ))}
-                </div>
-
-                {/* Bottom Action Bar */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7, duration: 0.6 }}
-                  style={{
-                    marginTop: "25px",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                  }}
-                >
-                  <div style={{ fontSize: "16px", color: glassStyles.colors.black }}>
-                    <span style={{ fontWeight: "600" }}>Selected:</span> Table {selectedTable}
-                    <span style={{ marginLeft: "8px", color: glassStyles.colors.primaryDeep, fontWeight: "600" }}>
-                      (Window View)
-                    </span>
-                  </div>
-
-                  <motion.button
-                    whileHover={{ scale: 1.05, y: -2 }}
-                    whileTap={{ scale: 0.95 }}
-                    style={{
-                      ...glassStyles.button,
-                      backgroundColor: glassStyles.colors.primary,
-                      color: "white",
-                      fontWeight: "700",
-                      padding: "12px 32px",
-                      border: "none",
-                      boxShadow: `0 8px 20px ${glassStyles.colors.primary}40`,
-                      cursor: "pointer",
+                      marginBottom: "12px",
                       display: "flex",
+                      justifyContent: "space-between",
                       alignItems: "center",
                       gap: "8px",
-                      fontSize: "1.05rem"
+                      flexWrap: "wrap",
                     }}
                   >
-                    Book Table
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M5 12h14M12 5l7 7-7 7" />
-                    </svg>
-                  </motion.button>
-                </motion.div>
+                    <div style={{
+                      fontSize: "16px",
+                      fontWeight: "600",
+                      color: "#333",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "7px",
+                    }}>
+                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
+                        <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4" />
+                        <line x1="12" y1="9" x2="12" y2="21" />
+                      </svg>
+                      Select Your Table
+                    </div>
+                    <motion.div
+                      whileHover={{ scale: 1.05 }}
+                      style={{
+                        background: "rgba(0, 242, 157, 0.1)",
+                        padding: "5px 11px",
+                        borderRadius: "9px",
+                        fontSize: "12px",
+                        color: "#00F29D",
+                        fontWeight: "600",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        whiteSpace: "nowrap"
+                      }}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 8l4 4-4 4M8 12h8" />
+                      </svg>
+                      3D View
+                    </motion.div>
+                  </motion.div>
 
-                <div style={{
-                  position: "absolute",
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  height: "30%",
-                  background: "linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)",
-                  borderRadius: "24px 24px 0 0",
-                  pointerEvents: "none",
-                }} />
+                  {/* Floor Plan Area with 3D Tables */}
+                  <div style={{
+                    flex: 1,
+                    position: "relative",
+                    background: "linear-gradient(180deg, rgba(245, 247, 255, 0.6) 0%, rgba(240, 247, 255, 0.9) 100%)",
+                    borderRadius: "14px",
+                    border: "1px solid rgba(0, 0, 0, 0.05)",
+                    overflow: "hidden",
+                    minHeight: "350px",
+                  }}>
+                    {/* Floor decoration - grid lines */}
+                    <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0, opacity: 0.2 }}>
+                      <defs>
+                        <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
+                          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#5B8CD7" strokeWidth="0.5" />
+                        </pattern>
+                        <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
+                          <rect width="100" height="100" fill="url(#smallGrid)" />
+                          <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#5B8CD7" strokeWidth="1" />
+                        </pattern>
+                      </defs>
+                      <rect width="100%" height="100%" fill="url(#grid)" />
+                    </svg>
+
+                    {/* Decorative Elements */}
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.8 }}
+                      transition={{ delay: 0.8, duration: 0.8 }}
+                      style={{
+                        position: "absolute",
+                        bottom: "10%",
+                        right: "10%",
+                        width: "180px",
+                        height: "25px",
+                        background: "rgba(0, 242, 157, 0.2)",
+                        borderRadius: "20px",
+                        transform: "perspective(800px) rotateX(60deg)",
+                        border: "1px solid rgba(0, 242, 157, 0.3)",
+                      }}
+                    />
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 0.7 }}
+                      transition={{ delay: 0.9, duration: 0.8 }}
+                      style={{
+                        position: "absolute",
+                        top: "15%",
+                        left: "15%",
+                        width: "150px",
+                        height: "25px",
+                        background: "rgba(250, 204, 21, 0.2)",
+                        borderRadius: "20px",
+                        transform: "perspective(800px) rotateX(60deg)",
+                        border: "1px solid rgba(250, 204, 21, 0.3)",
+                      }}
+                    />
+
+                    {/* Interactive 3D table buttons */}
+                    {tablePositions.map((pos, i) => (
+                      <Table3DButton
+                        key={i}
+                        number={i + 1}
+                        isSelected={selectedTable === i + 1}
+                        onClick={() => setSelectedTable(i + 1)}
+                        position={pos}
+                        glassStyles={glassStyles}
+                      />
+                    ))}
+                  </div>
+
+                  {/* Bottom Action Bar */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.7, duration: 0.6 }}
+                    style={{
+                      marginTop: "25px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div style={{ fontSize: "16px", color: glassStyles.colors.black }}>
+                      <span style={{ fontWeight: "600" }}>Selected:</span> Table {selectedTable}
+                      <span style={{ marginLeft: "8px", color: glassStyles.colors.primaryDeep, fontWeight: "600" }}>
+                        (Window View)
+                      </span>
+                    </div>
+
+                    <motion.button
+                      whileHover={{ scale: 1.05, y: -2 }}
+                      whileTap={{ scale: 0.95 }}
+                      style={{
+                        ...glassStyles.button,
+                        backgroundColor: glassStyles.colors.primary,
+                        color: "white",
+                        fontWeight: "700",
+                        padding: "12px 32px",
+                        border: "none",
+                        boxShadow: `0 8px 20px ${glassStyles.colors.primary}40`,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                        fontSize: "1.05rem"
+                      }}
+                    >
+                      Book Table
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </motion.button>
+                  </motion.div>
+
+                  <div style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: "30%",
+                    background: "linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)",
+                    borderRadius: "24px 24px 0 0",
+                    pointerEvents: "none",
+                  }} />
+                </motion.div>
               </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
-      </div>
-      {/* Interactive Feature Tabs Section */}
-      <motion.div
-        data-section="features"
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-20px" }}
-        variants={containerVariants}
-        style={{
-          padding: isMobile ? "80px 5%" : "120px 5%",
-          background: glassStyles.colors.bg,
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Background Blobs for depth */}
+        {/* Interactive Feature Tabs Section */}
         <motion.div
-          animate={{
-            scale: [1, 1.2, 1],
-            opacity: [0.1, 0.15, 0.1]
-          }}
-          transition={{ duration: 10, repeat: Infinity }}
+          data-section="features"
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-20px" }}
+          variants={containerVariants}
           style={{
-            position: "absolute",
-            top: "20%",
-            left: "-10%",
-            width: "600px",
-            height: "600px",
-            background: `radial-gradient(circle, ${glassStyles.colors.primary} 0%, transparent 70%)`,
-            filter: "blur(80px)",
-            zIndex: 0
+            padding: isMobile ? "80px 5%" : "120px 5%",
+            background: glassStyles.colors.bg,
+            position: "relative",
+            overflow: "hidden",
           }}
-        />
-
-        {/* Decorative doodles */}
-        {!isMobile && (
-          <>
-            <Doodle type="chair" style={{ position: "absolute", bottom: "20%", right: "5%", opacity: 0.2 }} />
-            <Doodle type="ticket" style={{ position: "absolute", top: "15%", left: "7%", opacity: 0.2 }} />
-
-            {/* Parallax doodle */}
-            <motion.div
-              style={{
-                position: "absolute",
-                right: "20%",
-                top: "50%",
-                y: (scrollY - 500) * -0.1,
-              }}
-            >
-              <Doodle type="star" style={{ opacity: 0.4 }} />
-            </motion.div>
-          </>
-        )}
-
-        <div style={{ maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 1 }}>
-          <SectionHeading
-            tagline="Our Vision"
-            title="Experience"
-            highlight="Excellence"
-            glassStyles={glassStyles}
+        >
+          {/* Background Blobs for depth */}
+          <motion.div
+            animate={{
+              scale: [1, 1.2, 1],
+              opacity: [0.1, 0.15, 0.1]
+            }}
+            transition={{ duration: 10, repeat: Infinity }}
+            style={{
+              position: "absolute",
+              top: "20%",
+              left: "-10%",
+              width: "600px",
+              height: "600px",
+              background: `radial-gradient(circle, ${glassStyles.colors.primary} 0%, transparent 70%)`,
+              filter: "blur(80px)",
+              zIndex: 0
+            }}
           />
 
-          {/* Tab Navigation with Scroll Animation */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            viewport={{ once: true }}
-            style={{
-              ...glassStyles.card,
-              padding: "6px",
-              display: "flex",
-              justifyContent: isMobile ? "flex-start" : "center",
-              marginBottom: "50px",
-              gap: "4px",
-              maxWidth: isMobile ? "100%" : "fit-content",
-              margin: isMobile ? "0 0 50px" : "0 auto 50px",
-              background: "rgba(255, 255, 255, 0.4)",
-              overflowX: isMobile ? "auto" : "visible",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none",
-              WebkitOverflowScrolling: "touch",
-            }}
-          >
-            {[
-              { id: "restaurants", label: "Restaurants" },
-              { id: "events", label: "Events" },
-              { id: "premium", label: "Premium" }
-            ].map(tab => (
-              <motion.button
-                key={tab.id}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTab(tab.id)}
+          {/* Decorative doodles */}
+          {!isMobile && (
+            <>
+              <Doodle type="chair" style={{ position: "absolute", bottom: "20%", right: "5%", opacity: 0.2 }} />
+              <Doodle type="ticket" style={{ position: "absolute", top: "15%", left: "7%", opacity: 0.2 }} />
+
+              {/* Parallax doodle */}
+              <motion.div
                 style={{
-                  background: activeTab === tab.id ? "white" : "transparent",
-                  border: "none",
-                  padding: isMobile ? "10px 20px" : "12px 28px",
-                  borderRadius: "20px",
-                  cursor: "pointer",
-                  fontSize: isMobile ? "0.9rem" : "1rem",
-                  fontWeight: activeTab === tab.id ? "700" : "500",
-                  color: activeTab === tab.id ? glassStyles.colors.black : glassStyles.colors.gray,
-                  boxShadow: activeTab === tab.id ? "0 4px 12px rgba(0,0,0,0.08)" : "none",
-                  transition: "all 0.2s ease",
-                  whiteSpace: "nowrap",
-                  flex: isMobile ? "0 0 auto" : "1"
+                  position: "absolute",
+                  right: "20%",
+                  top: "50%",
+                  y: (scrollY - 500) * -0.1,
                 }}
               >
-                {tab.label}
-              </motion.button>
-            ))}
-          </motion.div>
+                <Doodle type="star" style={{ opacity: 0.4 }} />
+              </motion.div>
+            </>
+          )}
 
-          {/* Feature Cards with Staggered Animation */}
-          <motion.div
-            key={activeTab}
-            initial="hidden"
-            animate="visible"
-            variants={containerVariants}
-            style={{
-              display: "grid",
-              gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(300px, 1fr))",
-              gap: "24px",
-              marginTop: "30px",
-            }}
-          >
-            {activeTab === "restaurants" && [
-              <FeatureCard
-                key="r1"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="12" y1="4" x2="12" y2="20" /></svg>}
-                title="Choose Your Table"
-                description="Browse restaurant floor plans and select your preferred table location."
-                color="#facc15"
-                glassStyles={glassStyles}
-              />,
-              <FeatureCard
-                key="r2"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8" /><path d="M17 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8" /></svg>}
-                title="Read Real Reviews"
-                description="See what others thought about specific tables and views."
-                color={glassStyles.colors.primary}
-                glassStyles={glassStyles}
-              />,
-              <FeatureCard
-                key="r3"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
-                title="Real-Time Availability"
-                description="See instantly which tables are available at your preferred time."
-                color="#fbbf24"
-                glassStyles={glassStyles}
-              />
-            ]}
+          <div style={{ maxWidth: "1200px", margin: "0 auto", position: "relative", zIndex: 1 }}>
+            <SectionHeading
+              tagline="Our Vision"
+              title="Experience"
+              highlight="Excellence"
+              glassStyles={glassStyles}
+            />
 
-            {activeTab === "events" && [
-              <FeatureCard
-                key="e1"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
-                title="Upcoming Events"
-                description="Browse and book tickets for concerts, shows, and sporting events."
-                color={glassStyles.colors.primary}
-                glassStyles={glassStyles}
-              />,
-              <FeatureCard
-                key="e2"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>}
-                title="Interactive Seating"
-                description="View the stage from your seat before booking with our 3D previews."
-                color="#facc15"
-                glassStyles={glassStyles}
-              />,
-              <FeatureCard
-                key="e3"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>}
-                title="Group Bookings"
-                description="Book adjacent seats for your entire group with one simple reservation."
-                color="#fbbf24"
-                glassStyles={glassStyles}
-              />
-            ]}
+            {/* Tab Navigation with Scroll Animation */}
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              viewport={{ once: true }}
+              style={{
+                ...glassStyles.card,
+                padding: "6px",
+                display: "flex",
+                justifyContent: isMobile ? "flex-start" : "center",
+                marginBottom: "50px",
+                gap: "4px",
+                maxWidth: isMobile ? "100%" : "fit-content",
+                margin: isMobile ? "0 0 50px" : "0 auto 50px",
+                background: "rgba(255, 255, 255, 0.4)",
+                overflowX: isMobile ? "auto" : "visible",
+                scrollbarWidth: "none",
+                msOverflowStyle: "none",
+                WebkitOverflowScrolling: "touch",
+              }}
+            >
+              {[
+                { id: "restaurants", label: "Restaurants" },
+                { id: "events", label: "Events" },
+                { id: "premium", label: "Premium" }
+              ].map(tab => (
+                <motion.button
+                  key={tab.id}
+                  whileHover={{ y: -2 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    background: activeTab === tab.id ? "white" : "transparent",
+                    border: "none",
+                    padding: isMobile ? "10px 20px" : "12px 28px",
+                    borderRadius: "20px",
+                    cursor: "pointer",
+                    fontSize: isMobile ? "0.9rem" : "1rem",
+                    fontWeight: activeTab === tab.id ? "700" : "500",
+                    color: activeTab === tab.id ? glassStyles.colors.black : glassStyles.colors.gray,
+                    boxShadow: activeTab === tab.id ? "0 4px 12px rgba(0,0,0,0.08)" : "none",
+                    transition: "all 0.2s ease",
+                    whiteSpace: "nowrap",
+                    flex: isMobile ? "0 0 auto" : "1"
+                  }}
+                >
+                  {tab.label}
+                </motion.button>
+              ))}
+            </motion.div>
 
-            {activeTab === "premium" && [
-              <FeatureCard
-                key="p1"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>}
-                title="VIP Access"
-                description="Unlock premium tables and seats with our VIP membership."
-                color="#facc15"
-                glassStyles={glassStyles}
-              />,
-              <FeatureCard
-                key="p2"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>}
-                title="Priority Booking"
-                description="Book before public release dates and secure the best spots."
-                color={glassStyles.colors.primary}
-                glassStyles={glassStyles}
-              />,
-              <FeatureCard
-                key="p3"
-                icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>}
-                title="Special Offers"
-                description="Exclusive deals and discounts on premium experiences."
-                color="#fbbf24"
-                glassStyles={glassStyles}
-              />
-            ]}
-          </motion.div>
-        </div>
-      </motion.div>
+            {/* Feature Cards with Staggered Animation */}
+            <motion.div
+              key={activeTab}
+              initial="hidden"
+              animate="visible"
+              variants={containerVariants}
+              style={{
+                display: "grid",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fit, minmax(300px, 1fr))",
+                gap: "24px",
+                marginTop: "30px",
+              }}
+            >
+              {activeTab === "restaurants" && [
+                <FeatureCard
+                  key="r1"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2" /><line x1="12" y1="4" x2="12" y2="20" /></svg>}
+                  title="Choose Your Table"
+                  description="Browse restaurant floor plans and select your preferred table location."
+                  color="#facc15"
+                  glassStyles={glassStyles}
+                />,
+                <FeatureCard
+                  key="r2"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8" /><path d="M17 17c-5 0-8-2.5-8-7 0-3 2-5 5-5 4 0 8 3 9 8" /></svg>}
+                  title="Read Real Reviews"
+                  description="See what others thought about specific tables and views."
+                  color={glassStyles.colors.primary}
+                  glassStyles={glassStyles}
+                />,
+                <FeatureCard
+                  key="r3"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>}
+                  title="Real-Time Availability"
+                  description="See instantly which tables are available at your preferred time."
+                  color="#fbbf24"
+                  glassStyles={glassStyles}
+                />
+              ]}
 
-      {/* Call to Action Section with Layered Wavy Footer */}
-      <motion.div
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: true, margin: "-20px" }}
-        variants={containerVariants}
-        style={{
-          padding: "clamp(80px, 15vw, 160px) 5% 0",
-          background: `linear-gradient(180deg, ${glassStyles.colors.bg} 0%, white 100%)`,
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
-        {/* Layered Animated Waves */}
-        <div style={{
-          position: "absolute",
-          bottom: 0,
-          left: 0,
-          width: "100%",
-          zIndex: 1,
-          lineHeight: 0
-        }}>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none" style={{ width: "100%", height: "220px", opacity: 0.3 }}>
-            <path fill={glassStyles.colors.primary} fillOpacity="1"
-              d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
-              <animate attributeName="d" dur="18s" repeatCount="indefinite"
-                values="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,192L48,176C96,160,192,128,288,128C384,128,480,160,576,176C672,192,768,192,864,176C960,160,1056,128,1152,128C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
-            </path>
-          </svg>
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none" style={{ width: "100%", height: "200px", position: "absolute", bottom: 0, left: 0 }}>
-            <path fill={glassStyles.colors.primary} fillOpacity="1"
-              d="M0,96L48,122.7C96,149,192,203,288,213.3C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
-              <animate attributeName="d" dur="15s" repeatCount="indefinite"
-                values="M0,96L48,122.7C96,149,192,203,288,213.3C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,128L48,154.7C96,181,192,235,288,245.3C384,256,480,224,576,192C672,160,768,128,864,144C960,160,1056,224,1152,245.3C1248,267,1344,245,1392,234.7L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,96L48,122.7C96,149,192,203,288,213.3C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
-            </path>
-          </svg>
-        </div>
+              {activeTab === "events" && [
+                <FeatureCard
+                  key="e1"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>}
+                  title="Upcoming Events"
+                  description="Browse and book tickets for concerts, shows, and sporting events."
+                  color={glassStyles.colors.primary}
+                  glassStyles={glassStyles}
+                />,
+                <FeatureCard
+                  key="e2"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>}
+                  title="Interactive Seating"
+                  description="View the stage from your seat before booking with our 3D previews."
+                  color="#facc15"
+                  glassStyles={glassStyles}
+                />,
+                <FeatureCard
+                  key="e3"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>}
+                  title="Group Bookings"
+                  description="Book adjacent seats for your entire group with one simple reservation."
+                  color="#fbbf24"
+                  glassStyles={glassStyles}
+                />
+              ]}
 
-        <motion.div
-          variants={itemVariants}
-          style={{ maxWidth: "800px", margin: "0 auto", position: "relative", zIndex: 10, paddingBottom: "100px" }}
-        >
-          <SectionHeading
-            tagline="Join Today"
-            title="The future is"
-            highlight="personal."
-            glassStyles={glassStyles}
-          />
-          <motion.button
-            whileHover={{ scale: 1.05, y: -8, boxShadow: `0 25px 50px -12px ${glassStyles.colors.primary}40` }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => navigate('/login')}
-            style={{
-              ...glassStyles.button,
-              backgroundColor: glassStyles.colors.black,
-              color: "white",
-              padding: isMobile ? "20px 48px" : "26px 72px",
-              fontSize: isMobile ? "1.1rem" : "1.3rem",
-              fontWeight: "900",
-              border: "none",
-              cursor: "pointer",
-              boxShadow: `0 20px 40px -10px ${glassStyles.colors.black}50`
-            }}
-          >
-            Get Early Access Pass
-          </motion.button>
+              {activeTab === "premium" && [
+                <FeatureCard
+                  key="p1"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>}
+                  title="VIP Access"
+                  description="Unlock premium tables and seats with our VIP membership."
+                  color="#facc15"
+                  glassStyles={glassStyles}
+                />,
+                <FeatureCard
+                  key="p2"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg>}
+                  title="Priority Booking"
+                  description="Book before public release dates and secure the best spots."
+                  color={glassStyles.colors.primary}
+                  glassStyles={glassStyles}
+                />,
+                <FeatureCard
+                  key="p3"
+                  icon={<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>}
+                  title="Special Offers"
+                  description="Exclusive deals and discounts on premium experiences."
+                  color="#fbbf24"
+                  glassStyles={glassStyles}
+                />
+              ]}
+            </motion.div>
+          </div>
         </motion.div>
-      </motion.div>
 
-      {/* Modern Footer */}
-      <footer style={{
-        backgroundColor: glassStyles.colors.primary,
-        color: glassStyles.colors.black,
-        padding: isMobile ? "40px 5%" : "60px 5%",
-        position: "relative",
-        zIndex: 5
-      }}>
-        <div style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: isMobile ? "24px" : "32px",
-          textAlign: "center"
-        }}>
-          <DineInGoLogo size="small" color={glassStyles.colors.black} yellowColor="white" />
-
+        {/* Call to Action Section with Layered Wavy Footer */}
+        <motion.div
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-20px" }}
+          variants={containerVariants}
+          style={{
+            padding: "clamp(80px, 15vw, 160px) 5% 0",
+            background: `linear-gradient(180deg, ${glassStyles.colors.bg} 0%, white 100%)`,
+            textAlign: "center",
+            position: "relative",
+            overflow: "hidden",
+          }}
+        >
+          {/* Layered Animated Waves */}
           <div style={{
-            display: "flex",
-            flexDirection: isMobile ? "column" : "row",
-            gap: isMobile ? "20px" : "40px",
-            fontSize: "1rem",
-            fontWeight: "600",
-            alignItems: "center"
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            width: "100%",
+            zIndex: 1,
+            lineHeight: 0
           }}>
-            <span style={{ cursor: "pointer" }}>Privacy Policy</span>
-            <span style={{ cursor: "pointer" }}>Terms of Service</span>
-            <span style={{ cursor: "pointer" }}>Contact Support</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none" style={{ width: "100%", height: "220px", opacity: 0.3 }}>
+              <path fill={glassStyles.colors.primary} fillOpacity="1"
+                d="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
+                <animate attributeName="d" dur="18s" repeatCount="indefinite"
+                  values="M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,192L48,176C96,160,192,128,288,128C384,128,480,160,576,176C672,192,768,192,864,176C960,160,1056,128,1152,128C1248,128,1344,160,1392,176L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,160L48,176C96,192,192,224,288,224C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
+              </path>
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" preserveAspectRatio="none" style={{ width: "100%", height: "200px", position: "absolute", bottom: 0, left: 0 }}>
+              <path fill={glassStyles.colors.primary} fillOpacity="1"
+                d="M0,96L48,122.7C96,149,192,203,288,213.3C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
+                <animate attributeName="d" dur="15s" repeatCount="indefinite"
+                  values="M0,96L48,122.7C96,149,192,203,288,213.3C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,128L48,154.7C96,181,192,235,288,245.3C384,256,480,224,576,192C672,160,768,128,864,144C960,160,1056,224,1152,245.3C1248,267,1344,245,1392,234.7L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z; M0,96L48,122.7C96,149,192,203,288,213.3C384,224,480,192,576,160C672,128,768,96,864,112C960,128,1056,192,1152,213.3C1248,235,1344,213,1392,202.7L1440,192L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z" />
+              </path>
+            </svg>
           </div>
 
-          <div style={{ fontSize: "0.9rem", opacity: 0.6 }}>
-            <p>© 2026 DineInGo. All rights reserved. <br /> Designed for the elite dining experience.</p>
+          <motion.div
+            variants={itemVariants}
+            style={{ maxWidth: "800px", margin: "0 auto", position: "relative", zIndex: 10, paddingBottom: "100px" }}
+          >
+            <SectionHeading
+              tagline="Join Today"
+              title="The future is"
+              highlight="personal."
+              glassStyles={glassStyles}
+            />
+            <motion.button
+              whileHover={{ scale: 1.05, y: -8, boxShadow: `0 25px 50px -12px ${glassStyles.colors.primary}40` }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => navigate('/login')}
+              style={{
+                ...glassStyles.button,
+                backgroundColor: glassStyles.colors.black,
+                color: "white",
+                padding: isMobile ? "20px 48px" : "26px 72px",
+                fontSize: isMobile ? "1.1rem" : "1.3rem",
+                fontWeight: "900",
+                border: "none",
+                cursor: "pointer",
+                boxShadow: `0 20px 40px -10px ${glassStyles.colors.black}50`
+              }}
+            >
+              Get Early Access Pass
+            </motion.button>
+          </motion.div>
+        </motion.div>
+
+        {/* Modern Footer */}
+        <footer style={{
+          backgroundColor: glassStyles.colors.primary,
+          color: glassStyles.colors.black,
+          padding: isMobile ? "40px 5%" : "60px 5%",
+          position: "relative",
+          zIndex: 5
+        }}>
+          <div style={{
+            maxWidth: "1200px",
+            margin: "0 auto",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: isMobile ? "24px" : "32px",
+            textAlign: "center"
+          }}>
+            <DineInGoLogo size="small" color={glassStyles.colors.black} yellowColor="white" />
+
+            <div style={{
+              display: "flex",
+              flexDirection: isMobile ? "column" : "row",
+              gap: isMobile ? "20px" : "40px",
+              fontSize: "1rem",
+              fontWeight: "600",
+              alignItems: "center"
+            }}>
+              <span style={{ cursor: "pointer" }}>Privacy Policy</span>
+              <span style={{ cursor: "pointer" }}>Terms of Service</span>
+              <span style={{ cursor: "pointer" }}>Contact Support</span>
+            </div>
+
+            <div style={{ fontSize: "0.9rem", opacity: 0.6 }}>
+              <p>© 2026 DineInGo. All rights reserved. <br /> Designed for the elite dining experience.</p>
+            </div>
           </div>
-        </div>
-      </footer>
-    </div >
+        </footer>
+      </motion.div>
+    </>
   );
 }
