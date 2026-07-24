@@ -5,6 +5,12 @@ suppressProductionLogs();
 import App from './App';
 import './index.css';
 import { clearAuthSession } from './firebase';
+import { loadGoogleMapsScript } from './utils/googleMapsLoader';
+
+// Load Google Maps API dynamically (security: API key from env var, not exposed in HTML)
+loadGoogleMapsScript().catch(err => {
+  console.warn('[DineInGo] Google Maps initialization warning:', err);
+});
 
 // Global error listener to catch Firebase Auth session corruption (400 errors)
 window.addEventListener('error', (event) => {
