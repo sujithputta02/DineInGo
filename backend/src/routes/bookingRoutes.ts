@@ -16,8 +16,110 @@ import { Booking } from '../models/Booking';
 import { getIO } from '../utils/socket';
 import dayjs from 'dayjs';
 import mongoose from 'mongoose';
+import { verifyUserToken } from '../middleware/userAuth';
+import { verifyBusinessOwner } from '../middleware/businessAuth';
 
 const router = express.Router();
+
+// Helper middleware for ownership checking in bookings
+const verifyBookingOwner = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    const requester = (req as any).user;
+    if (!requester) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+
+    const bookingId = req.params.id;
+    if (!bookingId || !mongoose.Types.ObjectId.isValid(bookingId)) {
+      return res.status(400).json({ error: 'Invalid or missing booking ID.' });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' });
+    }
+
+    // Check if requester owns the booking
+    if (booking.userId !== requester.uid) {
+      // Check if requester is the business owner of the restaurant
+      const { Business } = require('../models/Business');
+      const business = await Business.findById(booking.restaurantId || booking.businessId);
+      const isRestaurantOwner = business && business.ownerId === requester.uid;
+      
+      // Also allow admins to bypass
+      const { User } = require('../models/User');
+      const userDoc = await User.findOne({ uid: requester.uid });
+      const isAdmin = userDoc && (userDoc.role === 'admin' || userDoc.isAdmin);
+      
+      if (!isRestaurantOwner && !isAdmin) {
+        return res.status(403).json({ error: 'Access Denied: You do not own this booking.' });
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error verifying booking owner:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+const verifyUserRouteAccess = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const requester = (req as any).user;
+  if (!requester) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+  }
+  
+  if (requester.uid !== req.params.userId) {
+    return res.status(403).json({ error: 'Access Denied: You can only view your own bookings.' });
+  }
+  next();
+};
+
+const verifyTableBookingPost = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  const requester = (req as any).user;
+  if (!requester) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+  }
+  if (requester.uid !== req.body.userId) {
+    return res.status(403).json({ error: 'Access Denied: You can only book tables for your own account.' });
+  }
+  next();
+};
+
+const verifyManualUnblock = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    const requester = (req as any).user;
+    if (!requester) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+
+    const { restaurantId } = req.body;
+    if (!restaurantId || !mongoose.Types.ObjectId.isValid(restaurantId)) {
+      return res.status(400).json({ error: 'Invalid or missing restaurantId.' });
+    }
+
+    const { Business } = require('../models/Business');
+    const business = await Business.findById(restaurantId);
+    if (!business) {
+      return res.status(404).json({ error: 'Business not found.' });
+    }
+
+    // Check ownership (admins can bypass)
+    const { User } = require('../models/User');
+    const userDoc = await User.findOne({ uid: requester.uid });
+    const isOwner = business.ownerId === requester.uid;
+    const isAdmin = userDoc && (userDoc.role === 'admin' || userDoc.isAdmin);
+
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({ error: 'Access Denied: You do not own this restaurant.' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error verifying manual unblock:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 // Health check endpoint to verify cancellation fix is loaded
 router.get('/health/cancellation-fix', (req, res) => {
@@ -39,7 +141,7 @@ router.get('/health/cancellation-fix', (req, res) => {
 });
 
 // Get all bookings for a user
-router.get('/user/:userId', getUserBookings);
+router.get('/user/:userId', verifyUserToken, verifyUserRouteAccess, getUserBookings);
 
 // Get all tracked slots for a restaurant and date
 router.get('/track-slots', async (req, res) => {
@@ -52,7 +154,7 @@ router.get('/track-slots', async (req, res) => {
 });
 
 // Reserve or cancel a table booking
-router.post('/table-booking', async (req, res) => {
+router.post('/table-booking', verifyUserToken, verifyTableBookingPost, async (req, res) => {
   try {
     const { restaurantId, tableId, date, time, userId, guests, status } = req.body;
     if (!restaurantId || !tableId || !date || !time || !userId || !guests || !status) {
@@ -183,7 +285,7 @@ router.post('/track-slot', async (req, res) => {
 router.get('/dynamic-fee', getDynamicTableFeeController);
 
 // Create a new booking
-router.post('/', createBooking);
+router.post('/', verifyUserToken, createBooking);
 
 // Get all booked (confirmed) tables for a restaurant, date, and time
 router.get('/booked-tables', async (req, res) => {
@@ -222,25 +324,25 @@ router.get('/booked-tables', async (req, res) => {
 });
 
 // Get a specific booking
-router.get('/:id', getBooking);
+router.get('/:id', verifyUserToken, verifyBookingOwner, getBooking);
 
 // Update a booking
-router.put('/:id', updateBooking);
+router.put('/:id', verifyUserToken, verifyBookingOwner, updateBooking);
 
 // Cancel a booking
-router.patch('/:id/cancel', cancelBooking);
+router.patch('/:id/cancel', verifyUserToken, verifyBookingOwner, cancelBooking);
 
 // Confirm a booking
-router.patch('/:id/confirm', confirmBooking);
+router.patch('/:id/confirm', verifyUserToken, verifyBookingOwner, confirmBooking);
 
 // Check-in a booking
-router.post('/:id/check-in', checkInBooking);
+router.post('/:id/check-in', verifyUserToken, verifyBookingOwner, checkInBooking);
 
 // Delete a booking
-router.delete('/:id', deleteBooking);
+router.delete('/:id', verifyUserToken, verifyBookingOwner, deleteBooking);
 
 // Block a table (real-time, with auto-confirm)
-router.post('/block-table', async (req, res) => {
+router.post('/block-table', verifyUserToken, verifyTableBookingPost, async (req, res) => {
   const { restaurantId, tableId, date, time, userId, guests } = req.body;
   if (!restaurantId || !tableId || !date || !time || !userId || !guests) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -279,7 +381,7 @@ router.post('/block-table', async (req, res) => {
 });
 
 // Confirm a table booking
-router.post('/confirm-table', async (req, res) => {
+router.post('/confirm-table', verifyUserToken, verifyTableBookingPost, async (req, res) => {
   const { restaurantId, tableId, date, time, userId } = req.body;
   if (!restaurantId || !tableId || !date || !time || !userId) {
     return res.status(400).json({ error: 'Missing required fields' });
@@ -315,7 +417,7 @@ router.post('/confirm-table', async (req, res) => {
 });
 
 // Cancel a table booking (only if more than 2 hours before slot)
-router.post('/cancel-table', async (req, res) => {
+router.post('/cancel-table', verifyUserToken, verifyTableBookingPost, async (req, res) => {
   const { restaurantId, tableId, date, time, userId } = req.body;
 
   console.log('=== CANCEL TABLE REQUEST ===');
@@ -609,7 +711,7 @@ router.get('/debug-table/:restaurantId/:tableId', async (req, res) => {
 });
 
 // Manual unblock endpoint for debugging
-router.post('/manual-unblock', async (req, res) => {
+router.post('/manual-unblock', verifyUserToken, verifyBusinessOwner, verifyManualUnblock, async (req, res) => {
   const { restaurantId, tableId, date, time } = req.body;
 
   try {
