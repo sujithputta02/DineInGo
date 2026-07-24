@@ -10,6 +10,18 @@
     rel="stylesheet">
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>DineInGo - Reserve Dining & Events</title>
+  
+  <!-- Suppress Google Maps API errors (fallback only) -->
+  <script type="text/javascript">
+    // Suppress Google Maps API key errors silently
+    window.gm_authFailure = function() {
+      console.log('[DineInGo] Google Maps unavailable, using OpenStreetMap');
+    };
+  </script>
+  
+  <!-- Google Maps Places API (Fallback for OpenStreetMap) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBT3eKNEzUNXEwH5RCu8cDI_HsCUe3qxMQ&libraries=places&loading=async" async defer></script>
+  
   <script type="text/javascript">
     (function (f, b) {
       if (!b.__SV) {
