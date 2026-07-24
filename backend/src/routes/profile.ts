@@ -6,10 +6,28 @@ import fs from 'fs';
 import { Server } from 'socket.io';
 import { getIO } from '../utils/socket';
 
+import { verifyUserToken } from '../middleware/userAuth';
+
 const router = express.Router();
 
+// Helper middleware for profile ownership checking
+const verifyProfileOwner = (req: Request, res: Response, next: any) => {
+  const requester = (req as any).user;
+  if (!requester) {
+    return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+  }
+  if (requester.uid !== req.params.uid) {
+    // Check if user is admin
+    const isAdmin = requester.role === 'admin' || requester.isAdmin;
+    if (!isAdmin) {
+      return res.status(403).json({ error: 'Access Denied: You do not own this profile.' });
+    }
+  }
+  next();
+};
+
 // Avatar upload endpoint - supports both file upload and base64
-router.post('/:uid/avatar', upload.single('avatar'), async (req: Request, res: Response) => {
+router.post('/:uid/avatar', verifyUserToken, verifyProfileOwner, upload.single('avatar'), async (req: Request, res: Response) => {
   try {
     let avatarUrl: string;
 
@@ -111,7 +129,7 @@ router.get('/:uid/avatar/image', async (req: Request, res: Response) => {
 });
 
 // Set current avatar endpoint
-router.post('/:uid/set-avatar', async (req: Request, res: Response) => {
+router.post('/:uid/set-avatar', verifyUserToken, verifyProfileOwner, async (req: Request, res: Response) => {
   try {
     const { avatarUrl } = req.body;
     const user = await User.findOneAndUpdate(
@@ -158,7 +176,7 @@ router.post('/:uid/set-avatar', async (req: Request, res: Response) => {
 });
 
 // Delete avatar from user's avatars array
-router.delete('/:uid/avatar/delete', async (req: Request, res: Response) => {
+router.delete('/:uid/avatar/delete', verifyUserToken, verifyProfileOwner, async (req: Request, res: Response) => {
   try {
     const { avatarUrl } = req.body;
     
@@ -215,7 +233,7 @@ router.delete('/:uid/avatar/delete', async (req: Request, res: Response) => {
 });
 
 // Get profile by UID
-router.get('/:uid', async (req: Request, res: Response) => {
+router.get('/:uid', verifyUserToken, verifyProfileOwner, async (req: Request, res: Response) => {
   try {
     const user = await User.findOne({ uid: req.params.uid });
     if (!user) return res.status(404).json({ error: 'Profile not found' });
@@ -243,7 +261,7 @@ router.get('/:uid', async (req: Request, res: Response) => {
 });
 
 // Upsert (create or update) profile by UID
-router.post('/:uid', async (req: Request, res: Response) => {
+router.post('/:uid', verifyUserToken, verifyProfileOwner, async (req: Request, res: Response) => {
   try {
     const update = { ...req.body, updatedAt: new Date() };
 
