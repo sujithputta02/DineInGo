@@ -20,7 +20,8 @@
   </script>
   
   <!-- Google Maps Places API (Fallback for OpenStreetMap) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBT3eKNEzUNXEwH5RCu8cDI_HsCUe3qxMQ&libraries=places&loading=async" async defer></script>
+  <!-- API key loaded via environment variable in main.tsx for security -->
+  <script id="google-maps-script" async defer></script>
   
   <script type="text/javascript">
     (function (f, b) {
