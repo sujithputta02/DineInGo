@@ -253,12 +253,22 @@ const RestaurantDetails = () => {
             if (!isMockId) {
               try {
                 setReviewsLoading(true);
-                const [reviewsData, promosData] = await Promise.all([
-                  businessApi.getReviews(id),
-                  businessApi.getPromotions(id)
-                ]);
+                
+                // Fetch reviews
+                const reviewsData = await businessApi.getReviews(id);
                 setReviews(Array.isArray(reviewsData) ? reviewsData : []);
-                setPromotions(Array.isArray(promosData) ? promosData.filter((p: any) => p.status === 'active' || p.isActive) : []);
+                
+                // Try to fetch promotions, but don't fail if user doesn't have access
+                try {
+                  const promosData = await businessApi.getPromotions(id);
+                  setPromotions(Array.isArray(promosData) ? promosData.filter((p: any) => p.status === 'active' || p.isActive) : []);
+                } catch (promoErr: any) {
+                  // Silently handle 403 (regular users can't see promotions)
+                  if (promoErr?.response?.status !== 403) {
+                    console.error('Failed to fetch promotions:', promoErr);
+                  }
+                  setPromotions([]);
+                }
               } catch (err) {
                 console.error('Failed to fetch storefront data:', err);
                 setReviews([]);
