@@ -116,7 +116,8 @@ interface Restaurant {
     label: string;
   }>;
   phoneNumber?: string;
-
+  description?: string;
+  tags?: string[];
   averageRating?: number | string | null;
 }
  
@@ -174,12 +175,40 @@ const getAvatarUrl = (name: string) => {
 
 const getPersonalizationScore = (restaurant: Restaurant, preferences: any) => {
   let score = 0;
+  
+  // Cuisine matching (highest priority)
   if (preferences.favoriteCuisines && restaurant.cuisine) {
     restaurant.cuisine.forEach(c => {
       if (preferences.favoriteCuisines.includes(c)) score += 10;
     });
   }
+  
+  // Price preference matching
   if (preferences.pricePreference === restaurant.priceLevel) score += 5;
+  
+  // Dietary preferences matching (vegetarian, vegan, gluten-free, etc.)
+  if (preferences.dietaryPreferences && Array.isArray(preferences.dietaryPreferences)) {
+    preferences.dietaryPreferences.forEach((pref: string) => {
+      const prefLower = pref.toLowerCase();
+      
+      // Check if restaurant tags/cuisine/description mentions the dietary preference
+      const restaurantText = [
+        ...(restaurant.cuisine || []),
+        restaurant.description || '',
+        ...(restaurant.tags || []),
+      ].join(' ').toLowerCase();
+      
+      if (restaurantText.includes(prefLower)) {
+        score += 8; // High score for dietary match
+      }
+      
+      // Special boost for exact matches
+      if (restaurant.tags?.some(tag => tag.toLowerCase() === prefLower)) {
+        score += 5;
+      }
+    });
+  }
+  
   return score;
 };
 
@@ -1424,10 +1453,12 @@ export default function DashboardPage() {
       console.log('Deleting avatar:', avatarUrl);
 
       // Call backend to remove avatar from array
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
       const response = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${userData.uid}/avatar/delete`), {
         method: 'DELETE',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ avatarUrl })
       });
@@ -1491,10 +1522,12 @@ export default function DashboardPage() {
       }
 
       // Update in MongoDB profile using the set-avatar endpoint
+      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
       const response = await fetch(API_CONFIG.getFullUrl(`/api/v1/profile/${userData?.uid}/set-avatar`), {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ avatarUrl })
       });
@@ -3261,8 +3294,14 @@ export default function DashboardPage() {
 
                     // Fetch the latest profile data from backend to ensure sync
                     try {
+                      const token = auth.currentUser ? await auth.currentUser.getIdToken() : '';
                       const res = await fetch(
                         `${API_CONFIG.BASE_URL}/api/v1/profile/${auth.currentUser.uid}`,
+                        {
+                          headers: {
+                            'Authorization': `Bearer ${token}`
+                          }
+                        }
                       );
                       if (res.ok) {
                         const profile = await res.json();

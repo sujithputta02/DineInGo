@@ -22,8 +22,85 @@ import {
   likeReview,
   dislikeReview
 } from '../controllers/reviewController';
+import { verifyUserToken } from '../middleware/userAuth';
+import { verifyBusinessOwner } from '../middleware/businessAuth';
+import { Event } from '../models/Event';
+import mongoose from 'mongoose';
 
 const router = express.Router();
+
+// Helper middleware for event ownership validation
+const verifyEventOwnerAccess = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    const requester = (req as any).user;
+    if (!requester) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+
+    const eventId = req.params.id;
+    if (!eventId) {
+      return res.status(400).json({ error: 'Event ID is missing.' });
+    }
+
+    const event = await Event.findById(eventId);
+    if (!event) {
+      return res.status(404).json({ error: 'Event not found.' });
+    }
+
+    // Verify if requester is organizer (by uid or email or organizer name)
+    const isOrganizer = event.organizer === requester.uid || event.organizer === requester.email;
+
+    // Also allow admins
+    const { User } = require('../models/User');
+    const userDoc = await User.findOne({ uid: requester.uid });
+    const isAdmin = userDoc && (userDoc.role === 'admin' || userDoc.isAdmin);
+
+    if (!isOrganizer && !isAdmin) {
+      return res.status(403).json({ error: 'Access Denied: You are not the organizer of this event.' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error verifying event owner access:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
+
+// Helper middleware for review ownership check
+const verifyReviewOwner = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    const requester = (req as any).user;
+    if (!requester) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+
+    const reviewId = req.params.id;
+    if (!reviewId || !mongoose.Types.ObjectId.isValid(reviewId)) {
+      return res.status(400).json({ error: 'Invalid or missing review ID.' });
+    }
+
+    const { Review } = require('../models/Review');
+    const review = await Review.findById(reviewId);
+    if (!review) {
+      return res.status(404).json({ error: 'Review not found.' });
+    }
+
+    if (review.userId !== requester.uid) {
+      const { User } = require('../models/User');
+      const userDoc = await User.findOne({ uid: requester.uid });
+      const isAdmin = userDoc && (userDoc.role === 'admin' || userDoc.isAdmin);
+
+      if (!isAdmin) {
+        return res.status(403).json({ error: 'Access Denied: You do not own this review.' });
+      }
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error verifying review owner access:', error);
+    res.status(500).json({ error: 'Internal Server Error' });
+  }
+};
 
 // Get all events
 router.get('/', getAllEvents);
@@ -38,20 +115,21 @@ router.get('/search', searchEvents);
 router.get('/:id', getEventById);
 
 // Create new event
-router.post('/', createEvent);
+router.post('/', verifyUserToken, verifyBusinessOwner, createEvent);
 
 // Update event
-router.put('/:id', updateEvent);
+router.put('/:id', verifyUserToken, verifyBusinessOwner, verifyEventOwnerAccess, updateEvent);
 
 // Delete event
-router.delete('/:id', deleteEvent);
+router.delete('/:id', verifyUserToken, verifyBusinessOwner, verifyEventOwnerAccess, deleteEvent);
 
 // Register for event (handles both seating and non-seating events)
-router.post('/:id/register', registerForEvent);
+router.post('/:id/register', verifyUserToken, registerForEvent);
 
 // Event Review Routes
 router.get('/:eventId/reviews', getEventReviews);
 router.post('/:eventId/reviews', 
+  verifyUserToken,
   (req: express.Request, res: express.Response, next: express.NextFunction) => {
     console.log('=== Review POST request received ===');
     console.log('EventId:', req.params.eventId);
@@ -72,16 +150,16 @@ router.post('/:eventId/reviews',
   addEventReview
 );
 router.get('/:eventId/reviews/stats', getEventRatingStats);
-router.put('/reviews/:id', upload.array('images', 5), updateReview);
-router.delete('/reviews/:id', deleteReview);
-router.post('/reviews/:id/reply', replyToReview);
-router.put('/reviews/:id/reply', updateReply);
-router.delete('/reviews/:id/reply', deleteReply);
-router.post('/reviews/:reviewId/like', likeReview);
-router.post('/reviews/:reviewId/dislike', dislikeReview);
+router.put('/reviews/:id', verifyUserToken, verifyReviewOwner, upload.array('images', 5), updateReview);
+router.delete('/reviews/:id', verifyUserToken, verifyReviewOwner, deleteReview);
+router.post('/reviews/:id/reply', verifyUserToken, verifyBusinessOwner, replyToReview);
+router.put('/reviews/:id/reply', verifyUserToken, verifyBusinessOwner, updateReply);
+router.delete('/reviews/:id/reply', verifyUserToken, verifyBusinessOwner, deleteReply);
+router.post('/reviews/:reviewId/like', verifyUserToken, likeReview);
+router.post('/reviews/:reviewId/dislike', verifyUserToken, dislikeReview);
 
 // Unregister from event (decrement count)
-router.post('/:id/unregister', async (req, res) => {
+router.post('/:id/unregister', verifyUserToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { guests = 1 } = req.body;
