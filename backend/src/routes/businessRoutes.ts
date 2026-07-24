@@ -122,14 +122,14 @@ router.post('/:businessId/table-status/:tableId/walk-in', businessApiLimiter, ve
 router.post('/:businessId/table-status/batch', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, logBusinessAction, batchUpdateTableStatus);
 
 // Marketing Engine
-router.get('/:businessId/campaigns', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, getBusinessCampaigns);
+router.get('/:businessId/campaigns', businessApiLimiter, getBusinessCampaigns); // Public endpoint - anyone can view campaigns
 router.post('/:businessId/campaigns', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, logBusinessAction, validateCampaign, handleValidationErrors, createCampaign);
 router.put('/campaigns/:id', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyResourceAccess('Campaign'), logBusinessAction, validateCampaign, handleValidationErrors, updateCampaign);
 router.delete('/campaigns/:id', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyResourceAccess('Campaign'), logBusinessAction, deleteCampaign);
 router.post('/campaigns/:id/send', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyResourceAccess('Campaign'), logBusinessAction, sendCampaign);
 
 // Promotion Manager
-router.get('/:businessId/promotions', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, getBusinessPromotions);
+router.get('/:businessId/promotions', businessApiLimiter, getBusinessPromotions); // Public endpoint - anyone can view promotions
 router.post('/:businessId/promotions', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, logBusinessAction, validatePromotion, handleValidationErrors, createPromotion);
 router.put('/promotions/:id', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyResourceAccess('Promotion'), logBusinessAction, validatePromotion, handleValidationErrors, updatePromotion);
 router.delete('/promotions/:id', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyResourceAccess('Promotion'), logBusinessAction, deletePromotion);
