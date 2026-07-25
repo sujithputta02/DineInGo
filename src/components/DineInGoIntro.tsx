@@ -423,7 +423,7 @@ const DineInGoIntro: React.FC<DineInGoIntroProps> = ({ onComplete }) => {
                     variants={dotVariants}
                     style={{
                       position: "absolute",
-                      top: "0.22em",
+                      top: "0.18em",
                       left: "50%",
                       marginLeft: "-0.115em",
                       width: "0.23em",
@@ -446,7 +446,7 @@ const DineInGoIntro: React.FC<DineInGoIntroProps> = ({ onComplete }) => {
                           transition={{ duration: 0.95, ease: "easeOut" }}
                           style={{
                             position: "absolute",
-                            top: "0.335em",
+                            top: "0.295em",
                             left: "50%",
                             marginLeft: "-0.115em",
                             marginTop: "-0.115em",
@@ -465,7 +465,7 @@ const DineInGoIntro: React.FC<DineInGoIntroProps> = ({ onComplete }) => {
                           transition={{ duration: 0.75, delay: 0.1, ease: "easeOut" }}
                           style={{
                             position: "absolute",
-                            top: "0.335em",
+                            top: "0.295em",
                             left: "50%",
                             marginLeft: "-0.115em",
                             marginTop: "-0.115em",
