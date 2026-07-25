@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ChatSession, IChatMessage } from '../models/ChatSession';
+import { aiOptimizationService } from './aiOptimizationService';
 
 const COMPREHENSIVE_SYSTEM_PROMPT = `You are Dino 🦖, the enthusiastic, friendly, and slightly quirky AI Assistant for DineInGo. You aren't just an assistant; you're a "Dining Companion" who's passionate about food, events, and making sure every user has a "stomp-tastic" experience!
 
@@ -63,9 +64,23 @@ DineInGo is India's premier dining and event platform. We connect users with top
 Remember: Every user interaction is a chance to make DineInGo feel like a premium, fun, and reliable friend! 🦖✨`;
 
 export class EnhancedChatbotService {
-  private apiKey: string = '';
-  private model: string = '';
-  private apiUrl: string = 'https://openrouter.ai/api/v1/chat/completions';
+  // Groq configuration
+  private groqApiKey: string = '';
+  private groqModel: string = '';
+  private groqApiUrl: string = 'https://api.groq.com/openai/v1/chat/completions';
+
+  // Sarvam AI configuration
+  private sarvamApiKey: string = '';
+  private sarvamModel: string = '';
+  private sarvamApiUrl: string = 'https://api.sarvam.ai/v1/chat/completions';
+
+  // OpenRouter configuration
+  private openrouterApiKey: string = '';
+  private openrouterModel: string = '';
+  private openrouterApiUrl: string = 'https://openrouter.ai/api/v1/chat/completions';
+
+  // Provider settings
+  private primaryProvider: 'groq' | 'sarvam' | 'openrouter' = 'groq';
   private initialized: boolean = false;
 
   constructor() {
@@ -75,15 +90,28 @@ export class EnhancedChatbotService {
   private initialize() {
     if (this.initialized) return;
 
-    this.apiKey = process.env.OPENROUTER_API_KEY || '';
-    this.model = process.env.AI_MODEL || 'google/gemma-2-9b-it:free';
+    // Load Groq configuration
+    this.groqApiKey = process.env.GROQ_API_KEY || '';
+    this.groqModel = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+
+    // Load Sarvam AI configuration
+    this.sarvamApiKey = process.env.SARVAM_API_KEY || '';
+    this.sarvamModel = process.env.SARVAM_MODEL || 'sarvam-30b';
+
+    // Load OpenRouter configuration
+    this.openrouterApiKey = process.env.OPENROUTER_API_KEY || '';
+    this.openrouterModel = process.env.AI_MODEL || 'google/gemini-2.0-flash-exp:free';
+
+    // Load primary provider setting
+    this.primaryProvider = (process.env.PRIMARY_LLM_PROVIDER as 'groq' | 'sarvam' | 'openrouter') || 'groq';
+
     this.initialized = true;
 
-    if (!this.apiKey) {
-      console.warn('⚠️  OPENROUTER_API_KEY not set. Chatbot will not function.');
+    if (!this.groqApiKey && !this.sarvamApiKey && !this.openrouterApiKey) {
+      console.warn('⚠️  No AI providers configured. Enhanced Chatbot will not function.');
     } else {
       console.log('✓ Enhanced Chatbot service initialized');
-      console.log('  Model:', this.model);
+      console.log('  Primary Provider:', this.primaryProvider);
     }
   }
 
@@ -218,9 +246,9 @@ export class EnhancedChatbotService {
   async sendMessage(userId: string, message: string, userContext?: any): Promise<{ response: string; timestamp: Date }> {
     this.initialize();
 
-    if (!this.apiKey) {
+    if (!this.groqApiKey && !this.sarvamApiKey && !this.openrouterApiKey) {
       return {
-        response: "I'm sorry, but the chatbot service is currently unavailable. Please contact support@dineingo.com for assistance.",
+        response: "I'm sorry, but the chatbot service is currently unavailable. Please contact sec.dinelngo.team@gmail.com for assistance.",
         timestamp: new Date()
       };
     }
@@ -258,7 +286,10 @@ export class EnhancedChatbotService {
 
       // Prepare API messages
       let apiMessages: any[];
-      const recentMessages = session.messages.slice(-20); // Last 10 exchanges
+      const recentMessages = aiOptimizationService.optimizeMessages(
+        session.messages.slice(-20), 
+        10 // Last 10 exchanges
+      );
 
       if (session.messages.length === 1) {
         // First message - include full system prompt
@@ -276,29 +307,139 @@ export class EnhancedChatbotService {
         }));
       }
 
-      // Call AI API
-      const response = await axios.post(
-        this.apiUrl,
-        {
-          model: this.model,
-          messages: apiMessages,
-          temperature: 0.7,
-          max_tokens: 600,
-          top_p: 0.9,
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': 'https://dineingo.com',
-            'X-Title': 'DineInGo AI Assistant - Dino'
-          },
-          timeout: 30000
-        }
-      );
+      // Determine provider order based on configuration
+      const providers: Array<{
+        name: string;
+        apiKey: string;
+        apiUrl: string;
+        model: string;
+      }> = [];
 
-      let aiResponse = (response.data as any).choices[0]?.message?.content ||
-        "I'm sorry, I couldn't process that. Could you please rephrase?";
+      // Add primary provider first
+      if (this.primaryProvider === 'groq' && this.groqApiKey) {
+        providers.push({
+          name: 'Groq',
+          apiKey: this.groqApiKey,
+          apiUrl: this.groqApiUrl,
+          model: this.groqModel
+        });
+      } else if (this.primaryProvider === 'sarvam' && this.sarvamApiKey) {
+        providers.push({
+          name: 'Sarvam AI',
+          apiKey: this.sarvamApiKey,
+          apiUrl: this.sarvamApiUrl,
+          model: this.sarvamModel
+        });
+      }
+
+      // Add fallback providers
+      if (this.openrouterApiKey && this.primaryProvider !== 'openrouter') {
+        providers.push({
+          name: 'OpenRouter',
+          apiKey: this.openrouterApiKey,
+          apiUrl: this.openrouterApiUrl,
+          model: this.openrouterModel
+        });
+      }
+
+      if (this.sarvamApiKey && this.primaryProvider !== 'sarvam') {
+        providers.push({
+          name: 'Sarvam AI',
+          apiKey: this.sarvamApiKey,
+          apiUrl: this.sarvamApiUrl,
+          model: this.sarvamModel
+        });
+      }
+
+      if (this.groqApiKey && this.primaryProvider !== 'groq') {
+        providers.push({
+          name: 'Groq',
+          apiKey: this.groqApiKey,
+          apiUrl: this.groqApiUrl,
+          model: this.groqModel
+        });
+      }
+
+      if (this.primaryProvider === 'openrouter' && this.openrouterApiKey) {
+        providers.unshift({
+          name: 'OpenRouter',
+          apiKey: this.openrouterApiKey,
+          apiUrl: this.openrouterApiUrl,
+          model: this.openrouterModel
+        });
+      }
+
+      // Try providers in order with fallback
+      let aiResponse: string = '';
+      let lastError: any = null;
+
+      for (let i = 0; i < providers.length; i++) {
+        const provider = providers[i];
+        const providerKey = provider.name.toLowerCase().replace(/\s+/g, '');
+        
+        try {
+          // Check rate limits
+          const estimatedTokens = aiOptimizationService.estimateTokens(JSON.stringify(apiMessages));
+          
+          if (!aiOptimizationService.canMakeRequest(providerKey, estimatedTokens)) {
+            console.warn(`  ⚠️  ${provider.name} rate limit reached, trying next provider`);
+            continue;
+          }
+
+          const headers: any = {
+            'Authorization': `Bearer ${provider.apiKey}`,
+            'Content-Type': 'application/json',
+          };
+
+          // Add provider-specific headers
+          if (provider.name === 'OpenRouter') {
+            headers['HTTP-Referer'] = 'https://dineingo.com';
+            headers['X-Title'] = 'DineInGo AI Assistant - Dino';
+          }
+
+          const maxTokens = aiOptimizationService.getMaxTokens(providerKey);
+
+          const response = await axios.post(
+            provider.apiUrl,
+            {
+              model: provider.model,
+              messages: apiMessages,
+              temperature: 0.7,
+              max_tokens: maxTokens, // Optimized
+              top_p: 0.9,
+            },
+            {
+              headers,
+              timeout: 30000
+            }
+          );
+
+          aiResponse = (response.data as any).choices[0]?.message?.content ||
+            "I'm sorry, I couldn't process that. Could you please rephrase?";
+          
+          // Record request for rate limiting
+          const tokensUsed = aiOptimizationService.estimateTokens(aiResponse) + estimatedTokens;
+          aiOptimizationService.recordRequest(providerKey, tokensUsed);
+
+          console.log(`  ✓ Enhanced chatbot response from ${provider.name} (Est. tokens: ${tokensUsed})`);
+          break;
+
+        } catch (error: any) {
+          lastError = error;
+          console.warn(`  ⚠️  ${provider.name} failed:`, error.message);
+
+          // If this is not the last provider, try the next one
+          if (i < providers.length - 1) {
+            console.log(`  → Falling back to ${providers[i + 1].name}...`);
+            continue;
+          }
+        }
+      }
+
+      // If all providers failed, throw the last error
+      if (!aiResponse) {
+        throw lastError || new Error('All AI providers failed');
+      }
 
       aiResponse = this.sanitizeOutput(aiResponse);
 
@@ -336,7 +477,7 @@ export class EnhancedChatbotService {
       }
 
       return {
-        response: "I encountered an error. Please try again or contact support@dineingo.com if the issue persists.",
+        response: "I encountered an error. Please try again or contact sec.dinelngo.team@gmail.com if the issue persists.",
         timestamp: new Date()
       };
     }
