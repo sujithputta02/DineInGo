@@ -18,14 +18,16 @@ const PrivacyPolicyPage: React.FC = () => {
 
                 {/* Logo */}
                 <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold">
-                        D<span className="relative">
-                            i
-                            <span className="absolute top-2.5 left-1.5 -translate-x-1/2 w-2 h-2 bg-red-500 rounded-full"></span>
-                        </span>neIn
+                    <h1 className="text-4xl font-bold inline-flex items-center justify-center">
+                        <span>D</span>
+                        <span className="relative inline-block">
+                            ı
+                            <span className="absolute top-[0.15em] left-1/2 -translate-x-1/2 w-[0.23em] h-[0.23em] bg-red-500 rounded-full shadow-[0_0_0.2em_rgba(239,68,68,0.9)]"></span>
+                        </span>
+                        <span>neIn</span>
                         <span className="text-yellow-400">Go</span>
                     </h1>
-                    <p className="text-sm text-gray-600">Privacy Policy</p>
+                    <p className="text-sm text-gray-600 mt-2">Privacy Policy</p>
                 </div>
 
                 {/* content */}
