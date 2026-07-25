@@ -64,9 +64,10 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
         })));
       } else {
         // Show welcome message if no history
+        const userName = auth.currentUser?.displayName || userContext?.userName || 'there';
         setMessages([{
           role: 'assistant',
-          content: t('welcomeMessage'),
+          content: t('welcomeMessage').replace('{name}', userName),
           timestamp: new Date()
         }]);
       }
@@ -330,7 +331,7 @@ const AIChatbot: React.FC<AIChatbotProps> = ({ userContext }) => {
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder={t('typeYourMessage')}
-                className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2 sm:px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent max-h-32 text-sm sm:text-base"
+                className="flex-1 resize-none border border-gray-300 rounded-xl px-3 py-2 sm:px-4 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent max-h-32 text-sm sm:text-base text-gray-900"
                 rows={1}
                 disabled={isLoading}
               />

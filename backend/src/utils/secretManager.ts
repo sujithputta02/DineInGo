@@ -49,6 +49,12 @@ const SECRETS_CONFIG: SecretConfig[] = [
     description: 'Firebase project ID'
   },
   {
+    name: 'GROQ_API_KEY',
+    envVar: 'GROQ_API_KEY',
+    required: false,
+    description: 'Groq API key'
+  },
+  {
     name: 'SARVAM_API_KEY',
     envVar: 'SARVAM_API_KEY',
     required: false,
