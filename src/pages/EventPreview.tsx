@@ -161,10 +161,14 @@ const EventPreview: React.FC = () => {
 
         console.log('Sending booking data:', bookingData);
 
+        // Get Firebase auth token
+        const token = await auth.currentUser!.getIdToken();
+
         const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/bookings`, {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(bookingData)
         });
