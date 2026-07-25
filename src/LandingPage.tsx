@@ -33,18 +33,12 @@ interface Table3DButtonProps {
     x: number;
     y: number;
     rotate?: number;
+    seats?: number;
+    view?: string;
+    type?: string;
+    price?: string;
   };
-}
-
-interface Table3DButtonProps {
-  number: number;
-  isSelected: boolean;
-  onClick: () => void;
-  position: {
-    x: number;
-    y: number;
-    rotate?: number;
-  };
+  is3DMode?: boolean;
 }
 
 // Design Tokens - Light Emerald Refined V3 (Polished for Accessibility)
@@ -303,127 +297,85 @@ const Doodle: React.FC<DoodleProps> = ({ type, style }) => {
   return doodles[type] || null;
 };
 
-// 3D Button for table selection (Polished for keyboard accessibility)
-const Table3DButton: React.FC<Table3DButtonProps & { glassStyles: any }> = ({ number, isSelected, onClick, position, glassStyles }) => (
-  <motion.div
-    whileHover={{ scale: 1.08, y: -5 }}
-    onClick={onClick}
-    onKeyDown={(e) => {
-      if (e.key === 'Enter' || e.key === ' ') {
-        e.preventDefault();
-        onClick();
-      }
-    }}
-    tabIndex={0}
-    role="button"
-    aria-pressed={isSelected}
-    aria-label={`Table ${number}`}
-    initial={{ scale: 0.9, opacity: 0 }}
-    animate={{
-      scale: 1,
-      opacity: 1,
-      y: isSelected ? -10 : 0,
-    }}
-    transition={{
-      type: "spring",
-      stiffness: 400,
-      damping: 17,
-      delay: number * 0.1
-    }}
-    style={{
-      position: "absolute",
-      left: `${position.x}%`,
-      top: `${position.y}%`,
-      width: "60px",
-      height: "60px",
-      cursor: "pointer",
-      transform: `perspective(800px) rotateX(30deg) rotateZ(${position.rotate || 0}deg)`,
-      transformStyle: "preserve-3d",
-      zIndex: isSelected ? 10 : 1,
-    }}
-  >
-    {/* Top surface */}
+// 3D Button for table selection (Polished for keyboard accessibility & responsive design)
+const Table3DButton: React.FC<Table3DButtonProps & { glassStyles: any }> = ({
+  number,
+  isSelected,
+  onClick,
+  position,
+  glassStyles,
+  is3DMode = true
+}) => {
+  const seatsCount = position.seats || (number % 2 === 0 ? 4 : 2);
+
+  return (
     <motion.div
+      whileHover={{ scale: 1.1, y: -4 }}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      tabIndex={0}
+      role="button"
+      aria-pressed={isSelected}
+      aria-label={`Table ${number}, ${position.view || 'Standard'}`}
+      initial={{ scale: 0.85, opacity: 0 }}
       animate={{
-        boxShadow: isSelected
-          ? [
-            `0 20px 40px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}60`,
-            `0 20px 40px rgba(0,0,0,0.15), 0 0 35px ${glassStyles.colors.primary}40`,
-            `0 20px 40px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}60`
-          ]
-          : "0 10px 20px rgba(0,0,0,0.1)"
+        scale: 1,
+        opacity: 1,
+        y: isSelected ? -6 : 0,
       }}
       transition={{
-        repeat: isSelected ? Infinity : 0,
-        duration: 2
+        type: "spring",
+        stiffness: 400,
+        damping: 20,
+        delay: number * 0.08
       }}
       style={{
         position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        background: isSelected ? "white" : "rgba(255, 255, 255, 0.45)",
-        backdropFilter: "blur(10px)",
-        WebkitBackdropFilter: "blur(10px)",
-        borderRadius: "14px",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: "18px",
-        fontWeight: "800",
-        color: isSelected ? glassStyles.colors.primaryDeep : "#333",
-        border: isSelected ? `2px solid ${glassStyles.colors.primary}` : "1px solid rgba(255,255,255,0.4)",
-        transform: "translateZ(10px)",
-        boxShadow: isSelected ? `0 15px 35px ${glassStyles.colors.primary}40` : "0 5px 15px rgba(0,0,0,0.05)",
-        zIndex: 2,
+        left: `${position.x}%`,
+        top: `${position.y}%`,
+        width: "clamp(46px, 12vw, 54px)",
+        height: "clamp(46px, 12vw, 54px)",
+        cursor: "pointer",
+        transform: is3DMode
+          ? `perspective(800px) rotateX(32deg) rotateZ(${position.rotate || 0}deg)`
+          : "rotate(0deg)",
+        transformStyle: "preserve-3d",
+        transition: "transform 0.4s ease",
+        zIndex: isSelected ? 12 : 2,
       }}
     >
-      {number}
-    </motion.div>
+      {/* Seat dots around table */}
+      <div style={{ position: "absolute", inset: "-7px", pointerEvents: "none" }}>
+        {/* Top & Bottom Seats */}
+        <span style={{ position: "absolute", top: "0", left: "50%", transform: "translateX(-50%)", width: "10px", height: "4px", background: isSelected ? glassStyles.colors.primary : "#94A3B8", borderRadius: "3px" }} />
+        <span style={{ position: "absolute", bottom: "0", left: "50%", transform: "translateX(-50%)", width: "10px", height: "4px", background: isSelected ? glassStyles.colors.primary : "#94A3B8", borderRadius: "3px" }} />
+        {seatsCount >= 4 && (
+          <>
+            <span style={{ position: "absolute", left: "0", top: "50%", transform: "translateY(-50%)", width: "4px", height: "10px", background: isSelected ? glassStyles.colors.primary : "#94A3B8", borderRadius: "3px" }} />
+            <span style={{ position: "absolute", right: "0", top: "50%", transform: "translateY(-50%)", width: "4px", height: "10px", background: isSelected ? glassStyles.colors.primary : "#94A3B8", borderRadius: "3px" }} />
+          </>
+        )}
+      </div>
 
-    {/* Side surfaces for 3D effect */}
-    <div
-      style={{
-        position: "absolute",
-        width: "100%",
-        height: "12px",
-        bottom: "-10px",
-        left: "0",
-        backgroundColor: isSelected ? glassStyles.colors.primaryDeep : "#e2e8f0",
-        borderRadius: "0 0 10px 10px",
-        transformOrigin: "top",
-        transform: "rotateX(-90deg)",
-        zIndex: 1,
-      }}
-    />
-
-    {/* Base surface */}
-    <div
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        backgroundColor: isSelected ? glassStyles.colors.primary : "#cbd5e1",
-        borderRadius: "12px",
-        transform: "translateZ(0)",
-        zIndex: 0,
-      }}
-    />
-
-    {/* Pulse animation for selected table */}
-    {isSelected && (
+      {/* Main Table Surface */}
       <motion.div
         animate={{
-          scale: [1, 1.4, 1],
-          opacity: [0.5, 0, 0.5]
+          boxShadow: isSelected
+            ? [
+              `0 12px 28px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}70`,
+              `0 12px 28px rgba(0,0,0,0.15), 0 0 32px ${glassStyles.colors.primary}50`,
+              `0 12px 28px rgba(0,0,0,0.15), 0 0 20px ${glassStyles.colors.primary}70`
+            ]
+            : "0 6px 14px rgba(0,0,0,0.08)"
         }}
         transition={{
-          duration: 2,
-          repeat: Infinity,
-          ease: "easeInOut"
+          repeat: isSelected ? Infinity : 0,
+          duration: 2
         }}
         style={{
           position: "absolute",
@@ -431,14 +383,84 @@ const Table3DButton: React.FC<Table3DButtonProps & { glassStyles: any }> = ({ nu
           left: 0,
           width: "100%",
           height: "100%",
-          borderRadius: "12px",
-          backgroundColor: glassStyles.colors.primary,
-          zIndex: -1,
+          background: isSelected ? "#FFFFFF" : "rgba(255, 255, 255, 0.78)",
+          backdropFilter: "blur(8px)",
+          WebkitBackdropFilter: "blur(8px)",
+          borderRadius: "14px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          color: isSelected ? glassStyles.colors.primaryDeep : "#1E293B",
+          border: isSelected ? `2.5px solid ${glassStyles.colors.primary}` : "1.5px solid rgba(255,255,255,0.7)",
+          transform: is3DMode ? "translateZ(8px)" : "none",
+          boxShadow: isSelected ? `0 10px 25px ${glassStyles.colors.primary}50` : "0 4px 12px rgba(0,0,0,0.06)",
+          zIndex: 2,
         }}
-      />
-    )}
-  </motion.div>
-);
+      >
+        <span style={{ fontSize: "15px", fontWeight: "900", lineHeight: "1" }}>{number}</span>
+        <span style={{ fontSize: "9px", fontWeight: "700", color: isSelected ? glassStyles.colors.primaryDeep : "#64748B", marginTop: "1px" }}>
+          {seatsCount}P
+        </span>
+      </motion.div>
+
+      {/* 3D Side depth effect (visible in 3D mode) */}
+      {is3DMode && (
+        <>
+          <div
+            style={{
+              position: "absolute",
+              width: "100%",
+              height: "10px",
+              bottom: "-8px",
+              left: "0",
+              backgroundColor: isSelected ? glassStyles.colors.primaryDeep : "#CBD5E1",
+              borderRadius: "0 0 8px 8px",
+              transformOrigin: "top",
+              transform: "rotateX(-90deg)",
+              zIndex: 1,
+            }}
+          />
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              width: "100%",
+              height: "100%",
+              backgroundColor: isSelected ? glassStyles.colors.primary : "#94A3B8",
+              borderRadius: "14px",
+              transform: "translateZ(0)",
+              zIndex: 0,
+            }}
+          />
+        </>
+      )}
+
+      {/* Pulse ring animation for selected table */}
+      {isSelected && (
+        <motion.div
+          animate={{
+            scale: [1, 1.35, 1],
+            opacity: [0.6, 0, 0.6]
+          }}
+          transition={{
+            duration: 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          style={{
+            position: "absolute",
+            inset: 0,
+            borderRadius: "14px",
+            backgroundColor: glassStyles.colors.primary,
+            zIndex: -1,
+          }}
+        />
+      )}
+    </motion.div>
+  );
+};
 
 // Feature card with animation
 const FeatureCard: React.FC<FeatureCardProps & { glassStyles: any }> = ({ icon, title, description, color, glassStyles }) => (
@@ -503,15 +525,19 @@ export default function LandingPage() {
 
 
 
-  // Table layout positions
+  const [is3DView, setIs3DView] = useState(true);
+
+  // Table layout positions & metadata
   const tablePositions = [
-    { x: 15, y: 20, rotate: -5 },
-    { x: 45, y: 15, rotate: 5 },
-    { x: 75, y: 20, rotate: -5 },
-    { x: 20, y: 60, rotate: 5 },
-    { x: 50, y: 65, rotate: -5 },
-    { x: 80, y: 60, rotate: 5 },
+    { id: 1, x: 10, y: 14, rotate: -3, seats: 2, view: "Garden View", type: "Standard", price: "₹1,200" },
+    { id: 2, x: 42, y: 10, rotate: 3, seats: 4, view: "Central Lounge", type: "Booth", price: "₹2,500" },
+    { id: 3, x: 72, y: 14, rotate: -3, seats: 4, view: "Corner VIP", type: "VIP", price: "₹3,200" },
+    { id: 4, x: 12, y: 55, rotate: 3, seats: 2, view: "Window View", type: "Window", price: "₹1,800" },
+    { id: 5, x: 44, y: 58, rotate: -3, seats: 6, view: "Family Lounge", type: "Large", price: "₹4,000" },
+    { id: 6, x: 74, y: 55, rotate: 3, seats: 4, view: "Terrace View", type: "Terrace", price: "₹2,800" },
   ];
+
+  const currentSelectedTableInfo = tablePositions.find(t => t.id === selectedTable) || tablePositions[3];
 
   return (
     <>
@@ -858,40 +884,41 @@ export default function LandingPage() {
               </motion.div>
             </div>
 
-            {/* Right Side: Interactive Table Selection - Hidden on mobile */}
+            {/* Right Side: Interactive Table Selection Card */}
             <motion.div
               variants={itemVariants}
               initial="hidden"
               whileInView="visible"
               viewport={{ once: true, margin: "-20px" }}
-              className="hidden md:flex"
               style={{
                 flex: "1",
-                position: "relative",
-                minHeight: "650px",
-                maxWidth: "480px",
+                width: "100%",
+                maxWidth: isMobile ? "100%" : "480px",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                overflow: "visible",
+                position: "relative",
+                zIndex: 4,
+                marginTop: isMobile ? "32px" : "0",
               }}
             >
-              {/* New 3D Interactive Floating Interface */}
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 1 }}
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.8 }}
                 style={{
                   position: "relative",
                   width: "100%",
-                  height: "600px",
-                  transform: `perspective(1000px) rotateX(${5 + scrollY * 0.005}deg) rotateY(${-3 + scrollY * 0.003}deg)`,
+                  transform: is3DView
+                    ? `perspective(1000px) rotateX(${isMobile ? 2 : 5 + scrollY * 0.003}deg) rotateY(${isMobile ? -1 : -3 + scrollY * 0.002}deg)`
+                    : "perspective(1000px) rotateX(0deg) rotateY(0deg)",
+                  transition: "transform 0.5s cubic-bezier(0.16, 1, 0.3, 1)",
                 }}
               >
-                {/* Main Floating Card */}
+                {/* Main Floating Glass Card */}
                 <motion.div
                   animate={{
-                    y: [0, -8, 0],
+                    y: [0, -6, 0],
                   }}
                   transition={{
                     duration: 6,
@@ -900,36 +927,32 @@ export default function LandingPage() {
                   }}
                   style={{
                     width: "100%",
-                    height: "100%",
-                    borderRadius: "20px",
-                    background: "rgba(255, 255, 255, 0.85)",
-                    backdropFilter: "blur(10px)",
-                    boxShadow: "0 15px 50px rgba(0, 0, 0, 0.12), 0 0 25px rgba(0, 242, 157, 0.12)",
-                    border: "1px solid rgba(255, 255, 255, 0.6)",
-                    padding: "22px",
+                    borderRadius: "24px",
+                    background: "rgba(255, 255, 255, 0.88)",
+                    backdropFilter: "blur(16px)",
+                    WebkitBackdropFilter: "blur(16px)",
+                    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.1), 0 0 30px rgba(0, 242, 157, 0.15)",
+                    border: "1px solid rgba(255, 255, 255, 0.8)",
+                    padding: isMobile ? "16px" : "22px",
                     display: "flex",
                     flexDirection: "column",
                     position: "relative",
                     transformStyle: "preserve-3d",
-                    transform: "translateZ(0px)",
                     boxSizing: "border-box",
                   }}
                 >
-                  <motion.div
-                    initial={{ opacity: 0, y: -20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3, duration: 0.6 }}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "flex-start",
-                      marginBottom: "18px",
-                      gap: "10px",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div style={{ flex: 1, minWidth: "160px" }}>
-                      <h3 style={{ fontSize: "19px", fontWeight: "800", margin: 0, color: glassStyles.colors.black, lineHeight: "1.2" }}>Coastal Breeze Restaurant</h3>
+                  {/* Header Info */}
+                  <div style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    marginBottom: "14px",
+                    gap: "10px",
+                  }}>
+                    <div style={{ flex: 1, minWidth: "140px" }}>
+                      <h3 style={{ fontSize: isMobile ? "17px" : "19px", fontWeight: "800", margin: 0, color: glassStyles.colors.black, lineHeight: "1.2" }}>
+                        Coastal Breeze Restaurant
+                      </h3>
                       <div style={{ fontSize: "12px", color: glassStyles.colors.gray, display: "flex", alignItems: "center", gap: "10px", marginTop: "5px", flexWrap: "wrap" }}>
                         <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
                           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -938,12 +961,9 @@ export default function LandingPage() {
                           </svg>
                           Downtown
                         </span>
-                        <span style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 2a10 10 0 1 0 0 20 10 10 0 1 0 0-20z" />
-                            <path d="M12 6v6l4 2" />
-                          </svg>
-                          Open now
+                        <span style={{ display: "flex", alignItems: "center", gap: "4px", color: "#059669", fontWeight: "700" }}>
+                          <span style={{ width: "7px", height: "7px", borderRadius: "50%", backgroundColor: "#10B981", display: "inline-block" }}></span>
+                          Open Now
                         </span>
                       </div>
                     </div>
@@ -965,186 +985,205 @@ export default function LandingPage() {
                       </svg>
                       4.8
                     </div>
-                  </motion.div>
+                  </div>
 
-                  {/* 3D Floor Plan Title */}
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4, duration: 0.6 }}
-                    style={{
-                      marginBottom: "12px",
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      gap: "8px",
-                      flexWrap: "wrap",
-                    }}
-                  >
+                  {/* Interactive Title & 3D/2D Toggle */}
+                  <div style={{
+                    marginBottom: "12px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "8px",
+                  }}>
                     <div style={{
-                      fontSize: "16px",
-                      fontWeight: "600",
-                      color: "#333",
+                      fontSize: isMobile ? "14px" : "15px",
+                      fontWeight: "700",
+                      color: "#1E293B",
                       display: "flex",
                       alignItems: "center",
                       gap: "7px",
                     }}>
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={glassStyles.colors.primaryDeep} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M3 9h18v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" />
                         <path d="M3 9V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4" />
                         <line x1="12" y1="9" x2="12" y2="21" />
                       </svg>
-                      Select Your Table
+                      Interactive Floorplan
                     </div>
-                    <motion.div
-                      whileHover={{ scale: 1.05 }}
+
+                    {/* 3D / 2D Mode Switcher Button */}
+                    <motion.button
+                      whileHover={{ scale: 1.04 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => setIs3DView(!is3DView)}
                       style={{
-                        background: "rgba(0, 242, 157, 0.1)",
-                        padding: "5px 11px",
-                        borderRadius: "9px",
+                        background: is3DView ? "rgba(0, 242, 157, 0.15)" : "rgba(30, 41, 59, 0.06)",
+                        border: is3DView ? "1px solid rgba(0, 242, 157, 0.4)" : "1px solid rgba(0, 0, 0, 0.08)",
+                        padding: "5px 12px",
+                        borderRadius: "10px",
                         fontSize: "12px",
-                        color: "#00F29D",
-                        fontWeight: "600",
+                        color: is3DView ? "#047857" : "#475569",
+                        fontWeight: "700",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: "4px",
-                        whiteSpace: "nowrap"
+                        gap: "5px",
+                        whiteSpace: "nowrap",
+                        transition: "all 0.2s ease"
                       }}
                     >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <circle cx="12" cy="12" r="10" />
-                        <path d="M12 8l4 4-4 4M8 12h8" />
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" />
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96" />
+                        <line x1="12" y1="22.08" x2="12" y2="12" />
                       </svg>
-                      3D View
-                    </motion.div>
-                  </motion.div>
+                      {is3DView ? "3D Mode" : "2D Plan"}
+                    </motion.button>
+                  </div>
 
-                  {/* Floor Plan Area with 3D Tables */}
+                  {/* Floor Plan Area with Tables */}
                   <div style={{
-                    flex: 1,
                     position: "relative",
-                    background: "linear-gradient(180deg, rgba(245, 247, 255, 0.6) 0%, rgba(240, 247, 255, 0.9) 100%)",
-                    borderRadius: "14px",
-                    border: "1px solid rgba(0, 0, 0, 0.05)",
+                    background: "linear-gradient(180deg, rgba(241, 245, 249, 0.8) 0%, rgba(234, 242, 250, 0.95) 100%)",
+                    borderRadius: "16px",
+                    border: "1px solid rgba(0, 0, 0, 0.06)",
                     overflow: "hidden",
-                    minHeight: "350px",
+                    height: isMobile ? "290px" : "340px",
+                    width: "100%",
                   }}>
-                    {/* Floor decoration - grid lines */}
-                    <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0, opacity: 0.2 }}>
+                    {/* Floor Grid */}
+                    <svg width="100%" height="100%" style={{ position: "absolute", top: 0, left: 0, opacity: 0.25 }}>
                       <defs>
                         <pattern id="smallGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-                          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#5B8CD7" strokeWidth="0.5" />
+                          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#64748B" strokeWidth="0.5" />
                         </pattern>
                         <pattern id="grid" width="100" height="100" patternUnits="userSpaceOnUse">
                           <rect width="100" height="100" fill="url(#smallGrid)" />
-                          <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#5B8CD7" strokeWidth="1" />
+                          <path d="M 100 0 L 0 0 0 100" fill="none" stroke="#64748B" strokeWidth="1" />
                         </pattern>
                       </defs>
                       <rect width="100%" height="100%" fill="url(#grid)" />
                     </svg>
 
-                    {/* Decorative Elements */}
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.8 }}
-                      transition={{ delay: 0.8, duration: 0.8 }}
-                      style={{
-                        position: "absolute",
-                        bottom: "10%",
-                        right: "10%",
-                        width: "180px",
-                        height: "25px",
-                        background: "rgba(0, 242, 157, 0.2)",
-                        borderRadius: "20px",
-                        transform: "perspective(800px) rotateX(60deg)",
-                        border: "1px solid rgba(0, 242, 157, 0.3)",
-                      }}
-                    />
-                    <motion.div
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 0.7 }}
-                      transition={{ delay: 0.9, duration: 0.8 }}
-                      style={{
-                        position: "absolute",
-                        top: "15%",
-                        left: "15%",
-                        width: "150px",
-                        height: "25px",
-                        background: "rgba(250, 204, 21, 0.2)",
-                        borderRadius: "20px",
-                        transform: "perspective(800px) rotateX(60deg)",
-                        border: "1px solid rgba(250, 204, 21, 0.3)",
-                      }}
-                    />
+                    {/* Floor Ambient Lighting & Zones */}
+                    <div style={{
+                      position: "absolute",
+                      top: "8px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      padding: "3px 10px",
+                      background: "rgba(255, 255, 255, 0.7)",
+                      backdropFilter: "blur(4px)",
+                      borderRadius: "12px",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      color: "#64748B",
+                      letterSpacing: "0.05em",
+                      border: "1px solid rgba(255, 255, 255, 0.8)",
+                      pointerEvents: "none",
+                      textTransform: "uppercase"
+                    }}>
+                      🪟 Scenic Window Zone
+                    </div>
 
-                    {/* Interactive 3D table buttons */}
-                    {tablePositions.map((pos, i) => (
+                    <div style={{
+                      position: "absolute",
+                      bottom: "8px",
+                      left: "50%",
+                      transform: "translateX(-50%)",
+                      padding: "3px 10px",
+                      background: "rgba(255, 255, 255, 0.7)",
+                      backdropFilter: "blur(4px)",
+                      borderRadius: "12px",
+                      fontSize: "10px",
+                      fontWeight: "700",
+                      color: "#64748B",
+                      letterSpacing: "0.05em",
+                      border: "1px solid rgba(255, 255, 255, 0.8)",
+                      pointerEvents: "none",
+                      textTransform: "uppercase"
+                    }}>
+                      🚪 Entrance & Terrace Access
+                    </div>
+
+                    {/* Interactive Table Buttons */}
+                    {tablePositions.map((pos) => (
                       <Table3DButton
-                        key={i}
-                        number={i + 1}
-                        isSelected={selectedTable === i + 1}
-                        onClick={() => setSelectedTable(i + 1)}
+                        key={pos.id}
+                        number={pos.id}
+                        isSelected={selectedTable === pos.id}
+                        onClick={() => setSelectedTable(pos.id)}
                         position={pos}
                         glassStyles={glassStyles}
+                        is3DMode={is3DView}
                       />
                     ))}
                   </div>
 
                   {/* Bottom Action Bar */}
                   <motion.div
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.7, duration: 0.6 }}
+                    transition={{ delay: 0.3, duration: 0.5 }}
                     style={{
-                      marginTop: "25px",
+                      marginTop: "16px",
                       display: "flex",
+                      flexDirection: isMobile ? "column" : "row",
                       justifyContent: "space-between",
-                      alignItems: "center",
+                      alignItems: isMobile ? "stretch" : "center",
+                      gap: isMobile ? "12px" : "16px",
                     }}
                   >
-                    <div style={{ fontSize: "16px", color: glassStyles.colors.black }}>
-                      <span style={{ fontWeight: "600" }}>Selected:</span> Table {selectedTable}
-                      <span style={{ marginLeft: "8px", color: glassStyles.colors.primaryDeep, fontWeight: "600" }}>
-                        (Window View)
-                      </span>
+                    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                      <div style={{ fontSize: "14px", color: glassStyles.colors.black, display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: "700", color: "#1E293B" }}>Selected:</span>
+                        <span style={{ fontWeight: "800", color: glassStyles.colors.primaryDeep }}>Table {selectedTable}</span>
+                        <span style={{
+                          background: "rgba(0, 242, 157, 0.15)",
+                          color: "#047857",
+                          fontSize: "11px",
+                          fontWeight: "700",
+                          padding: "2px 8px",
+                          borderRadius: "6px"
+                        }}>
+                          {currentSelectedTableInfo.view}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#64748B", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span>👤 {currentSelectedTableInfo.seats} Guests Capacity</span>
+                        <span>•</span>
+                        <span style={{ fontWeight: "700", color: "#0F172A" }}>{currentSelectedTableInfo.price} min</span>
+                      </div>
                     </div>
 
                     <motion.button
-                      whileHover={{ scale: 1.05, y: -2 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.04, y: -2 }}
+                      whileTap={{ scale: 0.96 }}
+                      onClick={() => navigate('/login')}
                       style={{
                         ...glassStyles.button,
                         backgroundColor: glassStyles.colors.primary,
                         color: "white",
-                        fontWeight: "700",
-                        padding: "12px 32px",
+                        fontWeight: "800",
+                        padding: "12px 24px",
                         border: "none",
-                        boxShadow: `0 8px 20px ${glassStyles.colors.primary}40`,
+                        borderRadius: "14px",
+                        boxShadow: `0 8px 24px ${glassStyles.colors.primary}40`,
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
+                        justifyContent: "center",
                         gap: "8px",
-                        fontSize: "1.05rem"
+                        fontSize: "0.95rem",
+                        whiteSpace: "nowrap"
                       }}
                     >
-                      Book Table
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      Book Table {selectedTable}
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M5 12h14M12 5l7 7-7 7" />
                       </svg>
                     </motion.button>
                   </motion.div>
-
-                  <div style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: "30%",
-                    background: "linear-gradient(to bottom, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)",
-                    borderRadius: "24px 24px 0 0",
-                    pointerEvents: "none",
-                  }} />
                 </motion.div>
               </motion.div>
             </motion.div>
