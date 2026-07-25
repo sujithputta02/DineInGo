@@ -1430,11 +1430,11 @@ export default function LandingPage() {
           </motion.div>
         </motion.div>
 
-        {/* Modern Footer */}
+        {/* Modern Responsive Footer */}
         <footer style={{
           backgroundColor: glassStyles.colors.primary,
           color: glassStyles.colors.black,
-          padding: isMobile ? "40px 5%" : "60px 5%",
+          padding: "clamp(40px, 8vw, 60px) clamp(5%, 5vw, 8%)",
           position: "relative",
           zIndex: 5
         }}>
@@ -1444,27 +1444,96 @@ export default function LandingPage() {
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
-            gap: isMobile ? "24px" : "32px",
+            gap: "clamp(24px, 4vw, 32px)",
             textAlign: "center"
           }}>
-            <DineInGoLogo size="small" color={glassStyles.colors.black} yellowColor="white" />
+            {/* Responsive Logo */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6 }}
+            >
+              <DineInGoLogo size="small" color={glassStyles.colors.black} yellowColor="white" />
+            </motion.div>
 
-            <div style={{
-              display: "flex",
-              flexDirection: isMobile ? "column" : "row",
-              gap: isMobile ? "20px" : "40px",
-              fontSize: "1rem",
-              fontWeight: "600",
-              alignItems: "center"
-            }}>
-              <span style={{ cursor: "pointer" }}>Privacy Policy</span>
-              <span style={{ cursor: "pointer" }}>Terms of Service</span>
-              <span style={{ cursor: "pointer" }}>Contact Support</span>
-            </div>
+            {/* Responsive Navigation Links */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.1 }}
+              style={{
+                display: "flex",
+                flexDirection: isMobile ? "column" : "row",
+                flexWrap: "wrap",
+                justifyContent: "center",
+                gap: "clamp(16px, 3vw, 40px)",
+                fontSize: "clamp(0.9rem, 2vw, 1rem)",
+                fontWeight: "600",
+                alignItems: "center",
+                width: "100%",
+                maxWidth: isMobile ? "100%" : "600px"
+              }}
+            >
+              <motion.span
+                whileHover={{ scale: 1.05, color: "white" }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  padding: "8px 12px",
+                  borderRadius: "8px"
+                }}
+              >
+                Privacy Policy
+              </motion.span>
+              <motion.span
+                whileHover={{ scale: 1.05, color: "white" }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  padding: "8px 12px",
+                  borderRadius: "8px"
+                }}
+              >
+                Terms of Service
+              </motion.span>
+              <motion.span
+                whileHover={{ scale: 1.05, color: "white" }}
+                whileTap={{ scale: 0.95 }}
+                style={{
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  padding: "8px 12px",
+                  borderRadius: "8px"
+                }}
+              >
+                Contact Support
+              </motion.span>
+            </motion.div>
 
-            <div style={{ fontSize: "0.9rem", opacity: 0.6 }}>
-              <p>© 2026 DineInGo. All rights reserved. <br /> Designed for the elite dining experience.</p>
-            </div>
+            {/* Responsive Copyright Text */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 0.6 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              style={{
+                fontSize: "clamp(0.8rem, 1.8vw, 0.9rem)",
+                opacity: 0.6,
+                lineHeight: "1.6",
+                maxWidth: isMobile ? "100%" : "600px"
+              }}
+            >
+              <p style={{ margin: 0 }}>
+                © 2026 DineInGo. All rights reserved.
+                {!isMobile && <br />}
+                {isMobile && " "}
+                Designed for the elite dining experience.
+              </p>
+            </motion.div>
           </div>
         </footer>
       </motion.div>
