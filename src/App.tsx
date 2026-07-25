@@ -15,6 +15,7 @@ const TableSelection = React.lazy(() => import('./pages/TableSelection'));
 const ReservationDetailsPage = React.lazy(() => import('./pages/ReservationDetailsPage'));
 import TermsPage from './TermsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
+import ContactSupportPage from './pages/ContactSupportPage';
 import UserFeedbackForm from './components/UserFeedbackForm';
 import FoodMenu from './pages/FoodMenu';
 import AdminLoginPage from './pages/AdminLoginPage';
@@ -207,6 +208,8 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/signup" element={<SignupPage />} />
                 <Route path="/terms" element={<TermsPage />} />
+                <Route path="/privacy" element={<PrivacyPolicyPage />} />
+                <Route path="/support" element={<ContactSupportPage />} />
                 <Route path="/feedback" element={<UserFeedbackForm />} />
                 <Route path="/test-floor-designer" element={<FloorPlanDesigner />} />
                 <Route path="/test-event-designer" element={<EventSeatingDesigner />} />

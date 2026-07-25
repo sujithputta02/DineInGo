@@ -1448,21 +1448,12 @@ export default function LandingPage() {
             textAlign: "center"
           }}>
             {/* Responsive Logo */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6 }}
-            >
+            <div>
               <DineInGoLogo size="small" color={glassStyles.colors.black} yellowColor="white" />
-            </motion.div>
+            </div>
 
             {/* Responsive Navigation Links */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.1 }}
+            <div
               style={{
                 display: "flex",
                 flexDirection: isMobile ? "column" : "row",
@@ -1476,9 +1467,8 @@ export default function LandingPage() {
                 maxWidth: isMobile ? "100%" : "600px"
               }}
             >
-              <motion.span
-                whileHover={{ scale: 1.05, color: "white" }}
-                whileTap={{ scale: 0.95 }}
+              <span
+                onClick={() => navigate('/privacy')}
                 style={{
                   cursor: "pointer",
                   transition: "all 0.2s ease",
@@ -1487,10 +1477,9 @@ export default function LandingPage() {
                 }}
               >
                 Privacy Policy
-              </motion.span>
-              <motion.span
-                whileHover={{ scale: 1.05, color: "white" }}
-                whileTap={{ scale: 0.95 }}
+              </span>
+              <span
+                onClick={() => navigate('/terms')}
                 style={{
                   cursor: "pointer",
                   transition: "all 0.2s ease",
@@ -1499,10 +1488,9 @@ export default function LandingPage() {
                 }}
               >
                 Terms of Service
-              </motion.span>
-              <motion.span
-                whileHover={{ scale: 1.05, color: "white" }}
-                whileTap={{ scale: 0.95 }}
+              </span>
+              <span
+                onClick={() => navigate('/support')}
                 style={{
                   cursor: "pointer",
                   transition: "all 0.2s ease",
@@ -1511,15 +1499,11 @@ export default function LandingPage() {
                 }}
               >
                 Contact Support
-              </motion.span>
-            </motion.div>
+              </span>
+            </div>
 
             {/* Responsive Copyright Text */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 0.6 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.6, delay: 0.2 }}
+            <div
               style={{
                 fontSize: "clamp(0.8rem, 1.8vw, 0.9rem)",
                 opacity: 0.6,
@@ -1533,7 +1517,7 @@ export default function LandingPage() {
                 {isMobile && " "}
                 Designed for the elite dining experience.
               </p>
-            </motion.div>
+            </div>
           </div>
         </footer>
       </motion.div>
