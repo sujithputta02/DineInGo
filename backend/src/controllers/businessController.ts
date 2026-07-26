@@ -163,7 +163,9 @@ const transformBusinessData = (business: any, req: Request): any => {
       price: item.price,
       category: item.category,
       image: item.image || '/images/placeholder-food.svg',
-      isVegetarian: item.isVegetarian || false,
+      available: item.available !== undefined ? item.available : true,
+      dietaryType: item.dietaryType || null, // 'veg', 'non-veg', or 'vegan'
+      isVegetarian: item.isVegetarian || item.dietaryType === 'veg' || false,
       isSpicy: item.isSpicy || false,
       isPopular: item.isPopular || false
     })) : [],
