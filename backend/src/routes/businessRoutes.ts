@@ -81,18 +81,12 @@ router.get('/test', (req: Request, res: Response) => {
 
 // New Business Management API
 router.get('/', businessApiLimiter, validateBusinessSearch, handleValidationErrors, getAllBusinesses);
-router.post('/', businessRegistrationLimiter, verifyUserToken, verifyBusinessOwner, logBusinessAction, upload.fields([
-  { name: 'thumbnail', maxCount: 1 },
-  { name: 'coverImage', maxCount: 1 }
-]), createBusiness); // Validation removed - controller handles FormData parsing
+router.post('/', businessRegistrationLimiter, verifyUserToken, verifyBusinessOwner, logBusinessAction, upload.any(), createBusiness); // Validation removed - controller handles FormData parsing
 router.get('/owner/:ownerId', businessApiLimiter, verifyUserToken, getOwnerBusinesses);
 router.get('/dashboard/:ownerId', businessApiLimiter, verifyUserToken, getBusinessDashboard);
 router.get('/analytics/dashboard/:ownerId', businessApiLimiter, verifyUserToken, getDashboardAnalytics);
 router.get('/:id', businessApiLimiter, validateObjectId, handleValidationErrors, getBusiness);
-router.put('/:id', businessUpdateLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, logBusinessAction, upload.fields([
-  { name: 'thumbnail', maxCount: 1 },
-  { name: 'coverImage', maxCount: 1 }
-]), updateBusiness); // Validation removed - controller handles FormData parsing
+router.put('/:id', businessUpdateLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, logBusinessAction, upload.any(), updateBusiness); // Validation removed - controller handles FormData parsing
 router.delete('/:id', businessApiLimiter, verifyUserToken, verifyBusinessOwner, verifyBusinessAccess, logBusinessAction, deleteBusiness);
 
 // Business Workflow

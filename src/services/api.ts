@@ -368,6 +368,17 @@ async function createBusiness(businessData: any) {
     formData.append('coverImage', businessData.coverImage);
     delete business.coverImage;
   }
+  
+  // Handle menu item images
+  if (business.menu && Array.isArray(business.menu)) {
+    business.menu = business.menu.map((item: any, index: number) => {
+      if (item.image instanceof File) {
+        formData.append(`menuImage-${index}`, item.image);
+        return { ...item, image: undefined }; // Remove File object, backend will set Cloudinary URL
+      }
+      return item;
+    });
+  }
 
   // Add business data as JSON
   formData.append('data', JSON.stringify(business));
@@ -451,6 +462,17 @@ async function updateBusiness(id: string, businessData: any) {
   if (businessData.coverImage instanceof File) {
     formData.append('coverImage', businessData.coverImage);
     delete businessData.coverImage;
+  }
+  
+  // Handle menu item images
+  if (businessData.menu && Array.isArray(businessData.menu)) {
+    businessData.menu = businessData.menu.map((item: any, index: number) => {
+      if (item.image instanceof File) {
+        formData.append(`menuImage-${index}`, item.image);
+        return { ...item, image: undefined }; // Remove File object, backend will set Cloudinary URL
+      }
+      return item;
+    });
   }
 
   // Add business data as JSON
@@ -760,7 +782,7 @@ async function disconnectBusinessPOS(businessId: string) {
 }
 
 // Business API combined object
-export const businessApi = {
+const businessApi = {
   create: createBusiness,
   getOwnerBusinesses,
   getDashboard,
@@ -899,7 +921,7 @@ async function getDynamicTableFee(restaurantId: string, date: string, time: stri
 }
 
 // Booking API combined object
-export const bookingsApi = {
+const bookingsApi = {
   getAll: getAllBookings,
   getById: getBookingById,
   create: createBooking,
@@ -961,7 +983,7 @@ async function bulkUpdateMenuItemDisplayOrder(items: { id: string, displayOrder:
 }
 
 // Menu API combined object
-export const menuApi = {
+const menuApi = {
   createCategory,
   getCategories,
   updateCategory,
@@ -1005,7 +1027,7 @@ async function cancelWaitlistEntry(entryId: string) {
 }
 
 // Waitlist API combined object
-export const waitlistApi = {
+const waitlistApi = {
   checkAccess: checkWaitlistAccess,
   verifyCode: verifyWaitlistCode,
   join: joinWaitlist,
@@ -1048,7 +1070,7 @@ async function getPreOrderAnalytics(businessId: string, startDate?: string, endD
 }
 
 // Pre-order API combined object
-export const preOrderApi = {
+const preOrderApi = {
   create: createPreOrder,
   getBusinessPreOrders: getBusinessPreOrdersInApi,
   getCustomerPreOrders: getCustomerPreOrdersInApi,
@@ -1088,7 +1110,7 @@ async function registerForEventInApi(id: string, data: any) {
   return apiRequest(`${API_URL}/api/v1/events/${id}/register`, 'POST', data);
 }
 
-export const eventApi = {
+const eventApi = {
   getAll: getAllEvents,
   getById: getEventByIdInApi,
   create: createEvent,
@@ -1337,7 +1359,7 @@ async function updateUserOnboardingStatusInApi(userId: string, completed: boolea
 }
 
 // User API combined object
-export const userAPI = {
+const userAPI = {
   fetchUserData: fetchUserDataInInApi,
   getReviews: getUserReviewsInApi,
   changePassword: changeUserPassword,
@@ -1436,7 +1458,7 @@ async function markAllNotificationsAsRead(userId: string) {
 }
 
 // Notification API combined object
-export const notificationsApi = {
+const notificationsApi = {
   getAll: getAllNotifications,
   markAsRead: markNotificationAsRead,
   markAllAsRead: markAllNotificationsAsRead,
@@ -1454,7 +1476,7 @@ async function updateUserCuisineScore(userId: string, cuisineName: string, incre
 }
 
 // User Preference API combined object
-export const userPreferenceApi = {
+const userPreferenceApi = {
   get: getUserPreferences,
   upsert: upsertUserPreferences,
   updateCuisineScore: updateUserCuisineScore,
@@ -1479,7 +1501,7 @@ async function resetPasswordInApi(email: string, resetToken: string, newPassword
 }
 
 // Auth OTP API combined object
-export const authOtpApi = {
+const authOtpApi = {
   requestSignupOTP: requestSignupOTPInApi,
   verifySignupOTP: verifySignupOTPInApi,
   requestForgotPasswordOTP: requestForgotPasswordOTPInApi,
@@ -1518,12 +1540,16 @@ async function getFoodScanHistory() {
   return apiRequest(`${API_URL}/api/v1/food-scans/history/${user.uid}`);
 }
 
-export const foodScanApi = {
+const foodScanApi = {
   log: logFoodScan,
   correct: correctFoodScan,
   getHistory: getFoodScanHistory
 };
 
+// Named exports for direct imports
+export { businessApi, bookingsApi, userAPI, notificationsApi, preOrderApi, eventApi, userPreferenceApi, authOtpApi, foodScanApi, menuApi, waitlistApi };
+
+// Default export for convenience
 export default {
   business: businessApi,
   bookings: bookingsApi,
@@ -1533,5 +1559,7 @@ export default {
   event: eventApi,
   preferences: userPreferenceApi,
   authOtp: authOtpApi,
-  foodScans: foodScanApi
+  foodScans: foodScanApi,
+  menu: menuApi,
+  waitlist: waitlistApi
 };

@@ -70,6 +70,8 @@ interface MenuItem {
   category: string;
   description: string;
   available: boolean;
+  image?: string | File; // Cloudinary URL or File object
+  dietaryType?: 'veg' | 'non-veg' | 'vegan'; // Dietary indicator
 }
 
 interface WeeklySchedule {
@@ -553,6 +555,67 @@ function BusinessOnboarding() {
             />
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Latitude *</label>
+              <input
+                type="number"
+                step="any"
+                value={businessDetails.locationData?.latitude ?? ''}
+                onChange={isReadOnly ? undefined : (e) => {
+                  const latitude = e.target.value ? parseFloat(e.target.value) : 0;
+                  setBusinessDetails(prev => ({
+                    ...prev,
+                    locationData: {
+                      address: prev.locationData?.address || '',
+                      city: prev.locationData?.city || '',
+                      state: prev.locationData?.state || '',
+                      country: prev.locationData?.country || '',
+                      pincode: prev.locationData?.pincode || '',
+                      latitude,
+                      longitude: prev.locationData?.longitude || 0
+                    }
+                  }));
+                }}
+                readOnly={isReadOnly}
+                className={`w-full px-4 py-3 border border-slate-300 rounded-lg ${isReadOnly
+                  ? 'bg-slate-50 cursor-not-allowed'
+                  : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                  }`}
+                placeholder="e.g., 40.7128"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Longitude *</label>
+              <input
+                type="number"
+                step="any"
+                value={businessDetails.locationData?.longitude ?? ''}
+                onChange={isReadOnly ? undefined : (e) => {
+                  const longitude = e.target.value ? parseFloat(e.target.value) : 0;
+                  setBusinessDetails(prev => ({
+                    ...prev,
+                    locationData: {
+                      address: prev.locationData?.address || '',
+                      city: prev.locationData?.city || '',
+                      state: prev.locationData?.state || '',
+                      country: prev.locationData?.country || '',
+                      pincode: prev.locationData?.pincode || '',
+                      latitude: prev.locationData?.latitude || 0,
+                      longitude
+                    }
+                  }));
+                }}
+                readOnly={isReadOnly}
+                className={`w-full px-4 py-3 border border-slate-300 rounded-lg ${isReadOnly
+                  ? 'bg-slate-50 cursor-not-allowed'
+                  : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                  }`}
+                placeholder="e.g., -74.0060"
+              />
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Business Type *</label>
             <div className="grid grid-cols-3 gap-2">
@@ -707,89 +770,203 @@ function BusinessOnboarding() {
               {restaurantConfig.menu.length > 0 ? (
                 <div className="space-y-3">
                   {restaurantConfig.menu.map((item, index) => (
-                    <div key={item.id} className="flex items-center gap-3 p-3 bg-white rounded-lg border border-slate-200">
-                      <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-3">
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => {
-                            const newName = e.target.value;
-                            setRestaurantConfig(prev => {
-                              const updatedMenu = [...prev.menu];
-                              updatedMenu[index] = { ...item, name: newName };
-                              return { ...prev, menu: updatedMenu };
-                            });
-                          }}
-                          className="px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          placeholder="Item name"
-                        />
-                        <select
-                          value={item.category}
-                          onChange={(e) => {
-                            const newCategory = e.target.value;
-                            setRestaurantConfig(prev => {
-                              const updatedMenu = [...prev.menu];
-                              updatedMenu[index] = { ...item, category: newCategory };
-                              return { ...prev, menu: updatedMenu };
-                            });
-                          }}
-                          className="px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                        >
-                          <option value="Starters">Starters</option>
-                          <option value="Main Course">Main Course</option>
-                          <option value="Desserts">Desserts</option>
-                          <option value="Beverages">Beverages</option>
-                          <option value="Sides">Sides</option>
-                          <option value="Breads">Breads</option>
-                        </select>
-                        <input
-                          type="number"
-                          value={item.price}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setRestaurantConfig(prev => {
-                              const updatedMenu = [...prev.menu];
-                              // Allow empty string to exist in state for better UX
-                              const newPrice = val === '' ? '' : parseInt(val);
-                              if (newPrice !== '' && isNaN(newPrice as number)) return prev;
-                              updatedMenu[index] = { ...item, price: newPrice };
-                              return { ...prev, menu: updatedMenu };
-                            });
-                          }}
-                          className="px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                          placeholder="Price (₹)"
-                          min="0"
-                        />
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="checkbox"
-                            checked={item.available}
-                            onChange={(e) => {
-                              const isChecked = e.target.checked;
-                              setRestaurantConfig(prev => {
-                                const updatedMenu = [...prev.menu];
-                                updatedMenu[index] = { ...item, available: isChecked };
-                                return { ...prev, menu: updatedMenu };
-                              });
-                            }}
-                            className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
-                          />
-                          <span className="text-xs text-slate-600">Available</span>
+                    <div key={item.id} className="p-4 bg-white rounded-lg border border-slate-200">
+                      <div className="flex gap-4">
+                        {/* Image Upload Section */}
+                        <div className="flex-shrink-0">
+                          <label className="block text-xs font-medium text-slate-700 mb-2">Item Image</label>
+                          <div className="relative">
+                            {item.image ? (
+                              <div className="relative w-24 h-24 rounded-lg overflow-hidden border-2 border-slate-200">
+                                <img
+                                  src={typeof item.image === 'string' ? item.image : URL.createObjectURL(item.image)}
+                                  alt={item.name || 'Menu item'}
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRestaurantConfig(prev => {
+                                      const updatedMenu = [...prev.menu];
+                                      updatedMenu[index] = { ...item, image: undefined };
+                                      return { ...prev, menu: updatedMenu };
+                                    });
+                                  }}
+                                  className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full hover:bg-red-700"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            ) : (
+                              <label className="flex flex-col items-center justify-center w-24 h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors">
+                                <Upload size={20} className="text-slate-400 mb-1" />
+                                <span className="text-xs text-slate-500">Upload</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setRestaurantConfig(prev => {
+                                        const updatedMenu = [...prev.menu];
+                                        updatedMenu[index] = { ...item, image: file };
+                                        return { ...prev, menu: updatedMenu };
+                                      });
+                                    }
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Form Fields Section */}
+                        <div className="flex-1 space-y-3">
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <input
+                              type="text"
+                              value={item.name}
+                              onChange={(e) => {
+                                const newName = e.target.value;
+                                setRestaurantConfig(prev => {
+                                  const updatedMenu = [...prev.menu];
+                                  updatedMenu[index] = { ...item, name: newName };
+                                  return { ...prev, menu: updatedMenu };
+                                });
+                              }}
+                              className="px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              placeholder="Item name"
+                            />
+                            <select
+                              value={item.category}
+                              onChange={(e) => {
+                                const newCategory = e.target.value;
+                                setRestaurantConfig(prev => {
+                                  const updatedMenu = [...prev.menu];
+                                  updatedMenu[index] = { ...item, category: newCategory };
+                                  return { ...prev, menu: updatedMenu };
+                                });
+                              }}
+                              className="px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                            >
+                              <option value="Starters">Starters</option>
+                              <option value="Main Course">Main Course</option>
+                              <option value="Desserts">Desserts</option>
+                              <option value="Beverages">Beverages</option>
+                              <option value="Sides">Sides</option>
+                              <option value="Breads">Breads</option>
+                            </select>
+                            <input
+                              type="number"
+                              value={item.price}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setRestaurantConfig(prev => {
+                                  const updatedMenu = [...prev.menu];
+                                  const newPrice = val === '' ? '' : parseInt(val);
+                                  if (newPrice !== '' && isNaN(newPrice as number)) return prev;
+                                  updatedMenu[index] = { ...item, price: newPrice };
+                                  return { ...prev, menu: updatedMenu };
+                                });
+                              }}
+                              className="px-3 py-2 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                              placeholder="Price (₹)"
+                              min="0"
+                            />
+                          </div>
+
+                          <div className="flex items-center gap-4">
+                            {/* Dietary Type Selector */}
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs font-medium text-slate-700">Type:</label>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRestaurantConfig(prev => {
+                                      const updatedMenu = [...prev.menu];
+                                      updatedMenu[index] = { ...item, dietaryType: 'veg' };
+                                      return { ...prev, menu: updatedMenu };
+                                    });
+                                  }}
+                                  className={`px-3 py-1 text-xs rounded border ${item.dietaryType === 'veg'
+                                    ? 'border-green-600 bg-green-50 text-green-700'
+                                    : 'border-slate-300 hover:border-green-600'
+                                    }`}
+                                >
+                                  🟢 Veg
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRestaurantConfig(prev => {
+                                      const updatedMenu = [...prev.menu];
+                                      updatedMenu[index] = { ...item, dietaryType: 'non-veg' };
+                                      return { ...prev, menu: updatedMenu };
+                                    });
+                                  }}
+                                  className={`px-3 py-1 text-xs rounded border ${item.dietaryType === 'non-veg'
+                                    ? 'border-red-600 bg-red-50 text-red-700'
+                                    : 'border-slate-300 hover:border-red-600'
+                                    }`}
+                                >
+                                  🔴 Non-Veg
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setRestaurantConfig(prev => {
+                                      const updatedMenu = [...prev.menu];
+                                      updatedMenu[index] = { ...item, dietaryType: 'vegan' };
+                                      return { ...prev, menu: updatedMenu };
+                                    });
+                                  }}
+                                  className={`px-3 py-1 text-xs rounded border ${item.dietaryType === 'vegan'
+                                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700'
+                                    : 'border-slate-300 hover:border-emerald-600'
+                                    }`}
+                                >
+                                  🌱 Vegan
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Available Checkbox */}
+                            <div className="flex items-center gap-2 ml-auto">
+                              <input
+                                type="checkbox"
+                                checked={item.available}
+                                onChange={(e) => {
+                                  const isChecked = e.target.checked;
+                                  setRestaurantConfig(prev => {
+                                    const updatedMenu = [...prev.menu];
+                                    updatedMenu[index] = { ...item, available: isChecked };
+                                    return { ...prev, menu: updatedMenu };
+                                  });
+                                }}
+                                className="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                              />
+                              <span className="text-xs text-slate-600">Available</span>
+                            </div>
+
+                            {/* Delete Button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRestaurantConfig(prev => ({
+                                  ...prev,
+                                  menu: prev.menu.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
+                              title="Remove item"
+                            >
+                              <X size={16} />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setRestaurantConfig(prev => ({
-                            ...prev,
-                            menu: prev.menu.filter((_, i) => i !== index)
-                          }));
-                        }}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded transition-colors"
-                        title="Remove item"
-                      >
-                        <X size={16} />
-                      </button>
                     </div>
                   ))}
                 </div>
