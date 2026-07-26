@@ -53,6 +53,37 @@ export const registerOrLinkOwner = async (req: Request, res: Response) => {
 
                 await owner.save();
 
+                // Ensure user profile exists
+                try {
+                    const { User } = await import('../models/User');
+                    const existingUser = await User.findOne({ uid });
+                    
+                    if (!existingUser) {
+                        await User.create({
+                            uid,
+                            email: email.toLowerCase(),
+                            displayName: owner.displayName,
+                            name: owner.displayName,
+                            photoURL: owner.photoURL || '',
+                            emailVerified: true,
+                            timezone: 'Asia/Kolkata',
+                            createdAt: new Date(),
+                            lastLogin: new Date(),
+                            isEarlyAccess: false,
+                            isAdmin: false,
+                            points: 0,
+                            activities: [{
+                                type: 'login',
+                                timestamp: new Date(),
+                                deviceInfo: req.headers['user-agent'] || 'Unknown',
+                                ipAddress: req.ip || req.connection.remoteAddress || 'Unknown'
+                            }]
+                        });
+                    }
+                } catch (userCreationError) {
+                    console.error('Failed to create user profile for business owner:', userCreationError);
+                }
+
                 return res.status(200).json({
                     success: true,
                     message: 'Account linked successfully',
@@ -68,6 +99,37 @@ export const registerOrLinkOwner = async (req: Request, res: Response) => {
                     linkedProvider: provider,
                 });
             } else {
+                // Provider already linked - ensure user profile exists
+                try {
+                    const { User } = await import('../models/User');
+                    const existingUser = await User.findOne({ uid });
+                    
+                    if (!existingUser) {
+                        await User.create({
+                            uid,
+                            email: email.toLowerCase(),
+                            displayName: owner.displayName,
+                            name: owner.displayName,
+                            photoURL: owner.photoURL || '',
+                            emailVerified: true,
+                            timezone: 'Asia/Kolkata',
+                            createdAt: new Date(),
+                            lastLogin: new Date(),
+                            isEarlyAccess: false,
+                            isAdmin: false,
+                            points: 0,
+                            activities: [{
+                                type: 'login',
+                                timestamp: new Date(),
+                                deviceInfo: req.headers['user-agent'] || 'Unknown',
+                                ipAddress: req.ip || req.connection.remoteAddress || 'Unknown'
+                            }]
+                        });
+                    }
+                } catch (userCreationError) {
+                    console.error('Failed to create user profile for business owner:', userCreationError);
+                }
+
                 // Provider already linked, just return owner data
                 return res.status(200).json({
                     success: true,
@@ -109,6 +171,39 @@ export const registerOrLinkOwner = async (req: Request, res: Response) => {
                 authProviders: [provider],
                 hasPassword: provider === 'password',
             });
+
+            // Also create a user profile for the business owner
+            // This allows them to use user-facing features and settings
+            try {
+                const { User } = await import('../models/User');
+                const existingUser = await User.findOne({ uid });
+                
+                if (!existingUser) {
+                    await User.create({
+                        uid,
+                        email: email.toLowerCase(),
+                        displayName,
+                        name: displayName,
+                        photoURL: photoURL || '',
+                        emailVerified: true,
+                        timezone: 'Asia/Kolkata',
+                        createdAt: new Date(),
+                        lastLogin: new Date(),
+                        isEarlyAccess: false,
+                        isAdmin: false,
+                        points: 0,
+                        activities: [{
+                            type: 'signup',
+                            timestamp: new Date(),
+                            deviceInfo: req.headers['user-agent'] || 'Unknown',
+                            ipAddress: req.ip || req.connection.remoteAddress || 'Unknown'
+                        }]
+                    });
+                }
+            } catch (userCreationError) {
+                // Don't fail owner registration if user creation fails
+                console.error('Failed to create user profile for business owner:', userCreationError);
+            }
 
             // Send business welcome email (non-blocking)
             emailService.sendBusinessWelcomeEmail(email, displayName).catch((emailError: any) => 

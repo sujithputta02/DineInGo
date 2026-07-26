@@ -1189,47 +1189,48 @@ const EventSeatingDesigner: React.FC<{
   const layout = eventConfig.seatingLayout ? seatsToRows(eventConfig.seatingLayout.seats) : [];
 
   return (
-    <div className="flex h-full min-h-[700px] bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      {/* Left Sidebar - Controls */}
-      <div className="w-96 bg-white border-r border-slate-200 flex flex-col shadow-lg">
+    <div className="flex flex-col lg:flex-row h-full min-h-[500px] sm:min-h-[600px] lg:min-h-[700px] bg-gradient-to-br from-slate-50 via-white to-slate-100">
+      {/* Left Sidebar / Top Toolbar - Controls */}
+      <div className="w-full lg:w-80 xl:w-96 bg-white border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col shadow-lg max-h-[40vh] lg:max-h-full">
         {/* Header */}
-        <div className="p-6 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-teal-50">
-          <h2 className="text-xl font-bold text-slate-800 mb-3">Event Seating Designer</h2>
-          <div className="flex gap-2 mb-3">
+        <div className="p-3 sm:p-4 md:p-6 border-b border-slate-200 bg-gradient-to-r from-emerald-50 to-teal-50 flex-shrink-0">
+          <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-800 mb-2 sm:mb-3">Event Seating Designer</h2>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-2 sm:mb-3">
             <button
               onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm ${
                 isPreviewMode 
                   ? 'bg-emerald-600 text-white hover:bg-emerald-700' 
                   : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-300'
               }`}
             >
-              <Eye size={18} />
-              {isPreviewMode ? 'Design Mode' : 'Preview'}
+              <Eye size={14} className="sm:w-[18px] sm:h-[18px]" />
+              <span className="hidden xs:inline">{isPreviewMode ? 'Design Mode' : 'Preview'}</span>
             </button>
             <button
               onClick={() => setShowGrid(!showGrid)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold transition-all shadow-sm ${
                 showGrid 
                   ? 'bg-slate-700 text-white' 
                   : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-300'
               }`}
             >
-              <Grid size={18} />
+              <Grid size={14} className="sm:w-[18px] sm:h-[18px]" />
+              <span className="hidden xs:inline">Grid</span>
             </button>
             <button
               onClick={() => setShowTemplates(!showTemplates)}
-              className="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all text-sm font-semibold border border-blue-200"
+              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg sm:rounded-xl transition-all text-xs sm:text-sm font-semibold border border-blue-200"
             >
-              <Copy size={18} />
-              Templates
+              <Copy size={14} className="sm:w-[18px] sm:h-[18px]" />
+              <span className="hidden xs:inline">Templates</span>
             </button>
           </div>
           
           {/* Save Button - Always Visible at Top */}
           <div className="space-y-2">
             {saveMessage && (
-              <div className={`text-xs p-2 rounded-lg text-center ${
+              <div className={`text-[10px] sm:text-xs p-2 rounded-lg text-center ${
                 saveMessage.includes('Error') 
                   ? 'bg-red-50 text-red-700 border border-red-200' 
                   : 'bg-emerald-100 text-emerald-800 border border-emerald-300'
@@ -1240,10 +1241,11 @@ const EventSeatingDesigner: React.FC<{
             <button 
               onClick={saveSeatingLayout}
               disabled={isSaving}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white rounded-xl font-bold transition-all shadow-lg hover:shadow-xl text-base"
+              className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-400 disabled:cursor-not-allowed text-white rounded-lg sm:rounded-xl font-bold transition-all shadow-lg hover:shadow-xl text-sm sm:text-base"
             >
-              <Save size={20} />
-              {isSaving ? 'Saving...' : 'Save Layout'}
+              <Save size={16} className="sm:w-5 sm:h-5" />
+              <span className="hidden xs:inline">{isSaving ? 'Saving...' : 'Save Layout'}</span>
+              <span className="xs:hidden">{isSaving ? '...' : 'Save'}</span>
             </button>
           </div>
         </div>

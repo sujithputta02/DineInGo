@@ -111,8 +111,8 @@ export const enforcePortalIsolation = (expectedPortal: Portal) => {
       }
 
       // Add portal and user info to request
-      req.user = decoded;
-      req.portal = expectedPortal;
+      (req as any).user = decoded;
+      (req as any).portal = expectedPortal;
       
       next();
     } catch (error) {
@@ -131,7 +131,7 @@ export const enforcePortalIsolation = (expectedPortal: Portal) => {
  */
 export const adminSuperProtection = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user as TokenPayload;
+    const user = (req as any).user as TokenPayload;
     
     if (!user) {
       res.status(401).json({
@@ -193,7 +193,7 @@ export const adminSuperProtection = async (req: Request, res: Response, next: Ne
  */
 export const businessDataIsolation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user as TokenPayload;
+    const user = (req as any).user as TokenPayload;
     
     if (!user) {
       res.status(401).json({
@@ -242,7 +242,7 @@ export const businessDataIsolation = async (req: Request, res: Response, next: N
  */
 export const userDataIsolation = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const user = req.user as TokenPayload;
+    const user = (req as any).user as TokenPayload;
     
     if (!user) {
       res.status(401).json({

@@ -83,10 +83,10 @@ const BusinessNotifications: React.FC = () => {
 
   if (loading && !refreshing) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-6">
         <div className="flex items-center justify-center">
-          <RefreshCw className="animate-spin text-emerald-600" size={24} />
-          <span className="ml-2 text-gray-600">Loading notifications...</span>
+          <RefreshCw className="animate-spin text-emerald-600 sm:w-6 sm:h-6" size={20} />
+          <span className="ml-2 text-gray-600 text-sm sm:text-base">Loading notifications...</span>
         </div>
       </div>
     );
@@ -94,11 +94,11 @@ const BusinessNotifications: React.FC = () => {
 
   if (!notifications.length) {
     return (
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-6 sm:p-8">
         <div className="text-center">
-          <Bell className="mx-auto text-gray-400 mb-3" size={48} />
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">No Notifications</h3>
-          <p className="text-gray-600">You're all caught up! No new notifications at this time.</p>
+          <Bell className="mx-auto text-gray-400 mb-3 sm:w-12 sm:h-12" size={36} />
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">No Notifications</h3>
+          <p className="text-gray-600 text-sm sm:text-base">You're all caught up! No new notifications at this time.</p>
         </div>
       </div>
     );
@@ -106,38 +106,38 @@ const BusinessNotifications: React.FC = () => {
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200">
         {/* Header */}
-        <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 bg-emerald-100 rounded-lg">
-              <Bell className="text-emerald-600" size={20} />
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 p-4 sm:p-6 border-b border-gray-200">
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            <div className="p-1.5 sm:p-2 bg-emerald-100 rounded-lg">
+              <Bell className="text-emerald-600 sm:w-5 sm:h-5" size={18} />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Notifications</h2>
-              <p className="text-sm text-gray-600">Stay updated with important messages</p>
+              <h2 className="text-lg sm:text-xl font-bold text-gray-900">Notifications</h2>
+              <p className="text-xs sm:text-sm text-gray-600 hidden xs:block">Stay updated with important messages</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 w-full sm:w-auto">
             <button 
               onClick={handleRefresh} 
               disabled={refreshing}
               className="p-2 text-gray-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors" 
               title="Refresh notifications"
             >
-              <RefreshCw className={refreshing ? 'animate-spin' : ''} size={20} />
+              <RefreshCw className={refreshing ? 'animate-spin sm:w-5 sm:h-5' : 'sm:w-5 sm:h-5'} size={18} />
             </button>
             {unreadCount > 0 && (
               <>
-                <span className="bg-red-500 text-white text-xs font-bold px-3 py-1 rounded-full">
-                  {unreadCount} unread
+                <span className="bg-red-500 text-white text-[10px] sm:text-xs font-bold px-2 sm:px-3 py-0.5 sm:py-1 rounded-full">
+                  {unreadCount} <span className="hidden xs:inline">unread</span>
                 </span>
                 <button
                   onClick={handleMarkAllAsRead}
                   disabled={markingAllAsRead}
-                  className="px-4 py-2 text-sm text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg font-medium transition-colors"
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 rounded-lg font-medium transition-colors"
                 >
-                  {markingAllAsRead ? 'Marking...' : 'Mark all as read'}
+                  {markingAllAsRead ? 'Marking...' : <><span className="hidden sm:inline">Mark all as read</span><span className="sm:hidden">Mark all</span></>}
                 </button>
               </>
             )}
@@ -145,7 +145,7 @@ const BusinessNotifications: React.FC = () => {
         </div>
 
         {/* Notifications List */}
-        <div className={`divide-y divide-gray-200 max-h-[600px] overflow-y-auto ${refreshing ? 'opacity-50' : ''}`}>
+        <div className={`divide-y divide-gray-200 max-h-[400px] sm:max-h-[600px] overflow-y-auto ${refreshing ? 'opacity-50' : ''}`}>
           {notifications.map((n: any) => {
             const notificationRead = n.isRead === true;
             
@@ -154,30 +154,30 @@ const BusinessNotifications: React.FC = () => {
                 key={n._id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className={`p-4 transition cursor-pointer hover:bg-gray-50 ${
+                className={`p-3 sm:p-4 transition cursor-pointer hover:bg-gray-50 ${
                   notificationRead ? 'bg-white' : 'bg-blue-50'
                 }`}
                 onClick={() => handleNotificationClick(n)}
               >
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2 sm:gap-3">
                   <div className="flex-shrink-0 mt-1">
-                    {getTypeIcon(n.type)}
+                    {React.cloneElement(getTypeIcon(n.type), { size: 18, className: 'sm:w-5 sm:h-5' })}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2">
-                      <h3 className={`text-base ${notificationRead ? 'font-medium text-gray-900' : 'font-bold text-gray-900'}`}>
+                      <h3 className={`text-sm sm:text-base ${notificationRead ? 'font-medium text-gray-900' : 'font-bold text-gray-900'}`}>
                         {n.title}
                       </h3>
                       {!notificationRead && (
-                        <span className="flex-shrink-0 bg-blue-500 h-2 w-2 rounded-full mt-2" title="Unread notification"></span>
+                        <span className="flex-shrink-0 bg-blue-500 h-2 w-2 rounded-full mt-1 sm:mt-2" title="Unread notification"></span>
                       )}
                     </div>
-                    <p className="mt-1 text-sm text-gray-600 line-clamp-2">{n.message}</p>
-                    <div className="mt-2 flex items-center gap-4 text-xs text-gray-500">
-                      <span>{new Date(n.createdAt).toLocaleString()}</span>
+                    <p className="mt-1 text-xs sm:text-sm text-gray-600 line-clamp-2">{n.message}</p>
+                    <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs text-gray-500">
+                      <span className="truncate">{new Date(n.createdAt).toLocaleString()}</span>
                       {notificationRead && (
-                        <span className="flex items-center gap-1 text-green-600">
-                          <Check size={12} />
+                        <span className="flex items-center gap-1 text-green-600 flex-shrink-0">
+                          <Check className="sm:w-3 sm:h-3" size={10} />
                           Read
                         </span>
                       )}
@@ -197,50 +197,50 @@ const BusinessNotifications: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4"
             onClick={handleCloseModal}
           >
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+              className="bg-white rounded-xl sm:rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] sm:max-h-[80vh] overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Modal Header */}
-              <div className={`flex items-start justify-between p-6 border-b ${getTypeColor(selectedNotification.type)}`}>
-                <div className="flex items-start gap-3 flex-1 pr-4">
-                  {getTypeIcon(selectedNotification.type)}
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900">
+              <div className={`flex items-start justify-between p-4 sm:p-6 border-b ${getTypeColor(selectedNotification.type)}`}>
+                <div className="flex items-start gap-2 sm:gap-3 flex-1 pr-2 sm:pr-4">
+                  {React.cloneElement(getTypeIcon(selectedNotification.type), { size: 18, className: 'sm:w-5 sm:h-5' })}
+                  <div className="flex-1 min-w-0">
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">
                       {selectedNotification.title}
                     </h2>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-xs sm:text-sm text-gray-600 mt-0.5 sm:mt-1">
                       {new Date(selectedNotification.createdAt).toLocaleString()}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseModal}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-white rounded-lg"
+                  className="text-gray-400 hover:text-gray-600 transition-colors p-1 hover:bg-white rounded-lg flex-shrink-0"
                   title="Close"
                 >
-                  <X size={24} />
+                  <X size={20} className="sm:w-6 sm:h-6" />
                 </button>
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 overflow-y-auto max-h-[50vh]">
-                <div className="text-gray-700 whitespace-pre-line leading-relaxed">
+              <div className="p-4 sm:p-6 overflow-y-auto max-h-[45vh] sm:max-h-[50vh]">
+                <div className="text-gray-700 whitespace-pre-line leading-relaxed text-sm sm:text-base">
                   {selectedNotification.message}
                 </div>
               </div>
 
               {/* Modal Footer */}
-              <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+              <div className="flex flex-col xs:flex-row items-stretch xs:items-center justify-end gap-2 sm:gap-3 p-4 sm:p-6 border-t border-gray-200 bg-gray-50">
                 <button
                   onClick={handleCloseModal}
-                  className="px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium"
+                  className="px-4 sm:px-6 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors font-medium text-sm sm:text-base order-2 xs:order-1"
                 >
                   Close
                 </button>
@@ -248,15 +248,15 @@ const BusinessNotifications: React.FC = () => {
                   <button
                     onClick={handleMarkAsRead}
                     disabled={markingAsRead}
-                    className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                    className="px-4 sm:px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm sm:text-base order-1 xs:order-2"
                   >
-                    <Check size={18} />
+                    <Check size={16} className="sm:w-[18px] sm:h-[18px]" />
                     {markingAsRead ? 'Marking...' : 'Mark as Read'}
                   </button>
                 )}
                 {isRead(selectedNotification._id) && (
-                  <div className="flex items-center gap-2 text-emerald-600 font-medium px-4 py-2 bg-emerald-50 rounded-lg">
-                    <Check size={18} />
+                  <div className="flex items-center justify-center gap-2 text-emerald-600 font-medium px-3 sm:px-4 py-2 bg-emerald-50 rounded-lg text-sm sm:text-base order-1 xs:order-2">
+                    <Check size={16} className="sm:w-[18px] sm:h-[18px]" />
                     Already Read
                   </div>
                 )}

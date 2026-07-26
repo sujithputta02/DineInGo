@@ -64,7 +64,7 @@ const EventSeatingViewer: React.FC<EventSeatingViewerProps> = ({
 
   if (!seatingLayout || !seatingLayout.areas || seatingLayout.areas.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-6 sm:py-8 text-gray-500 text-sm sm:text-base">
         No seating layout available
       </div>
     );
@@ -101,17 +101,17 @@ const EventSeatingViewer: React.FC<EventSeatingViewerProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto">
+    <div className="w-full max-w-5xl mx-auto px-2 sm:px-0">
       {/* Stage Visual - exact match from designer */}
-      <div className="w-full max-w-3xl mb-12 mx-auto">
-        <div className="w-3/4 h-12 bg-gradient-to-b from-slate-700 to-slate-900 mx-auto rounded-t-[50%] shadow-2xl text-center text-white font-bold tracking-[0.5em] text-sm pt-3 border-t-4 border-slate-600">
+      <div className="w-full max-w-3xl mb-8 sm:mb-12 mx-auto">
+        <div className="w-3/4 h-10 sm:h-12 bg-gradient-to-b from-slate-700 to-slate-900 mx-auto rounded-t-[50%] shadow-2xl text-center text-white font-bold tracking-[0.3em] sm:tracking-[0.5em] text-xs sm:text-sm pt-2 sm:pt-3 border-t-2 sm:border-t-4 border-slate-600">
           S T A G E
         </div>
       </div>
 
       {/* Canvas Container - dark mode background */}
       <div className="relative w-full overflow-auto lg:overflow-visible flex items-center justify-center">
-        <div className="relative min-w-[600px] lg:min-w-0 w-full max-w-[800px] aspect-[4/3] bg-slate-900 rounded-2xl border-2 border-slate-700 shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0">
+        <div className="relative min-w-[500px] sm:min-w-[600px] lg:min-w-0 w-full max-w-[800px] aspect-[4/3] bg-slate-900 rounded-xl sm:rounded-2xl border border-slate-700 sm:border-2 shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0">
           {/* Concert Areas */}
           {areas.map((area: any) => {
             const isSelected = selectedAreaIds.includes(area.id);
@@ -138,13 +138,13 @@ const EventSeatingViewer: React.FC<EventSeatingViewerProps> = ({
                 }}
               >
                 {/* Area Content - exact match from designer */}
-                <div className="w-full h-full flex flex-col items-center justify-center p-1 sm:p-2 text-center">
-                  <div className="font-bold text-[10px] sm:text-sm uppercase tracking-wider line-clamp-1">{area.name || area.label}</div>
-                  <div className="text-[8px] sm:text-xs opacity-80 mt-0.5">{area.tier.toUpperCase()}</div>
-                  <div className={`text-[8px] sm:text-xs mt-0.5 font-medium ${isFull ? 'text-red-400' : 'opacity-60'}`}>
-                    {booked}/{area.capacity} {isFull ? 'FULL' : 'booked'}
+                <div className="w-full h-full flex flex-col items-center justify-center p-0.5 sm:p-1 md:p-2 text-center">
+                  <div className="font-bold text-[8px] xs:text-[10px] sm:text-xs md:text-sm uppercase tracking-wider line-clamp-1">{area.name || area.label}</div>
+                  <div className="text-[7px] xs:text-[8px] sm:text-[10px] md:text-xs opacity-80 mt-0.5">{area.tier.toUpperCase()}</div>
+                  <div className={`text-[7px] xs:text-[8px] sm:text-[10px] md:text-xs mt-0.5 font-medium ${isFull ? 'text-red-400' : 'opacity-60'}`}>
+                    {booked}/{area.capacity} {isFull ? 'FULL' : <span className="hidden xs:inline">booked</span>}
                   </div>
-                  <div className="text-[10px] sm:text-xs font-bold mt-1 text-emerald-400">₹{area.price}</div>
+                  <div className="text-[8px] xs:text-[10px] sm:text-xs md:text-sm font-bold mt-0.5 sm:mt-1 text-emerald-400">₹{area.price}</div>
                 </div>
               </div>
             );
@@ -153,18 +153,18 @@ const EventSeatingViewer: React.FC<EventSeatingViewerProps> = ({
       </div>
 
       {/* Legend - dark mode */}
-      <div className="mt-8 sm:mt-12 flex flex-wrap justify-center gap-4 sm:gap-6 bg-slate-800 px-4 sm:px-6 py-3 rounded-full border-2 border-slate-700 shadow-md overflow-x-auto max-w-[90vw] no-scrollbar">
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-amber-600/30 border-amber-500 border-2"></div>
-          <span className="text-[10px] sm:text-xs text-slate-300 font-medium">VIP Area</span>
+      <div className="mt-6 sm:mt-8 md:mt-12 flex flex-wrap justify-center gap-3 sm:gap-4 md:gap-6 bg-slate-800 px-3 sm:px-4 md:px-6 py-2 sm:py-3 rounded-full border border-slate-700 sm:border-2 shadow-md overflow-x-auto max-w-[90vw] no-scrollbar">
+        <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded bg-amber-600/30 border-amber-500 border sm:border-2"></div>
+          <span className="text-[9px] xs:text-[10px] sm:text-xs text-slate-300 font-medium">VIP <span className="hidden xs:inline">Area</span></span>
         </div>
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-emerald-600/30 border-emerald-500 border-2"></div>
-          <span className="text-[10px] sm:text-xs text-slate-300 font-medium">Premium Area</span>
+        <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded bg-emerald-600/30 border-emerald-500 border sm:border-2"></div>
+          <span className="text-[9px] xs:text-[10px] sm:text-xs text-slate-300 font-medium">Premium <span className="hidden xs:inline">Area</span></span>
         </div>
-        <div className="flex items-center gap-2 whitespace-nowrap">
-          <div className="w-3 h-3 sm:w-4 sm:h-4 rounded bg-slate-600/30 border-slate-500 border-2"></div>
-          <span className="text-[10px] sm:text-xs text-slate-300 font-medium">Standard Area</span>
+        <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+          <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-4 md:h-4 rounded bg-slate-600/30 border-slate-500 border sm:border-2"></div>
+          <span className="text-[9px] xs:text-[10px] sm:text-xs text-slate-300 font-medium">Standard <span className="hidden xs:inline">Area</span></span>
         </div>
       </div>
     </div>
