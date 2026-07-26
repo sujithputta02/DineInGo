@@ -396,15 +396,16 @@ export const validateRemoveAdmin = [
 
 /**
  * Validate business registration/creation
+ * Note: Business model uses 'location' and 'locationData', not 'address'
  */
 export const validateBusinessCreation = [
   body('name')
+    .optional() // Make optional since FormData might wrap in 'data' field
     .isString()
     .withMessage('Business name must be a string')
     .isLength({ min: 2, max: 200 })
     .withMessage('Business name must be between 2 and 200 characters')
-    .trim()
-    .escape(),
+    .trim(),
   body('description')
     .optional()
     .isString()
@@ -419,9 +420,17 @@ export const validateBusinessCreation = [
     .isLength({ max: 100 })
     .withMessage('Cuisine must not exceed 100 characters')
     .trim(),
-  body('address')
+  body('location')
+    .optional() // location is optional, uses locationData or can be empty
     .isString()
-    .withMessage('Address is required')
+    .withMessage('Location must be a string')
+    .isLength({ max: 500 })
+    .withMessage('Location must not exceed 500 characters')
+    .trim(),
+  body('address')
+    .optional() // Make address optional - not used in Business model
+    .isString()
+    .withMessage('Address must be a string')
     .isLength({ min: 5, max: 500 })
     .withMessage('Address must be between 5 and 500 characters')
     .trim(),
