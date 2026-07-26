@@ -5,6 +5,7 @@ import { Business } from '../models/Business';
 import { EarlyAccess } from '../models/EarlyAccess';
 import { getIO } from '../utils/socket';
 import securityConfig from '../config/security';
+import { emailSecurityValidator } from '../utils/emailSecurityValidator';
 
 // Join waitlist
 export const joinWaitlist = async (req: Request, res: Response): Promise<void> => {
@@ -335,7 +336,7 @@ export const expireOldEntries = async (): Promise<void> => {
         console.error('Error expiring waitlist entries:', error);
     }
 };
-// Join early access (landing page)
+// Join early access (landing page) - WITH SECURITY VALIDATION
 export const joinEarlyAccess = async (req: Request, res: Response): Promise<void> => {
     try {
         const { email, userType } = req.body;
@@ -345,8 +346,28 @@ export const joinEarlyAccess = async (req: Request, res: Response): Promise<void
             return;
         }
 
+        // 🛡️ SECURITY LAYER 1: Email validation and disposable domain check
+        const emailValidation = await emailSecurityValidator.validateEmail(email);
+        
+        if (!emailValidation.isValid) {
+            console.log(`[SignupSecurity] ❌ Blocked signup attempt: ${email} - Reason: ${emailValidation.reason}`);
+            
+            res.status(400).json({
+                success: false,
+                message: emailValidation.reason || 'Invalid email address',
+                blockedDomain: emailValidation.domain,
+                suggestion: emailValidation.reason?.includes('typo') 
+                    ? 'Please check your email address for typos.' 
+                    : 'Please use a permanent email address from providers like Gmail, Outlook, or your company email.'
+            });
+            return;
+        }
+
+        // Normalize email
+        const normalizedEmail = email.toLowerCase().trim();
+
         // Check for existing signup
-        const existing = await EarlyAccess.findOne({ email, userType });
+        const existing = await EarlyAccess.findOne({ email: normalizedEmail, userType });
         if (existing) {
             res.status(200).json({
                 success: true,
@@ -356,8 +377,10 @@ export const joinEarlyAccess = async (req: Request, res: Response): Promise<void
             return;
         }
 
-        const entry = new EarlyAccess({ email, userType });
+        const entry = new EarlyAccess({ email: normalizedEmail, userType });
         await entry.save();
+
+        console.log(`[SignupSecurity] ✅ Valid signup: ${normalizedEmail} (${userType})`);
 
         res.status(201).json({
             success: true,

@@ -48,6 +48,22 @@ import { handleValidationErrors } from './middleware/inputValidation';
 import securityConfig from './config/security';
 import { botFingerprintGuard, dataHarvestGuard, promptInjectionGuard } from './middleware/aiThreatGuard';
 
+// ADVANCED SECURITY: Import comprehensive security layers
+import {
+  fullSecurityStack,
+  sanitizeXSS,
+  preventPathTraversal,
+  preventCommandInjection,
+  preventSSRF,
+  bruteForceProtection,
+  sessionSecurityCheck
+} from './middleware/advancedSecurityMiddleware';
+
+import {
+  sanitizePortalParameters,
+  blockCrossPortalRequests
+} from './middleware/portalIsolationMiddleware';
+
 // REDIS CACHING: Import cache service
 import { cacheService } from './services/cacheService';
 
@@ -88,6 +104,19 @@ app.use(compression({
 // AI THREAT GUARD: Block bot scrapers and data harvesters globally
 app.use(botFingerprintGuard);
 app.use(dataHarvestGuard);
+
+// ADVANCED SECURITY STACK: Apply comprehensive protection
+// This protects against: SQL/NoSQL injection, XSS, Path Traversal, Command Injection,
+// SSRF, Prototype Pollution, HPP, and more
+app.use(sanitizeXSS);
+app.use(preventPathTraversal);
+app.use(preventCommandInjection);
+app.use(preventSSRF);
+app.use(sessionSecurityCheck);
+
+// PORTAL ISOLATION: Prevent cross-portal contamination
+app.use(sanitizePortalParameters);
+app.use(blockCrossPortalRequests);
 
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));

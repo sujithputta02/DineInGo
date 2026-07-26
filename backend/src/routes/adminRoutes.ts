@@ -63,7 +63,23 @@ import {
 } from '../middleware/inputValidation';
 import { accountLockoutCheck } from '../middleware/accountLockout';
 
+// 🛡️ PORTAL ISOLATION: Import admin-specific security fortress
+import { 
+  adminPortalSecurity, 
+  adminSuperProtection 
+} from '../middleware/portalIsolationMiddleware';
+
+// 🛡️ ADVANCED SECURITY: Import comprehensive protection
+import { 
+  bruteForceProtection,
+  checkValidationResult
+} from '../middleware/advancedSecurityMiddleware';
+
 const router = express.Router();
+
+// 🔒 Apply admin portal security to ALL routes below this point
+// This ensures complete isolation from user and business portals
+// router.use(adminPortalSecurity); // Uncomment when auth is properly configured
 
 // Test route
 router.get('/test', (req, res) => {
