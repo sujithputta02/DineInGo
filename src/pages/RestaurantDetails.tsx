@@ -1187,7 +1187,7 @@ const RestaurantDetails = () => {
                   <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center text-emerald-500 group-hover/item:scale-110 transition-transform">
                     <Phone size={22} />
                   </div>
-                  <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{restaurant.phoneNumber}</span>
+                  <span className={`text-sm font-bold ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>{restaurant.phone || 'Contact via app'}</span>
                 </div>
               </div>
 

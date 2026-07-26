@@ -38,6 +38,7 @@ interface BusinessDetails {
     latitude: number;
     longitude: number;
   };
+  phone?: string; // Contact phone number
   type: BusinessType;
   description: string;
   thumbnail: File | string | null;
@@ -331,6 +332,7 @@ function BusinessOnboarding() {
         name: businessDetails.name,
         location: businessDetails.location,
         locationData: businessDetails.locationData,
+        phone: businessDetails.phone || null,
         type: businessDetails.type,
         description: businessDetails.description,
         basePrice: 100, // Default base price
@@ -532,6 +534,21 @@ function BusinessOnboarding() {
                 : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
                 }`}
               placeholder="Enter your business name"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Contact Phone</label>
+            <input
+              type="tel"
+              value={businessDetails.phone || ''}
+              onChange={isReadOnly ? undefined : (e) => setBusinessDetails(prev => ({ ...prev, phone: e.target.value }))}
+              readOnly={isReadOnly}
+              className={`w-full px-4 py-3 border border-slate-300 rounded-lg ${isReadOnly
+                ? 'bg-slate-50 cursor-not-allowed'
+                : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                }`}
+              placeholder="+91 XXXXX XXXXX"
             />
           </div>
 

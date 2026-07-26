@@ -17,6 +17,7 @@ export interface IBusiness extends Document {
     latitude: number;
     longitude: number;
   };
+  phone?: string; // Contact phone number
   type: 'restaurant' | 'event' | 'both';
   description?: string;
   thumbnail?: string;
@@ -181,6 +182,7 @@ const BusinessSchema = new Schema<IBusiness>({
     latitude: Number,
     longitude: Number
   },
+  phone: { type: String }, // Contact phone number
   type: { type: String, enum: ['restaurant', 'event', 'both'], required: true },
   description: String,
   thumbnail: String,

@@ -128,6 +128,7 @@ const transformBusinessData = (business: any, req: Request): any => {
     description: business.description,
     status: business.status,
     ownerId: business.ownerId,
+    phone: business.phone || null,
     createdAt: business.createdAt,
     updatedAt: business.updatedAt,
 
