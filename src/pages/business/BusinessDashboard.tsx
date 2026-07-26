@@ -1242,9 +1242,9 @@ function BusinessDashboard() {
                   key={business._id}
                   className="border border-slate-200 rounded-2xl p-6 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 bg-slate-50/50 group"
                 >
-                  <div className="flex items-start justify-between mb-6">
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner border-2 ${business.status === 'active' ? 'bg-green-50 border-green-100/50' :
+                  <div className="flex items-start justify-between mb-6 gap-3">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-inner border-2 flex-shrink-0 ${business.status === 'active' ? 'bg-green-50 border-green-100/50' :
                         business.status === 'paused' ? 'bg-yellow-50 border-yellow-100/50' :
                           'bg-slate-100 border-slate-200'
                         }`}>
@@ -1260,11 +1260,11 @@ function BusinessDashboard() {
                             } drop-shadow-sm`} />
                         )}
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1 overflow-hidden">
                         <h4 className="font-extrabold text-slate-900 text-lg md:text-xl truncate group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{business.name}</h4>
                         <p className="text-xs md:text-sm text-slate-500 flex items-center gap-1.5 font-medium mt-1">
-                          <MapPin size={14} className="text-slate-400" />
-                          <span className="truncate">{business.location}</span>
+                          <MapPin size={14} className="text-slate-400 flex-shrink-0" />
+                          <span className="truncate block">{business.location}</span>
                         </p>
                       </div>
                     </div>
@@ -2184,18 +2184,18 @@ function BusinessDashboard() {
     );
 
     return (
-      <div className="space-y-8">
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">Operations & Staff</h2>
-              <p className="text-slate-500">Manage shifts, roles, and live table occupancy</p>
+      <div className="space-y-6 sm:space-y-8">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="min-w-0">
+              <h2 className="text-xl sm:text-2xl font-bold text-slate-900 truncate">Operations & Staff</h2>
+              <p className="text-sm sm:text-base text-slate-500">Manage shifts, roles, and live table occupancy</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <select
                 value={selectedOpsBusiness}
                 onChange={(e) => setSelectedOpsBusiness(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all"
+                className="bg-slate-50 border border-slate-200 rounded-lg sm:rounded-xl px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-medium focus:ring-2 focus:ring-emerald-500 outline-none transition-all w-full sm:w-auto"
               >
                 <option value="">Select a business...</option>
                 {dashboardData?.businesses.map(b => (
@@ -2296,9 +2296,9 @@ function BusinessDashboard() {
                 </div>
 
                 {/* Slot Selection Row */}
-                <div className="mb-6 bg-slate-50 border border-slate-200/60 p-4 rounded-2xl">
-                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2.5">Time Slot Picker</p>
-                  <div className="flex flex-wrap gap-2">
+                <div className="mb-4 sm:mb-6 bg-slate-50 border border-slate-200/60 p-3 sm:p-4 rounded-xl sm:rounded-2xl">
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 mb-2 sm:mb-2.5">Time Slot Picker</p>
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
                     {[
                       { time: '12:00', label: '12:00 PM' },
                       { time: '13:00', label: '01:00 PM' },
@@ -2316,15 +2316,15 @@ function BusinessDashboard() {
                             setSelectedSlotTime(slot.time);
                             setWalkInTime(slot.time);
                           }}
-                          className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                          className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 border ${
                             isSelected
                               ? 'bg-slate-900 border-slate-900 text-white shadow-md'
                               : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                           }`}
                         >
-                          <span>{slot.label}</span>
+                          <span className="whitespace-nowrap">{slot.label}</span>
                           {isClosest && (
-                            <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+                            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
                           )}
                         </button>
                       );
@@ -2334,15 +2334,15 @@ function BusinessDashboard() {
 
                 {/* POS Interactive Seating Canvas */}
                 {viewType === 'map' && activeOpsFloor ? (
-                  <div className="flex flex-col items-center justify-center p-2">
+                  <div className="flex flex-col items-center justify-center p-1 sm:p-2">
                     {/* Floor tabs */}
                     {opsFloors.length > 1 && (
-                      <div className="flex bg-slate-100 p-1 rounded-xl mb-4 gap-1 self-start">
+                      <div className="flex bg-slate-100 p-1 rounded-lg sm:rounded-xl mb-3 sm:mb-4 gap-1 self-start overflow-x-auto max-w-full">
                         {opsFloors.map((floor: any) => (
                           <button
                             key={floor.id}
                             onClick={() => setActiveFloorId(floor.id)}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg text-[10px] sm:text-xs font-bold transition-all whitespace-nowrap flex-shrink-0 ${
                               activeFloorId === floor.id
                                 ? 'bg-white text-slate-800 shadow-sm'
                                 : 'text-slate-500 hover:text-slate-800'
@@ -2355,7 +2355,7 @@ function BusinessDashboard() {
                     )}
 
                     {/* Interactive Canvas container */}
-                    <div className="relative w-full aspect-video bg-slate-950 rounded-[2.5rem] border-[6px] border-slate-900 shadow-2xl p-4 overflow-hidden">
+                    <div className="relative w-full aspect-video bg-slate-950 rounded-2xl sm:rounded-[2.5rem] border-4 sm:border-[6px] border-slate-900 shadow-2xl p-2 sm:p-4 overflow-hidden">
                       {/* Features Layer */}
                       {activeOpsFloor.features.map((feat: any, idx: number) => (
                         <POSFeatureRenderer key={`feat-${idx}`} feature={feat} />
@@ -2387,15 +2387,15 @@ function BusinessDashboard() {
                     </div>
 
                     {/* Seating map legends */}
-                    <div className="flex flex-wrap gap-4 mt-6 text-[10px] font-black uppercase tracking-wider text-slate-500 justify-center">
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full"></span> Vacant (Ready)
+                    <div className="flex flex-wrap gap-2 sm:gap-4 mt-4 sm:mt-6 text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-slate-500 justify-center">
+                      <span className="flex items-center gap-1 sm:gap-1.5">
+                        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-emerald-500 rounded-full"></span> Vacant
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> Online Booked
+                      <span className="flex items-center gap-1 sm:gap-1.5">
+                        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-blue-500 rounded-full"></span> Online
                       </span>
-                      <span className="flex items-center gap-1.5">
-                        <span className="w-2.5 h-2.5 bg-orange-500 rounded-full"></span> POS Walk-in
+                      <span className="flex items-center gap-1 sm:gap-1.5">
+                        <span className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-orange-500 rounded-full"></span> Walk-in
                       </span>
                     </div>
                   </div>
@@ -2403,10 +2403,10 @@ function BusinessDashboard() {
                   // List Cards Mode (slot sensitive!)
                   <div>
                     {/* POS Table Filters */}
-                    <div className="flex flex-wrap gap-2 mb-6">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-4 sm:mb-6">
                       <button
                         onClick={() => setTableFilter('all')}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all border ${
                           tableFilter === 'all'
                             ? 'bg-slate-900 border-slate-900 text-white'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
@@ -2416,37 +2416,37 @@ function BusinessDashboard() {
                       </button>
                       <button
                         onClick={() => setTableFilter('online')}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all border ${
                           tableFilter === 'online'
                             ? 'bg-blue-600 border-blue-600 text-white'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        Online Reservations
+                        Online
                       </button>
                       <button
                         onClick={() => setTableFilter('offline')}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all border ${
                           tableFilter === 'offline'
                             ? 'bg-orange-500 border-orange-500 text-white'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        Offline Walk-ins
+                        Walk-ins
                       </button>
                       <button
                         onClick={() => setTableFilter('ready')}
-                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all border ${
+                        className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-bold transition-all border ${
                           tableFilter === 'ready'
                             ? 'bg-emerald-600 border-emerald-600 text-white'
                             : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                         }`}
                       >
-                        Available (Ready)
+                        Available
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                       {tableStatuses.filter(table => {
                         const occupancy = getTableSlotOccupancy(table.tableId);
                         if (tableFilter === 'ready') return occupancy.status === 'Ready';
@@ -2595,31 +2595,31 @@ function BusinessDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-8 max-w-7xl">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 lg:py-8 max-w-7xl">
         {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10">
-          <div className="flex-1">
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight leading-tight">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-6 mb-6 sm:mb-8 lg:mb-10">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl xl:text-5xl font-black text-slate-900 tracking-tight leading-tight truncate">
               Dashboard
             </h1>
-            <p className="text-base md:text-xl text-slate-500 font-medium mt-1">
+            <p className="text-sm sm:text-base lg:text-xl text-slate-500 font-medium mt-1">
               Manage your restaurants and events with ease
             </p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="bg-white rounded-2xl px-5 py-3 shadow-lg shadow-slate-100 border border-slate-200">
-              <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
-                <span className="text-sm md:text-base font-bold text-slate-700 tracking-tight">Live Dashboard</span>
+          <div className="flex items-center gap-2 sm:gap-4 flex-shrink-0">
+            <div className="bg-white rounded-xl sm:rounded-2xl px-3 sm:px-5 py-2 sm:py-3 shadow-lg shadow-slate-100 border border-slate-200">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 bg-green-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]"></div>
+                <span className="text-xs sm:text-sm md:text-base font-bold text-slate-700 tracking-tight whitespace-nowrap">Live Dashboard</span>
               </div>
             </div>
           </div>
         </div>
 
         {/* Navigation */}
-        <div className="mb-10 -mx-4 px-4 sm:mx-0 sm:px-0">
-          <div className="overflow-x-auto no-scrollbar pb-3">
-            <nav className="flex space-x-3 bg-white/60 backdrop-blur-md rounded-3xl p-2 shadow-xl shadow-slate-100 border border-slate-200 min-w-max">
+        <div className="mb-6 sm:mb-8 lg:mb-10 -mx-3 px-3 sm:mx-0 sm:px-0">
+          <div className="overflow-x-auto no-scrollbar pb-2 sm:pb-3">
+            <nav className="flex space-x-2 sm:space-x-3 bg-white/60 backdrop-blur-md rounded-2xl sm:rounded-3xl p-1.5 sm:p-2 shadow-xl shadow-slate-100 border border-slate-200 min-w-max">
               {[
                 { id: 'overview', label: 'Overview', icon: BarChart3 },
                 { id: 'businesses', label: 'Businesses', icon: Building2 },
@@ -2634,12 +2634,12 @@ function BusinessDashboard() {
                 <button
                   key={id}
                   onClick={() => setViewMode(id as any)}
-                  className={`flex items-center gap-3 px-5 md:px-8 py-3.5 md:py-4.5 rounded-2xl font-black text-sm md:text-base transition-all duration-300 whitespace-nowrap flex-shrink-0 ${viewMode === id
-                    ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200 ring-4 ring-emerald-50'
+                  className={`flex items-center gap-1.5 sm:gap-2 md:gap-3 px-3 sm:px-5 md:px-6 lg:px-8 py-2 sm:py-3 md:py-3.5 lg:py-4.5 rounded-xl sm:rounded-2xl font-black text-xs sm:text-sm md:text-base transition-all duration-300 whitespace-nowrap flex-shrink-0 ${viewMode === id
+                    ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200 ring-2 sm:ring-4 ring-emerald-50'
                     : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50 hover:shadow-inner'
                     }`}
                 >
-                  <Icon size={viewMode === id ? 20 : 18} className={viewMode === id ? 'text-white' : 'text-slate-400'} />
+                  <Icon size={viewMode === id ? (window.innerWidth < 640 ? 16 : 20) : (window.innerWidth < 640 ? 14 : 18)} className={viewMode === id ? 'text-white' : 'text-slate-400'} />
                   {label}
                 </button>
               ))}
@@ -2648,7 +2648,7 @@ function BusinessDashboard() {
         </div>
 
         {/* Content */}
-        <div className="min-h-[500px]">
+        <div className="min-h-[400px] sm:min-h-[500px]">
           {viewMode === 'overview' && renderOverview()}
           {viewMode === 'businesses' && renderBusinesses()}
           {viewMode === 'bookings' && renderBookings()}
@@ -2661,11 +2661,11 @@ function BusinessDashboard() {
         </div>
         {/* Host Walk-in Seating Modal */}
         {showWalkInModal && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-[2rem] w-full max-w-md p-8 border border-slate-100 shadow-2xl relative text-left">
-              <h3 className="text-xl font-black uppercase tracking-wider text-slate-900 mb-6">Host Walk-in Table {walkInTableId}</h3>
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4">
+            <div className="bg-white rounded-2xl sm:rounded-[2rem] w-full max-w-md p-5 sm:p-6 md:p-8 border border-slate-100 shadow-2xl relative text-left max-h-[90vh] overflow-y-auto">
+              <h3 className="text-lg sm:text-xl font-black uppercase tracking-wider text-slate-900 mb-4 sm:mb-6">Host Walk-in Table {walkInTableId}</h3>
               
-              <form onSubmit={handleCreateWalkIn} className="space-y-4">
+              <form onSubmit={handleCreateWalkIn} className="space-y-3 sm:space-y-4">
                 <div>
                   <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Guest Name</label>
                   <input
@@ -2674,11 +2674,11 @@ function BusinessDashboard() {
                     placeholder="e.g. Walk-in Guest"
                     value={walkInName}
                     onChange={(e) => setWalkInName(e.target.value)}
-                    className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900"
+                    className="w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 text-sm sm:text-base"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
                     <label className="block text-xs font-black uppercase tracking-wider text-slate-400 mb-2">Seats</label>
                     <input
@@ -2687,7 +2687,7 @@ function BusinessDashboard() {
                       required
                       value={walkInSeats}
                       onChange={(e) => setWalkInSeats(Number(e.target.value))}
-                      className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900"
+                      className="w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 text-sm sm:text-base"
                     />
                   </div>
                   <div>
@@ -2695,7 +2695,7 @@ function BusinessDashboard() {
                     <select
                       value={walkInTime}
                       onChange={(e) => setWalkInTime(e.target.value)}
-                      className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 font-mono"
+                      className="w-full p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-slate-200 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-slate-900 font-mono text-sm sm:text-base"
                     >
                       <option value="19:00">07:00 PM</option>
                       <option value="19:30">07:30 PM</option>
@@ -2706,18 +2706,18 @@ function BusinessDashboard() {
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4">
+                <div className="flex gap-2 sm:gap-3 pt-3 sm:pt-4">
                   <button
                     type="button"
                     onClick={() => setShowWalkInModal(false)}
-                    className="flex-1 py-4 border border-slate-200 rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all text-sm"
+                    className="flex-1 py-3 sm:py-4 border border-slate-200 rounded-xl sm:rounded-2xl font-bold text-slate-500 hover:bg-slate-50 transition-all text-xs sm:text-sm"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmittingWalkIn}
-                    className="flex-1 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-bold transition-all text-sm flex items-center justify-center gap-2"
+                    className="flex-1 py-3 sm:py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl sm:rounded-2xl font-bold transition-all text-xs sm:text-sm flex items-center justify-center gap-2"
                   >
                     {isSubmittingWalkIn ? 'Reserving...' : 'Seated (Block)'}
                   </button>

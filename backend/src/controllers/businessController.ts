@@ -627,6 +627,15 @@ export const updateBusiness = async (req: Request, res: Response): Promise<void>
       endDate: updateData.endDate
     });
     
+    // Sanitize timeSlots - filter out invalid entries
+    if (updateData.timeSlots && Array.isArray(updateData.timeSlots)) {
+      updateData.timeSlots = updateData.timeSlots.filter((slot: any) => {
+        // Keep only slots that have all required fields
+        return slot.id && slot.name && slot.startTime && slot.type && typeof slot.maxCapacity === 'number';
+      });
+      console.log(`Filtered timeSlots: ${updateData.timeSlots.length} valid slots`);
+    }
+    
     if (updateData.seatingLayout) {
       console.log('SeatingLayout keys:', Object.keys(updateData.seatingLayout));
       if (updateData.seatingLayout.eventConfig) {

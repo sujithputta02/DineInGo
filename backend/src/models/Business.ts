@@ -160,7 +160,7 @@ const TimeSlotSchema = new Schema<ITimeSlot>({
   id: { type: String, required: true },
   name: { type: String, required: true },
   startTime: { type: String, required: true },
-  endTime: { type: String, required: true },
+  endTime: { type: String, required: false }, // Made optional to handle legacy/incomplete data
   type: { type: String, enum: ['lunch', 'dinner', 'event'], required: true },
   available: { type: Boolean, default: true },
   maxCapacity: { type: Number, required: true }
