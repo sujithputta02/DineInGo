@@ -10,7 +10,8 @@ import mongoose from 'mongoose';
 
 /**
  * SECURITY: Business Owner Role Guard
- * Verifies that the requester is a registered business owner or admin in MongoDB
+ * Verifies that the requester is a registered business owner or admin
+ * Checks both MongoDB user record AND Firebase token role
  */
 export const verifyBusinessOwner = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -19,8 +20,21 @@ export const verifyBusinessOwner = async (req: Request, res: Response, next: Nex
       return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required.' });
     }
 
+    // Check Firebase token role first
+    const tokenRole = requester.role;
+    const isOwnerByToken = tokenRole === 'owner' || tokenRole === 'admin' || tokenRole === 'super_admin';
+    
+    // Check MongoDB user record
     const user = await User.findOne({ uid: requester.uid });
-    if (!user || (user.role !== 'owner' && user.role !== 'admin' && !user.isAdmin)) {
+    const isOwnerByDB = user && (user.role === 'owner' || user.role === 'admin' || user.isAdmin);
+
+    // Allow if EITHER token OR database indicates owner/admin role
+    if (!isOwnerByToken && !isOwnerByDB) {
+      console.warn(`[BusinessAuth] Access denied for user ${requester.uid}:`, {
+        tokenRole,
+        dbRole: user?.role,
+        isAdmin: user?.isAdmin
+      });
       return res.status(403).json({ success: false, message: 'Access Denied: Business owner role required.' });
     }
 
