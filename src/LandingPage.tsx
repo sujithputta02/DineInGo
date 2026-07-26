@@ -566,7 +566,7 @@ export default function LandingPage() {
             position: "relative",
             background: glassStyles.colors.bg,
             overflow: "hidden",
-            padding: "0 2%",
+            padding: 0,
           }}
         >
           {/* Organic Background Blobs */}
@@ -628,12 +628,14 @@ export default function LandingPage() {
 
           {/* Header */}
           <header style={{
-            padding: isMobile ? "12px 5%" : "clamp(12px, 4vw, 24px) clamp(12px, 5vw, 5%)",
+            padding: isMobile ? "12px 20px" : "clamp(12px, 4vw, 24px) clamp(24px, 5vw, 60px)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
             position: "fixed",
             top: 0,
+            left: 0,
+            right: 0,
             width: "100%",
             zIndex: 100,
             background: scrollY > 50 || mobileMenuOpen ? "rgba(255, 255, 255, 0.9)" : "transparent",
@@ -704,12 +706,13 @@ export default function LandingPage() {
                   left: 0,
                   width: "100%",
                   background: "white",
-                  padding: "20px 5%",
+                  padding: "20px 20px",
                   boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
                   display: "flex",
                   flexDirection: "column",
                   gap: "15px",
-                  zIndex: 99
+                  zIndex: 99,
+                  boxSizing: "border-box"
                 }}
               >
                 <button
@@ -759,7 +762,7 @@ export default function LandingPage() {
             minHeight: "100vh",
             position: "relative",
             alignItems: "center",
-            padding: isMobile ? "90px 4% 40px" : "0 5%",
+            padding: isMobile ? "90px 20px 40px" : "0 clamp(24px, 5vw, 60px)",
             boxSizing: "border-box",
             textAlign: isMobile ? "center" : "left",
           }}>
@@ -1197,7 +1200,7 @@ export default function LandingPage() {
           viewport={{ once: true, margin: "-20px" }}
           variants={containerVariants}
           style={{
-            padding: isMobile ? "80px 5%" : "120px 5%",
+            padding: isMobile ? "80px 20px" : "120px clamp(24px, 5vw, 60px)",
             background: glassStyles.colors.bg,
             position: "relative",
             overflow: "hidden",
@@ -1406,7 +1409,7 @@ export default function LandingPage() {
           viewport={{ once: true, margin: "-20px" }}
           variants={containerVariants}
           style={{
-            padding: "clamp(80px, 15vw, 160px) 5% 0",
+            padding: isMobile ? "80px 20px 0" : "clamp(80px, 15vw, 160px) clamp(24px, 5vw, 60px) 0",
             background: `linear-gradient(180deg, ${glassStyles.colors.bg} 0%, white 100%)`,
             textAlign: "center",
             position: "relative",
@@ -1473,7 +1476,7 @@ export default function LandingPage() {
         <footer style={{
           backgroundColor: glassStyles.colors.primary,
           color: glassStyles.colors.black,
-          padding: "clamp(40px, 8vw, 60px) clamp(5%, 5vw, 8%)",
+          padding: isMobile ? "40px 20px" : "clamp(40px, 8vw, 60px) clamp(24px, 5vw, 60px)",
           position: "relative",
           zIndex: 5
         }}>
