@@ -203,8 +203,8 @@ const transformBusinessData = (business: any, req: Request): any => {
         startTime: slot.startTime,
         endTime: slot.endTime,
         type: slot.type === 'morning' || slot.type === 'afternoon' ? 'lunch' : 'dinner',
-        available: slot.available,
-        maxCapacity: slot.maxCapacity
+        available: slot.available !== undefined ? slot.available : true,
+        maxCapacity: slot.maxCapacity || business.capacity || 50
       }));
     } else if (business.weeklySchedule) {
       // Create a single slot based on today's operating hours if available
@@ -223,25 +223,49 @@ const transformBusinessData = (business: any, req: Request): any => {
           maxCapacity: business.capacity || 50
         }];
       } else {
-        transformed.timeSlots = business.timeSlots || [];
+        // No schedule for today, use default slots
+        transformed.timeSlots = business.timeSlots || getDefaultTimeSlots();
       }
+    } else if (business.timeSlots && business.timeSlots.length > 0) {
+      // Use existing timeSlots
+      transformed.timeSlots = business.timeSlots;
     } else {
-      transformed.timeSlots = business.timeSlots || [];
+      // No slots configured, use default
+      console.log(`[Transform] No time slots found for restaurant ${business._id}, using defaults`);
+      transformed.timeSlots = getDefaultTimeSlots();
     }
   } else {
-    // Events use their timeSlots directly
-    transformed.timeSlots = business.timeSlots || [];
+    // Events use their timeSlots directly, or defaults if empty
+    transformed.timeSlots = (business.timeSlots && business.timeSlots.length > 0) 
+      ? business.timeSlots 
+      : [];
   }
 
   // Compatibility mapping for Dashboard (location key as object)
   transformed.displayLocation = transformed.location; // Keep string as displayLocation
-  transformed.location = business.locationData || {
-    city: typeof business.location === 'string' ? business.location.split(',')[0]?.trim() || 'Unknown' : 'Unknown',
-    state: typeof business.location === 'string' ? business.location.split(',')[1]?.trim() || 'Unknown' : 'Unknown',
-    country: 'India',
-    latitude: business.locationData?.latitude,
-    longitude: business.locationData?.longitude
-  };
+  
+  // Ensure location object has coordinates (use defaults if missing)
+  if (business.locationData) {
+    transformed.location = {
+      ...business.locationData,
+      city: business.locationData.city || 'Unknown',
+      state: business.locationData.state || 'Unknown',
+      country: business.locationData.country || 'India',
+      latitude: business.locationData.latitude || null,
+      longitude: business.locationData.longitude || null,
+      address: business.locationData.address || transformed.address
+    };
+  } else {
+    // Fallback: parse from location string
+    transformed.location = {
+      city: typeof business.location === 'string' ? business.location.split(',')[0]?.trim() || 'Unknown' : 'Unknown',
+      state: typeof business.location === 'string' ? business.location.split(',')[1]?.trim() || 'Unknown' : 'Unknown',
+      country: 'India',
+      latitude: null,
+      longitude: null,
+      address: transformed.address
+    };
+  }
 
   return transformed;
 };
