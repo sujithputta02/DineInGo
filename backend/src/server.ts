@@ -194,8 +194,12 @@ const mongooseOptions = {
   maxPoolSize: 50, // Max connections (increased from default 10)
   minPoolSize: 10, // Min connections to keep alive
   maxIdleTimeMS: 30000, // Close idle connections after 30s
-  socketTimeoutMS: 45000, // Longer timeout for slow queries
-  serverSelectionTimeoutMS: 5000, // Faster server selection
+  socketTimeoutMS: 60000, // Increased to 60s for slow queries
+  serverSelectionTimeoutMS: 30000, // Increased to 30s for server selection
+  connectTimeoutMS: 30000, // Added connection timeout
+  heartbeatFrequencyMS: 10000, // Check connection health every 10s
+  retryWrites: true, // Enable automatic retry of failed writes
+  retryReads: true, // Enable automatic retry of failed reads
   
   // Server API version
   serverApi: {
@@ -311,8 +315,14 @@ app.use((req: express.Request, res: express.Response) => {
 
 // Socket initialization moved to top
 
-// Auto-confirm job: runs every minute
+// Auto-confirm job: runs every minute (only after MongoDB is connected)
 setInterval(async () => {
+  // Check if MongoDB is connected before running
+  if (mongoose.connection.readyState !== 1) {
+    console.log('Skipping auto-confirm job: MongoDB not connected');
+    return;
+  }
+  
   try {
     const now = new Date();
     // Find all bookings that are blocked and should be auto-confirmed
