@@ -63,67 +63,67 @@ function BookingModal({ booking, onClose, onStatusChange, getStatusColor, getSta
   getPaymentStatusColor: (s: string) => string;
 }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-3 sm:p-4">
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6 border-b border-slate-200">
+        <div className="p-4 sm:p-6 border-b border-slate-200">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold text-slate-900">Booking Details</h2>
-            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><XCircle size={24} /></button>
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900">Booking Details</h2>
+            <button onClick={onClose} className="text-slate-400 hover:text-slate-600"><XCircle size={20} className="sm:w-6 sm:h-6" /></button>
           </div>
         </div>
-        <div className="p-6 space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             <div>
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Booking Information</h3>
-              <div className="space-y-3">
-                <div><label className="text-sm font-medium text-slate-600">Booking Number</label><p className="text-slate-900">{booking.bookingNumber}</p></div>
-                <div><label className="text-sm font-medium text-slate-600">Business</label><p className="text-slate-900">{booking.businessName}</p></div>
-                <div><label className="text-sm font-medium text-slate-600">Date &amp; Time</label><p className="text-slate-900">{booking.date} at {booking.time}</p></div>
-                <div><label className="text-sm font-medium text-slate-600">Seats</label><p className="text-slate-900">{booking.seats} seats</p></div>
-                {booking.tableNumber && (<div><label className="text-sm font-medium text-slate-600">Table</label><p className="text-slate-900">{booking.tableNumber}</p></div>)}
-                {booking.seatNumbers && (<div><label className="text-sm font-medium text-slate-600">Seat Numbers</label><p className="text-slate-900">{booking.seatNumbers.join(', ')}</p></div>)}
+              <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-3 sm:mb-4">Booking Information</h3>
+              <div className="space-y-2 sm:space-y-3">
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Booking Number</label><p className="text-sm sm:text-base text-slate-900">{booking.bookingNumber}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Business</label><p className="text-sm sm:text-base text-slate-900">{booking.businessName}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Date &amp; Time</label><p className="text-sm sm:text-base text-slate-900">{booking.date} at {booking.time}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Seats</label><p className="text-sm sm:text-base text-slate-900">{booking.seats} seats</p></div>
+                {booking.tableNumber && (<div><label className="text-xs sm:text-sm font-medium text-slate-600">Table</label><p className="text-sm sm:text-base text-slate-900">{booking.tableNumber}</p></div>)}
+                {booking.seatNumbers && (<div><label className="text-xs sm:text-sm font-medium text-slate-600">Seat Numbers</label><p className="text-sm sm:text-base text-slate-900">{booking.seatNumbers.join(', ')}</p></div>)}
               </div>
             </div>
             <div>
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Customer Information</h3>
-              <div className="space-y-3">
-                <div><label className="text-sm font-medium text-slate-600">Name</label><p className="text-slate-900">{booking.customerName}</p></div>
-                <div><label className="text-sm font-medium text-slate-600">Email</label><p className="text-slate-900 flex items-center gap-2"><Mail size={16} />{booking.customerEmail}</p></div>
-                <div><label className="text-sm font-medium text-slate-600">Phone</label><p className="text-slate-900 flex items-center gap-2"><Phone size={16} />{booking.customerPhone}</p></div>
+              <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-3 sm:mb-4">Customer Information</h3>
+              <div className="space-y-2 sm:space-y-3">
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Name</label><p className="text-sm sm:text-base text-slate-900">{booking.customerName}</p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Email</label><p className="text-sm sm:text-base text-slate-900 flex items-center gap-2"><Mail size={14} className="sm:w-4 sm:h-4" /><span className="truncate">{booking.customerEmail}</span></p></div>
+                <div><label className="text-xs sm:text-sm font-medium text-slate-600">Phone</label><p className="text-sm sm:text-base text-slate-900 flex items-center gap-2"><Phone size={14} className="sm:w-4 sm:h-4" />{booking.customerPhone}</p></div>
                 <div>
-                  <label className="text-sm font-medium text-slate-600">Status</label>
+                  <label className="text-xs sm:text-sm font-medium text-slate-600">Status</label>
                   <div className="flex items-center gap-2">{getStatusIcon(booking.status)}<span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(booking.status)}`}>{booking.status}</span></div>
                 </div>
               </div>
             </div>
           </div>
           <div>
-            <h3 className="text-lg font-medium text-slate-900 mb-4">Payment Information</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div><label className="text-sm font-medium text-slate-600">Amount</label><p className="text-slate-900 flex items-center gap-2"><DollarSign size={16} />₹{booking.amount}</p></div>
-              <div><label className="text-sm font-medium text-slate-600">Payment Status</label><span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>{booking.paymentStatus}</span></div>
+            <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-3 sm:mb-4">Payment Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <div><label className="text-xs sm:text-sm font-medium text-slate-600">Amount</label><p className="text-sm sm:text-base text-slate-900 flex items-center gap-2"><DollarSign size={14} className="sm:w-4 sm:h-4" />₹{booking.amount}</p></div>
+              <div><label className="text-xs sm:text-sm font-medium text-slate-600">Payment Status</label><span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${getPaymentStatusColor(booking.paymentStatus)}`}>{booking.paymentStatus}</span></div>
             </div>
           </div>
-          {booking.specialRequests && (<div><h3 className="text-lg font-medium text-slate-900 mb-4">Special Requests</h3><p className="text-slate-700 bg-slate-50 p-3 rounded-lg">{booking.specialRequests}</p></div>)}
+          {booking.specialRequests && (<div><h3 className="text-base sm:text-lg font-medium text-slate-900 mb-3 sm:mb-4">Special Requests</h3><p className="text-sm sm:text-base text-slate-700 bg-slate-50 p-3 rounded-lg">{booking.specialRequests}</p></div>)}
           {booking.rating && booking.review && (
             <div>
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Customer Review</h3>
-              <div className="bg-slate-50 p-4 rounded-lg">
-                <div className="flex items-center gap-2 mb-2"><Star className="text-yellow-500 fill-current" size={16} /><span className="font-medium">{booking.rating}/5</span></div>
-                <p className="text-slate-700">{booking.review}</p>
+              <h3 className="text-base sm:text-lg font-medium text-slate-900 mb-3 sm:mb-4">Customer Review</h3>
+              <div className="bg-slate-50 p-3 sm:p-4 rounded-lg">
+                <div className="flex items-center gap-2 mb-2"><Star className="text-yellow-500 fill-current sm:w-4 sm:h-4" size={14} /><span className="font-medium text-sm sm:text-base">{booking.rating}/5</span></div>
+                <p className="text-sm sm:text-base text-slate-700">{booking.review}</p>
               </div>
             </div>
           )}
-          <div className="flex gap-3 pt-4 border-t border-slate-200">
-            <select value={booking.status} onChange={(e) => onStatusChange(booking._id, e.target.value)} className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-4 border-t border-slate-200">
+            <select value={booking.status} onChange={(e) => onStatusChange(booking._id, e.target.value)} className="w-full sm:w-auto px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm">
               <option value="pending">Pending</option>
               <option value="confirmed">Confirmed</option>
               <option value="completed">Completed</option>
               <option value="cancelled">Cancelled</option>
               <option value="no-show">No Show</option>
             </select>
-            <button className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"><MessageSquare size={16} />Contact Customer</button>
-            <button className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"><Edit size={16} />Edit Booking</button>
+            <button className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-sm"><MessageSquare size={14} className="sm:w-4 sm:h-4" /><span className="hidden xs:inline">Contact Customer</span><span className="xs:hidden">Contact</span></button>
+            <button className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm"><Edit size={14} className="sm:w-4 sm:h-4" /><span className="hidden xs:inline">Edit Booking</span><span className="xs:hidden">Edit</span></button>
           </div>
         </div>
       </div>
@@ -330,28 +330,28 @@ function BookingManagement() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-slate-900">Booking Management</h1>
-            <p className="text-slate-600">Manage all your customer bookings</p>
+            <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900">Booking Management</h1>
+            <p className="text-sm sm:text-base text-slate-600">Manage all your customer bookings</p>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-2 sm:gap-3 w-full sm:w-auto">
             <button
               onClick={handleRefresh}
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 text-sm flex-1 sm:flex-initial justify-center"
             >
-              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-              Refresh
+              <RefreshCw size={14} className={`sm:w-4 sm:h-4 ${loading ? 'animate-spin' : ''}`} />
+              <span className="hidden xs:inline">Refresh</span>
             </button>
             <button
               onClick={exportBookings}
-              className="flex items-center gap-2 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+              className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm flex-1 sm:flex-initial justify-center"
             >
-              <Download size={16} />
-              Export
+              <Download size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Export</span>
             </button>
           </div>
         </div>
@@ -380,28 +380,28 @@ function BookingManagement() {
         {!loading && !error && (
           <>
             {/* Filters */}
-            <div className="bg-white rounded-lg p-6 shadow-sm border border-slate-200 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div className="bg-white rounded-lg p-4 sm:p-6 shadow-sm border border-slate-200 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Search</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Search</label>
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={16} />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400 sm:w-4 sm:h-4" size={14} />
                     <input
                       type="text"
                       placeholder="Search bookings..."
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                      className="w-full pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Status</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Status</label>
                   <select
                     value={filters.status}
                     onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   >
                     <option value="all">All Status</option>
                     <option value="pending">Pending</option>
@@ -413,11 +413,11 @@ function BookingManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Business Type</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Business Type</label>
                   <select
                     value={filters.businessType}
                     onChange={(e) => setFilters(prev => ({ ...prev, businessType: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   >
                     <option value="all">All Types</option>
                     <option value="restaurant">Restaurant</option>
@@ -426,11 +426,11 @@ function BookingManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Date Range</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Date Range</label>
                   <select
                     value={filters.dateRange}
                     onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   >
                     <option value="all">All Dates</option>
                     <option value="today">Today</option>
@@ -441,11 +441,11 @@ function BookingManagement() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">Payment</label>
+                  <label className="block text-xs sm:text-sm font-medium text-slate-700 mb-2">Payment</label>
                   <select
                     value={filters.paymentStatus}
                     onChange={(e) => setFilters(prev => ({ ...prev, paymentStatus: e.target.value }))}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 text-sm"
                   >
                     <option value="all">All Payments</option>
                     <option value="paid">Paid</option>
@@ -559,13 +559,13 @@ function BookingManagement() {
                               className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
                               title="View Details"
                             >
-                              <Eye size={18} />
+                              <Eye size={16} className="md:w-[18px] md:h-[18px]" />
                             </button>
                             <button className="p-1 text-slate-600 hover:bg-slate-100 rounded">
-                              <Edit size={18} />
+                              <Edit size={16} className="md:w-[18px] md:h-[18px]" />
                             </button>
                             <button className="p-1 text-red-600 hover:bg-red-50 rounded">
-                              <Trash2 size={18} />
+                              <Trash2 size={16} className="md:w-[18px] md:h-[18px]" />
                             </button>
                           </div>
                         </td>

@@ -92,19 +92,64 @@ function BusinessSettings() {
             const user = auth.currentUser;
             if (!user) return;
 
-            // Fetch user profile
-            const userData = await userAPI.getUser(user.uid);
-            setProfile(userData);
-            setProfileForm(userData);
+            // Fetch user profile - handle 404 gracefully
+            try {
+                const userData = await userAPI.getUser(user.uid);
+                setProfile(userData);
+                setProfileForm(userData);
+            } catch (userError: any) {
+                // Check if this is a 404 error (user not found)
+                const is404Error = 
+                    userError?.response?.status === 404 || 
+                    userError?.message?.includes('404') ||
+                    userError?.message?.includes('User not found') ||
+                    userError?.message?.includes('Not Found');
+                
+                if (is404Error) {
+                    // User profile not found, creating default profile
+                    // This is expected for business owners who haven't completed their profile
+                    console.log('[BusinessSettings] Creating default profile for new business owner');
+                    const defaultProfile: UserProfile = {
+                        uid: user.uid,
+                        displayName: user.displayName || 'User',
+                        name: user.displayName || 'User',
+                        email: user.email || '',
+                        phoneNumber: user.phoneNumber || '',
+                        address: {
+                            street: '',
+                            city: '',
+                            state: '',
+                            country: '',
+                            zipCode: ''
+                        }
+                    };
+                    setProfile(defaultProfile);
+                    setProfileForm(defaultProfile);
+                } else {
+                    // Only log and throw for actual errors (not 404)
+                    console.error('Error fetching user profile:', userError);
+                    throw userError;
+                }
+            }
 
             // Fetch businesses
             const result = await businessApi.getOwnerBusinesses();
             const bizList = result.data || result;
             setBusinesses(bizList);
 
-        } catch (error) {
-            console.error('Error fetching settings data:', error);
-            toast.error('Failed to load settings data');
+        } catch (error: any) {
+            // Check if this is a 404 error that we've already handled gracefully
+            const is404Error = 
+                error?.response?.status === 404 || 
+                error?.message?.includes('404') ||
+                error?.message?.includes('User not found') ||
+                error?.message?.includes('Not Found');
+            
+            // Only log if it's not a user-not-found error that we've already handled
+            if (!is404Error) {
+                console.error('Error fetching settings data:', error);
+                toast.error('Failed to load settings data');
+            }
         } finally {
             setLoading(false);
         }
@@ -114,12 +159,51 @@ function BusinessSettings() {
         if (!profileForm || !profile) return;
         try {
             setSaving(true);
-            await userAPI.updateUser(profile.uid, profileForm);
-            setProfile(profileForm);
-            toast.success('Profile updated successfully');
-        } catch (error) {
-            console.error('Error updating profile:', error);
-            toast.error('Failed to update profile');
+            
+            // Check if this is a new profile (created from defaults due to 404)
+            const isNewProfile = !profile.phoneNumber && !profile.address?.street;
+            
+            if (isNewProfile) {
+                // Create the user profile for the first time
+                try {
+                    await userAPI.createUser({
+                        uid: profile.uid,
+                        email: profile.email,
+                        displayName: profileForm.displayName,
+                        name: profileForm.name,
+                        photoURL: null,
+                        emailVerified: true,
+                        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    });
+                    // Now update with the form data
+                    await userAPI.updateUser(profile.uid, profileForm);
+                    setProfile(profileForm);
+                    toast.success('Profile created successfully');
+                } catch (createError: any) {
+                    // If creation fails because user already exists, just try updating
+                    if (createError?.message?.includes('already exists')) {
+                        await userAPI.updateUser(profile.uid, profileForm);
+                        setProfile(profileForm);
+                        toast.success('Profile updated successfully');
+                    } else {
+                        throw createError;
+                    }
+                }
+            } else {
+                // Update existing profile
+                await userAPI.updateUser(profile.uid, profileForm);
+                setProfile(profileForm);
+                toast.success('Profile updated successfully');
+            }
+        } catch (error: any) {
+            console.error('Error saving profile:', error);
+            if (error?.response?.status === 404) {
+                toast.error('User profile not found. Please try logging out and back in.');
+            } else if (error?.message?.includes('Unauthorized')) {
+                toast.error('Session expired. Please log in again.');
+            } else {
+                toast.error('Failed to save profile. Please try again.');
+            }
         } finally {
             setSaving(false);
         }
@@ -314,13 +398,13 @@ function BusinessSettings() {
                 </div>
 
                 {/* General & Identity */}
-                <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-2 h-full bg-purple-500"></div>
-                    <h3 className="text-xl font-bold text-slate-900 mb-6 flex items-center gap-2">
-                        <Building2 className="text-purple-500" size={24} />
+                <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 border border-slate-100 shadow-sm relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 sm:w-2 h-full bg-purple-500"></div>
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-900 mb-4 sm:mb-6 flex items-center gap-2">
+                        <Building2 className="text-purple-500 sm:w-6 sm:h-6" size={20} />
                         Identity & Branding
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                         <div className="space-y-2">
                             <label className="text-sm font-semibold text-slate-600 ml-1">Business Name</label>
                             <input
@@ -678,60 +762,60 @@ function BusinessSettings() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50/50 pt-8 pb-20 px-4 sm:px-8">
+        <div className="min-h-screen bg-slate-50/50 pt-4 sm:pt-6 md:pt-8 pb-12 sm:pb-16 md:pb-20 px-3 sm:px-4 md:px-8">
             <div className="max-w-6xl mx-auto">
-                <header className="mb-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <header className="mb-6 sm:mb-8 md:mb-10 flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-6">
                     <div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tight mb-2">Settings</h1>
-                        <p className="text-slate-500 font-medium">Customize your account and business operations</p>
+                        <h1 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 tracking-tight mb-1 sm:mb-2">Settings</h1>
+                        <p className="text-sm sm:text-base text-slate-500 font-medium">Customize your account and business operations</p>
                     </div>
 
-                    <div className="flex bg-white p-1.5 rounded-[24px] border border-slate-200 shadow-sm self-start">
+                    <div className="flex bg-white p-1 sm:p-1.5 rounded-[18px] sm:rounded-[24px] border border-slate-200 shadow-sm self-start w-full md:w-auto overflow-x-auto">
                         <button
                             onClick={() => {
                                 setActiveTab('profile');
                                 setSelectedBusinessId(null);
                                 setBusinessForm(null);
                             }}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-[18px] text-sm font-bold transition-all ${activeTab === 'profile'
+                            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-[14px] sm:rounded-[18px] text-xs sm:text-sm font-bold transition-all flex-1 md:flex-initial whitespace-nowrap ${activeTab === 'profile'
                                 ? 'bg-slate-900 text-white shadow-lg'
                                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                                 }`}
                         >
-                            <User size={18} />
-                            Account Profile
+                            <User size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            <span className="hidden xs:inline">Account Profile</span><span className="xs:hidden">Account</span>
                         </button>
                         <button
                             onClick={() => setActiveTab('businesses')}
-                            className={`flex items-center gap-2 px-6 py-3 rounded-[18px] text-sm font-bold transition-all ${activeTab === 'businesses'
+                            className={`flex items-center justify-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 rounded-[14px] sm:rounded-[18px] text-xs sm:text-sm font-bold transition-all flex-1 md:flex-initial whitespace-nowrap ${activeTab === 'businesses'
                                 ? 'bg-slate-900 text-white shadow-lg'
                                 : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                                 }`}
                         >
-                            <Building2 size={18} />
-                            My Businesses
+                            <Building2 size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            <span className="hidden xs:inline">My Businesses</span><span className="xs:hidden">Businesses</span>
                         </button>
                     </div>
                 </header>
 
                 {/* Report Issue Section */}
-                <div className="mb-6 bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-                    <div className="flex items-center justify-between">
+                <div className="mb-4 sm:mb-6 bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-100 shadow-sm">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                         <div>
-                            <h3 className="text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
-                                <AlertCircle className="text-red-500" size={20} />
+                            <h3 className="text-base sm:text-lg font-bold text-slate-900 mb-1 flex items-center gap-2">
+                                <AlertCircle className="text-red-500 sm:w-5 sm:h-5" size={18} />
                                 Report an Issue
                             </h3>
-                            <p className="text-sm text-slate-500">
+                            <p className="text-xs sm:text-sm text-slate-500">
                                 Found a bug or have feedback about the platform? Let us know!
                             </p>
                         </div>
                         <button
                             onClick={() => setShowReportIssueModal(true)}
-                            className="px-6 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition-all flex items-center gap-2 font-semibold shadow-lg shadow-red-500/20"
+                            className="px-4 sm:px-6 py-2.5 sm:py-3 bg-red-600 text-white rounded-xl sm:rounded-2xl hover:bg-red-700 transition-all flex items-center gap-1.5 sm:gap-2 font-semibold shadow-lg shadow-red-500/20 text-xs sm:text-sm w-full sm:w-auto justify-center whitespace-nowrap"
                         >
-                            <AlertCircle size={18} />
-                            Report Issue
+                            <AlertCircle size={16} className="sm:w-[18px] sm:h-[18px]" />
+                            <span className="hidden xs:inline">Report Issue</span><span className="xs:hidden">Report</span>
                         </button>
                     </div>
                 </div>
