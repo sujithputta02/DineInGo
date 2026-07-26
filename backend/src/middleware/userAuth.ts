@@ -38,11 +38,14 @@ export const verifyUserToken = async (req: Request, res: Response, next: NextFun
       const decodedToken = await platformAuth.auth().verifyIdToken(token);
       
       // Attach the verified user identifying info to the request
+      // Include role from custom claims if available
       (req as any).user = {
         uid: decodedToken.uid,
         email: decodedToken.email,
         name: decodedToken.name,
-        picture: decodedToken.picture
+        picture: decodedToken.picture,
+        role: decodedToken.role || (decodedToken as any).role || 'user', // Extract role from token claims
+        isAdmin: decodedToken.isAdmin || (decodedToken as any).isAdmin || false
       };
 
       next();
