@@ -13,7 +13,9 @@ import mongoose from 'mongoose';
  * Verifies that the requester is a registered business owner or admin
  * Checks both MongoDB user record AND Firebase token role
  * 
- * SPECIAL CASE: Allows first-time business creation for any authenticated user
+ * SPECIAL CASES:
+ * 1. First-time business creation: Allow any authenticated user
+ * 2. Updating own business: Check ownership via verifyBusinessAccess (next middleware)
  */
 export const verifyBusinessOwner = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -30,7 +32,7 @@ export const verifyBusinessOwner = async (req: Request, res: Response, next: Nex
     const user = await User.findOne({ uid: requester.uid });
     const isOwnerByDB = user && (user.role === 'owner' || user.role === 'admin' || user.isAdmin);
 
-    // ✅ SPECIAL CASE: Allow first-time business creation
+    // ✅ SPECIAL CASE 1: Allow first-time business creation
     // If this is a POST request (creating new business), allow any authenticated user
     // After creation, they will become an owner
     const isCreatingBusiness = req.method === 'POST' && !req.params.id && !req.params.businessId;
@@ -41,14 +43,30 @@ export const verifyBusinessOwner = async (req: Request, res: Response, next: Nex
       return next();
     }
 
-    // For all other operations (update, delete, etc.), require owner role
+    // ✅ SPECIAL CASE 2: Updating/deleting specific business
+    // If there's a business ID in params, let verifyBusinessAccess check ownership
+    // This allows users who created a business (and became owners) to update it
+    // even if their Firebase token hasn't refreshed with the new role
+    const hasBusinessId = req.params.id || req.params.businessId;
+    if (hasBusinessId && (req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE')) {
+      // Check if user has at least ONE business (making them an owner)
+      const userBusinessCount = await require('../models/Business').Business.countDocuments({ ownerId: requester.uid });
+      if (userBusinessCount > 0) {
+        console.log(`[BusinessAuth] User ${requester.uid} has ${userBusinessCount} businesses, allowing access to verify ownership`);
+        (req as any).userData = user;
+        return next(); // Let verifyBusinessAccess check if they own THIS specific business
+      }
+    }
+
+    // For all other operations, require owner role
     if (!isOwnerByToken && !isOwnerByDB) {
       console.warn(`[BusinessAuth] Access denied for user ${requester.uid}:`, {
         tokenRole,
         dbRole: user?.role,
         isAdmin: user?.isAdmin,
         method: req.method,
-        path: req.path
+        path: req.path,
+        hasBusinessId
       });
       return res.status(403).json({ success: false, message: 'Access Denied: Business owner role required.' });
     }
