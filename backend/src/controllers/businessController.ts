@@ -134,12 +134,12 @@ const transformBusinessData = (business: any, req: Request): any => {
     // Location handling
     locationData: business.locationData,
     location: business.location, // The string
-    address: typeof business.locationData?.address === 'string'
+    address: business.locationData?.address && business.locationData.address.trim() !== ''
       ? business.locationData.address
-      : typeof business.location === 'string'
-        ? business.location
-        : business.locationData?.city && business.locationData?.state
-          ? `${business.locationData.city}, ${business.locationData.state}`
+      : business.locationData?.city && business.locationData?.state
+        ? `${business.locationData.area ? business.locationData.area + ', ' : ''}${business.locationData.city}, ${business.locationData.state}${business.locationData.pincode ? ' - ' + business.locationData.pincode : ''}`
+        : typeof business.location === 'string' && business.location.trim() !== ''
+          ? business.location
           : 'Address not available',
 
     // Images
@@ -197,6 +197,7 @@ const transformBusinessData = (business: any, req: Request): any => {
   // Derive timeSlots for Restaurants if not explicitly provided
   if (isRestaurant) {
     if (business.dailySlots && business.dailySlots.length > 0) {
+      // Daily slots mode - map directly
       transformed.timeSlots = business.dailySlots.map((slot: any) => ({
         id: slot.id,
         name: slot.name,
@@ -207,24 +208,68 @@ const transformBusinessData = (business: any, req: Request): any => {
         maxCapacity: slot.maxCapacity || business.capacity || 50
       }));
     } else if (business.weeklySchedule) {
-      // Create a single slot based on today's operating hours if available
+      // Weekly schedule mode - generate time slots from operating hours
       const days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
       const today = days[new Date().getDay()];
       const todaySchedule = business.weeklySchedule[today];
 
       if (todaySchedule && todaySchedule.isOpen) {
-        transformed.timeSlots = [{
-          id: `weekly-today`,
-          name: 'Regular Hours',
-          startTime: todaySchedule.openTime,
-          endTime: todaySchedule.closeTime,
-          type: 'lunch', // Default
-          available: true,
-          maxCapacity: business.capacity || 50
-        }];
+        const openTime = todaySchedule.openTime; // e.g., "12:00"
+        const closeTime = todaySchedule.closeTime; // e.g., "00:30"
+        
+        // Generate 30-minute interval slots from open to close time
+        const slots: any[] = [];
+        let currentHour = parseInt(openTime.split(':')[0]);
+        let currentMinute = parseInt(openTime.split(':')[1]);
+        
+        const closeHour = parseInt(closeTime.split(':')[0]);
+        const closeMinute = parseInt(closeTime.split(':')[1]);
+        
+        // Handle overnight closing (e.g., 00:30)
+        const isOvernightClose = closeHour < currentHour || (closeHour === 0 && currentHour > 12);
+        const maxHour = isOvernightClose ? 24 + closeHour : closeHour;
+        
+        let slotIndex = 0;
+        while (true) {
+          const displayHour = currentHour % 24;
+          const timeStr = `${displayHour.toString().padStart(2, '0')}:${currentMinute.toString().padStart(2, '0')}`;
+          const hour12 = displayHour === 0 ? 12 : displayHour > 12 ? displayHour - 12 : displayHour;
+          const ampm = displayHour >= 12 ? 'PM' : 'AM';
+          const displayTime = `${hour12}:${currentMinute.toString().padStart(2, '0')} ${ampm}`;
+          
+          // Determine if lunch or dinner based on time
+          const slotType = displayHour < 16 ? 'lunch' : 'dinner';
+          
+          slots.push({
+            id: `weekly-${slotIndex}`,
+            name: displayTime,
+            startTime: timeStr,
+            endTime: '', // Can calculate end time if needed
+            type: slotType,
+            available: true,
+            maxCapacity: business.capacity || 50
+          });
+          
+          // Move to next 30-minute slot
+          currentMinute += 30;
+          if (currentMinute >= 60) {
+            currentMinute = 0;
+            currentHour++;
+          }
+          
+          // Check if we've reached closing time
+          if (currentHour > maxHour || (currentHour === maxHour && currentMinute >= closeMinute)) {
+            break;
+          }
+          
+          // Safety check - don't generate more than 48 slots (24 hours)
+          if (slotIndex++ > 48) break;
+        }
+        
+        transformed.timeSlots = slots.length > 0 ? slots : getDefaultTimeSlots();
       } else {
-        // No schedule for today, use default slots
-        transformed.timeSlots = business.timeSlots || getDefaultTimeSlots();
+        // Not open today, use default slots for display
+        transformed.timeSlots = getDefaultTimeSlots();
       }
     } else if (business.timeSlots && business.timeSlots.length > 0) {
       // Use existing timeSlots
