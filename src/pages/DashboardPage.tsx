@@ -382,6 +382,39 @@ export default function DashboardPage() {
   const sidebarRef = useRef<HTMLElement>(null);
   const searchBarRef = useRef<HTMLDivElement>(null);
 
+  // Listen for theme changes and update liquid glass
+  useEffect(() => {
+    const handleThemeChange = () => {
+      const newTheme = (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
+      setTheme(newTheme);
+      
+      let resolvedDarkMode: boolean;
+      if (newTheme === 'system') {
+        resolvedDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      } else {
+        resolvedDarkMode = newTheme === 'dark';
+      }
+      setIsDarkMode(resolvedDarkMode);
+    };
+
+    window.addEventListener('themechange', handleThemeChange);
+    
+    // Listen for system theme changes when in system mode
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = () => {
+      if (theme === 'system') {
+        handleThemeChange();
+      }
+    };
+    
+    mediaQuery.addEventListener('change', handleMediaChange);
+
+    return () => {
+      window.removeEventListener('themechange', handleThemeChange);
+      mediaQuery.removeEventListener('change', handleMediaChange);
+    };
+  }, [theme]);
+
   useEffect(() => {
     let headerLg: any = null;
     let sidebarLg: any = null;
@@ -436,7 +469,7 @@ export default function DashboardPage() {
       if (sidebarLg) sidebarLg.destroy();
       if (searchBarLg) searchBarLg.destroy();
     };
-  }, [isDarkMode, isSearchExpanded, glassLevel]);
+  }, [isDarkMode, isSearchExpanded, glassLevel, theme]); // Added theme to dependencies
   
   // Create a translations object that always reflects the current state of t
   const tProps = new Proxy({} as any, {
@@ -3870,14 +3903,22 @@ export default function DashboardPage() {
           ref={sidebarRef}
           className={`hidden lg:flex flex-col fixed top-0 left-0 h-full w-[280px] transform ${
             isSidebarOpen ? "translate-x-0" : "-translate-x-full"
-          } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 overflow-y-auto`}
+          } transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] z-50 overflow-y-auto ${
+            glassLevel > 0 ? 'backdrop-blur-xl' : 'backdrop-blur-md'
+          }`}
           style={{
             background: isDarkMode
-              ? "linear-gradient(180deg, rgba(20, 20, 25, 0.75), rgba(10, 10, 15, 0.9))"
-              : "linear-gradient(180deg, rgba(255, 255, 255, 0.75), rgba(245, 245, 250, 0.95))",
+              ? `linear-gradient(180deg, rgba(20, 20, 25, ${0.75 - (glassLevel / 100) * 0.25}), rgba(10, 10, 15, ${0.9 - (glassLevel / 100) * 0.3}))`
+              : `linear-gradient(180deg, rgba(255, 255, 255, ${0.75 - (glassLevel / 100) * 0.25}), rgba(245, 245, 250, ${0.95 - (glassLevel / 100) * 0.35}))`,
             boxShadow: isDarkMode
-              ? "inset -1px 0 0 0 rgba(255, 255, 255, 0.1), 0 24px 60px rgba(0, 0, 0, 0.5)"
-              : "inset -1px 0 0 0 rgba(0, 0, 0, 0.08), 0 24px 60px rgba(0, 0, 0, 0.05)",
+              ? `inset -1px 0 0 0 rgba(255, 255, 255, ${0.1 + (glassLevel / 100) * 0.05}), 0 24px 60px rgba(0, 0, 0, 0.5)`
+              : `inset -1px 0 0 0 rgba(0, 0, 0, ${0.08 + (glassLevel / 100) * 0.04}), 0 24px 60px rgba(0, 0, 0, 0.05)`,
+            backdropFilter: glassLevel > 0 
+              ? `blur(${16 * (1 - glassLevel / 100)}px) saturate(${1 + (glassLevel / 100) * 0.5})`
+              : `blur(16px)`,
+            WebkitBackdropFilter: glassLevel > 0 
+              ? `blur(${16 * (1 - glassLevel / 100)}px) saturate(${1 + (glassLevel / 100) * 0.5})`
+              : `blur(16px)`,
           }}
         >
           <div className="p-6 flex flex-col h-full">

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Calendar, Clock, Users, MapPin, Loader, ArrowLeft, Ticket, CreditCard, X, Info, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 import mixpanel from 'mixpanel-browser';
+import { auth as firebaseAuth } from '../firebase';
 
 interface Event {
   _id: string;
@@ -162,7 +163,7 @@ const EventPreview: React.FC = () => {
         console.log('Sending booking data:', bookingData);
 
         // Get Firebase auth token
-        const token = await auth.currentUser!.getIdToken();
+        const token = await firebaseAuth.currentUser?.getIdToken();
 
         const response = await fetch(`${API_CONFIG.BASE_URL}/api/v1/bookings`, {
           method: 'POST',
@@ -187,10 +188,10 @@ const EventPreview: React.FC = () => {
               updatePayload = {
                 areaId: selectedSeatIds[0],
                 guests: numberOfGuests,
-                userId: auth.currentUser!.uid
+                userId: firebaseAuth.currentUser?.uid
               };
             } else if (event!.hasSeating) {
-              updatePayload = { seatIds: selectedSeatIds, userId: auth.currentUser!.uid };
+              updatePayload = { seatIds: selectedSeatIds, userId: firebaseAuth.currentUser?.uid };
             } else {
               updatePayload = { guests: numberOfGuests };
             }
