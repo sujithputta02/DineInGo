@@ -349,7 +349,9 @@ function BusinessOnboarding() {
           cuisine: restaurantConfig.cuisine,
           menu: restaurantConfig.menu.map(item => ({
             ...item,
-            price: Number(item.price) || 0
+            price: Number(item.price) || 0,
+            available: item.available !== undefined ? item.available : true,
+            dietaryType: item.dietaryType || null
           })),
           slotMode: restaurantConfig.slotMode,
           weeklySchedule: restaurantConfig.slotMode === 'weekly' ? restaurantConfig.weeklySchedule : undefined,
