@@ -322,7 +322,7 @@ const csrfTokens = new Map<string, { token: string; timestamp: number }>();
 const CSRF_TOKEN_EXPIRY = 60 * 60 * 1000; // 1 hour
 
 export const generateCSRFToken = (req: Request, res: Response, next: NextFunction): void => {
-  const sessionId = req.session?.id || req.headers['x-session-id'] as string || 'default';
+  const sessionId = (req as any).session?.id || req.headers['x-session-id'] as string || 'default';
   const token = crypto.randomBytes(32).toString('hex');
   
   csrfTokens.set(sessionId, {
@@ -342,7 +342,7 @@ export const validateCSRFToken = (req: Request, res: Response, next: NextFunctio
     return next();
   }
 
-  const sessionId = req.session?.id || req.headers['x-session-id'] as string || 'default';
+  const sessionId = (req as any).session?.id || req.headers['x-session-id'] as string || 'default';
   const providedToken = req.headers['x-csrf-token'] as string || req.body._csrf;
   
   const stored = csrfTokens.get(sessionId);
@@ -462,14 +462,15 @@ export const bruteForceProtection = (maxAttempts: number = 5, blockDuration: num
  * Session Hijacking Protection
  */
 export const sessionSecurityCheck = (req: Request, res: Response, next: NextFunction): void => {
-  if (!req.session) return next();
+  const session = (req as any).session;
+  if (!session) return next();
 
   const userAgent = req.headers['user-agent'] || '';
   const clientIP = getClientIP(req);
   
   // Store fingerprint on first request
-  if (!req.session.fingerprint) {
-    req.session.fingerprint = {
+  if (!session.fingerprint) {
+    session.fingerprint = {
       userAgent,
       ip: clientIP
     };
@@ -477,9 +478,9 @@ export const sessionSecurityCheck = (req: Request, res: Response, next: NextFunc
   }
   
   // Validate fingerprint on subsequent requests
-  if (req.session.fingerprint.userAgent !== userAgent) {
+  if (session.fingerprint.userAgent !== userAgent) {
     console.error(`[Security] 🚨 Session hijacking attempt detected: User-Agent mismatch from IP: ${clientIP}`);
-    req.session.destroy((err) => {
+    session.destroy((err: any) => {
       res.status(401).json({
         success: false,
         message: 'Session invalid. Please login again.'

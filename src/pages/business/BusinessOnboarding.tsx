@@ -574,7 +574,7 @@ function BusinessOnboarding() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Latitude *</label>
               <input
@@ -635,7 +635,7 @@ function BusinessOnboarding() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">City *</label>
               <input
@@ -1088,7 +1088,7 @@ function BusinessOnboarding() {
 
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Booking Type</label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={() => setRestaurantConfig(prev => ({ ...prev, bookingType: 'seat-based' }))}
                   className={`p-4 border rounded-lg text-left transition-colors ${restaurantConfig.bookingType === 'seat-based'
@@ -1115,7 +1115,7 @@ function BusinessOnboarding() {
             {/* Time Slot Mode Selection */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Time Slot Configuration</label>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <button
                   onClick={() => setRestaurantConfig(prev => ({ ...prev, slotMode: 'weekly' }))}
                   className={`p-4 border rounded-lg text-left transition-colors ${restaurantConfig.slotMode === 'weekly'
@@ -2174,13 +2174,13 @@ function BusinessOnboarding() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="container mx-auto px-4 py-8 max-w-6xl">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-6 md:py-8 max-w-6xl">
         {/* Page Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-slate-800 mb-2">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 mb-2">
             {isViewMode ? 'View Business' : isEditMode ? 'Edit Business' : 'Create Your Business'}
           </h1>
-          <p className="text-slate-600">
+          <p className="text-sm sm:text-base text-slate-600 px-4">
             {isViewMode
               ? 'View your business details and configuration'
               : isEditMode
@@ -2191,35 +2191,35 @@ function BusinessOnboarding() {
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-12">
-          <div className="flex items-center justify-center space-x-4 mb-8">
+        <div className="mb-8 sm:mb-10 md:mb-12">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 md:gap-4 mb-6 sm:mb-8 overflow-x-auto no-scrollbar pb-2">
             {steps.map((step, index) => {
               const Icon = step.icon;
               const isActive = currentStep === step.id;
               const isCompleted = currentStep > step.id;
 
               return (
-                <div key={step.id} className="flex items-center">
-                  <div className={`flex items-center justify-center w-12 h-12 rounded-full border-2 transition-all duration-300 ${isCompleted
+                <div key={step.id} className="flex items-center flex-shrink-0">
+                  <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full border-2 transition-all duration-300 ${isCompleted
                     ? 'bg-emerald-600 border-emerald-600 text-white shadow-lg'
                     : isActive
                       ? 'border-emerald-600 bg-emerald-600 text-white shadow-lg'
                       : 'border-slate-300 text-slate-400 bg-white'
                     }`}>
-                    {isCompleted ? <CheckCircle size={24} /> : <Icon size={24} />}
+                    {isCompleted ? <CheckCircle size={18} className="sm:w-6 sm:h-6" /> : <Icon size={18} className="sm:w-6 sm:h-6" />}
                   </div>
-                  <div className="ml-3 hidden sm:block">
-                    <div className={`text-sm font-semibold ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                  <div className="ml-2 sm:ml-3 hidden md:block">
+                    <div className={`text-xs sm:text-sm font-semibold ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
                       }`}>
                       Step {step.id}
                     </div>
-                    <div className={`text-xs ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
+                    <div className={`text-[10px] sm:text-xs ${isActive ? 'text-emerald-600' : isCompleted ? 'text-emerald-600' : 'text-slate-400'
                       }`}>
                       {step.title}
                     </div>
                   </div>
                   {index < steps.length - 1 && (
-                    <div className={`w-12 h-0.5 mx-6 transition-colors duration-300 ${isCompleted ? 'bg-emerald-600' : 'bg-slate-300'
+                    <div className={`w-8 sm:w-10 md:w-12 h-0.5 mx-2 sm:mx-4 md:mx-6 transition-colors duration-300 ${isCompleted ? 'bg-emerald-600' : 'bg-slate-300'
                       }`} />
                   )}
                 </div>
@@ -2230,28 +2230,29 @@ function BusinessOnboarding() {
 
         {/* Main Content */}
         <div className="max-w-5xl mx-auto">
-          <div className="bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-            <div className="p-8 md:p-12">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="p-4 sm:p-6 md:p-8 lg:p-12">
               {renderCurrentStep()}
             </div>
           </div>
 
           {/* Navigation */}
           {!isViewMode && (
-            <div className="flex justify-between mt-8">
+            <div className="flex justify-between mt-6 sm:mt-8 gap-3">
               <button
                 onClick={() => setCurrentStep(prev => Math.max(1, prev - 1))}
                 disabled={currentStep === 1}
-                className="flex items-center gap-2 px-6 py-3 border border-slate-300 rounded-xl text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white shadow-sm"
+                className="flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 border border-slate-300 rounded-lg sm:rounded-xl text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 bg-white shadow-sm text-sm sm:text-base"
               >
-                <ArrowLeft size={18} />
-                Previous
+                <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px]" />
+                <span className="hidden xs:inline">Previous</span>
+                <span className="xs:hidden">Prev</span>
               </button>
 
               <button
                 onClick={handleNext}
                 disabled={currentStep === 5 || !canProceed() || loading}
-                className="flex items-center gap-2 px-8 py-3 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm font-medium"
+                className="flex items-center gap-1.5 sm:gap-2 px-5 sm:px-8 py-2.5 sm:py-3 bg-emerald-600 text-white rounded-lg sm:rounded-xl hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-sm font-medium text-sm sm:text-base"
               >
                 {loading ? (
                   <>

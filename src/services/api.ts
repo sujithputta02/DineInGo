@@ -114,7 +114,11 @@ async function apiRequest(url: string, method: string = 'GET', data?: any, retri
         // 404 Not Found is often an expected state (e.g. new user check)
         // We should throw but NOT retry on 404s.
         if (response.status === 404) {
-           throw new Error(`404 Not Found: ${errorText}`);
+          // Don't log 404s for user lookups as they're expected for new users
+          if (!url.includes('/api/v1/users/')) {
+            console.error(`API returned ${response.status}: ${errorText}`);
+          }
+          throw new Error(`404 Not Found: ${errorText}`);
         }
 
         console.error(`API returned ${response.status}: ${errorText}`);
@@ -123,7 +127,7 @@ async function apiRequest(url: string, method: string = 'GET', data?: any, retri
 
       return await response.json();
     } catch (error: any) {
-      if (error.message?.includes('404')) throw error; // Don't retry 404s
+      if (error.message?.includes('404')) throw error; // Don't retry 404s (silently)
       // Clear timeout to prevent memory leaks
       clearTimeout(timeoutId);
 
@@ -131,7 +135,12 @@ async function apiRequest(url: string, method: string = 'GET', data?: any, retri
       if (error.name === 'AbortError' || error.message.includes('aborted')) {
         lastError = new Error('Request timeout - backend server may not be running');
       } else {
-        console.error(`API request attempt ${attempt} failed:`, error);
+        // Don't log 404 errors for user lookups as they're expected for new users
+        const is404 = error.message?.includes('404 Not Found');
+        const isUserEndpoint = url.includes('/api/v1/users/');
+        if (!is404 || !isUserEndpoint) {
+          console.error(`API request attempt ${attempt} failed:`, error);
+        }
         lastError = error;
       }
 
@@ -1153,6 +1162,7 @@ export interface UserData {
   photoURL: string | null;
   emailVerified: boolean;
   referralCode?: string;
+  timezone?: string;
 }
 
 const addUserActivity = async (uid: string, activity: any) => {

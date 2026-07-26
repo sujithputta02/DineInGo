@@ -637,41 +637,42 @@ const FloorPlanDesigner: React.FC<{
   };
 
   return (
-    <div className="flex flex-col lg:flex-row h-full min-h-[500px] sm:min-h-[600px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200 overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-full min-h-[500px] sm:min-h-[600px] xl:min-h-[700px] bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200 overflow-hidden">
       {/* Left Sidebar / Top Toolbar - Element Palette */}
       {!readOnly && (
-        <div className="w-full lg:w-80 bg-slate-800/50 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-slate-700/50 flex flex-col max-h-[40vh] lg:max-h-full">
-          <div className="p-4 border-b border-slate-700/50 flex-shrink-0">
-            <h2 className="text-lg font-bold text-white mb-2">Floor Plan Designer</h2>
-            <div className="flex gap-2 mb-3">
+        <div className="w-full lg:w-80 xl:w-96 bg-slate-800/50 backdrop-blur-sm border-b lg:border-b-0 lg:border-r border-slate-700/50 flex flex-col max-h-[40vh] lg:max-h-full">
+          <div className="p-3 sm:p-4 border-b border-slate-700/50 flex-shrink-0">
+            <h2 className="text-base sm:text-lg font-bold text-white mb-2">Floor Plan Designer</h2>
+            <div className="flex gap-1.5 sm:gap-2 mb-2 sm:mb-3 flex-wrap">
               <button
                 onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${isPreviewMode
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${isPreviewMode
                   ? 'bg-emerald-600 text-white'
                   : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
                   }`}
               >
-                <Eye size={16} />
-                {isPreviewMode ? 'Edit Mode' : 'Preview'}
+                <Eye size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">{isPreviewMode ? 'Edit Mode' : 'Preview'}</span>
               </button>
               <button
                 onClick={() => setShowGrid(!showGrid)}
-                className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${showGrid
+                className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${showGrid
                   ? 'bg-slate-600 text-white'
                   : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
                   }`}
               >
-                <Grid size={16} />
+                <Grid size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Grid</span>
               </button>
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex gap-1.5 sm:gap-2">
               <button
                 onClick={() => setShowTemplates(!showTemplates)}
-                className="flex items-center gap-2 px-3 py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-sm"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 sm:py-2 bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors text-xs sm:text-sm"
               >
-                <Copy size={16} />
-                Templates
+                <Copy size={14} className="sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Templates</span>
               </button>
             </div>
           </div>
@@ -1127,9 +1128,9 @@ const FloorPlanDesigner: React.FC<{
           </div>
 
           {/* Action Buttons - Fixed at bottom */}
-          <div className="p-4 border-t border-slate-700/50 space-y-2 flex-shrink-0">
+          <div className="p-3 sm:p-4 border-t border-slate-700/50 space-y-2 flex-shrink-0">
             {saveMessage && (
-              <div className={`text-xs p-2 rounded-lg text-center ${saveMessage.includes('Error')
+              <div className={`text-[10px] sm:text-xs p-2 rounded-lg text-center ${saveMessage.includes('Error')
                 ? 'bg-red-600/20 text-red-400 border border-red-600/30'
                 : 'bg-emerald-600/20 text-emerald-400 border border-emerald-600/30'
                 }`}>
@@ -1139,9 +1140,10 @@ const FloorPlanDesigner: React.FC<{
             <button
               onClick={saveFloorPlan}
               disabled={isSaving}
-              className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+              className="w-full flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-600 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors text-sm"
             >
-              <Save size={16} />
+              <Save size={14} className="sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">{isSaving ? 'Saving...' : 'Save Floor Plan'}</span>
             </button>
           </div>
         </div>
@@ -1150,14 +1152,14 @@ const FloorPlanDesigner: React.FC<{
       {/* Main Designer Area */}
       <div className="flex-1 flex flex-col relative overflow-hidden">
         {/* Designer Header */}
-        <div className="p-3 sm:p-4 bg-slate-800/30 border-b border-slate-700/50 flex items-center justify-between z-20">
-          <div className="flex items-center gap-2 sm:gap-4">
-            <div className="flex bg-slate-700/50 p-1 rounded-xl border border-slate-600 overflow-x-auto no-scrollbar max-w-[150px] sm:max-w-none">
+        <div className="p-2 sm:p-3 md:p-4 bg-slate-800/30 border-b border-slate-700/50 flex items-center justify-between z-20 gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 md:gap-4 flex-1 min-w-0">
+            <div className="flex bg-slate-700/50 p-0.5 sm:p-1 rounded-lg sm:rounded-xl border border-slate-600 overflow-x-auto no-scrollbar max-w-[40vw] sm:max-w-[50vw] lg:max-w-none">
               {floors.map(f => (
                 <button
                   key={f.id}
                   onClick={() => setActiveFloorId(f.id)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-[10px] sm:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap ${activeFloorId === f.id
+                  className={`px-2 sm:px-3 md:px-4 py-1 sm:py-1.5 md:py-2 rounded-md sm:rounded-lg text-[9px] sm:text-[10px] md:text-xs font-bold uppercase tracking-wider transition-all whitespace-nowrap flex-shrink-0 ${activeFloorId === f.id
                     ? 'bg-emerald-500 text-white shadow-lg'
                     : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                     }`}
@@ -1173,25 +1175,25 @@ const FloorPlanDesigner: React.FC<{
                   setFloors([...floors, { id: newId, name: `Floor ${floors.length + 1}`, width: 100, height: 100, tables: [], features: [] }]);
                   setActiveFloorId(newId);
                 }}
-                className="p-2 bg-slate-700/50 hover:bg-emerald-600 text-slate-400 hover:text-white rounded-lg transition-all"
+                className="p-1.5 sm:p-2 bg-slate-700/50 hover:bg-emerald-600 text-slate-400 hover:text-white rounded-lg transition-all flex-shrink-0"
                 title="Add Floor"
               >
-                <Plus size={18} />
+                <Plus size={16} className="sm:w-[18px] sm:h-[18px]" />
               </button>
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
             {!readOnly && (
               <button
                 onClick={saveFloorPlan}
                 disabled={isSaving}
-                className="flex items-center gap-2 px-3 sm:px-4 py-2 sm:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs sm:text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
+                className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 md:py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg sm:rounded-xl text-[10px] sm:text-xs md:text-sm font-black uppercase tracking-widest transition-all shadow-lg shadow-emerald-500/20 active:scale-95 disabled:opacity-50"
               >
                 {isSaving ? (
-                  <div className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                  <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                  <Save size={16} />
+                  <Save size={14} className="sm:w-4 sm:h-4" />
                 )}
                 <span className="hidden sm:inline">Save Layout</span>
                 <span className="sm:hidden">Save</span>
@@ -1201,9 +1203,9 @@ const FloorPlanDesigner: React.FC<{
         </div>
 
         {/* Canvas Container */}
-        <div className="flex-1 bg-slate-900 relative overflow-auto lg:overflow-visible flex items-center justify-center p-4 sm:p-12">
+        <div className="flex-1 bg-slate-900 relative overflow-auto lg:overflow-visible flex items-center justify-center p-2 sm:p-4 md:p-8 lg:p-12">
           {/* Scrollable Map for Mobile */}
-          <div className="relative min-w-[600px] lg:min-w-0 w-full max-w-[800px] aspect-[4/3] bg-slate-800/20 rounded-2xl border-2 border-slate-700/50 shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0">
+          <div className="relative min-w-[500px] sm:min-w-[600px] lg:min-w-0 w-full max-w-[800px] aspect-[4/3] bg-slate-800/20 rounded-xl sm:rounded-2xl border border-slate-700/50 sm:border-2 shadow-2xl relative overflow-hidden transition-all duration-500 shrink-0">
             {/* Grid overlay */}
             {showGrid && !isPreviewMode && (
               <div className="absolute inset-0 pointer-events-none opacity-[0.03]"
@@ -1215,7 +1217,7 @@ const FloorPlanDesigner: React.FC<{
             )}
 
             {/* Elements Layer */}
-            <div className="absolute inset-0 p-4">
+            <div className="absolute inset-0 p-2 sm:p-4">
               {activeFloor?.features.map((feature) => (
                 <DraggableFeature
                   key={feature.id}
@@ -1240,11 +1242,11 @@ const FloorPlanDesigner: React.FC<{
 
               {/* Empty state */}
               {(!activeFloor?.tables.length && !activeFloor?.features.length) && (
-                <div className="absolute inset-4 flex items-center justify-center text-slate-400">
+                <div className="absolute inset-2 sm:inset-4 flex items-center justify-center text-slate-400">
                   <div className="text-center">
-                    <Building size={48} className="mx-auto mb-4 opacity-50" />
-                    <p className="text-lg font-medium">Floor Plan Canvas</p>
-                    <p className="text-sm mt-2">Add tables and features from the sidebar</p>
+                    <Building size={32} className="sm:w-12 sm:h-12 mx-auto mb-3 sm:mb-4 opacity-50" />
+                    <p className="text-sm sm:text-base md:text-lg font-medium">Floor Plan Canvas</p>
+                    <p className="text-xs sm:text-sm mt-1 sm:mt-2">Add tables and features from the sidebar</p>
                   </div>
                 </div>
               )}
@@ -1252,20 +1254,20 @@ const FloorPlanDesigner: React.FC<{
           </div>
 
           {/* Legend */}
-          <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800/80 backdrop-blur-md rounded-2xl px-4 py-3 flex items-center gap-4 shadow-2xl border border-slate-700/50 overflow-x-auto max-w-[90vw] no-scrollbar z-30">
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <div className="w-3 h-3 rounded bg-gradient-to-br from-slate-600 to-slate-800 border border-slate-500 shadow-sm"></div>
-              <span className="text-[10px] font-bold text-slate-300 uppercase tracking-widest">Available</span>
+          <div className="absolute bottom-2 sm:bottom-4 left-1/2 transform -translate-x-1/2 bg-slate-800/80 backdrop-blur-md rounded-xl sm:rounded-2xl px-2.5 sm:px-4 py-2 sm:py-3 flex items-center gap-2 sm:gap-4 shadow-2xl border border-slate-700/50 overflow-x-auto max-w-[90vw] no-scrollbar z-30">
+            <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-gradient-to-br from-slate-600 to-slate-800 border border-slate-500 shadow-sm"></div>
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-300 uppercase tracking-widest">Available</span>
             </div>
             {!isPreviewMode && (
-              <div className="flex items-center gap-2 whitespace-nowrap">
-                <div className="w-3 h-3 rounded bg-emerald-500 border border-emerald-400 shadow-sm"></div>
-                <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Selected</span>
+              <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+                <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-emerald-500 border border-emerald-400 shadow-sm"></div>
+                <span className="text-[9px] sm:text-[10px] font-bold text-emerald-400 uppercase tracking-widest">Selected</span>
               </div>
             )}
-            <div className="flex items-center gap-2 whitespace-nowrap">
-              <div className="w-3 h-3 rounded bg-slate-900 border border-slate-800 shadow-sm"></div>
-              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Booked</span>
+            <div className="flex items-center gap-1.5 sm:gap-2 whitespace-nowrap">
+              <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded bg-slate-900 border border-slate-800 shadow-sm"></div>
+              <span className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-widest">Booked</span>
             </div>
           </div>
         </div>

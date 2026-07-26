@@ -36,11 +36,11 @@ const EventLayoutViewerWrapper: React.FC<{ businessId: string }> = ({ businessId
     }, [businessId]);
 
     if (loading) {
-        return <div className="p-8 text-center text-slate-500">Loading layout...</div>;
+        return <div className="p-4 sm:p-6 md:p-8 text-center text-slate-500 text-sm sm:text-base">Loading layout...</div>;
     }
 
     if (!bizData) {
-        return <div className="p-8 text-center text-red-500">Failed to load business data.</div>;
+        return <div className="p-4 sm:p-6 md:p-8 text-center text-red-500 text-sm sm:text-base">Failed to load business data.</div>;
     }
 
     const isEvent = bizData.type === 'event' || bizData.type === 'both';
@@ -53,15 +53,15 @@ const EventLayoutViewerWrapper: React.FC<{ businessId: string }> = ({ businessId
 
         if (areas.length > 0) {
             return (
-                <div className="p-8 bg-slate-50 overflow-auto h-full w-full">
-                    <h3 className="text-xl font-bold text-slate-800 mb-6">Area Layout Preview</h3>
+                <div className="p-4 sm:p-6 md:p-8 bg-slate-50 overflow-auto h-full w-full">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 sm:mb-6">Area Layout Preview</h3>
                     <EventSeatingViewer seatingLayout={{ areas, seats: individualSeats, rows: layout.rows, columns: layout.columns }} />
                 </div>
             );
         } else if (individualSeats.length > 0) {
             return (
-                <div className="p-8 bg-slate-50 overflow-auto h-full w-full">
-                    <h3 className="text-xl font-bold text-slate-800 mb-6">Seating Chart Preview</h3>
+                <div className="p-4 sm:p-6 md:p-8 bg-slate-50 overflow-auto h-full w-full">
+                    <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 sm:mb-6">Seating Chart Preview</h3>
                     {layout.seats && layout.seats[0] && 'x' in layout.seats[0] && 'y' in layout.seats[0] ? (
                         <IndividualSeatingChart seats={individualSeats} selectedSeatIds={[]} onSeatClick={() => { }} />
                     ) : (
@@ -143,26 +143,26 @@ const FloorPlanManagement: React.FC = () => {
 
     if (selectedBusinessId) {
         return (
-            <div className="h-full flex flex-col space-y-4 sm:space-y-6">
+            <div className="h-full flex flex-col space-y-3 sm:space-y-4 md:space-y-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
                     <button
                         onClick={() => setSelectedBusinessId(null)}
-                        className="flex items-center gap-2 text-slate-600 hover:text-emerald-600 transition-colors font-semibold text-sm sm:text-base"
+                        className="flex items-center gap-2 text-slate-600 hover:text-emerald-600 transition-colors font-semibold text-xs sm:text-sm md:text-base"
                     >
-                        <ArrowLeft size={18} />
+                        <ArrowLeft size={16} className="sm:w-[18px] sm:h-[18px]" />
                         Back to Gallery
                     </button>
                     <div className="text-left sm:text-right">
-                        <h2 className="text-lg sm:text-2xl font-black text-slate-900 tracking-tight">
+                        <h2 className="text-base sm:text-lg md:text-2xl font-black text-slate-900 tracking-tight">
                             {businesses.find(b => (b.id || b._id) === selectedBusinessId)?.name}
                         </h2>
-                        <p className="text-[10px] sm:text-sm font-black text-emerald-600 uppercase tracking-widest">
+                        <p className="text-[9px] sm:text-[10px] md:text-sm font-black text-emerald-600 uppercase tracking-widest">
                             {businesses.find(b => (b.id || b._id) === selectedBusinessId)?.type} Floor Plan
                         </p>
                     </div>
                 </div>
 
-                <div className="flex-1 bg-white rounded-3xl border border-slate-100 shadow-xl overflow-hidden min-h-[500px] sm:min-h-[600px] flex flex-col">
+                <div className="flex-1 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 shadow-xl overflow-hidden min-h-[400px] sm:min-h-[500px] md:min-h-[600px] flex flex-col">
                     <EventLayoutViewerWrapper businessId={selectedBusinessId} />
                 </div>
             </div>
@@ -170,35 +170,35 @@ const FloorPlanManagement: React.FC = () => {
     }
 
     return (
-        <div className="space-y-8 pb-12">
-            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div className="space-y-6 sm:space-y-8 pb-8 sm:pb-12">
+            <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 sm:gap-4">
                 <div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">Floor Plans</h1>
-                    <p className="text-slate-500 text-sm sm:text-base font-medium">View and manage layouts for your businesses</p>
+                    <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Floor Plans</h1>
+                    <p className="text-slate-500 text-xs sm:text-sm md:text-base font-medium">View and manage layouts for your businesses</p>
                 </div>
 
                 <div className="flex items-center gap-3 w-full lg:w-auto">
                     <div className="relative flex-1 lg:flex-none">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 sm:w-[18px] sm:h-[18px]" size={16} />
                         <input
                             type="text"
                             placeholder="Search businesses..."
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full lg:w-64 pl-10 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm font-medium"
+                            className="w-full lg:w-64 pl-9 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-2.5 bg-white border border-slate-200 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-emerald-500 outline-none shadow-sm font-medium text-sm"
                         />
                     </div>
                 </div>
             </header>
 
             {loading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     {[1, 2, 3].map(i => (
-                        <div key={i} className="h-64 bg-white rounded-3xl border border-slate-100 animate-pulse" />
+                        <div key={i} className="h-56 sm:h-64 bg-white rounded-2xl sm:rounded-3xl border border-slate-100 animate-pulse" />
                     ))}
                 </div>
             ) : filteredBusinesses.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                     <AnimatePresence mode="popLayout">
                         {filteredBusinesses.map((biz) => {
                             const id = biz.id || biz._id;
@@ -253,12 +253,12 @@ const FloorPlanManagement: React.FC = () => {
                     </AnimatePresence>
                 </div>
             ) : (
-                <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-                    <div className="p-4 bg-slate-50 text-slate-300 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                        <MapIcon size={40} />
+                <div className="text-center py-12 sm:py-16 md:py-20 bg-white rounded-2xl sm:rounded-3xl border border-dashed border-slate-200">
+                    <div className="p-3 sm:p-4 bg-slate-50 text-slate-300 rounded-full w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center mx-auto mb-4">
+                        <MapIcon size={32} className="sm:w-10 sm:h-10" />
                     </div>
-                    <h2 className="text-xl font-bold text-slate-800">No businesses found</h2>
-                    <p className="text-slate-500 mt-2">Try adjusting your search filters</p>
+                    <h2 className="text-lg sm:text-xl font-bold text-slate-800">No businesses found</h2>
+                    <p className="text-sm sm:text-base text-slate-500 mt-2">Try adjusting your search filters</p>
                 </div>
             )}
         </div>
