@@ -49,6 +49,12 @@ import {
   validateParamId,
   handleValidationErrors
 } from '../middleware/inputValidation';
+
+// 🛡️ PORTAL ISOLATION: Import business-specific security fortress
+import { 
+  businessPortalSecurity,
+  businessDataIsolation
+} from '../middleware/portalIsolationMiddleware';
 import { accountLockoutCheck } from '../middleware/accountLockout';
 
 const router = express.Router();
