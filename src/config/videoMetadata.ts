@@ -15,6 +15,7 @@ export interface VideoMetadata {
 /**
  * Sticker Video Metadata
  * Maps mode identifiers to their respective light and dark theme videos
+ * Note: If light mode video is missing, use dark mode video as fallback
  */
 export const stickerVideos: Record<string, VideoMetadata> = {
   development: {
@@ -26,7 +27,7 @@ export const stickerVideos: Record<string, VideoMetadata> = {
   },
   maintenance: {
     id: 'maintenance',
-    lightMode: '/stickers/dino_maintenance.mp4',
+    lightMode: '/stickers/dino_maintenance_dark.mp4', // Using dark version as fallback
     darkMode: '/stickers/dino_maintenance_dark.mp4',
     preload: true,
     format: 'video/mp4',
@@ -40,7 +41,7 @@ export const stickerVideos: Record<string, VideoMetadata> = {
   },
   coming_soon: {
     id: 'coming_soon',
-    lightMode: '/stickers/dino_coming_soon.mp4',
+    lightMode: '/stickers/dino_coming_soon_dark.mp4', // Using dark version as fallback
     darkMode: '/stickers/dino_coming_soon_dark.mp4',
     preload: true,
     format: 'video/mp4',
