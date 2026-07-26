@@ -285,6 +285,20 @@ export const userDataIsolation = async (req: Request, res: Response, next: NextF
  * Prevents any cross-origin requests between portals
  */
 export const blockCrossPortalRequests = (req: Request, res: Response, next: NextFunction): void => {
+  // ✅ WHITELIST: Public routes that don't require portal isolation
+  const publicRoutes = [
+    '/api/v1/admin/maintenance-status',
+    '/api/v1/admin/feature-flags',
+    '/api/v1/admin/request-otp',
+    '/api/v1/admin/verify-otp'
+  ];
+  
+  // Skip portal checking for public routes
+  if (publicRoutes.some(route => req.path.toLowerCase() === route)) {
+    next();
+    return;
+  }
+  
   const origin = req.headers.origin || req.headers.referer || '';
   const currentPortal = detectPortalFromRequest(req);
   
