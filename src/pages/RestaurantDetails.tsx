@@ -1196,6 +1196,8 @@ const RestaurantDetails = () => {
                 <RestaurantMap
                   address={restaurant.address || `${restaurant.location.city}, ${restaurant.location.state}`}
                   name={restaurant.name}
+                  lat={restaurant.location?.latitude}
+                  lon={restaurant.location?.longitude}
                 />
               </div>
 

@@ -2,6 +2,9 @@ export interface Location {
   city: string;
   state: string;
   country: string;
+  latitude?: number | null;
+  longitude?: number | null;
+  address?: string;
 }
 
 export type CityLocation = Location;
@@ -45,6 +48,7 @@ export interface Restaurant {
   priceLevel?: number;
   address?: string;
   openNow?: boolean;
+  phone?: string;
   phoneNumber?: string;
   menu?: MenuItem[];
   timeSlots?: any[]; // Business time slots
