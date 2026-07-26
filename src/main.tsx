@@ -6,11 +6,16 @@ import App from './App';
 import './index.css';
 import { clearAuthSession } from './firebase';
 import { loadGoogleMapsScript } from './utils/googleMapsLoader';
+import { initializeVideoPreloader } from './utils/videoPreloader';
 
 // Load Google Maps API dynamically (security: API key from env var, not exposed in HTML)
 loadGoogleMapsScript().catch(err => {
   console.warn('[DineInGo] Google Maps initialization warning:', err);
 });
+
+// Initialize video preloader for faster video retrieval
+initializeVideoPreloader();
+console.log('[DineInGo] Video preloader initialized for theme-aware stickers');
 
 // Global error listener to catch Firebase Auth session corruption (400 errors)
 window.addEventListener('error', (event) => {

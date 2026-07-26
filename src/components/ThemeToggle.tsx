@@ -52,6 +52,9 @@ export const ThemeToggle: React.FC = () => {
         setTheme(nextTheme);
         localStorage.setItem('theme', nextTheme);
         updateDocumentTheme(nextTheme);
+        
+        // Dispatch custom event for components that need to react to theme changes
+        window.dispatchEvent(new Event('themechange'));
     };
 
     return (

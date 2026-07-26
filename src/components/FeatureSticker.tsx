@@ -1,25 +1,12 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { getVideoSource, stickerVideos } from '../config/videoMetadata';
 
 interface FeatureStickerProps {
   stickerId: string;
   caption: string;
   mode: string;
 }
-
-const lightVideoMap: Record<string, string> = {
-  development: '/stickers/dino_development.mp4',
-  maintenance: '/stickers/dino_maintenance.mp4',
-  testing: '/stickers/dino_testing.mp4',
-  coming_soon: '/stickers/dino_coming_soon.mp4',
-};
-
-const darkVideoMap: Record<string, string> = {
-  development: '/stickers/dino_development_dark.mp4',
-  maintenance: '/stickers/dino_maintenance_dark.mp4',
-  testing: '/stickers/dino_testing_dark.mp4',
-  coming_soon: '/stickers/dino_coming_soon_dark.mp4',
-};
 
 const frameColors: Record<string, string> = {
   development: '#10b981', // emerald-500
@@ -43,8 +30,70 @@ const captionStyles: Record<string, string> = {
 };
 
 export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, caption, mode }) => {
-  const lightVideoSrc = lightVideoMap[mode] || lightVideoMap.development;
-  const darkVideoSrc = darkVideoMap[mode] || darkVideoMap.development;
+  // Get metadata for the video
+  const metadata = stickerVideos[mode] || stickerVideos.development;
+  
+  // State to track current video source based on theme
+  const [videoSrc, setVideoSrc] = useState<string>(() => getVideoSource(mode));
+  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark'>(() => {
+    const theme = localStorage.getItem('theme') || 'system';
+    if (theme === 'system') {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    return theme as 'light' | 'dark';
+  });
+
+  // Listen for theme changes and update video source accordingly
+  useEffect(() => {
+    const updateVideoSource = () => {
+      const newVideoSrc = getVideoSource(mode);
+      const theme = localStorage.getItem('theme') || 'system';
+      let resolvedTheme: 'light' | 'dark';
+      
+      if (theme === 'system') {
+        resolvedTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      } else {
+        resolvedTheme = theme as 'light' | 'dark';
+      }
+      
+      setCurrentTheme(resolvedTheme);
+      setVideoSrc(newVideoSrc);
+    };
+
+    // Update on mount
+    updateVideoSource();
+
+    // Listen for localStorage changes (theme toggle)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'theme') {
+        updateVideoSource();
+      }
+    };
+
+    // Listen for system theme changes
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleMediaChange = () => {
+      const theme = localStorage.getItem('theme') || 'system';
+      if (theme === 'system') {
+        updateVideoSource();
+      }
+    };
+
+    // Listen for custom theme change events
+    const handleThemeChange = () => {
+      updateVideoSource();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    mediaQuery.addEventListener('change', handleMediaChange);
+    window.addEventListener('themechange', handleThemeChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      mediaQuery.removeEventListener('change', handleMediaChange);
+      window.removeEventListener('themechange', handleThemeChange);
+    };
+  }, [mode]);
   const frameColor = frameColors[mode] || frameColors.development;
 
   return (
@@ -80,38 +129,24 @@ export const FeatureSticker: React.FC<FeatureStickerProps> = ({ stickerId, capti
           </svg>
         </div>
 
-        {/* LIGHT MODE VIDEO (White BG removed via multiply) */}
+        {/* Theme-aware video display */}
         <div 
-          className="relative z-10 w-full h-full flex items-center justify-center p-4 dark:hidden"
-          style={{ mixBlendMode: 'multiply' }}
+          className="relative z-10 w-full h-full flex items-center justify-center p-4"
+          style={{ mixBlendMode: currentTheme === 'dark' ? 'screen' : 'multiply' }}
         >
           <video 
-            src={lightVideoSrc}
+            key={videoSrc} // Force re-mount when video source changes
+            src={videoSrc}
             autoPlay
             loop
             muted
             playsInline
+            preload={metadata.preload ? 'auto' : 'metadata'}
             className="w-full h-full object-contain pointer-events-none"
             style={{ 
-              filter: 'contrast(1.1)' 
-            }}
-          />
-        </div>
-
-        {/* DARK MODE VIDEO (Black BG removed via screen) */}
-        <div 
-          className="relative z-10 w-full h-full hidden dark:flex items-center justify-center p-4"
-          style={{ mixBlendMode: 'screen' }}
-        >
-          <video 
-            src={darkVideoSrc}
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="w-full h-full object-contain pointer-events-none"
-            style={{ 
-              filter: 'brightness(1.2) contrast(1.1)' 
+              filter: currentTheme === 'dark' 
+                ? 'brightness(1.2) contrast(1.1)' 
+                : 'contrast(1.1)'
             }}
           />
         </div>
