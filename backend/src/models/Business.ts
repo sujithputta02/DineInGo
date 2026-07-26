@@ -75,7 +75,8 @@ export interface IMenuItem {
   description?: string;
   image?: string;
   available: boolean;
-  isVegetarian?: boolean;
+  dietaryType?: 'veg' | 'non-veg' | 'vegan'; // New dietary type field
+  isVegetarian?: boolean; // Keep for backward compatibility
   isSpicy?: boolean;
   isPopular?: boolean;
 }
@@ -148,7 +149,8 @@ const MenuItemSchema = new Schema<IMenuItem>({
   description: String,
   image: String,
   available: { type: Boolean, default: true },
-  isVegetarian: { type: Boolean, default: false },
+  dietaryType: { type: String, enum: ['veg', 'non-veg', 'vegan'], required: false }, // New dietary type
+  isVegetarian: { type: Boolean, default: false }, // Keep for backward compatibility
   isSpicy: { type: Boolean, default: false },
   isPopular: { type: Boolean, default: false }
 });

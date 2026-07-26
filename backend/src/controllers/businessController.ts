@@ -391,12 +391,31 @@ export const createBusiness = async (req: Request, res: Response): Promise<void>
 
     // Handle file uploads - using Cloudinary's path which provides the full URL
     if (req.files) {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.thumbnail && files.thumbnail[0]) {
-        businessData.thumbnail = files.thumbnail[0].path;
+      const files = req.files as Express.Multer.File[]; // upload.any() returns array
+      
+      // Find thumbnail and coverImage
+      const thumbnailFile = files.find(f => f.fieldname === 'thumbnail');
+      const coverImageFile = files.find(f => f.fieldname === 'coverImage');
+      
+      if (thumbnailFile) {
+        businessData.thumbnail = thumbnailFile.path;
       }
-      if (files.coverImage && files.coverImage[0]) {
-        businessData.coverImage = files.coverImage[0].path;
+      if (coverImageFile) {
+        businessData.coverImage = coverImageFile.path;
+      }
+      
+      // Handle menu item images
+      if (businessData.menu && Array.isArray(businessData.menu)) {
+        businessData.menu = businessData.menu.map((item: any, index: number) => {
+          const menuImageFile = files.find(f => f.fieldname === `menuImage-${index}`);
+          if (menuImageFile) {
+            return {
+              ...item,
+              image: menuImageFile.path // Cloudinary URL
+            };
+          }
+          return item;
+        });
       }
     }
 
@@ -572,12 +591,31 @@ export const updateBusiness = async (req: Request, res: Response): Promise<void>
 
     // Handle file uploads - using Cloudinary's path which provides the full URL
     if (req.files) {
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      if (files.thumbnail && files.thumbnail[0]) {
-        updateData.thumbnail = files.thumbnail[0].path;
+      const files = req.files as Express.Multer.File[]; // upload.any() returns array
+      
+      // Find thumbnail and coverImage
+      const thumbnailFile = files.find(f => f.fieldname === 'thumbnail');
+      const coverImageFile = files.find(f => f.fieldname === 'coverImage');
+      
+      if (thumbnailFile) {
+        updateData.thumbnail = thumbnailFile.path;
       }
-      if (files.coverImage && files.coverImage[0]) {
-        updateData.coverImage = files.coverImage[0].path;
+      if (coverImageFile) {
+        updateData.coverImage = coverImageFile.path;
+      }
+      
+      // Handle menu item images
+      if (updateData.menu && Array.isArray(updateData.menu)) {
+        updateData.menu = updateData.menu.map((item: any, index: number) => {
+          const menuImageFile = files.find(f => f.fieldname === `menuImage-${index}`);
+          if (menuImageFile) {
+            return {
+              ...item,
+              image: menuImageFile.path // Cloudinary URL
+            };
+          }
+          return item;
+        });
       }
     }
 
