@@ -86,7 +86,7 @@ export interface ITimeSlot {
   id: string;
   name: string;
   startTime: string;
-  endTime: string;
+  endTime?: string; // Optional to handle legacy/incomplete data
   type: 'lunch' | 'dinner' | 'event';
   available: boolean;
   maxCapacity: number;

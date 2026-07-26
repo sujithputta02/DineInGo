@@ -630,8 +630,30 @@ export const updateBusiness = async (req: Request, res: Response): Promise<void>
     // Sanitize timeSlots - filter out invalid entries
     if (updateData.timeSlots && Array.isArray(updateData.timeSlots)) {
       updateData.timeSlots = updateData.timeSlots.filter((slot: any) => {
-        // Keep only slots that have all required fields
-        return slot.id && slot.name && slot.startTime && slot.type && typeof slot.maxCapacity === 'number';
+        // First check if slot is a non-null object
+        if (!slot || typeof slot !== 'object' || Array.isArray(slot)) {
+          return false;
+        }
+        
+        // Validate required string fields
+        if (typeof slot.id !== 'string' || !slot.id.trim()) return false;
+        if (typeof slot.name !== 'string' || !slot.name.trim()) return false;
+        if (typeof slot.startTime !== 'string' || !slot.startTime.trim()) return false;
+        if (typeof slot.type !== 'string' || !slot.type.trim()) return false;
+        
+        // Validate maxCapacity is a finite number (not NaN or Infinity)
+        if (typeof slot.maxCapacity !== 'number' || !Number.isFinite(slot.maxCapacity)) {
+          return false;
+        }
+        
+        // endTime is optional, but if present must be a non-empty string
+        if (slot.endTime !== undefined && slot.endTime !== null) {
+          if (typeof slot.endTime !== 'string' || !slot.endTime.trim()) {
+            return false;
+          }
+        }
+        
+        return true;
       });
       console.log(`Filtered timeSlots: ${updateData.timeSlots.length} valid slots`);
     }
