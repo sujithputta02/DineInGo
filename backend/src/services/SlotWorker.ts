@@ -1,3 +1,4 @@
+import mongoose from 'mongoose';
 import { Hold } from '../models/Hold';
 import { SlotService } from './SlotService';
 
@@ -10,6 +11,12 @@ export class SlotWorker {
 
         console.log('Starting SlotWorker...');
         this.intervalId = setInterval(async () => {
+            // Check if MongoDB is connected before running
+            if (mongoose.connection.readyState !== 1) {
+                console.log('Skipping SlotWorker: MongoDB not connected');
+                return;
+            }
+            
             if (this.isRunning) return;
             this.isRunning = true;
 
