@@ -635,6 +635,94 @@ function BusinessOnboarding() {
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">City *</label>
+              <input
+                type="text"
+                value={businessDetails.locationData?.city || ''}
+                onChange={isReadOnly ? undefined : (e) => {
+                  setBusinessDetails(prev => ({
+                    ...prev,
+                    locationData: {
+                      ...prev.locationData,
+                      address: prev.locationData?.address || '',
+                      city: e.target.value,
+                      state: prev.locationData?.state || '',
+                      country: prev.locationData?.country || 'India',
+                      pincode: prev.locationData?.pincode || '',
+                      latitude: prev.locationData?.latitude || 0,
+                      longitude: prev.locationData?.longitude || 0
+                    }
+                  }));
+                }}
+                readOnly={isReadOnly}
+                className={`w-full px-4 py-3 border border-slate-300 rounded-lg ${isReadOnly
+                  ? 'bg-slate-50 cursor-not-allowed'
+                  : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                  }`}
+                placeholder="e.g., Bangalore"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">State *</label>
+              <input
+                type="text"
+                value={businessDetails.locationData?.state || ''}
+                onChange={isReadOnly ? undefined : (e) => {
+                  setBusinessDetails(prev => ({
+                    ...prev,
+                    locationData: {
+                      ...prev.locationData,
+                      address: prev.locationData?.address || '',
+                      city: prev.locationData?.city || '',
+                      state: e.target.value,
+                      country: prev.locationData?.country || 'India',
+                      pincode: prev.locationData?.pincode || '',
+                      latitude: prev.locationData?.latitude || 0,
+                      longitude: prev.locationData?.longitude || 0
+                    }
+                  }));
+                }}
+                readOnly={isReadOnly}
+                className={`w-full px-4 py-3 border border-slate-300 rounded-lg ${isReadOnly
+                  ? 'bg-slate-50 cursor-not-allowed'
+                  : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                  }`}
+                placeholder="e.g., Karnataka"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-2">Full Address</label>
+            <textarea
+              value={businessDetails.locationData?.address || ''}
+              onChange={isReadOnly ? undefined : (e) => {
+                setBusinessDetails(prev => ({
+                  ...prev,
+                  locationData: {
+                    ...prev.locationData,
+                    address: e.target.value,
+                    city: prev.locationData?.city || '',
+                    state: prev.locationData?.state || '',
+                    country: prev.locationData?.country || 'India',
+                    pincode: prev.locationData?.pincode || '',
+                    latitude: prev.locationData?.latitude || 0,
+                    longitude: prev.locationData?.longitude || 0
+                  }
+                }));
+              }}
+              readOnly={isReadOnly}
+              rows={2}
+              className={`w-full px-4 py-3 border border-slate-300 rounded-lg ${isReadOnly
+                ? 'bg-slate-50 cursor-not-allowed'
+                : 'focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500'
+                }`}
+              placeholder="e.g., 123 MG Road, Indiranagar, Bangalore - 560038"
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">Business Type *</label>
             <div className="grid grid-cols-3 gap-2">
