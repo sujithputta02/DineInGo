@@ -306,15 +306,24 @@ export const blockCrossPortalRequests = (req: Request, res: Response, next: Next
   const allowedOrigins: Record<Portal, string[]> = {
     [Portal.USER]: [
       process.env.USER_PORTAL_URL || 'http://localhost:5173',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      'https://dine-in-go.vercel.app',
+      'https://dineingo.com',
+      'https://www.dineingo.com'
     ],
     [Portal.BUSINESS]: [
       process.env.BUSINESS_PORTAL_URL || 'http://localhost:5173/business',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      'https://dine-in-go.vercel.app',
+      'https://dineingo.com',
+      'https://www.dineingo.com'
     ],
     [Portal.ADMIN]: [
       process.env.ADMIN_PORTAL_URL || 'http://localhost:5173/admin',
-      'http://localhost:5173'
+      'http://localhost:5173',
+      'https://dine-in-go.vercel.app',
+      'https://dineingo.com',
+      'https://www.dineingo.com'
     ]
   };
   
