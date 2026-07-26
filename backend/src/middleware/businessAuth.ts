@@ -12,6 +12,8 @@ import mongoose from 'mongoose';
  * SECURITY: Business Owner Role Guard
  * Verifies that the requester is a registered business owner or admin
  * Checks both MongoDB user record AND Firebase token role
+ * 
+ * SPECIAL CASE: Allows first-time business creation for any authenticated user
  */
 export const verifyBusinessOwner = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -28,12 +30,25 @@ export const verifyBusinessOwner = async (req: Request, res: Response, next: Nex
     const user = await User.findOne({ uid: requester.uid });
     const isOwnerByDB = user && (user.role === 'owner' || user.role === 'admin' || user.isAdmin);
 
-    // Allow if EITHER token OR database indicates owner/admin role
+    // ✅ SPECIAL CASE: Allow first-time business creation
+    // If this is a POST request (creating new business), allow any authenticated user
+    // After creation, they will become an owner
+    const isCreatingBusiness = req.method === 'POST' && !req.params.id && !req.params.businessId;
+    
+    if (isCreatingBusiness) {
+      console.log(`[BusinessAuth] Allowing first-time business creation for user ${requester.uid}`);
+      (req as any).userData = user;
+      return next();
+    }
+
+    // For all other operations (update, delete, etc.), require owner role
     if (!isOwnerByToken && !isOwnerByDB) {
       console.warn(`[BusinessAuth] Access denied for user ${requester.uid}:`, {
         tokenRole,
         dbRole: user?.role,
-        isAdmin: user?.isAdmin
+        isAdmin: user?.isAdmin,
+        method: req.method,
+        path: req.path
       });
       return res.status(403).json({ success: false, message: 'Access Denied: Business owner role required.' });
     }

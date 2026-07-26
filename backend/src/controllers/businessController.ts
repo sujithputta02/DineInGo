@@ -381,6 +381,35 @@ export const createBusiness = async (req: Request, res: Response): Promise<void>
     await business.save();
     console.log('Business saved with ID:', business._id);
 
+    // ✅ IMPORTANT: Set user role to 'owner' after first business creation
+    const requester = (req as any).user;
+    if (requester && requester.uid) {
+      try {
+        const { User } = require('../models/User');
+        let user = await User.findOne({ uid: requester.uid });
+        
+        if (user && user.role !== 'owner' && user.role !== 'admin') {
+          user.role = 'owner';
+          await user.save();
+          console.log(`[BusinessAuth] Updated user ${requester.uid} role to 'owner'`);
+        } else if (!user) {
+          // Create user record if it doesn't exist
+          user = new User({
+            uid: requester.uid,
+            email: requester.email,
+            name: requester.name,
+            role: 'owner',
+            createdAt: new Date()
+          });
+          await user.save();
+          console.log(`[BusinessAuth] Created new owner user record for ${requester.uid}`);
+        }
+      } catch (userUpdateError) {
+        console.warn('[BusinessAuth] Failed to update user role:', userUpdateError);
+        // Don't fail the request if user update fails
+      }
+    }
+
     res.status(201).json({ data: transformBusinessData(business, req) });
   } catch (error: any) {
     console.error('Error creating business:', error);
