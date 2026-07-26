@@ -33,7 +33,7 @@ export const verifyBusinessOwner = async (req: Request, res: Response, next: Nex
     const isOwnerByDB = user && (user.role === 'owner' || user.role === 'admin' || user.isAdmin);
 
     // ✅ SPECIAL CASE 1: Allow first-time business creation
-    // If this is a POST request (creating new business), allow any authenticated user
+    // If this is a POST request WITHOUT an ID (creating new business), allow any authenticated user
     // After creation, they will become an owner
     const isCreatingBusiness = req.method === 'POST' && !req.params.id && !req.params.businessId;
     
@@ -43,12 +43,12 @@ export const verifyBusinessOwner = async (req: Request, res: Response, next: Nex
       return next();
     }
 
-    // ✅ SPECIAL CASE 2: Updating/deleting specific business
+    // ✅ SPECIAL CASE 2: Operating on specific business (any HTTP method with business ID)
     // If there's a business ID in params, let verifyBusinessAccess check ownership
-    // This allows users who created a business (and became owners) to update it
+    // This allows users who created a business (and became owners) to manage it
     // even if their Firebase token hasn't refreshed with the new role
     const hasBusinessId = req.params.id || req.params.businessId;
-    if (hasBusinessId && (req.method === 'PUT' || req.method === 'PATCH' || req.method === 'DELETE')) {
+    if (hasBusinessId) {
       // Check if user has at least ONE business (making them an owner)
       const userBusinessCount = await require('../models/Business').Business.countDocuments({ ownerId: requester.uid });
       if (userBusinessCount > 0) {
