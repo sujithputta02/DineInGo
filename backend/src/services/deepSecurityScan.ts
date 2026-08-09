@@ -6,7 +6,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { constants as fsConstants } from 'fs';
+import { constants as fsConstants, Dirent } from 'fs';
 
 export type ScanSeverity = 'pass' | 'info' | 'warn' | 'fail';
 
@@ -228,7 +228,7 @@ async function walkSource(
 ): Promise<void> {
   if (budget.files <= 0) return;
 
-  let entries: Awaited<ReturnType<typeof fs.readdir>>;
+  let entries: Dirent[];
   try {
     entries = await fs.readdir(dir, { withFileTypes: true });
   } catch {
