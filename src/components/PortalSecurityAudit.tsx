@@ -170,7 +170,11 @@ const PortalSecurityAudit: React.FC<PortalSecurityAuditProps> = ({ scan, isScann
             </span>
           ) : (
             <>
-              <CheckCircle2 size={12} />
+              {scan && data.summary.fail > 0 ? (
+                <XCircle size={12} />
+              ) : (
+                <CheckCircle2 size={12} />
+              )}
               <span className="text-[10px] font-bold uppercase tracking-widest">
                 Integrity: {integrity}
               </span>

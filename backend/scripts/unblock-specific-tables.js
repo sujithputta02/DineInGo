@@ -6,8 +6,6 @@
 const mongoose = require('mongoose');
 const { requireMongoUri } = require('./lib/loadEnv');
 
-require('dotenv').config({ path: '../.env' });
-
 async function unblockTables() {
   try {
     console.log('Connecting to MongoDB...');

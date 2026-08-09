@@ -1,19 +1,13 @@
 import mongoose from 'mongoose';
 import { User } from '../src/models/User';
-import dotenv from 'dotenv';
-import path from 'path';
-import fs from 'fs';
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// CommonJS helper — loads backend/.env and validates scheme
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { requireMongoUri } = require('./lib/loadEnv');
 
 const verifyModelStorage = async () => {
     try {
-        const mongoUri = process.env.MONGODB_URI;
-        if (!mongoUri) {
-            throw new Error('MONGODB_URI is not set in backend/.env');
-        }
-        await mongoose.connect(mongoUri);
+        await mongoose.connect(requireMongoUri());
         console.log('Connected to MongoDB');
 
         // Create a dummy image buffer
@@ -62,6 +56,7 @@ const verifyModelStorage = async () => {
 
     } catch (error) {
         console.error('Verification failed:', error);
+        process.exitCode = 1;
     } finally {
         await mongoose.disconnect();
         console.log('Disconnected from MongoDB');

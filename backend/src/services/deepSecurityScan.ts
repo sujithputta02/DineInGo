@@ -490,8 +490,9 @@ export async function runDeepSecurityScan(context?: {
 
   const before = findings.length;
   const roots = await resolveScanRoots();
+  const sharedBudget = { files: 2500 };
   for (const root of roots) {
-    await walkSource(root, findings, { files: 2500 });
+    await walkSource(root, findings, sharedBudget);
   }
   const sourceHits = findings.length - before;
   if (sourceHits === 0) {

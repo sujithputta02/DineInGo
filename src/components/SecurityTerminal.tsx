@@ -12,7 +12,7 @@ interface OpenTerminalProps {
 const COMMAND_LIST = [
   { cmd: '/help', desc: 'Display this command cheat sheet' },
   { cmd: '/status', desc: 'Check global system integrity and server load' },
-  { cmd: '/scan [portal]', desc: 'Deep scan: secrets, hardening, portal, exposure' },
+  { cmd: '/scan', desc: 'Deep scan: secrets, hardening, portal defense, exposure (global)' },
   { cmd: '/ban [IP] [Reason]', desc: 'Instantly blacklist a suspicious IP address' },
   { cmd: '/unban [IP]', desc: 'Remove an IP address from the global blacklist' },
   { cmd: '/clear', desc: 'Clear the terminal output history' },
@@ -80,8 +80,14 @@ const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted, onDe
           break;
 
         case '/scan': {
-          const portal = args[0] || 'global';
-          addHistory(`Initiating deep-scan on [${portal.toUpperCase()}] (secrets+hardening)...`, 'resp');
+          if (args.length > 0) {
+            addHistory(
+              'Error: /scan does not accept a portal scope. Usage: /scan (global audit only).',
+              'error'
+            );
+            break;
+          }
+          addHistory('Initiating deep-scan [GLOBAL] (secrets+hardening+portal+exposure)...', 'resp');
           try {
             const res = await adminApi.runSecurityDeepScan();
             if (res.success && res.scan) {
