@@ -12,16 +12,29 @@ dist
 dist-ssr
 *.local
 
-# Environment variables
+# Environment variables (never commit real secrets)
 .env
+.env.*
+!.env.example
+!**/.env.example
+!**/*.env.example
 .env.local
 .env.development
 .env.production
 .env.test
 backend/.env
+backend/.env.*
+!backend/.env.example
 backend/.env.local
 backend/.env.development
 backend/.env.production
+
+# One-off diagnostic / scratch scripts (easy place to paste secrets by mistake)
+backend/diag.js
+backend/test-endpoint.ts
+backend/test-endpoint.js
+**/scratch.*
+
 
 # Editor directories and files
 .vscode/*

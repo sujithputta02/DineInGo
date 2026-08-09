@@ -269,6 +269,10 @@ export async function updateIssueStatus(issueId: string, status: string) {
 
 export async function getSecurityStats() { return adminApiRequest('/api/v1/admin/security/stats'); }
 
+export async function runSecurityDeepScan() {
+  return adminApiRequest('/api/v1/admin/security/deep-scan', { method: 'POST' });
+}
+
 export async function getSecurityLogs(params: { portal?: string; eventType?: string; severity?: string; limit?: number; page?: number; since?: string }) {
   const query = new URLSearchParams(params as any).toString();
   return adminApiRequest(`/api/v1/admin/security/logs?${query}`);
@@ -352,6 +356,7 @@ export const adminApi = {
   updateIssueStatus,
   getSecurityStats,
   getSecurityLogs,
+  runSecurityDeepScan,
   getBlockedIPs,
   unblockIP,
   blockIP,

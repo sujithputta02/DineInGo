@@ -27,7 +27,7 @@ import SecurityVisualizer from '../components/SecurityVisualizer';
 import ThreatMap from '../components/ThreatMap';
 import SecurityScoreDial from '../components/SecurityScoreDial';
 import BlacklistManager from '../components/BlacklistManager';
-import PortalSecurityAudit from '../components/PortalSecurityAudit';
+import PortalSecurityAudit, { DeepScanViewModel } from '../components/PortalSecurityAudit';
 import SecurityTerminal from '../components/SecurityTerminal';
 
 interface SecurityStats {
@@ -67,6 +67,7 @@ function AdminSecurityPage() {
   const [paginationData, setPaginationData] = useState<any>(null);
   const [isAdminSuper] = useState(() => localStorage.getItem('adminRole') === 'super_admin');
   const [showTerminal, setShowTerminal] = useState(false);
+  const [deepScan, setDeepScan] = useState<DeepScanViewModel | null>(null);
 
   const fetchSecurityData = async (showToast = false) => {
     try {
@@ -141,15 +142,32 @@ function AdminSecurityPage() {
     }
   };
 
-  const runSecurityScan = () => {
+  const runSecurityScan = async () => {
     setIsScanning(true);
-    toast.info('Initiating Universal Security Audit...');
-    
-    // Simulate deep scan duration
-    setTimeout(() => {
+    toast.info('Initiating Deep Security Audit (secrets, hardening, exposure)...');
+
+    try {
+      const res = await adminApi.runSecurityDeepScan();
+      if (res.success && res.scan) {
+        setDeepScan(res.scan);
+        const { fail, warn, pass } = res.scan.summary;
+        if (fail > 0) {
+          toast.error(`Deep scan complete: score ${res.scan.score}. ${fail} FAIL / ${warn} WARN.`);
+        } else if (warn > 0) {
+          toast.warning(`Deep scan complete: score ${res.scan.score}. ${warn} warning(s). ${pass} passed.`);
+        } else {
+          toast.success(`Deep scan complete: score ${res.scan.score}. No major issues.`);
+        }
+        fetchSecurityData(false);
+      } else {
+        toast.error(res.message || 'Deep security scan failed');
+      }
+    } catch (error) {
+      console.error('Deep scan error:', error);
+      toast.error('Deep security scan failed — check admin API connectivity');
+    } finally {
       setIsScanning(false);
-      toast.success('System Scan Complete: No major vulnerabilities found.');
-    }, 4000);
+    }
   };
 
   if (loading) {
@@ -221,7 +239,10 @@ function AdminSecurityPage() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         <div className="lg:col-span-1">
           {isAdminSuper && showTerminal ? (
-            <SecurityTerminal onCommandExecuted={() => fetchSecurityData(false)} />
+            <SecurityTerminal
+              onCommandExecuted={() => fetchSecurityData(false)}
+              onDeepScanResult={(scan) => setDeepScan(scan)}
+            />
           ) : (
             <SecurityScoreDial stats={stats} logs={logs} />
           )}
@@ -234,8 +255,28 @@ function AdminSecurityPage() {
       {/* Dynamic High-Tech Security Visualizer */}
       <SecurityVisualizer logs={logs} stats={stats} isScanning={isScanning} />
 
-      {/* Universal Portal Security Audit (Now Full-Width Hero Row) */}
-      <PortalSecurityAudit />
+      {/* Universal Portal Security Audit (live deep-scan results) */}
+      <PortalSecurityAudit scan={deepScan} isScanning={isScanning} />
+
+      {/* Beta hardening callout */}
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div>
+          <p className="text-sm font-bold text-slate-900">Beta ≠ safe by default</p>
+          <p className="text-xs text-slate-500 mt-1 max-w-3xl">
+            If Mongo credentials were ever in a public GitHub commit (or pasted in chat), assume they are burned.
+            Rotate Atlas passwords, lock Network Access to hosting IPs only, and keep secrets only in Render / local{' '}
+            <code className="text-[10px] bg-white px-1 py-0.5 rounded border">.env</code>.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={runSecurityScan}
+          disabled={isScanning}
+          className="shrink-0 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-red-200 hover:text-red-600 transition-colors"
+        >
+          Re-run Deep Scan
+        </button>
+      </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

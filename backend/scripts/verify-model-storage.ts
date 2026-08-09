@@ -9,7 +9,10 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const verifyModelStorage = async () => {
     try {
-        const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/DineInGo';
+        const mongoUri = process.env.MONGODB_URI;
+        if (!mongoUri) {
+            throw new Error('MONGODB_URI is not set in backend/.env');
+        }
         await mongoose.connect(mongoUri);
         console.log('Connected to MongoDB');
 

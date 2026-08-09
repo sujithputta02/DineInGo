@@ -4,12 +4,14 @@
  */
 
 const mongoose = require('mongoose');
+const { requireMongoUri } = require('./lib/loadEnv');
+
 require('dotenv').config({ path: '../.env' });
 
 async function unblockTables() {
   try {
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dineingo');
+    await mongoose.connect(requireMongoUri());
     console.log('Connected successfully');
 
     // Import models
