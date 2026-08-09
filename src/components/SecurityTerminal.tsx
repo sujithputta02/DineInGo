@@ -147,6 +147,8 @@ const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted, onDe
         default:
           addHistory(`Unknown command: ${cmd}. Type /help`, 'error');
       }
+    } catch (error: any) {
+      addHistory(`System Error: ${error?.message || 'Operation failed'}`, 'error');
     } finally {
       setIsProcessing(false);
     }
