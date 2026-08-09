@@ -4,8 +4,9 @@
  * Never returns raw secret values — only redacted findings.
  */
 
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
+import { constants as fsConstants } from 'fs';
 
 export type ScanSeverity = 'pass' | 'info' | 'warn' | 'fail';
 
@@ -143,7 +144,7 @@ function isWeakSecret(value: string | undefined, minLen = 32): boolean {
   );
 }
 
-function resolveScanRoots(): string[] {
+async function resolveScanRoots(): Promise<string[]> {
   const cwd = process.cwd();
   const candidates = [
     cwd,
@@ -155,9 +156,8 @@ function resolveScanRoots(): string[] {
   const roots: string[] = [];
   for (const dir of candidates) {
     try {
-      if (fs.existsSync(path.join(dir, 'package.json')) && !roots.includes(dir)) {
-        roots.push(dir);
-      }
+      await fs.access(path.join(dir, 'package.json'), fsConstants.F_OK);
+      if (!roots.includes(dir)) roots.push(dir);
     } catch {
       // ignore
     }
@@ -180,10 +180,10 @@ function shouldSkip(filePath: string): boolean {
   return false;
 }
 
-function scanFileForSecrets(filePath: string, findings: ScanFinding[]): void {
+async function scanFileForSecrets(filePath: string, findings: ScanFinding[]): Promise<void> {
   let content: string;
   try {
-    content = fs.readFileSync(filePath, 'utf8');
+    content = await fs.readFile(filePath, 'utf8');
   } catch {
     return;
   }
@@ -216,11 +216,21 @@ function scanFileForSecrets(filePath: string, findings: ScanFinding[]): void {
   }
 }
 
-function walkSource(dir: string, findings: ScanFinding[], budget: { files: number }): void {
+/** Yield to the event loop periodically so admin API stays responsive. */
+function yieldEventLoop(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+async function walkSource(
+  dir: string,
+  findings: ScanFinding[],
+  budget: { files: number }
+): Promise<void> {
   if (budget.files <= 0) return;
-  let entries: fs.Dirent[];
+
+  let entries: Awaited<ReturnType<typeof fs.readdir>>;
   try {
-    entries = fs.readdirSync(dir, { withFileTypes: true });
+    entries = await fs.readdir(dir, { withFileTypes: true });
   } catch {
     return;
   }
@@ -231,14 +241,17 @@ function walkSource(dir: string, findings: ScanFinding[], budget: { files: numbe
     if (shouldSkip(full)) continue;
 
     if (entry.isDirectory()) {
-      walkSource(full, findings, budget);
+      await walkSource(full, findings, budget);
     } else if (entry.isFile()) {
       const ext = path.extname(entry.name);
       const isEnvExample =
         entry.name.endsWith('.env.example') || entry.name.includes('ENV_TEMPLATE');
       if (!TEXT_EXTS.has(ext) && !isEnvExample) continue;
       budget.files -= 1;
-      scanFileForSecrets(full, findings);
+      await scanFileForSecrets(full, findings);
+      if (budget.files % 25 === 0) {
+        await yieldEventLoop();
+      }
     }
   }
 }
@@ -476,9 +489,9 @@ export async function runDeepSecurityScan(context?: {
   );
 
   const before = findings.length;
-  const roots = resolveScanRoots();
+  const roots = await resolveScanRoots();
   for (const root of roots) {
-    walkSource(root, findings, { files: 2500 });
+    await walkSource(root, findings, { files: 2500 });
   }
   const sourceHits = findings.length - before;
   if (sourceHits === 0) {
