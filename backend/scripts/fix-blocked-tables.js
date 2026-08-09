@@ -4,7 +4,7 @@
  */
 
 const mongoose = require('mongoose');
-require('dotenv').config({ path: '../.env' });
+const { requireMongoUri } = require('./lib/loadEnv');
 
 const TableStatus = require('../dist/models/TableStatus').TableStatus;
 const TableBooking = require('../dist/models/TableBooking').TableBooking;
@@ -13,7 +13,7 @@ const Booking = require('../dist/models/Booking').Booking;
 async function fixBlockedTables() {
   try {
     console.log('Connecting to MongoDB...');
-    await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dineingo');
+    await mongoose.connect(requireMongoUri());
     console.log('Connected successfully');
 
     // Find all cancelled bookings
