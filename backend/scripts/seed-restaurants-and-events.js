@@ -1,13 +1,7 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
+const { requireMongoUri } = require('./lib/loadEnv');
 
-const MONGODB_URI = process.env.MONGODB_URI;
-
-if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not set in environment variables');
-  console.error('Please set MONGODB_URI in your .env file');
-  process.exit(1);
-}
+const MONGODB_URI = requireMongoUri();
 
 // Restaurant Schema
 const restaurantSchema = new mongoose.Schema({

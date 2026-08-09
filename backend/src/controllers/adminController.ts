@@ -17,6 +17,7 @@ import { SecurityLog } from '../models/SecurityLog';
 import BlockedIP from '../models/BlockedIP';
 import { EarlyAccess } from '../models/EarlyAccess';
 import { emailService } from '../services/emailService';
+import { runDeepSecurityScan } from '../services/deepSecurityScan';
 
 // Super admin email (DineInGo owner)
 const SUPER_ADMIN_EMAIL = 'sujithputta02@gmail.com';
@@ -1281,6 +1282,52 @@ export const getSecurityStats = async (req: Request, res: Response) => {
       success: false, 
       message: 'Failed to fetch security stats'
     });
+  }
+};
+
+/**
+ * UNIVERSAL SECURITY: Run deep security scan (secrets + hardening + portal)
+ */
+export const runSecurityDeepScan = async (req: Request, res: Response) => {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [blockedIps, criticalThreats24h] = await Promise.all([
+      SecurityLog.distinct('ip', { eventType: 'blocked_ip' }).catch(() => [] as string[]),
+      SecurityLog.countDocuments({
+        severity: 'critical',
+        timestamp: { $gte: twentyFourHoursAgo },
+      }).catch(() => 0),
+    ]);
+
+    const scan = await runDeepSecurityScan({
+      blockedIpsCount: Array.isArray(blockedIps) ? blockedIps.length : 0,
+      criticalThreats24h: typeof criticalThreats24h === 'number' ? criticalThreats24h : 0,
+    });
+
+    const hasFail = scan.summary.fail > 0;
+    const adminEmail = (req as any).admin?.email || 'unknown';
+    const adminIp =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.ip ||
+      'system';
+
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: hasFail ? 'secret_leak_detected' : 'deep_scan_completed',
+      severity: hasFail ? 'critical' : scan.summary.warn > 0 ? 'medium' : 'low',
+      details: `Deep scan by ${adminEmail}: score=${scan.score}, fail=${scan.summary.fail}, warn=${scan.summary.warn}, pass=${scan.summary.pass}`,
+      ip: adminIp,
+      path: '/api/v1/admin/security/deep-scan',
+      userId: adminEmail,
+    }).catch((err) => console.error('Failed to persist deep scan log:', err));
+
+    res.json({
+      success: true,
+      scan,
+    });
+  } catch (error) {
+    console.error('Error running deep security scan:', error);
+    res.status(500).json({ success: false, message: 'Deep security scan failed' });
   }
 };
 

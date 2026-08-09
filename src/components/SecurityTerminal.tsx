@@ -2,25 +2,27 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Terminal, HelpCircle, X } from 'lucide-react';
 import { adminApi } from '../utils/adminApi';
+import type { DeepScanViewModel } from './PortalSecurityAudit';
 
 interface OpenTerminalProps {
   onCommandExecuted?: () => void;
+  onDeepScanResult?: (scan: DeepScanViewModel) => void;
 }
 
 const COMMAND_LIST = [
   { cmd: '/help', desc: 'Display this command cheat sheet' },
   { cmd: '/status', desc: 'Check global system integrity and server load' },
-  { cmd: '/scan [portal]', desc: 'Perform a security deep-scan (admin, business, user)' },
+  { cmd: '/scan [portal]', desc: 'Deep scan: secrets, hardening, portal, exposure' },
   { cmd: '/ban [IP] [Reason]', desc: 'Instantly blacklist a suspicious IP address' },
   { cmd: '/unban [IP]', desc: 'Remove an IP address from the global blacklist' },
   { cmd: '/clear', desc: 'Clear the terminal output history' },
   { cmd: '/lockdown', desc: 'Toggle emergency maintenance mode (Restricted)' },
 ];
 
-const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted }) => {
+const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted, onDeepScanResult }) => {
   const [input, setInput] = useState('');
   const [history, setHistory] = useState<Array<{ type: 'cmd' | 'resp' | 'error' | 'success', text: string }>>([
-    { type: 'resp', text: 'DineInGo Security OS [Version 1.0.4-BETA]' },
+    { type: 'resp', text: 'DineInGo Security OS [Version 1.1.0-BETA]' },
     { type: 'resp', text: '(c) 2026 DineInGo Corp. All rights reserved.' },
     { type: 'resp', text: 'Type "/help" for available tactical commands.' },
   ]);
@@ -62,20 +64,47 @@ const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted }) =>
 
         case '/status':
           addHistory('Init: System Diagnostic...', 'resp');
-          setTimeout(() => {
-            addHistory('Core: STABLE | DB: CONNECTED | Auth: PROTECTED', 'success');
-            addHistory(`Lat_Sync: ${Math.floor(Math.random() * 40 + 20)}ms`, 'resp');
-          }, 600);
+          try {
+            const stats = await adminApi.getSecurityStats();
+            if (stats.success) {
+              addHistory(
+                `Core: ONLINE | Events24h: ${stats.stats?.last24h ?? 0} | BlockedIPs: ${stats.stats?.blockedIpsCount ?? 0} | Critical: ${stats.stats?.criticalThreats ?? 0}`,
+                'success'
+              );
+            } else {
+              addHistory('Core: PARTIAL | Could not load security stats', 'error');
+            }
+          } catch {
+            addHistory('Status check failed', 'error');
+          }
           break;
 
-        case '/scan':
+        case '/scan': {
           const portal = args[0] || 'global';
-          addHistory(`Initiating deep-scan on [${portal.toUpperCase()}] network...`, 'resp');
-          setTimeout(() => {
-            addHistory(`Scan complete. 0 vulnerabilities found in ${portal} portal.`, 'success');
-            if (onCommandExecuted) onCommandExecuted();
-          }, 1500);
+          addHistory(`Initiating deep-scan on [${portal.toUpperCase()}] (secrets+hardening)...`, 'resp');
+          try {
+            const res = await adminApi.runSecurityDeepScan();
+            if (res.success && res.scan) {
+              onDeepScanResult?.(res.scan);
+              addHistory(
+                `Scan score: ${res.scan.score} | PASS ${res.scan.summary.pass} WARN ${res.scan.summary.warn} FAIL ${res.scan.summary.fail}`,
+                res.scan.summary.fail > 0 ? 'error' : 'success'
+              );
+              res.scan.findings
+                ?.filter((f: { status: string }) => f.status === 'fail' || f.status === 'warn')
+                .slice(0, 8)
+                .forEach((f: { name: string; status: string; detail: string }) => {
+                  addHistory(`[${f.status.toUpperCase()}] ${f.name}: ${f.detail}`, f.status === 'fail' ? 'error' : 'resp');
+                });
+              if (onCommandExecuted) onCommandExecuted();
+            } else {
+              addHistory(`Scan failed: ${res.message || 'unknown error'}`, 'error');
+            }
+          } catch {
+            addHistory('Deep-scan transport error', 'error');
+          }
           break;
+        }
 
         case '/ban':
           if (args.length < 1) {
@@ -112,16 +141,12 @@ const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted }) =>
 
         case '/lockdown':
           addHistory('CRITICAL: Accessing lockdown protocols...', 'error');
-          setTimeout(() => {
-            addHistory('AUTHENTICATION ERROR: Super-Admin biometric confirmation required for Level-5 actions.', 'error');
-          }, 800);
+          addHistory('AUTHENTICATION ERROR: Super-Admin biometric confirmation required for Level-5 actions.', 'error');
           break;
 
         default:
-          addHistory(`Unknown command: "${cmd}". Type "/help" for documentation.`, 'error');
+          addHistory(`Unknown command: ${cmd}. Type /help`, 'error');
       }
-    } catch (error: any) {
-      addHistory(`System Error: ${error.message || 'Operation failed'}`, 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -133,7 +158,7 @@ const SecurityTerminal: React.FC<OpenTerminalProps> = ({ onCommandExecuted }) =>
       <div className="bg-white/5 border-b border-white/5 px-4 py-2 flex items-center justify-between">
         <div className="flex items-center gap-2">
            <Terminal size={14} className="text-emerald-500" />
-           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Security CLI v1.0</span>
+           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Master Security CLI v1.1</span>
         </div>
         <button 
           onClick={(e) => { e.preventDefault(); setShowHelp(true); }}

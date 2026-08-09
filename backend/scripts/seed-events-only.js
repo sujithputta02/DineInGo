@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
+const { requireMongoUri } = require('./lib/loadEnv');
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dineingoapp', {
+mongoose.connect(requireMongoUri(), {
   useNewUrlParser: true,
   useUnifiedTopology: true
 });

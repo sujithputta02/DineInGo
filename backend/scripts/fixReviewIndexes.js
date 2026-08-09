@@ -1,9 +1,9 @@
 const mongoose = require('mongoose');
-require('dotenv').config();
+const { requireMongoUri } = require('./lib/loadEnv');
 
 async function fixIndexes() {
     try {
-        await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/dineingoapp');
+        await mongoose.connect(requireMongoUri());
         console.log('Connected to MongoDB');
 
         const db = mongoose.connection.db;

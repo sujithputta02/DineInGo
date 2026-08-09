@@ -12,7 +12,6 @@
     "allowJs": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "baseUrl": ".",
     "typeRoots": [
       "./node_modules/@types",
       "./server/types"
