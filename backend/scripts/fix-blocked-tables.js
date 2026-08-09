@@ -6,8 +6,6 @@
 const mongoose = require('mongoose');
 const { requireMongoUri } = require('./lib/loadEnv');
 
-require('dotenv').config({ path: '../.env' });
-
 const TableStatus = require('../dist/models/TableStatus').TableStatus;
 const TableBooking = require('../dist/models/TableBooking').TableBooking;
 const Booking = require('../dist/models/Booking').Booking;

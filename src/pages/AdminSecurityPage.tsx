@@ -272,7 +272,11 @@ function AdminSecurityPage() {
           type="button"
           onClick={runSecurityScan}
           disabled={isScanning}
-          className="shrink-0 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl bg-white border border-slate-200 hover:border-red-200 hover:text-red-600 transition-colors"
+          className={`shrink-0 text-xs font-bold uppercase tracking-wider px-4 py-2 rounded-xl bg-white border border-slate-200 transition-colors ${
+            isScanning
+              ? 'opacity-60 cursor-not-allowed text-slate-400 border-slate-200'
+              : 'hover:border-red-200 hover:text-red-600'
+          }`}
         >
           Re-run Deep Scan
         </button>

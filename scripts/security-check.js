@@ -5,7 +5,7 @@
  * Scans for potential credential leaks before committing
  */
 
-import { execSync } from 'child_process';
+import { execSync, spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -110,13 +110,55 @@ try {
   console.log('✅ No .env files tracked by Git\n');
 }
 
-// Also fail if staged files look like secret dumps
+function scanContent(content, relativePath) {
+  dangerousPatterns.forEach(({ pattern, name, severity }) => {
+    pattern.lastIndex = 0;
+    if (pattern.test(content)) {
+      const message = `${severity === 'error' ? '❌' : '⚠️'} Found ${name} in ${relativePath}`;
+      if (severity === 'error') {
+        errors.push(message);
+        issues++;
+      } else {
+        warnings.push(message);
+      }
+    }
+  });
+}
+
+function isScannablePath(file) {
+  const ext = path.extname(file);
+  const base = path.basename(file);
+  return (
+    ['.ts', '.tsx', '.js', '.jsx', '.json', '.md', '.env', '.yml', '.yaml'].includes(ext) ||
+    base.endsWith('.env.example') ||
+    base.includes('ENV_TEMPLATE')
+  );
+}
+
+function getStagedPaths() {
+  const result = spawnSync(
+    'git',
+    ['diff', '--cached', '-z', '--name-only', '--diff-filter=ACM'],
+    { cwd: root, encoding: 'buffer', maxBuffer: 10 * 1024 * 1024 }
+  );
+  if (result.status !== 0 || !result.stdout) return [];
+  return result.stdout.toString('utf8').split('\0').filter(Boolean);
+}
+
+function readStagedBlob(relativePath) {
+  const result = spawnSync('git', ['show', `:${relativePath}`], {
+    cwd: root,
+    encoding: 'utf8',
+    maxBuffer: 8 * 1024 * 1024,
+  });
+  if (result.status !== 0) return null;
+  return result.stdout;
+}
+
+// Also fail if staged files look like secret dumps (names + staged blob content)
 console.log('📦 Checking staged changes...');
 try {
-  const staged = execSync('git diff --cached --name-only', { encoding: 'utf-8', cwd: root })
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
+  const staged = getStagedPaths();
 
   const bannedNames = ['diag.js', 'test-endpoint.ts', 'test-endpoint.js', 'seedRestaurantsAndEvents.js'];
   staged.forEach((file) => {
@@ -129,12 +171,19 @@ try {
       errors.push(`❌ Refusing to commit env file: ${file}`);
       issues++;
     }
+
+    // Pattern-scan the staged blob (what will actually be committed), not the working tree
+    if (isExcluded(path.join(root, file)) || !isScannablePath(file)) return;
+    const blob = readStagedBlob(file);
+    if (blob != null) {
+      scanContent(blob, `${file} (staged)`);
+    }
   });
 
   if (staged.length === 0) {
     console.log('ℹ️  No staged files (still scanning working tree)\n');
   } else {
-    console.log(`✅ Staged file name checks passed (${staged.length} files)\n`);
+    console.log(`✅ Staged file checks completed (${staged.length} files)\n`);
   }
 } catch (e) {
   // not in a git repo / nothing staged
@@ -146,20 +195,7 @@ console.log('🔍 Scanning source files for credentials...');
 function scanFile(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
-    const relativePath = path.relative(root, filePath);
-
-    dangerousPatterns.forEach(({ pattern, name, severity }) => {
-      pattern.lastIndex = 0;
-      if (pattern.test(content)) {
-        const message = `${severity === 'error' ? '❌' : '⚠️'} Found ${name} in ${relativePath}`;
-        if (severity === 'error') {
-          errors.push(message);
-          issues++;
-        } else {
-          warnings.push(message);
-        }
-      }
-    });
+    scanContent(content, path.relative(root, filePath));
   } catch (e) {
     // Ignore files that can't be read
   }
