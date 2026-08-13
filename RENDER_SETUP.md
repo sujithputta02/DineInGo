@@ -16,17 +16,17 @@ Since Render CLI doesn't expose build/start command updates, you MUST manually u
 1. Go: https://dashboard.render.com/web/srv-d6ukh6f5gffc73cq779g
 2. Click **Settings** tab
 3. Under **Build & Deploy** section, update:
-   - **Build Command:** `bun install && bun run build`
-   - **Start Command:** `node dist/server.js`
-   - Keep **Root Directory:** `backend`
+   - **Build Command:** `cd backend && bun install && bun run build`
+   - **Start Command:** `cd backend && node dist/server.js`
+   - **Root Directory:** Leave EMPTY or set to root (/)
 4. Click **Save**
 5. Click **Manual Deploy** → Deploy main branch
 
 ## Why This Works
-- `bun install` is fast and reliable
-- `bun run build` compiles TypeScript → dist/ with bun
-- `node dist/server.js` starts the compiled server using Node (which is always available)
-- Root Directory is set to `backend` so paths are correct
+- `cd backend` in BOTH build and start commands ensures we're always in the right directory
+- Bun builds TypeScript to dist/ folder
+- Node starts the server from dist/server.js
+- No reliance on Root Directory setting (which seems to have issues)
 
 ## Files Prepared (Committed to main):
 - ✅ `render.yaml` - Infrastructure as Code (if Render picks it up in future)
