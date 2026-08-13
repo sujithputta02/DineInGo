@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: dineingo-backend
+    env: node
+    buildCommand: bun install && bun run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+
+
+
+
+
+
+
