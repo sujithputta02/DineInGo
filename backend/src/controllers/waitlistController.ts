@@ -395,12 +395,13 @@ export const joinEarlyAccess = async (req: Request, res: Response): Promise<void
             data: entry
         });
     } catch (error) {
+        // Log detailed error for diagnostics (server-side only)
         console.error('Error joining early access:', error);
-        // Ensure we always return valid JSON
+        
+        // Return generic message to client without exposing error details
         res.status(500).json({ 
             success: false, 
-            message: 'Error joining early access',
-            error: error instanceof Error ? error.message : 'Unknown error'
+            message: 'Error joining early access'
         });
     }
 };
