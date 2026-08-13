@@ -16,17 +16,17 @@ Since Render CLI doesn't expose build/start command updates, you MUST manually u
 1. Go: https://dashboard.render.com/web/srv-d6ukh6f5gffc73cq779g
 2. Click **Settings** tab
 3. Under **Build & Deploy** section, update:
-   - **Build Command:** `cd backend && npm ci && npm run build`
-   - **Start Command:** `cd backend && npm start`
+   - **Build Command:** `cd backend && bun install && bun run build`
+   - **Start Command:** `cd backend && bun start`
    - Keep **Root Directory:** `backend`
 4. Click **Save**
 5. Click **Manual Deploy** → Deploy main branch
 
 ## Why This Works
 - `cd backend` ensures commands run in correct directory
-- `npm ci` (clean install) for reproducible builds
-- `npm run build` compiles TypeScript → dist/
-- `npm start` runs the compiled server
+- `bun install` (faster than npm) for reproducible builds
+- `bun run build` compiles TypeScript → dist/
+- `bun start` runs the compiled server
 
 ## Files Prepared (Committed to main):
 - ✅ `render.yaml` - Infrastructure as Code (if Render picks it up in future)
