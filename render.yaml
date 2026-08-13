@@ -3,7 +3,7 @@ services:
     name: dineingo-backend
     env: node
     buildCommand: cd backend && bun install && bun run build
-    startCommand: bash render-start.sh
+    startCommand: node src/backend/dist/server.js
     envVars:
       - key: NODE_ENV
         value: production
