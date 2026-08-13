@@ -284,6 +284,22 @@ app.get('/', (req: express.Request, res: express.Response) => {
   res.send('DineInGo API is running');
 });
 
+// Health check endpoint (required by Render)
+app.get('/health', (req: express.Request, res: express.Response) => {
+  const mongoDBReady = mongoose.connection.readyState === 1;
+  const status = {
+    status: mongoDBReady ? 'ok' : 'initializing',
+    mongodb: mongoDBReady ? 'connected' : 'connecting',
+    timestamp: new Date().toISOString()
+  };
+  
+  if (mongoDBReady) {
+    res.status(200).json(status);
+  } else {
+    res.status(503).json(status);
+  }
+});
+
 // Error handling middleware - must be after all routes
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error('=== GLOBAL ERROR HANDLER ===');
