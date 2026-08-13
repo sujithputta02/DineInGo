@@ -285,8 +285,9 @@ export const userDataIsolation = async (req: Request, res: Response, next: NextF
  * Prevents any cross-origin requests between portals
  */
 export const blockCrossPortalRequests = (req: Request, res: Response, next: NextFunction): void => {
-  // ✅ WHITELIST: Public routes that don't require portal isolation
+  // ✅ WHITELIST: Public/static routes that don't require portal isolation
   const publicRoutes = [
+    '/favicon.ico',
     '/api/v1/admin/maintenance-status',
     '/api/v1/admin/feature-flags',
     '/api/v1/admin/request-otp',
@@ -294,7 +295,7 @@ export const blockCrossPortalRequests = (req: Request, res: Response, next: Next
   ];
   
   // Skip portal checking for public routes
-  if (publicRoutes.some(route => req.path.toLowerCase() === route)) {
+  if (publicRoutes.some(route => req.path.toLowerCase().startsWith(route))) {
     next();
     return;
   }
@@ -309,21 +310,24 @@ export const blockCrossPortalRequests = (req: Request, res: Response, next: Next
       'http://localhost:5173',
       'https://dine-in-go.vercel.app',
       'https://dineingo.com',
-      'https://www.dineingo.com'
+      'https://www.dineingo.com',
+      'https://dineingo-backend.onrender.com' // Render's own domain
     ],
     [Portal.BUSINESS]: [
       process.env.BUSINESS_PORTAL_URL || 'http://localhost:5173/business',
       'http://localhost:5173',
       'https://dine-in-go.vercel.app',
       'https://dineingo.com',
-      'https://www.dineingo.com'
+      'https://www.dineingo.com',
+      'https://dineingo-backend.onrender.com' // Render's own domain
     ],
     [Portal.ADMIN]: [
       process.env.ADMIN_PORTAL_URL || 'http://localhost:5173/admin',
       'http://localhost:5173',
       'https://dine-in-go.vercel.app',
       'https://dineingo.com',
-      'https://www.dineingo.com'
+      'https://www.dineingo.com',
+      'https://dineingo-backend.onrender.com' // Render's own domain
     ]
   };
   
