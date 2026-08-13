@@ -347,7 +347,14 @@ export const joinEarlyAccess = async (req: Request, res: Response): Promise<void
         }
 
         // 🛡️ SECURITY LAYER 1: Email validation and disposable domain check
-        const emailValidation = await emailSecurityValidator.validateEmail(email);
+        let emailValidation;
+        try {
+            emailValidation = await emailSecurityValidator.validateEmail(email);
+        } catch (error) {
+            console.error('[SignupSecurity] Error during email validation:', error);
+            // If validation throws (shouldn't happen with our error handling), allow the signup
+            emailValidation = { isValid: true };
+        }
         
         if (!emailValidation.isValid) {
             console.log(`[SignupSecurity] ❌ Blocked signup attempt: ${email} - Reason: ${emailValidation.reason}`);
@@ -389,7 +396,12 @@ export const joinEarlyAccess = async (req: Request, res: Response): Promise<void
         });
     } catch (error) {
         console.error('Error joining early access:', error);
-        res.status(500).json({ success: false, message: 'Error joining early access' });
+        // Ensure we always return valid JSON
+        res.status(500).json({ 
+            success: false, 
+            message: 'Error joining early access',
+            error: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 };
 

@@ -41,20 +41,33 @@ class EmailSecurityValidator {
 
   /**
    * Load disposable domains from GitHub (free, auto-updated)
+   * Uses a shorter timeout and graceful fallback to prevent 504 errors
    */
   private async loadDisposableDomainsFromGitHub(): Promise<void> {
     try {
-      const response = await axios.get(this.GITHUB_BLOCKLIST_URL, { timeout: 10000 });
+      const response = await axios.get(this.GITHUB_BLOCKLIST_URL, { 
+        timeout: 5000,  // Reduced from 10000 to 5 seconds for faster fallback
+        headers: {
+          'User-Agent': 'DineInGo-EmailValidator/1.0'
+        }
+      });
+      
+      if (!response.data || response.status !== 200) {
+        throw new Error('Invalid response from GitHub');
+      }
+      
       const domains = response.data
         .split('\n')
         .filter((line: string) => line.trim() && !line.startsWith('#'))
-        .map((domain: string) => domain.trim().toLowerCase());
+        .map((domain: string) => domain.trim().toLowerCase())
+        .filter((domain: string) => domain.length > 0);
 
       this.disposableDomainsCache.domains = new Set(domains);
       this.disposableDomainsCache.lastUpdated = Date.now();
       
-      console.log(`[EmailSecurity] Loaded ${domains.length} disposable domains`);
+      console.log(`[EmailSecurity] Loaded ${domains.length} disposable domains from GitHub`);
     } catch (error) {
+      console.warn('[EmailSecurity] Failed to load GitHub blocklist:', error instanceof Error ? error.message : 'Unknown error');
       throw new Error('Failed to load GitHub blocklist');
     }
   }
@@ -80,14 +93,23 @@ class EmailSecurityValidator {
 
   /**
    * Refresh cache if expired
+   * Gracefully handles network failures without blocking the request
    */
   private async refreshCacheIfNeeded(): Promise<void> {
     const cacheAge = Date.now() - this.disposableDomainsCache.lastUpdated;
     if (cacheAge > this.CACHE_TTL) {
       try {
-        await this.loadDisposableDomainsFromGitHub();
+        // Use Promise.race with timeout to prevent hanging
+        await Promise.race([
+          this.loadDisposableDomainsFromGitHub(),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Cache refresh timeout')), 8000)
+          )
+        ]);
       } catch (error) {
-        console.warn('[EmailSecurity] Failed to refresh blocklist, using existing cache');
+        console.warn('[EmailSecurity] Failed to refresh blocklist, using existing cache:', 
+          error instanceof Error ? error.message : 'Unknown error');
+        // Don't throw - continue with existing cache
       }
     }
   }
@@ -101,13 +123,19 @@ class EmailSecurityValidator {
 
   /**
    * Check if email is from disposable domain
+   * Returns false if validation can't complete (network error, timeout, etc)
    */
   public async isDisposableEmail(email: string): Promise<boolean> {
     if (!email || !email.includes('@')) {
       return true; // Invalid email format
     }
 
-    await this.refreshCacheIfNeeded();
+    try {
+      await this.refreshCacheIfNeeded();
+    } catch (error) {
+      // If cache refresh fails due to network issue, continue with existing cache
+      console.warn('[EmailSecurity] Cache refresh failed, using existing cache');
+    }
 
     const domain = this.extractDomain(email);
     return this.disposableDomainsCache.domains.has(domain);
@@ -185,54 +213,74 @@ class EmailSecurityValidator {
 
   /**
    * Comprehensive validation (main entry point)
+   * Designed to never throw - always returns a validation result
    */
   public async validateEmail(email: string): Promise<{
     isValid: boolean;
     reason?: string;
     domain?: string;
   }> {
-    // 1. Format validation
-    if (!this.isValidEmailFormat(email)) {
-      return {
-        isValid: false,
-        reason: 'Invalid email format'
-      };
-    }
+    try {
+      // 1. Format validation
+      if (!this.isValidEmailFormat(email)) {
+        return {
+          isValid: false,
+          reason: 'Invalid email format'
+        };
+      }
 
-    const domain = this.extractDomain(email);
+      const domain = this.extractDomain(email);
 
-    // 2. Check for disposable domains
-    const isDisposable = await this.isDisposableEmail(email);
-    if (isDisposable) {
+      // 2. Check for disposable domains (with graceful error handling)
+      let isDisposable = false;
+      try {
+        isDisposable = await this.isDisposableEmail(email);
+      } catch (error) {
+        console.warn('[EmailSecurity] Error checking disposable email:', 
+          error instanceof Error ? error.message : 'Unknown error');
+        // Don't fail validation on network error - continue to other checks
+      }
+      
+      if (isDisposable) {
+        return {
+          isValid: false,
+          reason: 'Disposable email addresses are not allowed',
+          domain
+        };
+      }
+
+      // 3. Check for suspicious patterns
+      if (this.hasSuspiciousPatterns(email)) {
+        return {
+          isValid: false,
+          reason: 'Email contains suspicious patterns',
+          domain
+        };
+      }
+
+      // 4. Check for domain typos
+      if (this.hasCommonDomainTypo(email)) {
+        return {
+          isValid: false,
+          reason: 'Possible typo in email domain. Please double-check.',
+          domain
+        };
+      }
+
       return {
-        isValid: false,
-        reason: 'Disposable email addresses are not allowed',
+        isValid: true,
         domain
       };
-    }
-
-    // 3. Check for suspicious patterns
-    if (this.hasSuspiciousPatterns(email)) {
+    } catch (error) {
+      console.error('[EmailSecurity] Unexpected error in validateEmail:', 
+        error instanceof Error ? error.message : 'Unknown error');
+      // Default to allowing the email if something unexpected happens
+      // This prevents service unavailability due to validation errors
       return {
-        isValid: false,
-        reason: 'Email contains suspicious patterns',
-        domain
+        isValid: true,
+        reason: 'Validation skipped due to service issue'
       };
     }
-
-    // 4. Check for domain typos
-    if (this.hasCommonDomainTypo(email)) {
-      return {
-        isValid: false,
-        reason: 'Possible typo in email domain. Please double-check.',
-        domain
-      };
-    }
-
-    return {
-      isValid: true,
-      domain
-    };
   }
 
   /**
