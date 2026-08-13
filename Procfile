@@ -1,1 +1,1 @@
-web: cd .. && node backend/dist/server.js
+web: bash start.sh
