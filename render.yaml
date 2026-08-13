@@ -2,10 +2,11 @@ services:
   - type: web
     name: dineingo-backend
     env: node
-    buildCommand: cd backend && bun install && bun run build
-    startCommand: cd backend && bun start
+    buildCommand: cd backend && npm install && npm run build
+    startCommand: cd backend && npm start
     envVars:
       - key: NODE_ENV
         value: production
+
 
 
