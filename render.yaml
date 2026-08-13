@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: dineingo-backend
+    env: node
+    rootDir: backend
+    buildCommand: bun run build
+    startCommand: bun start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=1024
