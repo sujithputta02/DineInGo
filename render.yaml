@@ -2,11 +2,12 @@ services:
   - type: web
     name: dineingo-backend
     env: node
-    buildCommand: curl -fsSL https://bun.sh/install | bash && cd backend && ~/.bun/bin/bun install && ~/.bun/bin/bun run build
-    startCommand: cd backend && ~/.bun/bin/bun start
+    buildCommand: bun install && bun run build
+    startCommand: node dist/server.js
     envVars:
       - key: NODE_ENV
         value: production
+
 
 
 
