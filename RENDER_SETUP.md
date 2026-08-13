@@ -1,51 +1,45 @@
-# Render Deployment Fix
+# Render Deployment Fix - Final Steps
 
-## Issue
-Render is looking for `/opt/render/project/src/backend/dist/server.js` but the actual path is `/opt/render/project/backend/dist/server.js`
+## Status: CLI Logged In ✓
+Service found: `dineingo-backend` (ID: `srv-d6ukh6f5gffc73cq779g`)
 
-## Solution
+## Current Configuration Issues
+- **Build Command:** `npm install; npm run build` (wrong syntax, runs from root)
+- **Start Command:** `npm run start` (runs from root, can't find dist/server.js)
+- **Root Directory:** `backend` (correct, but start command doesn't respect it)
 
-### Step 1: Update Service Configuration in Render Dashboard
-1. Go to [Render Dashboard](https://dashboard.render.com)
-2. Select your `dineingo-backend` service
-3. Click **Settings**
-4. Scroll to **Build & Deploy**
-5. Update the following:
+## Solution: Update Service in Render Dashboard
 
-   **Build Command:**
-   ```
-   cd backend && npm ci && npm run build
-   ```
+Since Render CLI doesn't expose build/start command updates, you MUST manually update in the dashboard:
 
-   **Start Command:**
-   ```
-   cd backend && npm start
-   ```
-
-   **Root Directory:** Leave EMPTY (important!)
-
-6. Click **Save Changes**
-
-### Step 2: Trigger a Manual Deploy
-1. In the service page, click **Manual Deploy**
-2. Select **main** branch
-3. Click **Deploy**
+### Quick Fix (2 minutes):
+1. Go: https://dashboard.render.com/web/srv-d6ukh6f5gffc73cq779g
+2. Click **Settings** tab
+3. Under **Build & Deploy** section, update:
+   - **Build Command:** `cd backend && npm ci && npm run build`
+   - **Start Command:** `cd backend && npm start`
+   - Keep **Root Directory:** `backend`
+4. Click **Save**
+5. Click **Manual Deploy** → Deploy main branch
 
 ## Why This Works
-- `cd backend` changes to the correct directory where package.json and dist/ are located
-- `npm ci` (clean install) ensures consistent dependencies
-- `npm run build` compiles TypeScript → JavaScript in dist/
-- `npm start` runs the compiled server from dist/server.js
-- Empty Root Directory tells Render to use the project root, not src/backend
+- `cd backend` ensures commands run in correct directory
+- `npm ci` (clean install) for reproducible builds
+- `npm run build` compiles TypeScript → dist/
+- `npm start` runs the compiled server
 
-## Files Updated
-- `render.yaml` - Configuration for Infrastructure as Code (if Render picks it up)
-- `Procfile` - Backup for Procfile-based deployments
-- `backend/Procfile` - Additional backup
+## Files Prepared (Committed to main):
+- ✅ `render.yaml` - Infrastructure as Code (if Render picks it up in future)
+- ✅ `Procfile` - Backup deployment config
+- ✅ `backend/Procfile` - Per-service config
+- ✅ `RENDER_SETUP.md` - Setup guide
 
-## Alternative: If Render Dashboard Settings Don't Work
-If the dashboard won't save the settings, use the Render CLI:
-```bash
-render services:env:set dineingo-backend BUILD_COMMAND="cd backend && npm ci && npm run build"
-render services:env:set dineingo-backend START_COMMAND="cd backend && npm start"
-```
+## Alternative: If Dashboard Update Fails
+Try recreating the service with correct settings or contact Render support with these configs.
+
+## Done After Manual Dashboard Update:
+Once you update the dashboard settings and deploy, the backend will:
+1. Compile TypeScript successfully
+2. Find dist/server.js in the correct path
+3. Start the server without MODULE_NOT_FOUND errors
+
