@@ -33,10 +33,10 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     // PRIORITY 1: Gmail SMTP (works better on Vercel serverless)
     if (process.env.BREVO_SMTP_HOST && process.env.BREVO_SMTP_USER && process.env.BREVO_SMTP_PASS) {
         try {
-            console.log(`📧 [V1] Attempting Brevo SMTP for: ${to}`);
+            console.log(`📧 [V1] Attempting Brevo SMTP for: [redacted]`);
             console.log(`📧 [V1] Brevo Host: ${process.env.BREVO_SMTP_HOST}`);
             console.log(`📧 [V1] Brevo Port: ${Number(process.env.BREVO_SMTP_PORT) || 587}`);
-            console.log(`📧 [V1] Brevo User: ${process.env.BREVO_SMTP_USER}`);
+            console.log(`📧 [V1] Brevo User: [redacted]`);
             
             const transporter = nodemailer.createTransport({
                 host: process.env.BREVO_SMTP_HOST,
@@ -46,8 +46,8 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
                     user: process.env.BREVO_SMTP_USER,
                     pass: process.env.BREVO_SMTP_PASS,
                 },
+                requireTLS: true,
                 tls: {
-                    rejectUnauthorized: false,
                     minVersion: 'TLSv1.2'
                 },
                 connectionTimeout: 10000,
@@ -85,13 +85,12 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
 
             console.log('⏳ [V1] Sending email via Brevo...');
             const info = await withTimeout(sendPromise, 6000, 'Brevo SMTP send');
-            console.log('✅ [V1] Brevo SMTP Success:', { messageId: info.messageId, to });
+            console.log('✅ [V1] Brevo SMTP Success:', { messageId: info.messageId });
             return true;
         } catch (brevoError: any) {
             console.error('❌ [V1] Brevo SMTP Failed:', {
                 message: brevoError?.message,
                 code: brevoError?.code,
-                to,
                 stack: brevoError?.stack?.substring(0, 200)
             });
             // Fall through to Priority 2
@@ -104,7 +103,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     }
 
     // PRIORITY 2: Gmail SMTP Fallback - 3 second timeout
-    console.log(`📧 [V2] Attempting Gmail SMTP Fallback for: ${to}`);
+    console.log(`📧 [V2] Attempting Gmail SMTP Fallback for: [redacted]`);
     
     if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
         console.error('⚠️ [V2] Gmail credentials unavailable:');
@@ -116,7 +115,7 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
     try {
         console.log(`📧 [V2] Gmail Host: ${process.env.EMAIL_HOST || 'smtp.gmail.com'}`);
         console.log(`📧 [V2] Gmail Port: ${Number(process.env.EMAIL_PORT) || 587}`);
-        console.log(`📧 [V2] Gmail User: ${process.env.EMAIL_USER}`);
+        console.log(`📧 [V2] Gmail User: [redacted]`);
         
         const transporter = nodemailer.createTransport({
             host: process.env.EMAIL_HOST || 'smtp.gmail.com',
@@ -126,8 +125,8 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
             },
+            requireTLS: true,
             tls: {
-                rejectUnauthorized: false,
                 minVersion: 'TLSv1.2'
             },
             // Performance optimizations for high-volume fallbacks
@@ -169,13 +168,12 @@ export async function sendEmail(to: string, subject: string, html: string): Prom
 
         console.log('⏳ [V2] Sending email via Gmail...');
         const info = await withTimeout(sendPromise, 6000, 'Gmail SMTP send');
-        console.log('✅ [V2] Gmail SMTP Success:', { messageId: info.messageId, to });
+        console.log('✅ [V2] Gmail SMTP Success:', { messageId: info.messageId });
         return true;
     } catch (smtpError: any) {
         console.error('❌ [V2] Gmail SMTP Failed:', {
             message: smtpError?.message,
             code: smtpError?.code,
-            to,
             stack: smtpError?.stack?.substring(0, 200)
         });
         console.warn('⚠️ Email delivery failed but signup completed successfully (non-critical)');
