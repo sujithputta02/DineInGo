@@ -358,13 +358,25 @@ export const getAllBusinesses = async (req: Request, res: Response): Promise<voi
       query.type = type;
     }
 
+    // ✅ SECURITY FIX: Escape regex patterns to prevent NoSQL injection (HIGH)
+    const escapeRegex = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const toStringValue = (val: any): string => {
+      if (typeof val === 'string') return val;
+      if (Array.isArray(val)) return val[0] ? toStringValue(val[0]) : '';
+      return String(val);
+    };
+    
     // Filter by location if specified
     if (location) {
-      query.$or = [
-        { 'location': { $regex: location, $options: 'i' } },
-        { 'locationData.city': { $regex: location, $options: 'i' } },
-        { 'locationData.state': { $regex: location, $options: 'i' } }
-      ];
+      const locationStr = toStringValue(location);
+      if (locationStr) {
+        const escapedLocation = escapeRegex(locationStr);
+        query.$or = [
+          { 'location': { $regex: escapedLocation, $options: 'i' } },
+          { 'locationData.city': { $regex: escapedLocation, $options: 'i' } },
+          { 'locationData.state': { $regex: escapedLocation, $options: 'i' } }
+        ];
+      }
     }
 
     // Filter by cuisine for restaurants

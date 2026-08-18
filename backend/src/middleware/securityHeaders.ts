@@ -43,13 +43,37 @@ export const customSecurityHeaders = (req: Request, res: Response, next: NextFun
 
 export const corsConfig = {
   origin: (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    // allow all origins temporarily to debug
-    callback(null, true);
+    // ✅ SECURITY FIX: Whitelist only known origins (CRITICAL)
+    const allowedOrigins = [
+      // Production domains
+      'https://dine-in-go.vercel.app',
+      'https://dineingo.com',
+      'https://www.dineingo.com',
+      // Development/local
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:3000',
+      // Environment-based
+      process.env.FRONTEND_URL,
+      process.env.ADMIN_URL
+    ].filter(Boolean); // Remove undefined/null values
+
+    if (!origin) {
+      // Allow requests with no origin (like mobile apps, Postman, curl)
+      callback(null, true);
+    } else if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      // Reject requests from unauthorized origins
+      console.warn(`[CORS] Rejected request from unauthorized origin: ${origin}`);
+      callback(new Error(`CORS policy: Origin ${origin} is not allowed`));
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'X-Admin-Token'],
-  maxAge: 86400,
+  maxAge: 3600, // 1 hour instead of 24 hours for security
 };
 
 export default {

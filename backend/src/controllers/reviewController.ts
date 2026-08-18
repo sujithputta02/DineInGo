@@ -210,11 +210,36 @@ export const addReview = async (req: Request, res: Response) => {
 
         const isEvent = business.type === 'event' || business.type === 'both';
 
+        // ✅ SECURITY FIX: Verify user has completed booking before allowing review (CRITICAL)
+        try {
+          const Booking = mongoose.model('Booking');
+          const completedBooking = await Booking.findOne({
+            userId,
+            ...(isEvent ? { eventId: new mongoose.Types.ObjectId(businessIdRaw) } : { businessId: new mongoose.Types.ObjectId(businessIdRaw) }),
+            status: { $in: ['completed', 'checked-in'] }  // Only allow reviews after visit
+          });
+
+          if (!completedBooking) {
+            console.warn(`[ReviewController] User ${userId} attempted review without booking for ${businessIdRaw}`);
+            return res.status(403).json({ 
+              success: false,
+              message: 'You can only review restaurants/events you have visited. Please complete a booking first.' 
+            });
+          }
+          console.log(`[ReviewController] Booking verification passed for user ${userId}`);
+        } catch (bookingCheckError) {
+          console.error('[ReviewController] Error during booking verification:', bookingCheckError);
+          return res.status(500).json({ 
+            success: false,
+            message: 'Failed to verify booking. Please try again.' 
+          });
+        }
+
         // Check if there is an existing review by the same user for this entity
         const existingReview = await Review.findOne({
-            userId,
-            businessId: !isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
-            eventId: isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined
+          userId,
+          businessId: !isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined,
+          eventId: isEvent ? new mongoose.Types.ObjectId(businessIdRaw) : undefined
         });
 
         if (existingReview) {

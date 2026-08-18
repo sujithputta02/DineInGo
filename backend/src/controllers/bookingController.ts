@@ -365,6 +365,19 @@ export const createBooking = async (req: Request, res: Response): Promise<void> 
               return;
             }
 
+            // ✅ SECURITY FIX: Enforce event capacity limits (HIGH)
+            const totalNewTickets = bookingData.selectedTickets.reduce((sum: number, t: any) => sum + t.quantity, 0);
+            const availableCapacity = event.capacity - event.registeredCount;
+            
+            if (totalNewTickets > availableCapacity) {
+              console.warn(`[EventBooking] Capacity exceeded - requested: ${totalNewTickets}, available: ${availableCapacity}`);
+              res.status(400).json({ 
+                success: false,
+                message: `Only ${availableCapacity} seats remaining for this event` 
+              });
+              return;
+            }
+
             // Validate and update tickets
             for (const selectedTicket of bookingData.selectedTickets) {
               const ticket = event.tickets?.find(t => t._id?.toString() === selectedTicket.ticketId);
@@ -692,12 +705,38 @@ export const cancelBooking = async (req: Request, res: Response): Promise<void> 
     console.log('=== CANCEL BOOKING REQUEST ===');
     console.log('Booking ID:', req.params.id);
 
+    // ✅ SECURITY FIX: Verify user owns the booking before allowing cancellation (HIGH)
+    const requester = (req as any).user;
+    if (!requester || !requester.uid) {
+      console.warn('[CancelBooking] Unauthorized request - no user');
+      res.status(401).json({ message: 'Unauthorized: Authentication required' });
+      return;
+    }
+
     // First, get the booking to extract table info BEFORE updating
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
       console.log('Booking not found:', req.params.id);
       res.status(404).json({ message: 'Booking not found' });
+      return;
+    }
+
+    // Verify ownership
+    if (booking.userId !== requester.uid) {
+      console.warn(`[CancelBooking] Unauthorized attempt - user ${requester.uid} tried to cancel booking of user ${booking.userId}`);
+      res.status(403).json({ message: 'Unauthorized: You can only cancel your own bookings' });
+      return;
+    }
+
+    // Verify valid status transition
+    const cancellableStatuses = ['pending', 'confirmed'];
+    if (!cancellableStatuses.includes(booking.status)) {
+      console.warn(`[CancelBooking] Invalid status transition - attempting to cancel booking with status: ${booking.status}`);
+      res.status(400).json({ 
+        success: false,
+        message: `Cannot cancel booking with status '${booking.status}'` 
+      });
       return;
     }
 

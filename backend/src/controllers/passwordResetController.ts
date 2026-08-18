@@ -8,6 +8,37 @@ import { Business } from '../models/Business';
 import authAdmin from '../utils/firebaseAdmin';
 import { sendEmail, emailService } from '../services/emailService';
 
+// ✅ SECURITY: Validate password strength
+interface PasswordValidation {
+  isValid: boolean;
+  errors: string[];
+}
+
+const validatePasswordStrength = (password: string): PasswordValidation => {
+  const errors: string[] = [];
+  
+  if (password.length < 8) {
+    errors.push('Password must be at least 8 characters long');
+  }
+  if (!/[A-Z]/.test(password)) {
+    errors.push('Password must contain at least one uppercase letter');
+  }
+  if (!/[a-z]/.test(password)) {
+    errors.push('Password must contain at least one lowercase letter');
+  }
+  if (!/\d/.test(password)) {
+    errors.push('Password must contain at least one number');
+  }
+  if (!/[@$!%*?&]/.test(password)) {
+    errors.push('Password must contain at least one special character (@$!%*?&)');
+  }
+  
+  return {
+    isValid: errors.length === 0,
+    errors
+  };
+};
+
 // Generate 6-digit OTP
 const generateOTP = (): string => {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -155,11 +186,12 @@ export const resetPassword = async (req: Request, res: Response) => {
             });
         }
 
-        // Validate password strength
-        if (newPassword.length < 6) {
+        // ✅ SECURITY FIX: Enforce strong password validation (CRITICAL + MEDIUM)
+        const passwordValidation = validatePasswordStrength(newPassword);
+        if (!passwordValidation.isValid) {
             return res.status(400).json({
                 success: false,
-                message: 'Password must be at least 6 characters long'
+                message: passwordValidation.errors.join('; ')
             });
         }
 
