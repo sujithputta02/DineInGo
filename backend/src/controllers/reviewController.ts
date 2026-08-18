@@ -159,6 +159,14 @@ export const addReview = async (req: Request, res: Response) => {
     try {
         console.log('[ReviewController] New review submission received');
         
+        // ✅ SECURITY: Derive userId from authenticated request context, never from req.body
+        const authenticatedUser = (req as any).user;
+        if (!authenticatedUser || !authenticatedUser.uid) {
+            console.warn('[ReviewController] Unauthenticated request');
+            return res.status(401).json({ success: false, message: 'Authentication required' });
+        }
+        const userId = authenticatedUser.uid;
+        
         // Try to get businessId from params first, then body
         const businessIdRaw = req.params.businessId || req.body.businessId;
 
@@ -172,7 +180,8 @@ export const addReview = async (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Invalid business ID format' });
         }
 
-        let { userId, userName, userPhoto, rating, comment, bookingId, images: bodyImages } = req.body;
+        // Accept userName and userPhoto from client, but userId and bookingId come from auth/verification
+        let { userName, userPhoto, rating, comment, images: bodyImages } = req.body;
         
         console.log(`[ReviewController] Processing review for business: ${businessIdRaw}, user: ${userId}`);
 
@@ -211,6 +220,7 @@ export const addReview = async (req: Request, res: Response) => {
         const isEvent = business.type === 'event' || business.type === 'both';
 
         // ✅ SECURITY FIX: Verify user has completed booking before allowing review (CRITICAL)
+        let completedBookingId: any = null;
         try {
           const Booking = mongoose.model('Booking');
           const completedBooking = await Booking.findOne({
@@ -227,6 +237,8 @@ export const addReview = async (req: Request, res: Response) => {
             });
           }
           console.log(`[ReviewController] Booking verification passed for user ${userId}`);
+          // ✅ SECURITY: Capture booking ID from verified booking, ignore client-provided bookingId
+          completedBookingId = completedBooking._id;
         } catch (bookingCheckError) {
           console.error('[ReviewController] Error during booking verification:', bookingCheckError);
           return res.status(500).json({ 
@@ -307,7 +319,8 @@ export const addReview = async (req: Request, res: Response) => {
             rating,
             comment,
             sentimentScore: sentimentVal,
-            bookingId: bookingId && mongoose.isValidObjectId(bookingId) ? new mongoose.Types.ObjectId(bookingId) : undefined,
+            // ✅ SECURITY: Use verified booking ID from completedBooking, ignore client-provided bookingId
+            bookingId: completedBookingId,
             images: finalImages,
             likes: [],
             dislikes: []
