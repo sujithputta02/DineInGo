@@ -21,10 +21,12 @@ import {
   Image,
   Clock,
   AlertCircle,
-  ToggleLeft
+  ToggleLeft,
+  User
 } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { adminApi } from '../utils/adminApi';
+import TwoFactorSettings from '../components/TwoFactorSettings';
 
 interface PlatformSettings {
   platformName: string;
@@ -79,7 +81,7 @@ interface PlatformSettings {
 
 function AdminSettingsPage() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('platform');
+  const [activeTab, setActiveTab] = useState('profile');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<PlatformSettings>({
@@ -187,6 +189,7 @@ function AdminSettingsPage() {
   };
 
   const tabs = [
+    { id: 'profile', name: 'My Profile', icon: User },
     { id: 'platform', name: 'Platform', icon: Globe },
     { id: 'email', name: 'Email', icon: Mail },
     { id: 'payment', name: 'Payment', icon: DollarSign },
@@ -374,6 +377,44 @@ function AdminSettingsPage() {
           {/* Content Area */}
           <div className="lg:col-span-3">
             <div className="bg-white rounded-xl shadow-sm p-6">
+
+              {/* My Profile */}
+              {activeTab === 'profile' && (
+                <div className="space-y-6">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 mb-4">My Admin Profile</h2>
+                    <p className="text-gray-500 mb-6">Manage your administrator account details</p>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-xl border border-slate-100 mb-6">
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Email Address</label>
+                      <p className="text-base font-semibold text-slate-800">{localStorage.getItem('adminEmail') || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Role</label>
+                      <p className="text-base font-semibold text-slate-800 capitalize">{localStorage.getItem('adminRole') || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Login Time</label>
+                      <p className="text-base font-semibold text-slate-800">
+                        {localStorage.getItem('adminLoginTime') 
+                          ? new Date(localStorage.getItem('adminLoginTime')!).toLocaleString() 
+                          : 'N/A'}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Timezone</label>
+                      <p className="text-base font-semibold text-slate-800">{settings.timezone || 'Asia/Kolkata'}</p>
+                    </div>
+                  </div>
+
+                  <div className="border-t border-slate-100 pt-6">
+                    <h3 className="text-lg font-bold text-gray-900 mb-4">Two-Factor Authentication (2FA)</h3>
+                    <TwoFactorSettings />
+                  </div>
+                </div>
+              )}
 
               {/* Platform Settings */}
               {activeTab === 'platform' && (

@@ -134,7 +134,8 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
     }
 
     // Check if account is locked
-    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    const admin = await Admin.findOne({ email: email.toLowerCase() })
+      .select('+twoFactorEnabled +twoFactorSecret +twoFactorPendingSecret +tokenVersion +isActive +lockUntil +loginAttempts');
     if (admin && admin.lockUntil && admin.lockUntil > new Date()) {
       const minutesLeft = Math.ceil((admin.lockUntil.getTime() - Date.now()) / 60000);
       return res.status(423).json({
@@ -298,6 +299,25 @@ export const completeFirstSetup2FA = async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
     }
     if (admin.twoFactorEnabled) {
+      const secret = decryptSecret(admin.twoFactorSecret!);
+      if (secret && verifyTwoFactorToken(code, secret)) {
+        admin.lastLogin = new Date();
+        admin.tokenVersion = (admin.tokenVersion || 0) + 1;
+        await admin.save();
+        const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion);
+        return res.json({
+          success: true,
+          message: 'Login successful (2FA already enabled)',
+          token,
+          tokenExpiresIn: '4h',
+          admin: {
+            email: admin.email,
+            role: admin.role,
+            lastLogin: admin.lastLogin,
+            twoFactorEnabled: true
+          }
+        });
+      }
       return res.status(400).json({ success: false, message: '2FA is already enabled for this account.' });
     }
     if (!admin.twoFactorPendingSecret) {
