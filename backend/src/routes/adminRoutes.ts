@@ -3,6 +3,7 @@ import {
   requestAdminOTP,
   verifyAdminOTP,
   verifyAdmin2FA,
+  verifyAdmin2FAEmailConfirm,
   completeFirstSetup2FA,
   getTwoFactorStatus,
   setupTwoFactor,
@@ -118,6 +119,7 @@ initializeSuperAdmin();
 router.post('/request-otp', adminOtpRequestLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
 router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
 router.post('/verify-2fa', adminOtpVerifyLimiter, verifyAdmin2FA);
+router.post('/2fa/email-confirm', adminOtpVerifyLimiter, verifyAdmin2FAEmailConfirm);
 router.post('/2fa/complete-first-setup', adminOtpVerifyLimiter, completeFirstSetup2FA);
 
 // ============================================

@@ -18,6 +18,9 @@ export interface IAdmin extends Document {
   twoFactorSecret?: string; // encrypted base32 secret
   twoFactorBackupCodes?: string[]; // hashed backup codes
   twoFactorPendingSecret?: string; // secret during setup, before user confirms
+  // Email-based 2FA fallback (magic link / confirm button in email)
+  twoFactorEmailConfirmJti?: string;  // JWT id of the issued email-confirm link (single-use)
+  twoFactorEmailConfirmExpires?: Date; // expiry of the issued email-confirm link
   // Session revocation: bumping this invalidates all previously issued JWTs
   tokenVersion?: number;
   required2FA?: boolean; // super admin can force 2FA for an account
@@ -92,6 +95,14 @@ const AdminSchema = new Schema<IAdmin>({
   },
   twoFactorPendingSecret: {
       type: String,
+      select: false
+  },
+  twoFactorEmailConfirmJti: {
+      type: String,
+      select: false
+  },
+  twoFactorEmailConfirmExpires: {
+      type: Date,
       select: false
   },
   tokenVersion: {

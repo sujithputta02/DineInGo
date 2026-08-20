@@ -767,6 +767,85 @@ export const emailService = {
   },
 
   /**
+   * Send the 2FA fallback "Confirm Sign-In" email.
+   *
+   * This is the email-based second factor: when an admin reaches the TOTP passcode
+   * step but cannot use their authenticator app (lost phone, clock drift, etc.), they
+   * can instead open this email in their inbox and tap the big Confirm button to
+   * complete login. The QR shown on the login screen encodes the same link so that
+   * scanning it on a phone opens the one-tap confirm page.
+   */
+  async sendTwoFactorConfirmEmail(email: string, confirmUrl: string, loginTime: Date, ipAddress?: string, timezone?: string): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const formattedDate = loginTime.toLocaleDateString('en-US', {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        timeZone: timezone || 'Asia/Kolkata'
+      });
+      const formattedTime = loginTime.toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short',
+        timeZone: timezone || 'Asia/Kolkata'
+      });
+
+      const html = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f8fafc; border-radius: 24px;">
+          <div style="text-align: center; margin-bottom: 30px;">
+            <h1 style="color: #dc2626; margin: 0; font-size: 32px;">DineInGo</h1>
+            <p style="color: #64748b; margin: 5px 0; font-weight: 600;">Admin Sign-In Confirmation</p>
+          </div>
+          <div style="background: white; border-radius: 16px; padding: 40px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+            <h2 style="color: #1e293b; margin-top: 0;">Confirm your sign-in</h2>
+            <p style="color: #475569; font-size: 15px; line-height: 1.5;">We received an admin login attempt for your account. Tap the button below to approve this sign-in and access the DineInGo Admin Portal. This is your two-factor fallback — use it if you can't enter your authenticator passcode.</p>
+
+            <div style="text-align: center; margin: 32px 0;">
+              <a href="${confirmUrl}" style="display: inline-block; background: #dc2626; color: #ffffff !important; font-weight: 700; font-size: 16px; padding: 16px 40px; border-radius: 14px; text-decoration: none;">Confirm Sign-In</a>
+            </div>
+
+            <div style="padding: 20px; background: #f1f5f9; border-radius: 12px; margin: 24px 0;">
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr><td style="color: #64748b; font-size: 14px; padding: 6px 0;">Date:</td><td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 6px 0;">${formattedDate}</td></tr>
+                <tr><td style="color: #64748b; font-size: 14px; padding: 6px 0;">Time:</td><td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 6px 0;">${formattedTime}</td></tr>
+                <tr><td style="color: #64748b; font-size: 14px; padding: 6px 0;">IP Address:</td><td style="color: #1e293b; font-size: 14px; font-weight: 600; text-align: right; padding: 6px 0;">${ipAddress || 'Unknown'}</td></tr>
+              </table>
+            </div>
+
+            <div style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px;">
+              <p style="color: #991b1b; font-size: 13px; margin: 0; line-height: 1.5;">
+                <strong>Didn't request this?</strong> Ignore this email — your account stays safe. This confirmation link expires in 10 minutes and can only be used once.
+              </p>
+            </div>
+
+            <p style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin-top: 24px;">If the button doesn't work, copy and paste this link into your browser:<br><a href="${confirmUrl}" style="color: #64748b; word-break: break-all;">${confirmUrl}</a></p>
+          </div>
+          <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+            <p style="color: #94a3b8; font-size: 12px;">© 2026 DineInGo Security Operations. This is an automated security notification.</p>
+          </div>
+        </div>
+      `;
+
+      await transporter.sendMail({
+        from: this.getSender("DineInGo Security"),
+        to: email,
+        subject: `Confirm your admin sign-in — ${formattedTime}`,
+        html
+      });
+
+      console.log(`✓ 2FA confirm email sent to ${email}`);
+      return true;
+    } catch (error) {
+      console.error('✗ Error sending 2FA confirm email:', error);
+      return false;
+    }
+  },
+
+  /**
    * Send admin invitation email with portal login button
    * Used when a super admin adds a new admin to the team.
    */

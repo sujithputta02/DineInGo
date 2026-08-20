@@ -13,6 +13,8 @@ function AdminLoginPage() {
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [challengeToken, setChallengeToken] = useState('');
   const [qrCode, setQrCode] = useState('');
+  const [confirmQrCode, setConfirmQrCode] = useState('');
+  const [emailConfirmSent, setEmailConfirmSent] = useState(false);
   const [manualKey, setManualKey] = useState('');
   const [backupCodes, setBackupCodes] = useState<string[]>([]);
   const [showBackupCodes, setShowBackupCodes] = useState(false);
@@ -99,8 +101,10 @@ function AdminLoginPage() {
       // 🛡️ 2FA Gate: if 2FA is required, move to the 2FA step instead of logging in
       if (data.twoFactorRequired && data.challengeToken) {
         setChallengeToken(data.challengeToken);
+        setConfirmQrCode(data.confirmQrCode || '');
+        setEmailConfirmSent(!!data.emailConfirmSent);
         setStep('2fa');
-        setSuccess(data.message || 'Two-factor authentication required. Enter your authenticator code.');
+        setSuccess(data.message || 'Two-factor authentication required. Enter your authenticator code, or confirm from your email.');
         return;
       }
       
@@ -381,6 +385,29 @@ function AdminLoginPage() {
                     <CheckCircle size={16} />
                     <span className="text-sm font-medium">{success}</span>
                   </motion.div>
+                )}
+
+                {/* 🛡️ EMAIL 2FA FALLBACK: if the passcode fails / phone unavailable, the
+                     admin can confirm from their email instead. Backend also sent a
+                     Confirm Sign-In email; the QR below encodes the same one-tap link,
+                     so scanning it on a phone opens the confirm page. */}
+                {emailConfirmSent && (
+                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
+                    <div className="flex items-start gap-2 mb-3">
+                      <Mail size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-blue-800">
+                        <strong>Can't enter a code?</strong> We sent a <strong>Confirm Sign-In</strong> email to <strong>{email}</strong>. Tap the button in that email to sign in — or scan this QR on your phone:
+                      </p>
+                    </div>
+                    {confirmQrCode && (
+                      <div className="flex flex-col items-center mt-3">
+                        <div className="bg-white p-2 rounded-xl border-2 border-blue-200 shadow-sm">
+                          <img src={confirmQrCode} alt="Email confirm QR" className="w-40 h-40" />
+                        </div>
+                        <p className="text-xs text-blue-600 mt-2 text-center">Scan to confirm sign-in from your phone</p>
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 <button

@@ -29,7 +29,8 @@ import {
   verifyBackupCode,
   consumeBackupCode,
   encryptSecret,
-  decryptSecret
+  decryptSecret,
+  generateQRCodeForUrl
 } from '../services/twoFactorService';
 
 // Super admin email (DineInGo owner)
@@ -254,11 +255,44 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       getJWTSecret(),
       { expiresIn: '5m' } // 2FA challenge expires in 5 minutes
     );
+
+    // 🛡️ EMAIL 2FA FALLBACK: Also send a one-time "Confirm Sign-In" email so the
+    // admin can complete the second factor by tapping a button in their inbox
+    // (used when the authenticator passcode fails / phone unavailable / clock drift).
+    // The QR shown on the login screen encodes the same confirm link so scanning it
+    // on a phone opens the one-tap confirm page — effectively "scan QR → confirm".
+    let emailConfirmSent = false;
+    let confirmQrCode = '';
+    try {
+      const jti = crypto.randomUUID();
+      const emailConfirmToken = jwt.sign(
+        { email: admin!.email, purpose: '2fa-email-confirm', jti },
+        getJWTSecret(),
+        { expiresIn: '10m' } // confirmation link valid for 10 minutes
+      );
+      const clientUrl = process.env.CLIENT_URL || 'https://dineingo.onrender.com';
+      const confirmUrl = `${clientUrl}/admin/2fa/email-confirm?token=${emailConfirmToken}`;
+      // Mark single-use on the admin record (the jti must match on confirm)
+      admin!.twoFactorEmailConfirmJti = jti;
+      admin!.twoFactorEmailConfirmExpires = new Date(Date.now() + 10 * 60 * 1000);
+      await admin!.save();
+      const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+      emailService.sendTwoFactorConfirmEmail(admin!.email, confirmUrl, new Date(), ipAddress, admin!.timezone).catch(err =>
+        console.error('Failed to send 2FA confirm email:', err)
+      );
+      emailConfirmSent = true;
+      confirmQrCode = await generateQRCodeForUrl(confirmUrl);
+    } catch (err) {
+      console.error('Failed to set up email 2FA fallback:', err);
+    }
+
     return res.json({
       success: true,
       twoFactorRequired: true,
       challengeToken,
-      message: 'Two-factor authentication required. Please enter the 6-digit passcode from your authenticator app.'
+      emailConfirmSent,
+      confirmQrCode,
+      message: 'Two-factor authentication required. Enter your authenticator passcode, or tap the Confirm button in your email.'
     });
 
   } catch (error) {
@@ -505,6 +539,97 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
 
   } catch (error) {
     console.error('Error verifying admin 2FA:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+/**
+ * 🛡️ EMAIL 2FA FALLBACK — complete login by confirming via the magic link.
+ *
+ * The admin taps the "Confirm Sign-In" button in the email they received at the
+ * 2FA step (or scans the confirm QR on their phone, which opens the same link).
+ * The front-end route `/admin/2fa/email-confirm?token=...` reads the token from the
+ * URL and POSTs it here. We verify the signed JWT, enforce single-use via the jti
+ * stored on the admin record + expiry, then issue a full admin JWT.
+ *
+ * Body: { confirmToken }
+ */
+export const verifyAdmin2FAEmailConfirm = async (req: Request, res: Response) => {
+  try {
+    const { confirmToken } = req.body;
+    if (!confirmToken) {
+      return res.status(400).json({ success: false, message: 'Confirmation token is required.' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(confirmToken, getJWTSecret()) as any;
+    } catch {
+      return res.status(401).json({ success: false, message: 'Confirmation link expired or invalid. Please start login again.' });
+    }
+    if (decoded.purpose !== '2fa-email-confirm' || !decoded.email || !decoded.jti) {
+      return res.status(401).json({ success: false, message: 'Invalid confirmation link.' });
+    }
+
+    const admin = await Admin.findOne({ email: decoded.email.toLowerCase() })
+      .select('+twoFactorEnabled +twoFactorEmailConfirmJti +twoFactorEmailConfirmExpires +tokenVersion +isActive +lastLogin');
+    if (!admin || !admin.isActive) {
+      return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
+    }
+    if (!admin.twoFactorEnabled) {
+      return res.status(400).json({ success: false, message: 'Two-factor authentication is not enabled on this account.' });
+    }
+
+    // Enforce single-use: the stored jti must match the one in the token, and not expired.
+    if (!admin.twoFactorEmailConfirmJti || admin.twoFactorEmailConfirmJti !== decoded.jti) {
+      return res.status(401).json({ success: false, message: 'This confirmation link has already been used or has been replaced. Please start login again.' });
+    }
+    if (admin.twoFactorEmailConfirmExpires && admin.twoFactorEmailConfirmExpires < new Date()) {
+      // Clear the stale jti so a fresh login can issue a new one
+      admin.twoFactorEmailConfirmJti = undefined;
+      admin.twoFactorEmailConfirmExpires = undefined;
+      await admin.save();
+      return res.status(401).json({ success: false, message: 'Confirmation link expired. Please start login again.' });
+    }
+
+    // Consume the link (single-use) and invalidate any other pending link.
+    admin.twoFactorEmailConfirmJti = undefined;
+    admin.twoFactorEmailConfirmExpires = undefined;
+    admin.tokenVersion = (admin.tokenVersion || 0) + 1;
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    // Issue the full admin JWT
+    const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
+
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: '2fa_email_confirm',
+      severity: 'medium',
+      details: `Admin ${admin.email} completed 2FA via email confirmation link`,
+      ip: String(ipAddress),
+      userAgent: req.headers['user-agent'],
+      path: req.path
+    });
+    sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(err =>
+      console.error('Failed to send login notification:', err)
+    );
+
+    res.json({
+      success: true,
+      message: 'Login confirmed via email.',
+      token,
+      tokenExpiresIn: '4h',
+      admin: {
+        email: admin.email,
+        role: admin.role,
+        lastLogin: admin.lastLogin,
+        twoFactorEnabled: true
+      }
+    });
+  } catch (error) {
+    console.error('Error verifying email 2FA confirm:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

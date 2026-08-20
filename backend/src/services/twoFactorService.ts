@@ -17,6 +17,23 @@ const ENCRYPTION_KEY_ENV = process.env.JWT_SECRET || 'dev-only-do-not-use-in-pro
 const ALGORITHM = 'aes-256-gcm';
 
 /**
+ * TOTP time-skew tolerance (in 30-second steps).
+ *
+ * otplib v12 NOTE: `authenticator.verify({ token, secret, window })` ignores the
+ * per-call `window` field — the window MUST be set on the authenticator *instance*
+ * (it reads `this.options.window` via `this.allOptions()`). The instance default is
+ * `0`, i.e. zero tolerance for any clock drift between the server and the
+ * authenticator app, which causes valid codes to be rejected near step boundaries.
+ *
+ * IMPORTANT: `authenticator.options` is a *frozen* getter return — mutating it
+ * (`authenticator.options.window = 4`) throws / is a no-op and leaves window at 0.
+ * You must ASSIGN through the setter: `authenticator.options = { window: N }`.
+ * Verified empirically (see scripts/test-totp-fix.js).
+ */
+const TOTP_WINDOW = 4; // ±4 steps = ±2 minutes of allowed clock drift
+authenticator.options = { window: TOTP_WINDOW };
+
+/**
  * Derive a 32-byte key from the configured secret. We never use the raw env var
  * directly; this gives us a stable key even if the env length varies.
  */
@@ -76,11 +93,22 @@ export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
     const clean = token.trim().replace(/\s+/g, '');
     if (!/^\d{6}$/.test(clean)) return false;
-    // Allow a window of 2 steps (60 seconds) to handle server-client clock drift
-    return authenticator.verify({ token: clean, secret, window: 2 } as any);
+    // The window is read from the instance (authenticator.options.window set above).
+    // Passing `window` in the opts object is a no-op in otplib v12 and was the root
+    // cause of passcodes being rejected even when the authenticator app showed a
+    // valid code (only the exact current 30s step was accepted).
+    return authenticator.verify({ token: clean, secret });
   } catch {
     return false;
   }
+}
+
+/**
+ * Generate a QR code data URL for an arbitrary URL (used for the email 2FA fallback
+ * confirm link so admins can scan it on their phone to confirm sign-in).
+ */
+export async function generateQRCodeForUrl(url: string): Promise<string> {
+  return qrcode.toDataURL(url, { width: 240, margin: 1 });
 }
 
 /**
