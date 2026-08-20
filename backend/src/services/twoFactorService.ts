@@ -76,7 +76,8 @@ export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
     const clean = token.trim().replace(/\s+/g, '');
     if (!/^\d{6}$/.test(clean)) return false;
-    return authenticator.verify({ token: clean, secret });
+    // Allow a window of 2 steps (60 seconds) to handle server-client clock drift
+    return authenticator.verify({ token: clean, secret, window: 2 } as any);
   } catch {
     return false;
   }
