@@ -13,6 +13,14 @@ export interface IAdmin extends Document {
   permissions: {
     canImpersonate: boolean;
   };
+  // 2FA (TOTP)
+  twoFactorEnabled?: boolean;
+  twoFactorSecret?: string; // encrypted base32 secret
+  twoFactorBackupCodes?: string[]; // hashed backup codes
+  twoFactorPendingSecret?: string; // secret during setup, before user confirms
+  // Session revocation: bumping this invalidates all previously issued JWTs
+  tokenVersion?: number;
+  required2FA?: boolean; // super admin can force 2FA for an account
 }
 
 export interface IAdminOTP extends Document {
@@ -69,6 +77,30 @@ const AdminSchema = new Schema<IAdmin>({
       type: Boolean,
       default: false
     }
+  },
+  twoFactorEnabled: {
+    type: Boolean,
+      default: false
+  },
+  twoFactorSecret: {
+      type: String,
+      select: false
+  },
+  twoFactorBackupCodes: {
+      type: [String],
+      select: false
+  },
+  twoFactorPendingSecret: {
+      type: String,
+      select: false
+  },
+  tokenVersion: {
+      type: Number,
+      default: 0
+  },
+  required2FA: {
+      type: Boolean,
+      default: false
   }
 });
 

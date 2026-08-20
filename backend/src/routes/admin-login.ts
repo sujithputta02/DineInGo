@@ -3,6 +3,7 @@ import express, { Request, Response } from 'express';
 const router = express.Router();
 
 // Secret 6-digit admin code from environment variable
+// NOTE: Kept for Vercel deployment compatibility — set ADMIN_CODE in prod env vars.
 const ADMIN_CODE = process.env.ADMIN_CODE || '492731'; // Default for development only
 
 router.post('/', async (req: Request, res: Response) => {
@@ -18,4 +19,4 @@ router.post('/', async (req: Request, res: Response) => {
   res.json({ success: true, message: 'Admin login successful.' });
 });
 
-export default router; 
+export default router;

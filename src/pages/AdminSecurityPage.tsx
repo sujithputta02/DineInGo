@@ -29,6 +29,7 @@ import SecurityScoreDial from '../components/SecurityScoreDial';
 import BlacklistManager from '../components/BlacklistManager';
 import PortalSecurityAudit, { DeepScanViewModel } from '../components/PortalSecurityAudit';
 import SecurityTerminal from '../components/SecurityTerminal';
+import TwoFactorSettings from '../components/TwoFactorSettings';
 
 interface SecurityStats {
   total: number;
@@ -254,6 +255,9 @@ function AdminSecurityPage() {
 
       {/* Dynamic High-Tech Security Visualizer */}
       <SecurityVisualizer logs={logs} stats={stats} isScanning={isScanning} />
+
+      {/* 🛡️ Two-Factor Authentication Settings for current admin */}
+      <TwoFactorSettings />
 
       {/* Universal Portal Security Audit (live deep-scan results) */}
       <PortalSecurityAudit scan={deepScan} isScanning={isScanning} />

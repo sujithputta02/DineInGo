@@ -7,9 +7,11 @@ import { createSession, getSessionToken } from '../utils/sessionGuard';
 import { API_CONFIG } from '../config/api';
 
 function AdminLoginPage() {
-  const [step, setStep] = useState<'email' | 'otp'>('email');
+  const [step, setStep] = useState<'email' | 'otp' | '2fa'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+  const [challengeToken, setChallengeToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -80,6 +82,14 @@ function AdminLoginPage() {
         throw new Error(data.message || 'Invalid OTP');
       }
       
+      // 🛡️ 2FA Gate: if 2FA is required, move to the 2FA step instead of logging in
+      if (data.twoFactorRequired && data.challengeToken) {
+        setChallengeToken(data.challengeToken);
+        setStep('2fa');
+        setSuccess(data.message || 'Two-factor authentication required. Enter your authenticator code.');
+        return;
+      }
+      
       // Store admin session with JWT token
       localStorage.setItem('adminToken', data.token);
       localStorage.setItem('adminEmail', data.admin.email);
@@ -93,6 +103,42 @@ function AdminLoginPage() {
       navigate(`/admin/${sessionToken}/dashboard`);
     } catch (err: any) {
       setError(err.message || 'OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🛡️ 2FA Verification: submit TOTP or backup code
+  const handle2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/verify-2fa`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeToken, code: twoFactorCode }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.message || 'Invalid 2FA code');
+      }
+      
+      // Store admin session with JWT token
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminEmail', data.admin.email);
+      localStorage.setItem('adminRole', data.admin.role);
+      localStorage.setItem('adminLoginTime', new Date().toISOString());
+      
+      // Generate web session token for URL obfuscation
+      const sessionToken = createSession(data.admin.email);
+      
+      navigate(`/admin/${sessionToken}/dashboard`);
+    } catch (err: any) {
+      setError(err.message || '2FA verification failed');
     } finally {
       setLoading(false);
     }
@@ -226,6 +272,72 @@ function AdminLoginPage() {
                       Send OTP
                       <ArrowRight size={18} />
                     </>
+                  )}
+                </button>
+              </form>
+            ) : step === '2fa' ? (
+              <form onSubmit={handle2FASubmit} className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-4">
+                    <Shield className="text-red-600" size={20} />
+                    <h2 className="text-lg font-bold text-slate-900">Two-Factor Authentication</h2>
+                  </div>
+                  <p className="text-sm text-slate-600 mb-4">
+                    Enter the 6-digit code from your authenticator app (Google Authenticator, Authy, 1Password, etc.).
+                  </p>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    <Lock size={16} className="inline mr-2" />
+                    Enter 6-Digit Authenticator Code
+                  </label>
+                  <input
+                    type="text"
+                    value={twoFactorCode}
+                    onChange={(e) => { setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(null); }}
+                    className={`w-full px-4 py-4 border-2 rounded-2xl text-center text-2xl font-mono tracking-widest transition-all focus:outline-none focus:ring-4 focus:ring-red-500/20 ${
+                      error ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-red-500'
+                    }`}
+                    placeholder="••••••"
+                    required
+                    maxLength={6}
+                    inputMode="numeric"
+                    disabled={loading}
+                    autoFocus
+                  />
+                  <div className="flex justify-center mt-3 gap-1">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className={`w-2 h-2 rounded-full transition-all ${i < twoFactorCode.length ? 'bg-red-500' : 'bg-slate-200'}`} />
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-3">
+                    Logged in as: <span className="font-medium">{email}</span>
+                  </p>
+                </div>
+
+                {error && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
+                    <AlertCircle size={16} />
+                    <span className="text-sm font-medium">{error}</span>
+                  </motion.div>
+                )}
+
+                {success && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-2xl text-green-700">
+                    <CheckCircle size={16} />
+                    <span className="text-sm font-medium">{success}</span>
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || twoFactorCode.length !== 6}
+                  className={`w-full py-4 rounded-2xl font-bold text-white transition-all flex items-center justify-center gap-2 ${
+                    loading || twoFactorCode.length !== 6 ? 'bg-slate-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/25 active:scale-95'
+                  }`}
+                >
+                  {loading ? (
+                    <><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> Verifying...</>
+                  ) : (
+                    <><Shield size={18} /> Verify & Login</>
                   )}
                 </button>
               </form>

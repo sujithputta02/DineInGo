@@ -320,6 +320,25 @@ export async function getFeatureFlags() {
   return res.json();
 }
 
+// ============================================
+// 🛡️ TWO-FACTOR AUTHENTICATION (TOTP)
+// ============================================
+
+export async function get2FAStatus() { return adminApiRequest('/api/v1/admin/2fa/status'); }
+export async function setup2FA() { return adminApiRequest('/api/v1/admin/2fa/setup', { method: 'POST' }); }
+export async function confirm2FASetup(code: string) {
+  return adminApiRequest('/api/v1/admin/2fa/confirm', { method: 'POST', body: JSON.stringify({ code }) });
+}
+export async function disable2FA(code: string) {
+  return adminApiRequest('/api/v1/admin/2fa/disable', { method: 'POST', body: JSON.stringify({ code }) });
+}
+export async function regenerateBackupCodes(code: string) {
+  return adminApiRequest('/api/v1/admin/2fa/regenerate-backup-codes', { method: 'POST', body: JSON.stringify({ code }) });
+}
+export async function revokeAllSessions() {
+  return adminApiRequest('/api/v1/admin/2fa/revoke-sessions', { method: 'POST' });
+}
+
 // Admin API combined object for backward compatibility
 export const adminApi = {
   getStats,
@@ -365,4 +384,10 @@ export const adminApi = {
   getWaitlistSignups,
   updateWaitlistStatus,
   getFeatureFlags,
+  get2FAStatus,
+  setup2FA,
+  confirm2FASetup,
+  disable2FA,
+  regenerateBackupCodes,
+  revokeAllSessions,
 };

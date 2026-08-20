@@ -2,6 +2,13 @@ import express from 'express';
 import {
   requestAdminOTP,
   verifyAdminOTP,
+  verifyAdmin2FA,
+  getTwoFactorStatus,
+  setupTwoFactor,
+  confirmTwoFactorSetup,
+  disableTwoFactor,
+  regenerateBackupCodes,
+  revokeAllSessions,
   getAdmins,
   addAdmin,
   removeAdmin,
@@ -109,6 +116,17 @@ initializeSuperAdmin();
 // ============================================
 router.post('/request-otp', adminOtpRequestLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
 router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
+router.post('/verify-2fa', adminOtpVerifyLimiter, verifyAdmin2FA);
+
+// ============================================
+// 2FA MANAGEMENT ROUTES (JWT authentication required)
+// ============================================
+router.get('/2fa/status', adminApiLimiter, verifyAdminToken, getTwoFactorStatus);
+router.post('/2fa/setup', adminApiLimiter, verifyAdminToken, logAdminAction, setupTwoFactor);
+router.post('/2fa/confirm', adminApiLimiter, verifyAdminToken, logAdminAction, confirmTwoFactorSetup);
+router.post('/2fa/disable', adminApiLimiter, verifyAdminToken, logAdminAction, disableTwoFactor);
+router.post('/2fa/regenerate-backup-codes', adminApiLimiter, verifyAdminToken, logAdminAction, regenerateBackupCodes);
+router.post('/2fa/revoke-sessions', adminApiLimiter, verifyAdminToken, logAdminAction, revokeAllSessions);
 
 // ============================================
 // PROTECTED ROUTES (JWT authentication required)

@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 import { secretManager } from '../utils/secretManager';
+import { Admin } from '../models/Admin';
 
 // Get JWT secret from SecretManager (no fallback - fail if not set)
 const getJWTSecret = (): string => {
@@ -15,6 +16,7 @@ const getJWTSecret = (): string => {
 export interface AdminTokenPayload {
   email: string;
   role: 'admin' | 'super_admin';
+  tokenVersion?: number;
   iat?: number;
   exp?: number;
 }
@@ -29,7 +31,7 @@ declare global {
 }
 
 // Middleware to verify admin JWT token
-export const verifyAdminToken = (req: Request, res: Response, next: NextFunction) => {
+export const verifyAdminToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
@@ -52,6 +54,28 @@ export const verifyAdminToken = (req: Request, res: Response, next: NextFunction
       return res.status(403).json({
         success: false,
         message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    // Session revocation: verify tokenVersion matches the admin's current value.
+    // Any admin whose tokenVersion was bumped will fail here.
+    const adminDoc = await Admin.findOne({ email: decoded.email }).select('+tokenVersion +isActive');
+    if (!adminDoc) {
+      return res.status(401).json({
+        success: false,
+        message: 'Account not found. Please contact a super admin.'
+      });
+    }
+    if (!adminDoc.isActive) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your admin account has been deactivated.'
+      });
+    }
+    if (typeof decoded.tokenVersion === 'number' && decoded.tokenVersion !== adminDoc.tokenVersion) {
+      return res.status(401).json({
+        success: false,
+        message: 'Your session has been revoked. Please login again.'
       });
     }
 
@@ -102,10 +126,11 @@ export const verifySuperAdmin = (req: Request, res: Response, next: NextFunction
 };
 
 // Generate JWT token for admin
-export const generateAdminToken = (email: string, role: 'admin' | 'super_admin'): string => {
+export const generateAdminToken = (email: string, role: 'admin' | 'super_admin', tokenVersion: number = 0): string => {
   const payload: AdminTokenPayload = {
     email,
-    role
+    role,
+    tokenVersion
   };
 
   // Token expires in 4 hours (reduced from 24h for security)

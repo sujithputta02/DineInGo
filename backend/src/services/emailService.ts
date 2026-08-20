@@ -677,7 +677,7 @@ export const emailService = {
   /**
    * Send security alert for admin portal login
    */
-  async sendAdminLoginNotificationEmail(email: string, loginTime: Date, ipAddress?: string, timezone?: string): Promise<boolean> {
+  async sendAdminLoginNotificationEmail(email: string, loginTime: Date, ipAddress?: string, timezone?: string, isNewIp?: boolean): Promise<boolean> {
     try {
       const transporter = createTransporter();
       if (!transporter) return false;
@@ -710,6 +710,12 @@ export const emailService = {
               <h2 style="color: #92400e; font-size: 18px; margin: 0 0 8px 0;">New Admin Login Detected</h2>
               <p style="color: #78350f; font-size: 14px; margin: 0;">We noticed a new login to your admin account. If this was you, no action is needed.</p>
             </div>
+            ${isNewIp ? `
+            <div style="background: #fef2f2; border: 2px solid #ef4444; border-radius: 12px; padding: 16px; margin-bottom: 24px;">
+              <h3 style="color: #991b1b; font-size: 15px; margin: 0 0 8px 0;">🚨 New Location / IP Address</h3>
+              <p style="color: #7f1d1d; font-size: 13px; margin: 0;">This login came from an IP address we haven't seen you use before. If this was not you, please revoke all sessions immediately from the Admin Security page.</p>
+            </div>
+            ` : ''}
             
             <div style="padding: 24px; background: #f1f5f9; border-radius: 12px; margin-bottom: 24px;">
               <table style="width: 100%; border-collapse: collapse;">
@@ -748,7 +754,7 @@ export const emailService = {
       await transporter.sendMail({
         from: this.getSender("DineInGo Security"),
         to: email,
-        subject: `🔐 Admin Login Alert: ${formattedTime}`,
+        subject: isNewIp ? `🚨 NEW DEVICE: Admin Login from New IP at ${formattedTime}` : `🔐 Admin Login Alert: ${formattedTime}`,
         html
       });
 
@@ -756,6 +762,92 @@ export const emailService = {
       return true;
     } catch (error) {
       console.error('✗ Error sending admin login notification:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send admin invitation email with portal login button
+   * Used when a super admin adds a new admin to the team.
+   */
+  async sendAdminInvitationEmail(to: string, addedByEmail: string, role: string): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      // Secret admin portal login path (matches App.tsx route)
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CLIENT_URL || 'http://localhost:5173';
+      const adminLoginUrl = `${frontendUrl}/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9`;
+      const roleLabel = role === 'super_admin' ? 'Super Admin' : 'Admin';
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;900&display=swap');
+            body { font-family: 'Outfit', sans-serif; background-color: #0f172a; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
+            .wrapper { width: 100%; background-color: #0f172a; padding: 60px 0; }
+            .container { max-width: 600px; margin: 0 auto; background: #1e293b; border-radius: 32px; overflow: hidden; box-shadow: 0 40px 100px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.1); }
+            .header { background: linear-gradient(135deg, #b91c1c 0%, #ef4444 100%); padding: 60px 40px; text-align: center; color: white; }
+            .shield { width: 72px; height: 72px; background: rgba(255,255,255,0.15); border-radius: 20px; margin: 0 auto 24px auto; display: flex; align-items: center; justify-content: center; font-size: 36px; }
+            .content { padding: 50px 40px; text-align: center; color: #f8fafc; }
+            .tagline { text-transform: uppercase; letter-spacing: 0.4em; font-size: 11px; font-weight: 900; color: #f87171; margin-bottom: 20px; display: block; }
+            h1 { font-size: 34px; font-weight: 900; margin: 0 0 24px 0; line-height: 1.1; letter-spacing: -0.04em; color: #ffffff; }
+            .highlight { color: #fbbf24; }
+            p { font-size: 17px; line-height: 1.6; color: #cbd5e1; margin-bottom: 24px; }
+            .meta { background: #0f172a; border-radius: 16px; padding: 24px; margin: 24px 0 32px 0; text-align: left; }
+            .meta-row { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; }
+            .meta-label { color: #94a3b8; }
+            .meta-value { color: #f1f5f9; font-weight: 600; }
+            .btn { display: inline-block; background: #ffffff; color: #0f172a !important; padding: 20px 48px; border-radius: 100px; text-decoration: none; font-weight: 900; font-size: 16px; box-shadow: 0 20px 40px rgba(0,0,0,0.3); }
+            .note { background: rgba(251,191,36,0.1); border: 1px solid rgba(251,191,36,0.3); border-radius: 12px; padding: 16px; margin-top: 32px; text-align: left; }
+            .note-text { color: #fcd34d; font-size: 13px; margin: 0; line-height: 1.5; }
+            .footer { padding: 40px; text-align: center; color: #475569; font-size: 13px; background: #0f172a; border-top: 1px solid rgba(255,255,255,0.05); }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="container">
+              <div class="header">
+                <div class="shield">🛡️</div>
+                <h1 style="color: white; margin: 0;">Admin Access<br/><span style="opacity: 0.85;">Granted.</span></h1>
+              </div>
+              <div class="content">
+                <span class="tagline">DineInGo Admin Portal</span>
+                <h1>You've been <span class="highlight">invited.</span></h1>
+                <p>You have been granted <strong>${roleLabel}</strong> access to the DineInGo Admin Portal. Use the button below to securely log in with your authorized email and a one-time password.</p>
+                <div class="meta">
+                  <div class="meta-row"><span class="meta-label">Email</span><span class="meta-value">${to}</span></div>
+                  <div class="meta-row"><span class="meta-label">Role</span><span class="meta-value">${roleLabel}</span></div>
+                  <div class="meta-row"><span class="meta-label">Invited by</span><span class="meta-value">${addedByEmail}</span></div>
+                </div>
+                <a href="${adminLoginUrl}" class="btn">Access Admin Portal →</a>
+                <div class="note">
+                  <p class="note-text">🔒 <strong>Security notice:</strong> This invitation is intended only for ${to}. Login requires a one-time password sent to this email. If you did not expect this invitation, please ignore this email and do not share the link.</p>
+                </div>
+              </div>
+              <div class="footer">
+                <p>© 2026 DineInGo Admin Operations.</p>
+                <p style="margin-top: 10px; opacity: 0.6;">This is a confidential administrative invitation.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: this.getSender("DineInGo Admin"),
+        to,
+        subject: `🛡️ You've been invited to the DineInGo Admin Portal`,
+        html
+      });
+
+      console.log(`✓ Admin invitation email sent to ${to}`);
+      return true;
+    } catch (error: any) {
+      console.error(`✗ Error sending admin invitation email to ${to}:`, error.message || error);
       return false;
     }
   },
