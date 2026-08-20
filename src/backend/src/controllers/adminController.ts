@@ -221,42 +221,43 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       await admin.save();
     }
 
-    // Generate JWT token (4 hours expiration)
-    const token = generateAdminToken(admin!.email, admin!.role, admin!.tokenVersion || 0);
+    // 🛡️ MANDATORY 2FA: Every admin must have 2FA enabled. No exceptions.
+    // Case 1: 2FA NOT yet set up → force the admin to enroll before they get a session.
+    if (!admin!.twoFactorEnabled || !admin!.twoFactorSecret) {
+      // Generate a pending TOTP secret + QR for enrollment
+      const secret = generateTwoFactorSecret();
+      admin!.twoFactorPendingSecret = encryptSecret(secret);
+      await admin!.save();
 
-    // 🛡️ 2FA Gate: If 2FA is enabled on this account, don't issue a full token yet.
-    // Instead issue a short-lived challenge token that only allows the verify-2fa endpoint.
-    if (admin!.twoFactorEnabled && admin!.twoFactorSecret) {
-      const challengeToken = jwt.sign(
-        { email: admin!.email, twoFactorPending: true },
+      const qrCode = await generateTwoFactorQRCode(admin!.email, secret);
+      const setupChallengeToken = jwt.sign(
+        { email: admin!.email, twoFactorSetupPending: true },
         getJWTSecret(),
-        { expiresIn: '5m' } // 2FA challenge expires in 5 minutes
+        { expiresIn: '10m' } // enrollment challenge expires in 10 minutes
       );
+
       return res.json({
         success: true,
-        twoFactorRequired: true,
-        challengeToken,
-        message: 'Two-factor authentication required. Please enter your 6-digit code from your authenticator app.'
+        twoFactorSetupRequired: true,
+        challengeToken: setupChallengeToken,
+        qrCode,
+        manualEntryKey: secret,
+        email: admin!.email,
+        message: 'Two-factor authentication is required. Scan the QR code with your authenticator app (Google Authenticator, Authy, 1Password) and enter the 6-digit code to complete setup.'
       });
     }
 
-    // Send login notification email (non-blocking)
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-    sendLoginNotificationEmail(admin!.email, admin!.lastLogin!, ipAddress, timezone || admin?.timezone).catch(err => 
-      console.error('Failed to send login notification:', err)
+    // Case 2: 2FA already enabled → issue a short-lived challenge token for the verify-2fa step.
+    const challengeToken = jwt.sign(
+      { email: admin!.email, twoFactorPending: true },
+      getJWTSecret(),
+      { expiresIn: '5m' } // 2FA challenge expires in 5 minutes
     );
-
-    res.json({ 
-      success: true, 
-      message: 'Login successful',
-      token,
-      tokenExpiresIn: '4h',
-      admin: {
-        email: admin?.email,
-        role: admin?.role,
-        lastLogin: admin?.lastLogin,
-        twoFactorEnabled: !!admin?.twoFactorEnabled
-      }
+    return res.json({
+      success: true,
+      twoFactorRequired: true,
+      challengeToken,
+      message: 'Two-factor authentication required. Please enter the 6-digit passcode from your authenticator app.'
     });
 
   } catch (error) {
@@ -265,6 +266,113 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       success: false, 
       message: 'Internal server error' 
     });
+  }
+};
+
+/**
+ * Complete mandatory first-login 2FA setup.
+ * Validates the setup challenge token + the first TOTP code from the authenticator app,
+ * enables 2FA on the account, generates backup codes, and only then issues a full admin JWT.
+ * Body: { challengeToken, code }
+ */
+export const completeFirstSetup2FA = async (req: Request, res: Response) => {
+  try {
+    const { challengeToken, code } = req.body;
+    if (!challengeToken || !code) {
+      return res.status(400).json({ success: false, message: 'Challenge token and 6-digit code are required' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(challengeToken, getJWTSecret()) as any;
+    } catch {
+      return res.status(401).json({ success: false, message: 'Setup session expired. Please login again.' });
+    }
+    if (!decoded.twoFactorSetupPending || !decoded.email) {
+      return res.status(401).json({ success: false, message: 'Invalid setup token.' });
+    }
+
+    const admin = await Admin.findOne({ email: decoded.email.toLowerCase() })
+      .select('+twoFactorEnabled +twoFactorSecret +twoFactorPendingSecret +twoFactorBackupCodes +tokenVersion +isActive +lastLogin');
+    if (!admin || !admin.isActive) {
+      return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
+    }
+    if (admin.twoFactorEnabled) {
+      return res.status(400).json({ success: false, message: '2FA is already enabled for this account.' });
+    }
+    if (!admin.twoFactorPendingSecret) {
+      return res.status(400).json({ success: false, message: 'No pending 2FA setup found. Please login again.' });
+    }
+
+    const secret = decryptSecret(admin.twoFactorPendingSecret);
+    if (!secret) {
+      return res.status(500).json({ success: false, message: 'Unable to decrypt pending 2FA secret.' });
+    }
+
+    if (!verifyTwoFactorToken(code, secret)) {
+      // Log failed setup attempt
+      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+      await SecurityLog.create({
+        portal: 'admin',
+        eventType: 'failed_2fa_setup',
+        severity: 'high',
+        details: `Failed first-login 2FA setup attempt for ${admin.email}`,
+        ip: String(ipAddress),
+        userAgent: req.headers['user-agent'],
+        path: req.path
+      });
+      return res.status(401).json({ success: false, message: 'Invalid 6-digit code. Please try again.' });
+    }
+
+    // Promote pending secret to active
+    admin.twoFactorSecret = admin.twoFactorPendingSecret;
+    admin.twoFactorPendingSecret = undefined;
+    admin.twoFactorEnabled = true;
+
+    // Generate backup codes
+    const { plain, hashes } = generateBackupCodes(10);
+    admin.twoFactorBackupCodes = hashes;
+
+    // Bump tokenVersion (sessions can't exist yet, but keeps the invariant clean)
+    admin.tokenVersion = (admin.tokenVersion || 0) + 1;
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    // Issue the full admin JWT — 2FA is now enabled, login is complete
+    const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
+
+    // Log the successful 2FA enrollment + login
+    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+    await SecurityLog.create({
+      portal: 'admin',
+      eventType: '2fa_enabled',
+      severity: 'medium',
+      details: `2FA enabled for ${admin.email} during first-login enrollment`,
+      ip: String(ipAddress),
+      userAgent: req.headers['user-agent'],
+      path: req.path
+    });
+    sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(err =>
+      console.error('Failed to send login notification:', err)
+    );
+
+    res.json({
+      success: true,
+      message: 'Two-factor authentication enabled. Save your backup codes in a secure location — they won\'t be shown again.',
+      token,
+      tokenExpiresIn: '4h',
+      backupCodes: plain,
+      admin: {
+        email: admin.email,
+        role: admin.role,
+        lastLogin: admin.lastLogin,
+        twoFactorEnabled: true
+      }
+    });
+
+  } catch (error) {
+    console.error('Error completing first-login 2FA setup:', error);
+    res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
 
@@ -355,7 +463,7 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
 
     const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
 
-    // Send login notification email (non-blocking)
+    // Send login notification email (non-blocking) — admin just passed 2FA
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
     if (!admin.lastLogin) admin.lastLogin = new Date();
     sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(err =>

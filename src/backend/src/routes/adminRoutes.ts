@@ -3,6 +3,7 @@ import {
   requestAdminOTP,
   verifyAdminOTP,
   verifyAdmin2FA,
+  completeFirstSetup2FA,
   getTwoFactorStatus,
   setupTwoFactor,
   confirmTwoFactorSetup,
@@ -117,6 +118,7 @@ initializeSuperAdmin();
 router.post('/request-otp', adminOtpRequestLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
 router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
 router.post('/verify-2fa', adminOtpVerifyLimiter, verifyAdmin2FA);
+router.post('/2fa/complete-first-setup', adminOtpVerifyLimiter, completeFirstSetup2FA);
 
 // ============================================
 // 2FA MANAGEMENT ROUTES (JWT authentication required)

@@ -1,17 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Clock } from 'lucide-react';
+import { Shield, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Clock, Smartphone, Copy, Key } from 'lucide-react';
 import DineInGoLogo from '../components/DineInGoLogo';
 import { createSession, getSessionToken } from '../utils/sessionGuard';
 import { API_CONFIG } from '../config/api';
 
 function AdminLoginPage() {
-  const [step, setStep] = useState<'email' | 'otp' | '2fa'>('email');
+  const [step, setStep] = useState<'email' | 'otp' | '2fa' | 'setup2fa'>('email');
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [twoFactorCode, setTwoFactorCode] = useState('');
   const [challengeToken, setChallengeToken] = useState('');
+  const [qrCode, setQrCode] = useState('');
+  const [manualKey, setManualKey] = useState('');
+  const [backupCodes, setBackupCodes] = useState<string[]>([]);
+  const [showBackupCodes, setShowBackupCodes] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -82,6 +86,16 @@ function AdminLoginPage() {
         throw new Error(data.message || 'Invalid OTP');
       }
       
+      // 🛡️ MANDATORY 2FA SETUP: First login — admin must set up 2FA before they can enter the portal
+      if (data.twoFactorSetupRequired) {
+        setChallengeToken(data.challengeToken);
+        setQrCode(data.qrCode);
+        setManualKey(data.manualEntryKey);
+        setStep('setup2fa');
+        setSuccess(data.message || 'Set up two-factor authentication to continue.');
+        return;
+      }
+      
       // 🛡️ 2FA Gate: if 2FA is required, move to the 2FA step instead of logging in
       if (data.twoFactorRequired && data.challengeToken) {
         setChallengeToken(data.challengeToken);
@@ -139,6 +153,48 @@ function AdminLoginPage() {
       navigate(`/admin/${sessionToken}/dashboard`);
     } catch (err: any) {
       setError(err.message || '2FA verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🛡️ FIRST-LOGIN 2FA SETUP: scan QR, enter first code, get backup codes, then enter portal
+  const handleSetup2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/2fa/complete-first-setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeToken, code: twoFactorCode }),
+      });
+      const data = await res.json();
+      
+      if (!res.ok) {
+        throw new Error(data.message || 'Invalid 2FA code');
+      }
+      
+      // Show backup codes to the admin BEFORE entering the portal
+      if (data.backupCodes && data.backupCodes.length > 0) {
+        setBackupCodes(data.backupCodes);
+        setShowBackupCodes(true);
+      }
+      
+      // Store admin session with JWT token
+      localStorage.setItem('adminToken', data.token);
+      localStorage.setItem('adminEmail', data.admin.email);
+      localStorage.setItem('adminRole', data.admin.role);
+      localStorage.setItem('adminLoginTime', new Date().toISOString());
+      
+      // Generate web session token for URL obfuscation
+      const sessionToken = createSession(data.admin.email);
+      
+      navigate(`/admin/${sessionToken}/dashboard`);
+    } catch (err: any) {
+      setError(err.message || '2FA setup failed');
     } finally {
       setLoading(false);
     }
@@ -340,6 +396,109 @@ function AdminLoginPage() {
                     <><Shield size={18} /> Verify & Login</>
                   )}
                 </button>
+              </form>
+            ) : step === 'setup2fa' ? (
+              <form onSubmit={handleSetup2FASubmit} className="space-y-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Smartphone className="text-red-600" size={22} />
+                  <h2 className="text-lg font-bold text-slate-900">Set Up 2FA (Required)</h2>
+                </div>
+                <p className="text-sm text-slate-600">
+                  Scan this QR code with your authenticator app (Google Authenticator, Authy, 1Password). Then enter the 6-digit code to finish setup and enter the portal.
+                </p>
+
+                <div className="flex flex-col items-center gap-3">
+                  {qrCode && (
+                    <div className="bg-white p-3 rounded-2xl border-2 border-slate-200 shadow-sm">
+                      <img src={qrCode} alt="2FA QR Code" className="w-52 h-52" />
+                    </div>
+                  )}
+                  <details className="w-full">
+                    <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700 flex items-center gap-1">
+                      <Key size={12} /> Can't scan? Enter this key manually
+                    </summary>
+                    <div className="mt-2 bg-slate-50 rounded-lg p-3 flex items-center gap-2">
+                      <code className="text-xs font-mono text-slate-700 flex-1 break-all">{manualKey}</code>
+                      <button
+                        type="button"
+                        onClick={() => { navigator.clipboard?.writeText(manualKey || ''); }}
+                        className="text-slate-400 hover:text-slate-600 flex items-center gap-1 text-xs"
+                      >
+                        <Copy size={14} /> Copy
+                      </button>
+                    </div>
+                  </details>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-3">
+                    <Lock size={16} className="inline mr-2" />
+                    Enter 6-Digit Code from Your Authenticator App
+                  </label>
+                  <input
+                    type="text"
+                    value={twoFactorCode}
+                    onChange={(e) => { setTwoFactorCode(e.target.value.replace(/\D/g, '').slice(0, 6)); setError(null); }}
+                    className={`w-full px-4 py-4 border-2 rounded-2xl text-center text-2xl font-mono tracking-widest transition-all focus:outline-none focus:ring-4 focus:ring-red-500/20 ${
+                      error ? 'border-red-300 bg-red-50 focus:border-red-500' : 'border-slate-200 focus:border-red-500'
+                    }`}
+                    placeholder="••••••"
+                    required
+                    maxLength={6}
+                    inputMode="numeric"
+                    disabled={loading}
+                    autoFocus
+                  />
+                  <div className="flex justify-center mt-3 gap-1">
+                    {[...Array(6)].map((_, i) => (
+                      <div key={i} className={`w-2 h-2 rounded-full transition-all ${i < twoFactorCode.length ? 'bg-red-500' : 'bg-slate-200'}`} />
+                    ))}
+                  </div>
+                  {showBackupCodes && backupCodes.length > 0 && (
+                    <div className="mt-4 bg-slate-900 rounded-xl p-4 text-left">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Key className="text-amber-400" size={14} />
+                        <p className="text-amber-400 text-xs font-bold">SAVE THESE BACKUP CODES — won't be shown again</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {backupCodes.map((c, i) => (
+                          <code key={i} className="text-amber-300 font-mono text-xs text-center bg-slate-800 rounded px-2 py-1">{c}</code>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {error && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
+                    <AlertCircle size={16} />
+                    <span className="text-sm font-medium">{error}</span>
+                  </motion.div>
+                )}
+
+                {success && !showBackupCodes && (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 p-4 bg-green-50 border border-green-200 rounded-2xl text-green-700">
+                    <CheckCircle size={16} />
+                    <span className="text-sm font-medium">{success}</span>
+                  </motion.div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loading || twoFactorCode.length !== 6}
+                  className={`w-full py-4 rounded-2xl font-bold text-white transition-all flex items-center justify-center gap-2 ${
+                    loading || twoFactorCode.length !== 6 ? 'bg-slate-300 cursor-not-allowed' : 'bg-red-600 hover:bg-red-700 hover:shadow-lg hover:shadow-red-600/25 active:scale-95'
+                  }`}
+                >
+                  {loading ? (
+                    <><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> Enabling 2FA...</>
+                  ) : (
+                    <><ShieldCheck size={18} /> Enable 2FA & Continue</>
+                  )}
+                </button>
+                <p className="text-xs text-center text-amber-600">
+                  🔒 Two-factor authentication is required for all DineInGo admins.
+                </p>
               </form>
             ) : (
               <form onSubmit={handleOTPSubmit} className="space-y-6">
