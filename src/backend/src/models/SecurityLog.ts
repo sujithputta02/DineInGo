@@ -2,7 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 
 export interface ISecurityLog extends Document {
   portal: 'user' | 'business' | 'admin' | 'system';
-  eventType: 'blocked_ip' | 'failed_login' | 'auth_bypass_attempt' | 'suspicious_activity' | 'rate_limit_exceeded' | 'mass_email_broadcast' | 'permission_change' | 'impersonation_start' | 'IP_BLOCKED_MANUAL' | 'IP_UNBLOCKED' | 'deep_scan_completed' | 'secret_leak_detected';
+  eventType: 'blocked_ip' | 'failed_login' | 'auth_bypass_attempt' | 'suspicious_activity' | 'rate_limit_exceeded' | 'mass_email_broadcast' | 'permission_change' | 'impersonation_start' | 'IP_BLOCKED_MANUAL' | 'IP_UNBLOCKED' | 'deep_scan_completed' | 'secret_leak_detected' | 'failed_2fa_setup' | '2fa_enabled' | 'failed_2fa' | '2fa_disabled' | 'sessions_revoked' | 'new_ip_login';
   severity: 'low' | 'medium' | 'high' | 'critical';
   details: string;
   ip: string;
@@ -32,7 +32,13 @@ const SecurityLogSchema: Schema = new Schema({
       'IP_BLOCKED_MANUAL',
       'IP_UNBLOCKED',
       'deep_scan_completed',
-      'secret_leak_detected'
+      'secret_leak_detected',
+      'failed_2fa_setup',
+      '2fa_enabled',
+      'failed_2fa',
+      '2fa_disabled',
+      'sessions_revoked',
+      'new_ip_login'
     ],
     required: true
   },
