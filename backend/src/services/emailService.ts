@@ -1527,6 +1527,156 @@ export const emailService = {
       console.error('Error sending invoice email:', error);
       return false;
     }
+  },
+
+  /**
+   * Send premium branded 2FA reminder email
+   */
+  async sendTwoFactorReminderEmail(email: string, reminderNumber: number, reminderLabel: string, daysRemaining: number, timezone: string = 'Asia/Kolkata'): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const daysText = daysRemaining === 1 ? 'day' : 'days';
+      const adminPortalUrl = `${process.env.FRONTEND_URL || 'https://dine-in-go.vercel.app'}/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9`;
+      
+      let urgencyColor = '#059669';
+      let urgencyMessage = '';
+      
+      if (reminderNumber === 1) {
+        urgencyColor = '#3b82f6';
+        urgencyMessage = 'Secure your account now to stay protected';
+      } else if (reminderNumber === 2) {
+        urgencyColor = '#f59e0b';
+        urgencyMessage = `${daysRemaining} ${daysText} left to secure your account`;
+      } else if (reminderNumber === 3) {
+        urgencyColor = '#f97316';
+        urgencyMessage = `${daysRemaining} ${daysText} left — action required`;
+      } else if (reminderNumber === 4) {
+        urgencyColor = '#dc2626';
+        urgencyMessage = `Final reminder: ${daysRemaining} ${daysText} left to prevent account deactivation`;
+      }
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; margin: 0; }
+              .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 40px 20px; text-align: center; }
+              .content { padding: 40px 30px; }
+              .badge { display: inline-block; background: ${urgencyColor}; color: white; padding: 8px 16px; border-radius: 6px; font-size: 12px; font-weight: 600; margin-bottom: 20px; }
+              .urgency { font-size: 16px; color: ${urgencyColor}; font-weight: 600; margin: 20px 0; }
+              .button { display: inline-block; background: #dc2626; color: white; padding: 14px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 20px 0; }
+              .footer { background: #f9fafb; padding: 24px 30px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div style="font-size: 28px; font-weight: bold;">🔐 DineInGo Security Alert</div>
+              </div>
+              <div class="content">
+                <div style="font-size: 20px; font-weight: 600; margin-bottom: 20px;">Two-Factor Authentication Required</div>
+                <div class="badge">${reminderLabel}</div>
+                <div class="urgency">${urgencyMessage}</div>
+                <p>Your DineInGo admin account requires two-factor authentication within <strong>${reminderNumber === 4 ? 'today' : '7 days'}</strong> to prevent account deactivation.</p>
+                <div style="text-align: center;">
+                  <a href="${adminPortalUrl}" class="button">Secure Your Admin Portal →</a>
+                </div>
+              </div>
+              <div class="footer">
+                <div><strong>DineInGo Admin Security</strong></div>
+                <div>This is an automated security notification.</div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: emailService.getSender(),
+        to: email,
+        subject: `${reminderLabel}: Enable Two-Factor Authentication - DineInGo Admin`,
+        html
+      });
+
+      console.log(`✓ 2FA reminder #${reminderNumber} email sent to ${email}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending 2FA reminder email:', error);
+      return false;
+    }
+  },
+
+  /**
+   * Send account deactivation notice when 2FA deadline is passed
+   */
+  async sendTwoFactorDeactivationNoticeEmail(email: string, timezone: string = 'Asia/Kolkata'): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const adminPortalUrl = `${process.env.FRONTEND_URL || 'https://dine-in-go.vercel.app'}/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9`;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="UTF-8">
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto; margin: 0; }
+              .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%); color: white; padding: 40px 20px; text-align: center; }
+              .alert { background: #fef2f2; border: 2px solid #dc2626; border-radius: 8px; padding: 20px; margin: 24px 0; }
+              .button { display: inline-block; background: #dc2626; color: white; padding: 12px 28px; border-radius: 6px; text-decoration: none; font-weight: 600; }
+              .footer { background: #f9fafb; padding: 24px; border-top: 1px solid #e5e7eb; font-size: 13px; color: #6b7280; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <div style="font-size: 28px; font-weight: bold;">🔒 Account Deactivated</div>
+              </div>
+              <div style="padding: 40px 30px;">
+                <div class="alert">
+                  <h2 style="color: #991b1b; margin-top: 0;">Your Admin Account Has Been Deactivated</h2>
+                  <p>Your DineInGo admin account has been automatically deactivated because two-factor authentication (2FA) was not enabled within the required timeframe.</p>
+                </div>
+                <p><strong>How to reactivate:</strong></p>
+                <ol>
+                  <li>Contact your Super Admin to reactivate your account</li>
+                  <li>After reactivation, enable 2FA immediately</li>
+                  <li>You'll have 7 days to complete the setup</li>
+                </ol>
+                <div style="text-align: center;">
+                  <a href="${adminPortalUrl}" class="button">Request Account Reactivation</a>
+                </div>
+              </div>
+              <div class="footer">
+                <div><strong>DineInGo Security Team</strong></div>
+                <div>This is an automated notification. Please do not reply to this email.</div>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: emailService.getSender(),
+        to: email,
+        subject: 'Account Deactivated: 2FA Enforcement - DineInGo Admin',
+        html
+      });
+
+      console.log(`✓ 2FA deactivation notice sent to ${email}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending deactivation notice email:', error);
+      return false;
+    }
   }
 };
 
@@ -1553,7 +1703,8 @@ export const sendEmail = async (options: EmailOptions): Promise<boolean> => {
 
     return true;
   } catch (error) {
-    console.error('Error sending email:', error);
+
+    console.error('Error sending email:', (error as any).message || error);
     return false;
   }
 };

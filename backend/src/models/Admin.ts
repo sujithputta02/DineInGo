@@ -24,6 +24,13 @@ export interface IAdmin extends Document {
   // Session revocation: bumping this invalidates all previously issued JWTs
   tokenVersion?: number;
   required2FA?: boolean; // super admin can force 2FA for an account
+  
+  // 2FA Enforcement & Reminders
+  twoFactorRemindersSent?: number; // 0-3 reminders sent (immediate, day1, day3, day7)
+  twoFactorDeadline?: Date; // 7 days from activation/creation
+  twoFactorDeactivationReason?: string; // '2FA_NOT_ENABLED', 'MANUAL_DEACTIVATION', etc.
+  twoFactorReminderScheduled?: boolean; // Idempotency flag to prevent duplicate reminders
+  lastReminderSentAt?: Date; // Timestamp of last reminder sent
 }
 
 export interface IAdminOTP extends Document {
@@ -112,6 +119,31 @@ const AdminSchema = new Schema<IAdmin>({
   required2FA: {
       type: Boolean,
       default: false
+  },
+  // 2FA Enforcement & Reminders
+  twoFactorRemindersSent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3
+  },
+  twoFactorDeadline: {
+      type: Date,
+      select: false
+  },
+  twoFactorDeactivationReason: {
+      type: String,
+      select: false,
+      enum: ['2FA_NOT_ENABLED', 'MANUAL_DEACTIVATION', 'SECURITY_POLICY', 'OTHER']
+  },
+  twoFactorReminderScheduled: {
+      type: Boolean,
+      default: false,
+      select: false
+  },
+  lastReminderSentAt: {
+      type: Date,
+      select: false
   }
 });
 

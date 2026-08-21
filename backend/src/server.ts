@@ -39,6 +39,10 @@ import userOtpRoutes from './routes/userOtpRoutes';
 import earlyAccessRoutes from './routes/earlyAccessRoutes';
 import foodScanRoutes from './routes/foodScanRoutes';
 import translationRoutes from './routes/translationRoutes';
+import {
+  checkAndEnforceTwoFactorDeadlines,
+  scheduleAndSendPendingReminders
+} from './services/twoFactorEnforcementService';
 
 // SECURITY: Import security middleware and utilities
 import { secretManager } from './utils/secretManager';
@@ -231,6 +235,43 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
     } else {
       console.log('⚠️  Redis cache not available - continuing without cache\n');
     }
+
+    // Initialize 2FA Enforcement Scheduler
+    console.log('🔐 Initializing 2FA Enforcement Scheduler...');
+    
+    // Schedule daily deadline enforcement check at midnight (00:00 UTC)
+    const scheduleDeadlineCheck = () => {
+      const now = new Date();
+      const tomorrow = new Date(now);
+      tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+      tomorrow.setUTCHours(0, 0, 0, 0);
+      const msUntilMidnight = tomorrow.getTime() - now.getTime();
+      
+      setTimeout(() => {
+        console.log('⏰ Running 2FA deadline enforcement check...');
+        checkAndEnforceTwoFactorDeadlines().catch(err =>
+          console.error('Error in 2FA deadline enforcement:', err)
+        );
+        // Reschedule for next day
+        setInterval(() => {
+          console.log('⏰ Running 2FA deadline enforcement check...');
+          checkAndEnforceTwoFactorDeadlines().catch(err =>
+            console.error('Error in 2FA deadline enforcement:', err)
+          );
+        }, 24 * 60 * 60 * 1000); // Every 24 hours
+      }, msUntilMidnight);
+    };
+    scheduleDeadlineCheck();
+
+    // Schedule pending reminders check every 6 hours
+    setInterval(() => {
+      console.log('📧 Checking for pending 2FA reminders to send...');
+      scheduleAndSendPendingReminders().catch(err =>
+        console.error('Error scheduling 2FA reminders:', err)
+      );
+    }, 6 * 60 * 60 * 1000); // Every 6 hours
+
+    console.log('✅ 2FA Enforcement Scheduler initialized\n');
   })
   .catch((error) => {
     console.error('CRITICAL: MongoDB Atlas connection error:');

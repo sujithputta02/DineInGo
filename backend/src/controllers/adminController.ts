@@ -32,6 +32,10 @@ import {
   decryptSecret,
   generateQRCodeForUrl
 } from '../services/twoFactorService';
+import {
+  initiateTwoFactorReminders,
+  stopTwoFactorReminders
+} from '../services/twoFactorEnforcementService';
 
 // Super admin email (DineInGo owner)
 const SUPER_ADMIN_EMAIL = 'sujithputta02@gmail.com';
@@ -392,6 +396,11 @@ export const completeFirstSetup2FA = async (req: Request, res: Response) => {
     admin.lastLogin = new Date();
     await admin.save();
 
+    // Stop 2FA reminder emails now that 2FA is enabled (non-blocking)
+    stopTwoFactorReminders(admin.email).catch(err =>
+      console.error('Failed to stop 2FA reminders:', err)
+    );
+
     // Issue the full admin JWT — 2FA is now enabled, login is complete
     const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
 
@@ -747,6 +756,11 @@ export const confirmTwoFactorSetup = async (req: Request, res: Response) => {
     admin.tokenVersion = (admin.tokenVersion || 0) + 1;
     await admin.save();
 
+    // Stop 2FA reminder emails now that 2FA is enabled (non-blocking)
+    stopTwoFactorReminders(admin.email).catch(err =>
+      console.error('Failed to stop 2FA reminders:', err)
+    );
+
     // Log the event
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
     await SecurityLog.create({
@@ -981,6 +995,11 @@ export const addAdmin = async (req: Request, res: Response) => {
     // Send admin invitation email with portal login button (non-blocking)
     sendAdminInvitationEmail(newAdmin.email, req.admin!.email, newAdmin.role).catch(err =>
       console.error('Failed to send admin invitation email:', err)
+    );
+
+    // Initiate 2FA enforcement reminders (non-blocking, will start email sequence)
+    initiateTwoFactorReminders(newAdmin.email).catch(err =>
+      console.error('Failed to initiate 2FA reminders:', err)
     );
 
     res.json({ 
@@ -1739,7 +1758,7 @@ export const toggleAdminStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const admin = await Admin.findOne({ email: adminEmail.toLowerCase(), role: 'admin' });
+    const admin = await Admin.findOne({ email: adminEmail.toLowerCase(), role: 'admin' }).select('+twoFactorEnabled +twoFactorDeadline');
     if (!admin) {
       return res.status(404).json({ 
         success: false, 
@@ -1747,8 +1766,27 @@ export const toggleAdminStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const wasDeactivated = !admin.isActive;
     admin.isActive = !admin.isActive;
+
+    // If reactivating an admin who was deactivated due to 2FA deadline, restart reminders
+    if (admin.isActive && wasDeactivated && !admin.twoFactorEnabled && admin.twoFactorDeadline) {
+      // Reset 2FA enforcement fields to restart the process
+      admin.twoFactorDeadline = undefined;
+      admin.twoFactorRemindersSent = 0;
+      admin.twoFactorReminderScheduled = false;
+      admin.twoFactorDeactivationReason = undefined;
+      admin.lastReminderSentAt = undefined;
+    }
+
     await admin.save();
+
+    // Initiate 2FA reminders if reactivating and 2FA not enabled (non-blocking)
+    if (admin.isActive && wasDeactivated && !admin.twoFactorEnabled) {
+      initiateTwoFactorReminders(admin.email).catch(err =>
+        console.error('Failed to initiate 2FA reminders on reactivation:', err)
+      );
+    }
 
     // Emit real-time update
     const io = req.app.get('io');
