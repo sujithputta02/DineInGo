@@ -487,8 +487,11 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
 
     const decryptedSecret = decryptSecret(admin.twoFactorSecret!);
     if (!decryptedSecret) {
+      console.error('🔴 [2FA] Failed to decrypt secret for:', admin.email);
       return res.status(500).json({ success: false, message: 'Unable to decrypt 2FA secret.' });
     }
+
+    console.log('🔍 [2FA] Decrypted secret length:', decryptedSecret?.length);
 
     let verified = false;
 
@@ -503,7 +506,9 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
       }
     } else {
       // TOTP verification
+      console.log('🔍 [2FA] Verifying TOTP code:', code, 'for email:', admin.email);
       verified = verifyTwoFactorToken(code, decryptedSecret);
+      console.log('🔍 [2FA] Verification result:', verified);
     }
 
     if (!verified) {
@@ -669,6 +674,34 @@ export const verifyAdmin2FAEmailConfirm = async (req: Request, res: Response) =>
 };
 
 /**
+ * PUBLIC: Diagnostic endpoint to check TOTP configuration
+ * This helps verify the deployment has the correct TOTP window settings
+ */
+export const getTotpDiagnostics = async (req: Request, res: Response) => {
+  try {
+    const { authenticator } = await import('../services/twoFactorService');
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      unixTime: Math.floor(Date.now() / 1000),
+      totpConfig: {
+        window: (authenticator as any).options?.window || 0,
+        step: (authenticator as any).options?.step || 30,
+        windowDescription: `±${((authenticator as any).options?.window || 0)} steps = ±${((authenticator as any).options?.window || 0) * 30} seconds`
+      },
+      message: 'TOTP configuration loaded successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to load TOTP configuration',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Get current 2FA status for the logged-in admin.
  */
 export const getTwoFactorStatus = async (req: Request, res: Response) => {
@@ -676,11 +709,19 @@ export const getTwoFactorStatus = async (req: Request, res: Response) => {
     const admin = await Admin.findOne({ email: req.admin!.email }).select('+twoFactorEnabled +twoFactorBackupCodes +required2FA');
     if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
 
+    // Get authenticator configuration for debugging
+    const { authenticator } = await import('../services/twoFactorService');
+    const totpConfig = {
+      window: (authenticator as any).options?.window || 0,
+      step: (authenticator as any).options?.step || 30
+    };
+
     res.json({
       success: true,
       twoFactorEnabled: !!admin.twoFactorEnabled,
       required2FA: !!admin.required2FA,
-      backupCodesRemaining: admin.twoFactorBackupCodes?.length || 0
+      backupCodesRemaining: admin.twoFactorBackupCodes?.length || 0,
+      totpConfig // Include TOTP config for debugging
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' });

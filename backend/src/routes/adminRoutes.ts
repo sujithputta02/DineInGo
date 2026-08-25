@@ -6,6 +6,7 @@ import {
   verifyAdmin2FAEmailConfirm,
   completeFirstSetup2FA,
   getTwoFactorStatus,
+  getTotpDiagnostics,
   setupTwoFactor,
   confirmTwoFactorSetup,
   disableTwoFactor,
@@ -119,6 +120,9 @@ initializeSuperAdmin();
 // ============================================
 // PUBLIC ROUTES (No authentication required)
 // ============================================
+// Diagnostic endpoint to check TOTP configuration
+router.get('/totp-diagnostics', getTotpDiagnostics);
+
 router.post('/request-otp', adminOtpRequestLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
 router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
 router.post('/verify-2fa', adminOtpVerifyLimiter, verifyAdmin2FA);

@@ -181,3 +181,6 @@ export function consumeBackupCode(code: string, hashes: string[]): string[] {
   const clean = code.trim().toUpperCase();
   return hashes.filter(hash => !bcrypt.compareSync(clean, hash));
 }
+
+// Export authenticator instance for diagnostics
+export { authenticator };
