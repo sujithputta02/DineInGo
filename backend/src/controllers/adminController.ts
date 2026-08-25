@@ -488,10 +488,16 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
     const decryptedSecret = decryptSecret(admin.twoFactorSecret!);
     if (!decryptedSecret) {
       console.error('🔴 [2FA] Failed to decrypt secret for:', admin.email);
-      return res.status(500).json({ success: false, message: 'Unable to decrypt 2FA secret.' });
+      return res.status(500).json({ success: false, message: 'Unable to decrypt 2FA secret. Please contact support.' });
     }
 
-    console.log('🔍 [2FA] Decrypted secret length:', decryptedSecret?.length);
+    console.log('🔍 [2FA] Secret decrypted successfully:', {
+      email: admin.email,
+      secretLength: decryptedSecret?.length,
+      codeProvided: code,
+      codeLength: code?.length,
+      useBackup
+    });
 
     let verified = false;
 
@@ -501,20 +507,34 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
         return res.status(400).json({ success: false, message: 'No backup codes remaining. Please contact a super admin.' });
       }
       verified = verifyBackupCode(code, admin.twoFactorBackupCodes);
+      console.log('🔍 [2FA] Backup code verification:', { verified, codesRemaining: admin.twoFactorBackupCodes.length });
       if (verified) {
         admin.twoFactorBackupCodes = consumeBackupCode(code, admin.twoFactorBackupCodes);
       }
     } else {
-      // TOTP verification
-      console.log('🔍 [2FA] Verifying TOTP code:', code, 'for email:', admin.email);
+      // TOTP verification with enhanced logging
+      console.log('🔍 [2FA] Attempting TOTP verification:', {
+        email: admin.email,
+        codeReceived: code,
+        codeLength: code?.length,
+        isNumeric: /^\d{6}$/.test(code || ''),
+        timestamp: new Date().toISOString(),
+        serverTime: Math.floor(Date.now() / 1000)
+      });
+      
       verified = verifyTwoFactorToken(code, decryptedSecret);
-      console.log('🔍 [2FA] Verification result:', verified);
+      
+      console.log('🔍 [2FA] TOTP verification result:', { 
+        verified, 
+        email: admin.email,
+        codeProvided: code
+      });
     }
 
     if (!verified) {
       // Log failed 2FA attempt with detailed debugging
       const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-      console.log('🔴 [2FA FAILED]', {
+      console.log('🔴 [2FA FAILED] Comprehensive debug info:', {
         email: admin.email,
         codeReceived: code,
         codeLength: code?.length,
@@ -523,18 +543,26 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
         hasSecret: !!decryptedSecret,
         secretLength: decryptedSecret?.length,
         timestamp: new Date().toISOString(),
-        serverTime: Math.floor(Date.now() / 1000)
+        serverTime: Math.floor(Date.now() / 1000),
+        ipAddress,
+        userAgent: req.headers['user-agent']
       });
+      
       await SecurityLog.create({
         portal: 'admin',
         eventType: 'failed_2fa',
         severity: 'high',
-        details: `Failed 2FA attempt for ${admin.email}${useBackup ? ' (backup code)' : ' (TOTP)'}`,
+        details: `Failed 2FA attempt for ${admin.email}${useBackup ? ' (backup code)' : ' (TOTP)'}. Code: ${code}, Length: ${code?.length}`,
         ip: String(ipAddress),
         userAgent: req.headers['user-agent'],
         path: req.path
       });
-      return res.status(401).json({ success: false, message: 'Invalid verification code.' });
+      
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid verification code. Make sure your authenticator app time is synchronized and try again.',
+        hint: 'If you continue having issues, use a backup code or request the email confirmation link.'
+      });
     }
 
     // 2FA passed — issue full admin token

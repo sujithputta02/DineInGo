@@ -30,15 +30,20 @@ const ALGORITHM = 'aes-256-gcm';
  * You must ASSIGN through the setter: `authenticator.options = { window: N }`.
  * Verified empirically (see scripts/test-totp-fix.js).
  */
-const TOTP_WINDOW = 4; // ±4 steps = ±2 minutes of allowed clock drift
+const TOTP_WINDOW = 10; // ±10 steps = ±5 minutes of allowed clock drift (increased for reliability)
 
 // Configure the authenticator instance with proper window
 // CRITICAL: Must use the setter to actually apply the window value
 authenticator.options = { 
-  window: TOTP_WINDOW
+  window: TOTP_WINDOW,
+  step: 30 // 30-second time step (standard TOTP)
 };
 
-console.log('✅ [TOTP] Authenticator configured with window:', authenticator.options.window);
+console.log('✅ [TOTP] Authenticator configured with:', {
+  window: authenticator.options.window,
+  step: authenticator.options.step,
+  tolerance: `±${TOTP_WINDOW * 30} seconds`
+});
 
 /**
  * Derive a 32-byte key from the configured secret. We never use the raw env var
@@ -98,18 +103,43 @@ export async function generateTwoFactorQRCode(email: string, secret: string): Pr
  */
 export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
-    const clean = token.trim().replace(/\s+/g, '');
-    if (!/^\d{6}$/.test(clean)) {
-      console.log('🔴 [TOTP] Invalid token format:', { token: clean, length: clean.length });
+    if (!token || !secret) {
+      console.log('🔴 [TOTP] Missing token or secret');
       return false;
     }
+
+    const clean = token.trim().replace(/\s+/g, '');
+    if (!/^\d{6}$/.test(clean)) {
+      console.log('🔴 [TOTP] Invalid token format:', { 
+        token: clean, 
+        length: clean.length,
+        original: token 
+      });
+      return false;
+    }
+    
+    // Ensure options are properly set before verification
+    const currentWindow = authenticator.options.window;
+    if (!currentWindow || currentWindow === 0) {
+      console.warn('⚠️ [TOTP] Window is 0, reconfiguring...');
+      authenticator.options = { 
+        window: TOTP_WINDOW,
+        step: 30 
+      };
+    }
+    
+    const currentTime = Math.floor(Date.now() / 1000);
+    const currentStep = Math.floor(currentTime / 30);
     
     // Debug: log the current configuration
     console.log('🔍 [TOTP] Verification attempt:', {
       tokenLength: clean.length,
       secretLength: secret?.length,
       window: authenticator.options.window,
-      currentTime: Math.floor(Date.now() / 1000),
+      step: authenticator.options.step,
+      currentTime,
+      currentStep,
+      windowRange: `${currentStep - TOTP_WINDOW} to ${currentStep + TOTP_WINDOW}`,
       timestamp: new Date().toISOString()
     });
     
@@ -119,11 +149,25 @@ export function verifyTwoFactorToken(token: string, secret: string): boolean {
     // valid code (only the exact current 30s step was accepted).
     const result = authenticator.verify({ token: clean, secret });
     
-    console.log('🔍 [TOTP] Verification result:', { success: result, token: clean });
+    if (!result) {
+      // Try to generate what the expected tokens would be for debugging
+      const expectedToken = authenticator.generate(secret);
+      console.log('� [TOTP] Verification FAILED:', { 
+        providedToken: clean,
+        expectedCurrentToken: expectedToken,
+        tokensMatch: clean === expectedToken,
+        secretValid: secret.length > 0
+      });
+    } else {
+      console.log('✅ [TOTP] Verification SUCCESS:', { token: clean });
+    }
     
     return result;
-  } catch (err) {
-    console.error('🔴 [TOTP] Verification error:', err);
+  } catch (err: any) {
+    console.error('🔴 [TOTP] Verification error:', {
+      message: err?.message,
+      stack: err?.stack
+    });
     return false;
   }
 }
