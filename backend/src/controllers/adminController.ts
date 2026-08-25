@@ -239,7 +239,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       const setupChallengeToken = jwt.sign(
         { email: admin!.email, twoFactorSetupPending: true },
         getJWTSecret(),
-        { expiresIn: '10m' } // enrollment challenge expires in 10 minutes
+        { expiresIn: '15m' } // enrollment challenge expires in 15 minutes
       );
 
       return res.json({
@@ -257,7 +257,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
     const challengeToken = jwt.sign(
       { email: admin!.email, twoFactorPending: true },
       getJWTSecret(),
-      { expiresIn: '5m' } // 2FA challenge expires in 5 minutes
+      { expiresIn: '15m' } // 2FA challenge expires in 15 minutes (increased for user convenience)
     );
 
     // 🛡️ EMAIL 2FA FALLBACK: Generate a one-time confirmation link but DON'T send email yet.
@@ -269,7 +269,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       const emailConfirmToken = jwt.sign(
         { email: admin!.email, purpose: '2fa-email-confirm', jti },
         getJWTSecret(),
-        { expiresIn: '10m' } // confirmation link valid for 10 minutes
+        { expiresIn: '15m' } // confirmation link valid for 15 minutes (matching challenge token)
       );
       // 🔧 FIX: Use FRONTEND_URL env var (or fallback to request origin) instead of hardcoded CLIENT_URL
       // This ensures QR codes and email links work on any deployed domain
@@ -281,7 +281,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       
       // Store the token & jti
       admin!.twoFactorEmailConfirmJti = jti;
-      admin!.twoFactorEmailConfirmExpires = new Date(Date.now() + 10 * 60 * 1000);
+      admin!.twoFactorEmailConfirmExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
       await admin!.save();
       
       // Generate QR code for the confirmation URL

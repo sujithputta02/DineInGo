@@ -159,15 +159,18 @@ process.on('uncaughtException', (error: Error) => {
 // Configure Socket.io with optimized settings for Render
 const io = new Server(httpServer, {
   cors: {
-    origin: true,
+    origin: process.env.FRONTEND_URL || process.env.CLIENT_URL || true,
     credentials: true,
     methods: ['GET', 'POST']
   },
+  path: '/socket.io/',
   allowEIO3: true,
   transports: ['websocket', 'polling'],
   pingTimeout: 60000,
   pingInterval: 25000,
-  connectTimeout: 45000
+  connectTimeout: 45000,
+  maxHttpBufferSize: 1e6, // 1MB max message size
+  perMessageDeflate: false // Disable compression for better performance
 });
 
 setIO(io);
