@@ -31,7 +31,14 @@ const ALGORITHM = 'aes-256-gcm';
  * Verified empirically (see scripts/test-totp-fix.js).
  */
 const TOTP_WINDOW = 4; // ±4 steps = ±2 minutes of allowed clock drift
-authenticator.options = { window: TOTP_WINDOW };
+
+// Configure the authenticator instance with proper window
+// CRITICAL: Must use the setter to actually apply the window value
+authenticator.options = { 
+  window: TOTP_WINDOW
+};
+
+console.log('✅ [TOTP] Authenticator configured with window:', authenticator.options.window);
 
 /**
  * Derive a 32-byte key from the configured secret. We never use the raw env var
