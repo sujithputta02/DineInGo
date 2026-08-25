@@ -142,7 +142,26 @@ function AdminLoginPage() {
       const data = await res.json();
       
       if (!res.ok) {
-        throw new Error(data.message || 'Invalid 2FA code');
+        // Passcode verification failed - show QR code fallback for email verification
+        try {
+          const qrRes = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/2fa/email-verify-qr`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ challengeToken, email }),
+          });
+          if (qrRes.ok) {
+            const qrData = await qrRes.json();
+            setConfirmQrCode(qrData.qrCodeUrl);
+            setEmailConfirmSent(true);
+            setError(`${data.message || 'Invalid 2FA code'}. Try verifying with email instead.`);
+          } else {
+            throw new Error(data.message || 'Invalid 2FA code');
+          }
+        } catch (qrErr) {
+          console.error('Failed to generate QR code:', qrErr);
+          setError(data.message || 'Invalid 2FA code');
+        }
+        return;
       }
       
       // Store admin session with JWT token

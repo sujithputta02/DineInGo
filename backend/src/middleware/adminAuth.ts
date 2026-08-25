@@ -137,3 +137,6 @@ export const generateAdminToken = (email: string, role: 'admin' | 'super_admin',
   const JWT_SECRET = getJWTSecret();
   return jwt.sign(payload, JWT_SECRET, { expiresIn: '4h' });
 };
+
+// Export getJWTSecret for use in other modules
+export { getJWTSecret };

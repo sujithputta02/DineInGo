@@ -2692,3 +2692,139 @@ export const toggleImpersonationPermission = async (req: Request, res: Response)
     res.status(500).json({ success: false, message: 'Failed to update background permission' });
   }
 };
+
+// ============================================
+// 2FA STATUS AND COMPLIANCE ENDPOINTS
+// ============================================
+
+/**
+ * Get 2FA status for a specific admin
+ */
+export const getAdmin2FAStatus = async (req: any, res: any) => {
+  try {
+    const { adminEmail } = req.query;
+
+    if (!adminEmail) {
+      return res.status(400).json({ success: false, message: 'Admin email required' });
+    }
+
+    const admin = await Admin.findOne({ email: adminEmail });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    // Determine 2FA status
+    let status = 'not_initiated';
+    if (admin.twoFactorEnabled) {
+      status = 'enabled';
+    } else if (admin.required2FA && !admin.twoFactorEnabled) {
+      status = 'pending';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        email: admin.email,
+        twoFactorEnabled: admin.twoFactorEnabled || false,
+        deactivationReason: admin.twoFactorDeactivationReason || null,
+        isActive: admin.isActive,
+        status,
+        requiresAction: !admin.twoFactorEnabled && !admin.isActive && admin.twoFactorDeactivationReason === '2FA_NOT_ENABLED'
+      }
+    });
+  } catch (error) {
+    console.error('Error getting 2FA status:', error);
+    res.status(500).json({ success: false, message: 'Failed to get 2FA status' });
+  }
+};
+
+/**
+ * Get 2FA status for all admins (super admin only)
+ */
+export const getAllAdmins2FAStatus = async (req: any, res: any) => {
+  try {
+    const admins = await Admin.find({}).select('email twoFactorEnabled isActive twoFactorDeactivationReason required2FA').lean();
+
+    const statusData = admins.map(admin => {
+      let status = 'not_initiated';
+      if ((admin as any).twoFactorEnabled) {
+        status = 'enabled';
+      } else if ((admin as any).required2FA && !(admin as any).twoFactorEnabled) {
+        status = 'pending';
+      }
+
+      return {
+        email: (admin as any).email,
+        twoFactorEnabled: (admin as any).twoFactorEnabled || false,
+        deactivationReason: (admin as any).twoFactorDeactivationReason || null,
+        isActive: (admin as any).isActive,
+        status,
+        requiresAction: !(admin as any).twoFactorEnabled && !(admin as any).isActive && (admin as any).twoFactorDeactivationReason === '2FA_NOT_ENABLED'
+      };
+    });
+
+    res.json({
+      success: true,
+      data: statusData
+    });
+  } catch (error) {
+    console.error('Error getting all 2FA status:', error);
+    res.status(500).json({ success: false, message: 'Failed to get 2FA statuses' });
+  }
+};
+
+/**
+ * Generate email verification QR code when 2FA passcode fails
+ * Called during login when admin fails to verify with passcode
+ */
+export const generateTwoFactorEmailQR = async (req: any, res: any) => {
+  try {
+    const { challengeToken, email } = req.body;
+
+    if (!challengeToken || !email) {
+      return res.status(400).json({ success: false, message: 'Challenge token and email required' });
+    }
+
+    // Import getJWTSecret
+    const { getJWTSecret } = require('../middleware/adminAuth');
+    const jwtSecret = getJWTSecret();
+
+    let challengeData;
+    try {
+      challengeData = jwt.verify(challengeToken, jwtSecret) as any;
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired challenge token' });
+    }
+
+    // Verify admin exists
+    const admin = await Admin.findOne({ email });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    // Generate one-time email verification JWT (valid for 15 minutes)
+    const emailVerificationToken = jwt.sign(
+      { email, type: 'email_verification', purpose: '2fa_login' },
+      jwtSecret,
+      { expiresIn: '15m' }
+    );
+
+    // Generate verification link
+    const verificationLink = `${process.env.FRONTEND_URL || 'https://dine-in-go.vercel.app'}/admin/2fa-email-confirm?token=${emailVerificationToken}`;
+
+    // Generate QR code for the verification link
+    const qrCodeUrl = await generateQRCodeForUrl(verificationLink);
+
+    // Send verification email with QR code
+    await emailService.sendTwoFactorEmailVerificationEmail(email, verificationLink, qrCodeUrl);
+
+    res.json({
+      success: true,
+      message: 'Verification email sent with QR code',
+      qrCodeUrl
+    });
+  } catch (error: any) {
+    console.error('Error generating email verification QR:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to generate QR code' });
+  }
+};

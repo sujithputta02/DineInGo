@@ -37,7 +37,10 @@ import {
   triggerForceRefresh,
   impersonateUser,
   toggleImpersonationPermission,
-  getNotificationHistory
+  getNotificationHistory,
+  getAdmin2FAStatus,
+  getAllAdmins2FAStatus,
+  generateTwoFactorEmailQR
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -131,6 +134,10 @@ router.post('/2fa/confirm', adminApiLimiter, verifyAdminToken, logAdminAction, c
 router.post('/2fa/disable', adminApiLimiter, verifyAdminToken, logAdminAction, disableTwoFactor);
 router.post('/2fa/regenerate-backup-codes', adminApiLimiter, verifyAdminToken, logAdminAction, regenerateBackupCodes);
 router.post('/2fa/revoke-sessions', adminApiLimiter, verifyAdminToken, logAdminAction, revokeAllSessions);
+// 2FA compliance and status endpoints
+router.get('/2fa/admin-status', adminApiLimiter, verifyAdminToken, getAdmin2FAStatus);
+router.get('/2fa/all-admin-status', adminApiLimiter, verifyAdminToken, verifySuperAdmin, getAllAdmins2FAStatus);
+router.post('/2fa/email-verify-qr', adminApiLimiter, generateTwoFactorEmailQR);
 
 // ============================================
 // PROTECTED ROUTES (JWT authentication required)

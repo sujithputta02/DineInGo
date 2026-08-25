@@ -1677,6 +1677,223 @@ export const emailService = {
       console.error('Error sending deactivation notice email:', error);
       return false;
     }
+  },
+
+  /**
+   * Send 2FA email verification email with QR code
+   */
+  async sendTwoFactorEmailVerificationEmail(
+    adminEmail: string,
+    verificationLink: string,
+    qrCodeUrl: string
+  ): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+              .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; }
+              .content { padding: 30px; }
+              .section { margin-bottom: 20px; }
+              .section-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; }
+              .section-text { font-size: 14px; color: #666; line-height: 1.6; }
+              .qr-container { text-align: center; margin: 30px 0; padding: 20px; background: #f9f9f9; border-radius: 8px; border: 2px dashed #ddd; }
+              .qr-container img { max-width: 200px; height: auto; }
+              .link-button { display: inline-block; padding: 12px 24px; background: #667eea; color: white; text-decoration: none; border-radius: 6px; margin: 10px 0; font-weight: bold; }
+              .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+              .warning { background: #fff3cd; border: 1px solid #ffc107; color: #856404; padding: 12px; border-radius: 6px; margin: 15px 0; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🔐 Email Verification for 2FA Login</h1>
+                <p>Secure Admin Portal Access</p>
+              </div>
+
+              <div class="content">
+                <div class="section">
+                  <div class="section-title">Hello,</div>
+                  <div class="section-text">
+                    We received a request to verify your email address for 2FA login to your DineInGo admin account. 
+                    You can verify using either of the methods below:
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Option 1: Scan QR Code</div>
+                  <div class="qr-container">
+                    <img src="${qrCodeUrl}" alt="Email Verification QR Code" />
+                    <p style="margin-top: 10px; font-size: 12px; color: #999;">Scan this QR code with your phone camera</p>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Option 2: Click Verification Link</div>
+                  <div style="text-align: center;">
+                    <a href="${verificationLink}" class="link-button">Verify Email Address</a>
+                  </div>
+                  <div class="section-text" style="text-align: center; margin-top: 10px; font-size: 12px;">
+                    Or copy this link: <br/>${verificationLink}
+                  </div>
+                </div>
+
+                <div class="warning">
+                  <strong>⚠️ Security Notice:</strong> This link expires in 15 minutes. If you didn't request this verification, please ignore this email.
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Need Help?</div>
+                  <div class="section-text">
+                    If you're having trouble accessing your account or have any questions, please contact our support team.
+                  </div>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p>DineInGo Admin Portal © 2024 | All rights reserved</p>
+                <p>This is an automated message. Please don't reply to this email.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: this.getSender(),
+        to: adminEmail,
+        subject: '🔐 Verify Your Email for DineInGo Admin Login',
+        html
+      });
+
+      console.log(`2FA email verification sent to ${adminEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending 2FA email verification:', (error as any).message || error);
+      return false;
+    }
+  },
+
+  /**
+   * Send super admin alert when admin account auto-deactivates due to 2FA
+   */
+  async sendSuperAdminDeactivationAlert(
+    superAdminEmail: string,
+    deactivatedAdminEmail: string,
+    adminPanelUrl: string
+  ): Promise<boolean> {
+    try {
+      const transporter = createTransporter();
+      if (!transporter) return false;
+
+      const html = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <style>
+              body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f5f5f5; }
+              .container { max-width: 600px; margin: 20px auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+              .header { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 30px; text-align: center; }
+              .content { padding: 30px; }
+              .alert-box { background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 4px; }
+              .alert-title { color: #856404; font-weight: bold; font-size: 16px; margin-bottom: 8px; }
+              .alert-text { color: #856404; font-size: 14px; line-height: 1.6; }
+              .section { margin-bottom: 20px; }
+              .section-title { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; }
+              .section-text { font-size: 14px; color: #666; line-height: 1.6; }
+              .admin-details { background: #f9f9f9; padding: 15px; border-radius: 6px; border-left: 3px solid #f5576c; margin: 15px 0; }
+              .detail-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; }
+              .detail-row:last-child { border-bottom: none; }
+              .detail-label { font-weight: bold; color: #333; }
+              .detail-value { color: #666; }
+              .action-button { display: inline-block; padding: 12px 24px; background: #f5576c; color: white; text-decoration: none; border-radius: 6px; margin: 10px 0; font-weight: bold; }
+              .footer { background: #f5f5f5; padding: 20px; text-align: center; font-size: 12px; color: #999; border-top: 1px solid #eee; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <div class="header">
+                <h1>🚨 Admin Account Auto-Deactivated</h1>
+                <p>2FA Enforcement Action</p>
+              </div>
+
+              <div class="content">
+                <div class="alert-box">
+                  <div class="alert-title">⚠️ Automatic Account Deactivation</div>
+                  <div class="alert-text">
+                    An admin account has been automatically deactivated due to non-compliance with the 2FA enforcement policy.
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Deactivated Admin Account</div>
+                  <div class="admin-details">
+                    <div class="detail-row">
+                      <span class="detail-label">Email:</span>
+                      <span class="detail-value">${deactivatedAdminEmail}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Reason:</span>
+                      <span class="detail-value">2FA not enabled within 7-day deadline</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Status:</span>
+                      <span class="detail-value" style="color: #dc3545; font-weight: bold;">DEACTIVATED</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">What Happens Next?</div>
+                  <div class="section-text">
+                    • This admin account is now inactive and cannot access the portal<br/>
+                    • The account holder should enable 2FA to regain access<br/>
+                    • You can manually reactivate this account from the admin panel<br/>
+                    • A reminder email was sent to the admin with instructions
+                  </div>
+                </div>
+
+                <div class="section" style="text-align: center;">
+                  <a href="${adminPanelUrl}" class="action-button">View Admin Panel</a>
+                </div>
+
+                <div class="section">
+                  <div class="section-title">Policy Information</div>
+                  <div class="section-text">
+                    DineInGo requires all admin accounts to enable Two-Factor Authentication (2FA) for enhanced security. 
+                    Admins are given 7 days to enable 2FA. After this period, non-compliant accounts are automatically deactivated.
+                  </div>
+                </div>
+              </div>
+
+              <div class="footer">
+                <p>DineInGo Admin Portal © 2024 | All rights reserved</p>
+                <p>This is an automated notification. Please don't reply to this email.</p>
+              </div>
+            </div>
+          </body>
+        </html>
+      `;
+
+      await transporter.sendMail({
+        from: this.getSender(),
+        to: superAdminEmail,
+        subject: `🚨 Admin Account Auto-Deactivated: ${deactivatedAdminEmail} - 2FA Non-Compliance`,
+        html
+      });
+
+      console.log(`Super admin deactivation alert sent to ${superAdminEmail}`);
+      return true;
+    } catch (error) {
+      console.error('Error sending super admin deactivation alert:', (error as any).message || error);
+      return false;
+    }
   }
 };
 

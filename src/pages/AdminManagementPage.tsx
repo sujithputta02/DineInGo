@@ -39,6 +39,9 @@ interface Admin {
   permissions?: {
     canImpersonate: boolean;
   };
+  twoFactorEnabled?: boolean;
+  deactivationReason?: string;
+  status?: 'enabled' | 'pending' | 'not_initiated';
 }
 
 interface AdminManagementPageModalProps {
@@ -212,7 +215,32 @@ function AdminManagementPage() {
         limit: 10
       });
 
-      setAdmins(data.admins);
+      // Fetch 2FA status for all admins
+      try {
+        const twoFAStatusRes = await fetch(`${import.meta.env.VITE_API_URL}/api/v1/admin/2fa/all-admin-status`, {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('adminToken')}` }
+        });
+        if (twoFAStatusRes.ok) {
+          const twoFAData = await twoFAStatusRes.json();
+          const twoFAStatusMap = new Map(twoFAData.data.map((item: any) => [item.email, item]));
+          
+          // Merge 2FA status into admins data
+          const adminsWithStatus = data.admins.map((admin: any) => {
+            const twoFAStatus = twoFAStatusMap.get(admin.email);
+            if (twoFAStatus) {
+              return Object.assign({}, admin, twoFAStatus);
+            }
+            return admin;
+          });
+          setAdmins(adminsWithStatus);
+        } else {
+          setAdmins(data.admins);
+        }
+      } catch (err) {
+        console.error('Failed to load 2FA status:', err);
+        setAdmins(data.admins);
+      }
+
       setPagination(data.pagination);
       setTotalCount(data.pagination.totalCount);
       setMaxAdmins(data.maxAdmins);
@@ -454,6 +482,22 @@ function AdminManagementPage() {
                       }`}>
                         {admin.isActive ? 'Active' : 'Inactive'}
                       </span>
+                      {/* 2FA Status Badges */}
+                      {admin.status === 'enabled' && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full flex items-center gap-1 whitespace-nowrap">
+                          <CheckCircle size={10} /> 2FA Enabled
+                        </span>
+                      )}
+                      {admin.status === 'pending' && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-yellow-100 text-yellow-800 rounded-full flex items-center gap-1 whitespace-nowrap">
+                          ⏱️ 2FA Pending
+                        </span>
+                      )}
+                      {admin.deactivationReason === '2FA_NOT_ENABLED' && !admin.isActive && (
+                        <span className="px-2 py-0.5 text-xs font-medium bg-red-100 text-red-800 rounded-full flex items-center gap-1 whitespace-nowrap">
+                          ⚠️ Deactivated (2FA)
+                        </span>
+                      )}
                       {admin.permissions?.canImpersonate && (
                          <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded-full flex items-center gap-1">
                            <Ghost size={10} /> Trusted Ghost
@@ -481,23 +525,46 @@ function AdminManagementPage() {
 
                 {admin.role !== 'super_admin' && (
                   <div className="flex gap-2 w-full sm:w-auto">
-                    <button
-                      onClick={() => handleToggleStatus(admin.email)}
-                      disabled={actionLoading === admin.email}
-                      className={`flex-1 sm:flex-initial px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
-                        admin.isActive
-                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                          : 'bg-green-100 text-green-800 hover:bg-green-200'
-                      } disabled:opacity-50`}
-                    >
-                      {actionLoading === admin.email ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mx-auto" />
-                      ) : admin.isActive ? (
-                        'Deactivate'
-                      ) : (
-                        'Activate'
-                      )}
-                    </button>
+                    {/* Activate button - only for 2FA deactivated admins */}
+                    {admin.deactivationReason === '2FA_NOT_ENABLED' && !admin.isActive && (
+                      <button
+                        onClick={() => handleToggleStatus(admin.email)}
+                        disabled={actionLoading === admin.email}
+                        title="Reactivate admin account"
+                        className="flex-1 sm:flex-initial px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-1.5"
+                      >
+                        {actionLoading === admin.email ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                        ) : (
+                          <>
+                            <CheckCircle size={14} />
+                            <span className="hidden sm:inline">Activate</span>
+                            <span className="sm:hidden">Activate</span>
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {/* Standard activate/deactivate button - for other cases */}
+                    {(admin.deactivationReason !== '2FA_NOT_ENABLED' || admin.isActive) && (
+                      <button
+                        onClick={() => handleToggleStatus(admin.email)}
+                        disabled={actionLoading === admin.email}
+                        className={`flex-1 sm:flex-initial px-3 py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
+                          admin.isActive
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                        } disabled:opacity-50`}
+                      >
+                        {actionLoading === admin.email ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-current border-t-transparent mx-auto" />
+                        ) : admin.isActive ? (
+                          'Deactivate'
+                        ) : (
+                          'Activate'
+                        )}
+                      </button>
+                    )}
 
                     {/* Delegation Toggle */}
                     <button
@@ -531,6 +598,19 @@ function AdminManagementPage() {
                         <Trash2 size={14} />
                       )}
                     </button>
+                  </div>
+                )}
+
+                {/* Deactivation Reason Alert - shown below main admin info */}
+                {admin.deactivationReason === '2FA_NOT_ENABLED' && !admin.isActive && (
+                  <div className="mt-3 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="text-red-600 mt-0.5 flex-shrink-0" size={16} />
+                      <div className="text-sm text-red-800">
+                        <p className="font-semibold mb-1">Auto-Deactivated: 2FA Not Enabled</p>
+                        <p className="text-xs">This admin account was automatically deactivated because 2FA was not enabled within the 7-day deadline.</p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
