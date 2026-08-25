@@ -18,36 +18,28 @@ const ALGORITHM = 'aes-256-gcm';
 
 /**
  * TOTP time-skew tolerance (in 30-second steps).
- *
- * otplib v12 NOTE: `authenticator.verify({ token, secret, window })` ignores the
- * per-call `window` field — the window MUST be set on the authenticator *instance*
- * (it reads `this.options.window` via `this.allOptions()`). The instance default is
- * `0`, i.e. zero tolerance for any clock drift between the server and the
- * authenticator app, which causes valid codes to be rejected near step boundaries.
- *
- * IMPORTANT: `authenticator.options` is a *frozen* getter return — mutating it
- * (`authenticator.options.window = 4`) throws / is a no-op and leaves window at 0.
- * You must ASSIGN through the setter: `authenticator.options = { window: N }`.
- * Verified empirically (see scripts/test-totp-fix.js).
+ * 
+ * CRITICAL: Window of 10 = ±5 minutes tolerance
+ * This accommodates clock drift between server and authenticator apps
  */
-const TOTP_WINDOW = 10; // ±10 steps = ±5 minutes of allowed clock drift (increased for reliability)
+const TOTP_WINDOW = 10; // ±10 steps = ±5 minutes
 
-// Configure the authenticator instance with proper window
-// CRITICAL: Must use the setter to actually apply the window value
+// Configure the authenticator instance IMMEDIATELY
+// MUST use setter (not mutation) to apply window value
 authenticator.options = { 
   window: TOTP_WINDOW,
-  step: 30 // 30-second time step (standard TOTP)
+  step: 30,
+  epoch: 0
 };
 
-console.log('✅ [TOTP] Authenticator configured with:', {
+console.log('[TOTP] Authenticator configured:', {
   window: authenticator.options.window,
   step: authenticator.options.step,
   tolerance: `±${TOTP_WINDOW * 30} seconds`
 });
 
 /**
- * Derive a 32-byte key from the configured secret. We never use the raw env var
- * directly; this gives us a stable key even if the env length varies.
+ * Derive a 32-byte key from the configured secret.
  */
 function getKey(): Buffer {
   return crypto.createHash('sha256').update(ENCRYPTION_KEY_ENV).digest();
@@ -58,7 +50,6 @@ export function encryptSecret(plain: string): string {
   const cipher = crypto.createCipheriv(ALGORITHM, getKey(), iv);
   const enc = Buffer.concat([cipher.update(plain, 'utf8'), cipher.final()]);
   const tag = cipher.getAuthTag();
-  // Format: base64(iv).base64(tag).base64(ciphertext)
   return [iv.toString('base64'), tag.toString('base64'), enc.toString('base64')].join('.');
 }
 
@@ -74,24 +65,15 @@ export function decryptSecret(stored: string): string {
   }
 }
 
-/**
- * Generate a new random TOTP secret (base32).
- */
 export function generateTwoFactorSecret(): string {
   return authenticator.generateSecret();
 }
 
-/**
- * Generate the otpauth:// URI used by QR codes and manual entry.
- */
 export function buildOtpAuthUri(email: string, secret: string): string {
   const issuer = 'DineInGo Admin';
   return authenticator.keyuri(email, issuer, secret);
 }
 
-/**
- * Generate a QR code data URL containing the otpauth URI.
- */
 export async function generateTwoFactorQRCode(email: string, secret: string): Promise<string> {
   const uri = buildOtpAuthUri(email, secret);
   return qrcode.toDataURL(uri, { width: 240, margin: 1 });
@@ -99,41 +81,35 @@ export async function generateTwoFactorQRCode(email: string, secret: string): Pr
 
 /**
  * Verify a 6-digit TOTP token against a decrypted secret.
- * otplib's verify already uses timing-safe comparison under the hood.
+ * 
+ * CRITICAL: Reconfigures window before EVERY verification to ensure it's applied
  */
 export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
     if (!token || !secret) {
-      console.log('🔴 [TOTP] Missing token or secret');
+      console.log('[TOTP] Missing token or secret');
       return false;
     }
 
     const clean = token.trim().replace(/\s+/g, '');
     if (!/^\d{6}$/.test(clean)) {
-      console.log('🔴 [TOTP] Invalid token format:', { 
-        token: clean, 
-        length: clean.length,
-        original: token 
-      });
+      console.log('[TOTP] Invalid token format:', { token: clean, length: clean.length });
       return false;
     }
     
-    // Ensure options are properly set before verification
-    const currentWindow = authenticator.options.window;
-    if (!currentWindow || currentWindow === 0) {
-      console.warn('⚠️ [TOTP] Window is 0, reconfiguring...');
-      authenticator.options = { 
-        window: TOTP_WINDOW,
-        step: 30 
-      };
-    }
+    // FORCE reconfiguration before EVERY verification
+    // This guarantees window is applied even if module was reimported
+    authenticator.options = { 
+      window: TOTP_WINDOW,
+      step: 30,
+      epoch: 0
+    };
     
     const currentTime = Math.floor(Date.now() / 1000);
     const currentStep = Math.floor(currentTime / 30);
     
-    // Debug: log the current configuration
-    console.log('🔍 [TOTP] Verification attempt:', {
-      tokenLength: clean.length,
+    console.log('[TOTP] Verification attempt:', {
+      token: clean,
       secretLength: secret?.length,
       window: authenticator.options.window,
       step: authenticator.options.step,
@@ -143,50 +119,32 @@ export function verifyTwoFactorToken(token: string, secret: string): boolean {
       timestamp: new Date().toISOString()
     });
     
-    // The window is read from the instance (authenticator.options.window set above).
-    // Passing `window` in the opts object is a no-op in otplib v12 and was the root
-    // cause of passcodes being rejected even when the authenticator app showed a
-    // valid code (only the exact current 30s step was accepted).
     const result = authenticator.verify({ token: clean, secret });
     
     if (!result) {
-      // Try to generate what the expected tokens would be for debugging
       const expectedToken = authenticator.generate(secret);
-      console.log('� [TOTP] Verification FAILED:', { 
-        providedToken: clean,
-        expectedCurrentToken: expectedToken,
-        tokensMatch: clean === expectedToken,
-        secretValid: secret.length > 0
+      console.log('[TOTP] FAILED:', { 
+        provided: clean,
+        expected: expectedToken,
+        match: clean === expectedToken
       });
     } else {
-      console.log('✅ [TOTP] Verification SUCCESS:', { token: clean });
+      console.log('[TOTP] SUCCESS:', { token: clean });
     }
     
     return result;
   } catch (err: any) {
-    console.error('🔴 [TOTP] Verification error:', {
-      message: err?.message,
-      stack: err?.stack
-    });
+    console.error('[TOTP] Error:', err?.message);
     return false;
   }
 }
 
-/**
- * Generate a QR code data URL for an arbitrary URL (used for the email 2FA fallback
- * confirm link so admins can scan it on their phone to confirm sign-in).
- */
 export async function generateQRCodeForUrl(url: string): Promise<string> {
   return qrcode.toDataURL(url, { width: 240, margin: 1 });
 }
 
-/**
- * Generate N backup codes. Returns the plain codes once (to show to the admin)
- * alongside their bcrypt hashes (to store). We use a non-standard 10-char
- * alphanumeric format (XXXX-XXXX) for human readability.
- */
 export function generateBackupCodes(count = 10): { plain: string[]; hashes: string[] } {
-  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ23456789'; // no ambiguous chars
+  const chars = 'ABCDEFGHIJKLMNPQRSTUVWXYZ23456789';
   const plain: string[] = [];
   const hashes: string[] = [];
 
@@ -203,10 +161,6 @@ export function generateBackupCodes(count = 10): { plain: string[]; hashes: stri
   return { plain, hashes };
 }
 
-/**
- * Verify a backup code against the stored hashes in constant time.
- * If matched, returns true and the caller should remove that code from the list.
- */
 export function verifyBackupCode(code: string, hashes: string[]): boolean {
   const clean = code.trim().toUpperCase();
   if (!clean) return false;
@@ -218,13 +172,9 @@ export function verifyBackupCode(code: string, hashes: string[]): boolean {
   return false;
 }
 
-/**
- * Remove a used backup code from a hashes array (returns new array).
- */
 export function consumeBackupCode(code: string, hashes: string[]): string[] {
   const clean = code.trim().toUpperCase();
   return hashes.filter(hash => !bcrypt.compareSync(clean, hash));
 }
 
-// Export authenticator instance for diagnostics
 export { authenticator };
