@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dev-dist
 *.local
 
 # Environment variables (never commit real secrets)
@@ -35,6 +36,8 @@ backend/test-endpoint.ts
 backend/test-endpoint.js
 **/scratch.*
 
+# Build artifacts
+backend/dist/
 
 # Editor directories and files
 .vscode/*
@@ -100,3 +103,18 @@ push-early-access.sh
 # Vercel
 .vercel
 .env*.local
+
+# Documentation (auto-generated, should not be in repo)
+docs/
+
+# Scripts folder
+scripts/
+
+# Libraries
+lib/
+
+# Functions
+functions/
+
+# Distribution files
+public/
