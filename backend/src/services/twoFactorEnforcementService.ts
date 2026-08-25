@@ -12,7 +12,7 @@
 import { Admin } from '../models/Admin';
 import { SecurityLog } from '../models/SecurityLog';
 import { emailService } from './emailService';
-import { format, addDays, isAfter } from 'date-fns';
+import dayjs from 'dayjs';
 
 export interface TwoFactorReminderSchedule {
   reminderNumber: number; // 1 (immediate), 2 (day 1), 3 (day 3), 4 (day 7)
@@ -51,7 +51,7 @@ export async function initiateTwoFactorReminders(adminEmail: string): Promise<vo
 
     // Set deadline to 7 days from now if not already set
     if (!admin.twoFactorDeadline) {
-      admin.twoFactorDeadline = addDays(new Date(), TWO_FA_ENFORCEMENT_DAYS);
+      admin.twoFactorDeadline = dayjs().add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
       admin.twoFactorRemindersSent = 0;
       admin.twoFactorDeactivationReason = undefined; // Clear any previous deactivation reason
       await admin.save();
