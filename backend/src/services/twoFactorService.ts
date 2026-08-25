@@ -92,13 +92,31 @@ export async function generateTwoFactorQRCode(email: string, secret: string): Pr
 export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
     const clean = token.trim().replace(/\s+/g, '');
-    if (!/^\d{6}$/.test(clean)) return false;
+    if (!/^\d{6}$/.test(clean)) {
+      console.log('🔴 [TOTP] Invalid token format:', { token: clean, length: clean.length });
+      return false;
+    }
+    
+    // Debug: log the current configuration
+    console.log('🔍 [TOTP] Verification attempt:', {
+      tokenLength: clean.length,
+      secretLength: secret?.length,
+      window: authenticator.options.window,
+      currentTime: Math.floor(Date.now() / 1000),
+      timestamp: new Date().toISOString()
+    });
+    
     // The window is read from the instance (authenticator.options.window set above).
     // Passing `window` in the opts object is a no-op in otplib v12 and was the root
     // cause of passcodes being rejected even when the authenticator app showed a
     // valid code (only the exact current 30s step was accepted).
-    return authenticator.verify({ token: clean, secret });
-  } catch {
+    const result = authenticator.verify({ token: clean, secret });
+    
+    console.log('🔍 [TOTP] Verification result:', { success: result, token: clean });
+    
+    return result;
+  } catch (err) {
+    console.error('🔴 [TOTP] Verification error:', err);
     return false;
   }
 }

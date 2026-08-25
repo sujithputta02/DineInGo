@@ -507,8 +507,19 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
     }
 
     if (!verified) {
-      // Log failed 2FA attempt
+      // Log failed 2FA attempt with detailed debugging
       const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+      console.log('🔴 [2FA FAILED]', {
+        email: admin.email,
+        codeReceived: code,
+        codeLength: code?.length,
+        isNumeric: /^\d{6}$/.test(code || ''),
+        useBackup,
+        hasSecret: !!decryptedSecret,
+        secretLength: decryptedSecret?.length,
+        timestamp: new Date().toISOString(),
+        serverTime: Math.floor(Date.now() / 1000)
+      });
       await SecurityLog.create({
         portal: 'admin',
         eventType: 'failed_2fa',
