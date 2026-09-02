@@ -421,9 +421,23 @@ function AdminLoginPage() {
                 </div>
 
                 {error && (
-                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="flex items-center gap-2 p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700">
-                    <AlertCircle size={16} />
-                    <span className="text-sm font-medium">{error}</span>
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-4 bg-red-50 border border-red-200 rounded-2xl text-red-700 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle size={18} className="flex-shrink-0 text-red-600" />
+                      <span className="text-sm font-semibold">{error}</span>
+                    </div>
+                    <div className="pt-2 border-t border-red-200/80 flex flex-col gap-1.5">
+                      <p className="text-xs text-red-600 font-medium">Is your authenticator code not matching? Generate a brand new QR code to reset:</p>
+                      <button
+                        type="button"
+                        onClick={handleRelink2FA}
+                        disabled={loading}
+                        className="w-full py-2.5 px-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm transition-all active:scale-95"
+                      >
+                        <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+                        Scan New QR Code to Reset Authenticator
+                      </button>
+                    </div>
                   </motion.div>
                 )}
 
@@ -434,10 +448,7 @@ function AdminLoginPage() {
                   </motion.div>
                 )}
 
-                {/* 🛡️ EMAIL 2FA FALLBACK: if the passcode fails / phone unavailable, the
-                     admin can confirm from their email instead. Backend also sent a
-                     Confirm Sign-In email; the QR below encodes the same one-tap link,
-                     so scanning it on a phone opens the confirm page. */}
+                {/* 🛡️ EMAIL 2FA FALLBACK */}
                 {emailConfirmSent && (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-2xl">
                     <div className="flex items-start gap-2 mb-3">
@@ -479,7 +490,7 @@ function AdminLoginPage() {
                     className="text-xs font-semibold text-red-600 hover:text-red-700 flex items-center justify-center gap-1.5 py-2 px-3 hover:bg-red-50 rounded-xl transition-all w-full"
                   >
                     <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-                    Code not matching? Re-link Authenticator App (Scan New QR)
+                    Reset Authenticator (Scan Fresh QR Code)
                   </button>
                 </div>
               </form>

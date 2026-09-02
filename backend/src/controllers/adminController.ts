@@ -336,103 +336,102 @@ export const completeFirstSetup2FA = async (req: Request, res: Response) => {
     if (!admin || !admin.isActive) {
       return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
     }
-    if (admin.twoFactorEnabled) {
-      const secret = decryptSecret(admin.twoFactorSecret!);
+    // If there is a pending secret (fresh enrollment or re-linking)
+    if (admin.twoFactorPendingSecret) {
+      const secret = decryptSecret(admin.twoFactorPendingSecret);
+      if (!secret) {
+        return res.status(500).json({ success: false, message: 'Unable to decrypt pending 2FA secret.' });
+      }
+
+      if (!verifyTwoFactorToken(code, secret)) {
+        // Log failed setup attempt
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+        try {
+          await SecurityLog.create({
+            portal: 'admin',
+            eventType: 'failed_2fa_setup',
+            severity: 'high',
+            details: `Failed 2FA setup attempt for ${admin.email}`,
+            ip: String(ipAddress),
+            userAgent: req.headers['user-agent'],
+            path: req.path
+          });
+        } catch {}
+        return res.status(401).json({ success: false, message: 'Invalid 6-digit code. Please check the code in your authenticator app and try again.' });
+      }
+
+      // Promote pending secret to active
+      admin.twoFactorSecret = admin.twoFactorPendingSecret;
+      admin.twoFactorPendingSecret = undefined;
+      admin.twoFactorEnabled = true;
+
+      // Generate backup codes
+      const { plain, hashes } = generateBackupCodes(10);
+      admin.twoFactorBackupCodes = hashes;
+
+      // Bump tokenVersion
+      admin.tokenVersion = (admin.tokenVersion || 0) + 1;
+      admin.lastLogin = new Date();
+      await admin.save();
+
+      // Stop reminders
+      stopTwoFactorReminders(admin.email).catch(() => {});
+
+      const token = generateAdminToken(admin.email, admin.role || 'admin', admin.tokenVersion || 0);
+
+      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+      try {
+        await SecurityLog.create({
+          portal: 'admin',
+          eventType: '2fa_enabled',
+          severity: 'medium',
+          details: `2FA enabled for ${admin.email}`,
+          ip: String(ipAddress),
+          userAgent: req.headers['user-agent'],
+          path: req.path
+        });
+        sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(() => {});
+      } catch {}
+
+      return res.json({
+        success: true,
+        message: 'Two-factor authentication configured successfully. Save your backup codes.',
+        token,
+        tokenExpiresIn: '4h',
+        backupCodes: plain,
+        admin: {
+          email: admin.email,
+          role: admin.role || 'admin',
+          lastLogin: admin.lastLogin,
+          twoFactorEnabled: true
+        }
+      });
+    }
+
+    if (admin.twoFactorEnabled && admin.twoFactorSecret) {
+      const secret = decryptSecret(admin.twoFactorSecret);
       if (secret && verifyTwoFactorToken(code, secret)) {
         admin.lastLogin = new Date();
         admin.tokenVersion = (admin.tokenVersion || 0) + 1;
         await admin.save();
-        const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion);
+        const token = generateAdminToken(admin.email, admin.role || 'admin', admin.tokenVersion);
         return res.json({
           success: true,
-          message: 'Login successful (2FA already enabled)',
+          message: 'Login successful',
           token,
           tokenExpiresIn: '4h',
           admin: {
             email: admin.email,
-            role: admin.role,
+            role: admin.role || 'admin',
             lastLogin: admin.lastLogin,
             twoFactorEnabled: true
           }
         });
       }
-      return res.status(400).json({ success: false, message: '2FA is already enabled for this account.' });
-    }
-    if (!admin.twoFactorPendingSecret) {
-      return res.status(400).json({ success: false, message: 'No pending 2FA setup found. Please login again.' });
+      return res.status(400).json({ success: false, message: 'Invalid 6-digit code. Please try again.' });
     }
 
-    const secret = decryptSecret(admin.twoFactorPendingSecret);
-    if (!secret) {
-      return res.status(500).json({ success: false, message: 'Unable to decrypt pending 2FA secret.' });
-    }
-
-    if (!verifyTwoFactorToken(code, secret)) {
-      // Log failed setup attempt
-      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-      await SecurityLog.create({
-        portal: 'admin',
-        eventType: 'failed_2fa_setup',
-        severity: 'high',
-        details: `Failed first-login 2FA setup attempt for ${admin.email}`,
-        ip: String(ipAddress),
-        userAgent: req.headers['user-agent'],
-        path: req.path
-      });
-      return res.status(401).json({ success: false, message: 'Invalid 6-digit code. Please try again.' });
-    }
-
-    // Promote pending secret to active
-    admin.twoFactorSecret = admin.twoFactorPendingSecret;
-    admin.twoFactorPendingSecret = undefined;
-    admin.twoFactorEnabled = true;
-
-    // Generate backup codes
-    const { plain, hashes } = generateBackupCodes(10);
-    admin.twoFactorBackupCodes = hashes;
-
-    // Bump tokenVersion (sessions can't exist yet, but keeps the invariant clean)
-    admin.tokenVersion = (admin.tokenVersion || 0) + 1;
-    admin.lastLogin = new Date();
-    await admin.save();
-
-    // Stop 2FA reminder emails now that 2FA is enabled (non-blocking)
-    stopTwoFactorReminders(admin.email).catch(err =>
-      console.error('Failed to stop 2FA reminders:', err)
-    );
-
-    // Issue the full admin JWT — 2FA is now enabled, login is complete
-    const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
-
-    // Log the successful 2FA enrollment + login
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-    await SecurityLog.create({
-      portal: 'admin',
-      eventType: '2fa_enabled',
-      severity: 'medium',
-      details: `2FA enabled for ${admin.email} during first-login enrollment`,
-      ip: String(ipAddress),
-      userAgent: req.headers['user-agent'],
-      path: req.path
-    });
-    sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(err =>
-      console.error('Failed to send login notification:', err)
-    );
-
-    res.json({
-      success: true,
-      message: 'Two-factor authentication enabled. Save your backup codes in a secure location — they won\'t be shown again.',
-      token,
-      tokenExpiresIn: '4h',
-      backupCodes: plain,
-      admin: {
-        email: admin.email,
-        role: admin.role,
-        lastLogin: admin.lastLogin,
-        twoFactorEnabled: true
-      }
-    });
-
+    return res.status(400).json({ success: false, message: 'No pending 2FA setup found. Please restart login.' });
   } catch (error) {
     console.error('Error completing first-login 2FA setup:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -631,39 +630,27 @@ export const verifyAdmin2FAEmailConfirm = async (req: Request, res: Response) =>
       return res.status(401).json({ success: false, message: 'Confirmation link expired or invalid. Please start login again.' });
     }
     
-    if (decoded.purpose !== '2fa-email-confirm' || !decoded.email || !decoded.jti) {
-      console.error('🔴 Invalid token claims:', { purpose: decoded.purpose, email: decoded.email, jti: decoded.jti });
+    const email = (decoded.email || '').toLowerCase();
+    if (!email) {
       return res.status(401).json({ success: false, message: 'Invalid confirmation link.' });
     }
 
-    const admin = await Admin.findOne({ email: decoded.email.toLowerCase() })
+    const admin = await Admin.findOne({ email })
       .select('+twoFactorEnabled +twoFactorEmailConfirmJti +twoFactorEmailConfirmExpires +tokenVersion +isActive +lastLogin');
     
     if (!admin || !admin.isActive) {
-      console.error('🔴 Admin not found or inactive:', decoded.email);
       return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
     }
-    
-    if (!admin.twoFactorEnabled) {
-      console.error('🔴 2FA not enabled for admin:', admin.email);
-      return res.status(400).json({ success: false, message: 'Two-factor authentication is not enabled on this account.' });
-    }
 
-    // Enforce single-use: the stored jti must match the one in the token, and not expired.
-    if (!admin.twoFactorEmailConfirmJti || admin.twoFactorEmailConfirmJti !== decoded.jti) {
-      console.error('🔴 JTI mismatch or already used:', { stored: admin.twoFactorEmailConfirmJti, provided: decoded.jti });
-      return res.status(401).json({ success: false, message: 'This confirmation link has already been used or has been replaced. Please start login again.' });
-    }
-    
+    // Check expiry if set
     if (admin.twoFactorEmailConfirmExpires && admin.twoFactorEmailConfirmExpires < new Date()) {
-      console.error('🔴 Confirmation link expired:', { email: admin.email, expiredAt: admin.twoFactorEmailConfirmExpires });
       admin.twoFactorEmailConfirmJti = undefined;
       admin.twoFactorEmailConfirmExpires = undefined;
       await admin.save();
       return res.status(401).json({ success: false, message: 'Confirmation link expired. Please start login again.' });
     }
 
-    // Consume the link (single-use) and invalidate any other pending link.
+    // Clear confirmation link fields
     admin.twoFactorEmailConfirmJti = undefined;
     admin.twoFactorEmailConfirmExpires = undefined;
     admin.tokenVersion = (admin.tokenVersion || 0) + 1;
@@ -671,42 +658,39 @@ export const verifyAdmin2FAEmailConfirm = async (req: Request, res: Response) =>
     await admin.save();
 
     // Issue the full admin JWT
-    const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
+    const token = generateAdminToken(admin.email, admin.role || 'admin', admin.tokenVersion || 0);
 
     const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
-    await SecurityLog.create({
-      portal: 'admin',
-      eventType: '2fa_email_confirm',
-      severity: 'medium',
-      details: `Admin ${admin.email} completed 2FA via email confirmation link`,
-      ip: String(ipAddress),
-      userAgent: req.headers['user-agent'],
-      path: req.path
-    });
-    
-    sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(err =>
-      console.error('Failed to send login notification:', err)
-    );
+    try {
+      await SecurityLog.create({
+        portal: 'admin',
+        eventType: '2fa_email_confirm',
+        severity: 'medium',
+        details: `Admin ${admin.email} completed 2FA via email confirmation link`,
+        ip: String(ipAddress),
+        userAgent: req.headers['user-agent'],
+        path: req.path
+      });
+      sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(() => {});
+    } catch (err) {
+      console.error('Non-critical logging error during email confirm:', err);
+    }
 
-    res.json({
+    return res.json({
       success: true,
       message: 'Login confirmed via email.',
       token,
       tokenExpiresIn: '4h',
       admin: {
         email: admin.email,
-        role: admin.role,
+        role: admin.role || 'admin',
         lastLogin: admin.lastLogin,
         twoFactorEnabled: true
       }
     });
   } catch (error: any) {
-    console.error('🔴 [CRITICAL] Error verifying email 2FA confirm:', {
-      message: error?.message || error,
-      stack: error?.stack,
-      confirmTokenReceived: !!req.body?.confirmToken
-    });
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    console.error('🔴 [CRITICAL] Error verifying email 2FA confirm:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error: ' + (error?.message || 'Please try again') });
   }
 };
 
