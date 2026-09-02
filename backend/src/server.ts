@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import mongoSanitize from 'express-mongo-sanitize';
 import hpp from 'hpp';

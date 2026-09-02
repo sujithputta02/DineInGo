@@ -68,16 +68,26 @@ export async function generateTwoFactorQRCode(email: string, secret: string): Pr
   return qrcode.toDataURL(uri, { width: 240, margin: 1 });
 }
 
+const TOTP_WINDOW = 10;
+
+authenticator.options = { 
+  window: TOTP_WINDOW,
+  step: 30
+};
+
 /**
  * Verify a 6-digit TOTP token against a decrypted secret.
- * otplib's verify already uses timing-safe comparison under the hood.
+ * Supports clock drift tolerance via window parameter.
  */
 export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
     const clean = token.trim().replace(/\s+/g, '');
     if (!/^\d{6}$/.test(clean)) return false;
-    // Allow a window of 2 steps (60 seconds) to handle server-client clock drift
-    return authenticator.verify({ token: clean, secret, window: 2 } as any);
+    authenticator.options = { 
+      window: TOTP_WINDOW,
+      step: 30
+    };
+    return authenticator.check(clean, secret) || authenticator.verify({ token: clean, secret });
   } catch {
     return false;
   }

@@ -523,6 +523,15 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
       });
       
       verified = verifyTwoFactorToken(code, decryptedSecret);
+
+      // Auto-fallback: If TOTP check fails, also check if the entered code matches a backup code
+      if (!verified && admin.twoFactorBackupCodes && admin.twoFactorBackupCodes.length > 0) {
+        if (verifyBackupCode(code, admin.twoFactorBackupCodes)) {
+          verified = true;
+          admin.twoFactorBackupCodes = consumeBackupCode(code, admin.twoFactorBackupCodes);
+          console.log('🔍 [2FA] Auto-fallback to backup code succeeded for:', admin.email);
+        }
+      }
       
       console.log('🔍 [2FA] TOTP verification result:', { 
         verified, 

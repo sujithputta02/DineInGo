@@ -13,23 +13,18 @@ import qrcode from 'qrcode';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 
-const ENCRYPTION_KEY_ENV = process.env.JWT_SECRET || 'dev-only-do-not-use-in-prod';
 const ALGORITHM = 'aes-256-gcm';
 
 /**
  * TOTP time-skew tolerance (in 30-second steps).
- * 
- * CRITICAL: Window of 10 = ±5 minutes tolerance
- * This accommodates clock drift between server and authenticator apps
+ * Window of 10 = ±5 minutes tolerance to accommodate clock drift.
  */
-const TOTP_WINDOW = 10; // ±10 steps = ±5 minutes
+const TOTP_WINDOW = 10;
 
-// Configure the authenticator instance IMMEDIATELY
-// MUST use setter (not mutation) to apply window value
+// Configure the authenticator instance with window and step (DO NOT set epoch: 0)
 authenticator.options = { 
   window: TOTP_WINDOW,
-  step: 30,
-  epoch: 0
+  step: 30
 };
 
 console.log('[TOTP] Authenticator configured:', {
@@ -39,10 +34,24 @@ console.log('[TOTP] Authenticator configured:', {
 });
 
 /**
+ * Dynamically resolve the encryption key
+ */
+function getEncryptionKey(): string {
+  try {
+    const { secretManager } = require('../utils/secretManager');
+    if (secretManager?.hasSecret?.('JWT_SECRET')) {
+      return secretManager.getSecret('JWT_SECRET');
+    }
+  } catch {}
+  return process.env.JWT_SECRET || 'dev-only-do-not-use-in-prod';
+}
+
+/**
  * Derive a 32-byte key from the configured secret.
  */
-function getKey(): Buffer {
-  return crypto.createHash('sha256').update(ENCRYPTION_KEY_ENV).digest();
+function getKey(keyStr?: string): Buffer {
+  const secret = keyStr || getEncryptionKey();
+  return crypto.createHash('sha256').update(secret).digest();
 }
 
 export function encryptSecret(plain: string): string {
@@ -54,15 +63,27 @@ export function encryptSecret(plain: string): string {
 }
 
 export function decryptSecret(stored: string): string {
-  try {
-    const [ivB64, tagB64, dataB64] = stored.split('.');
-    if (!ivB64 || !tagB64 || !dataB64) return '';
-    const decipher = crypto.createDecipheriv(ALGORITHM, getKey(), Buffer.from(ivB64, 'base64'));
-    decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
-    return Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64')), decipher.final()]).toString('utf8');
-  } catch {
-    return '';
+  if (!stored) return '';
+  // If stored is already an unencrypted base32 secret (no dots)
+  if (!stored.includes('.')) return stored;
+
+  const currentKey = getEncryptionKey();
+  const keysToTry = [currentKey, process.env.JWT_SECRET, 'dev-only-do-not-use-in-prod'].filter((k): k is string => Boolean(k));
+  const uniqueKeys = Array.from(new Set(keysToTry));
+
+  for (const k of uniqueKeys) {
+    try {
+      const [ivB64, tagB64, dataB64] = stored.split('.');
+      if (!ivB64 || !tagB64 || !dataB64) continue;
+      const decipher = crypto.createDecipheriv(ALGORITHM, getKey(k), Buffer.from(ivB64, 'base64'));
+      decipher.setAuthTag(Buffer.from(tagB64, 'base64'));
+      const decrypted = Buffer.concat([decipher.update(Buffer.from(dataB64, 'base64')), decipher.final()]).toString('utf8');
+      if (decrypted) return decrypted;
+    } catch {
+      // try next key
+    }
   }
+  return '';
 }
 
 export function generateTwoFactorSecret(): string {
@@ -81,8 +102,7 @@ export async function generateTwoFactorQRCode(email: string, secret: string): Pr
 
 /**
  * Verify a 6-digit TOTP token against a decrypted secret.
- * 
- * CRITICAL: Reconfigures window before EVERY verification to ensure it's applied
+ * Supports clock drift tolerance via window parameter.
  */
 export function verifyTwoFactorToken(token: string, secret: string): boolean {
   try {
@@ -97,39 +117,27 @@ export function verifyTwoFactorToken(token: string, secret: string): boolean {
       return false;
     }
     
-    // FORCE reconfiguration before EVERY verification
-    // This guarantees window is applied even if module was reimported
+    // Ensure window and step are configured (DO NOT set epoch: 0!)
     authenticator.options = { 
       window: TOTP_WINDOW,
-      step: 30,
-      epoch: 0
+      step: 30
     };
     
-    const currentTime = Math.floor(Date.now() / 1000);
-    const currentStep = Math.floor(currentTime / 30);
-    
-    console.log('[TOTP] Verification attempt:', {
-      token: clean,
-      secretLength: secret?.length,
-      window: authenticator.options.window,
-      step: authenticator.options.step,
-      currentTime,
-      currentStep,
-      windowRange: `${currentStep - TOTP_WINDOW} to ${currentStep + TOTP_WINDOW}`,
-      timestamp: new Date().toISOString()
-    });
-    
-    const result = authenticator.verify({ token: clean, secret });
+    const result = authenticator.check(clean, secret) || authenticator.verify({ token: clean, secret });
     
     if (!result) {
       const expectedToken = authenticator.generate(secret);
-      console.log('[TOTP] FAILED:', { 
+      console.log('[TOTP] Verification FAILED:', { 
         provided: clean,
         expected: expectedToken,
-        match: clean === expectedToken
+        window: authenticator.options.window,
+        timestamp: new Date().toISOString()
       });
     } else {
-      console.log('[TOTP] SUCCESS:', { token: clean });
+      console.log('[TOTP] Verification SUCCESS:', { 
+        token: clean,
+        timestamp: new Date().toISOString()
+      });
     }
     
     return result;
