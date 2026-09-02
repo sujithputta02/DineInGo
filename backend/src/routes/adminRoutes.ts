@@ -41,7 +41,8 @@ import {
   getNotificationHistory,
   getAdmin2FAStatus,
   getAllAdmins2FAStatus,
-  generateTwoFactorEmailQR
+  generateTwoFactorEmailQR,
+  resetAndRelinkTwoFactor
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -128,6 +129,7 @@ router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), 
 router.post('/verify-2fa', adminOtpVerifyLimiter, verifyAdmin2FA);
 router.post('/2fa/email-confirm', adminOtpVerifyLimiter, verifyAdmin2FAEmailConfirm);
 router.post('/2fa/complete-first-setup', adminOtpVerifyLimiter, completeFirstSetup2FA);
+router.post('/2fa/reset-and-relink', adminOtpVerifyLimiter, resetAndRelinkTwoFactor);
 
 // ============================================
 // 2FA MANAGEMENT ROUTES (JWT authentication required)

@@ -2863,6 +2863,66 @@ export const getAllAdmins2FAStatus = async (req: any, res: any) => {
 };
 
 /**
+ * Reset and re-link 2FA for an admin currently at the 2FA challenge step.
+ * Allows an admin who has already validated their Email OTP to reset their authenticator
+ * secret and scan a fresh QR code if their authenticator app is desynchronized or lost.
+ * Body: { challengeToken, email }
+ */
+export const resetAndRelinkTwoFactor = async (req: Request, res: Response) => {
+  try {
+    const { challengeToken, email } = req.body;
+    if (!challengeToken || !email) {
+      return res.status(400).json({ success: false, message: 'Challenge token and email are required.' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(challengeToken, getJWTSecret()) as any;
+    } catch {
+      return res.status(401).json({ success: false, message: 'Session expired. Please request a new OTP to login.' });
+    }
+
+    if ((!decoded.twoFactorPending && !decoded.twoFactorSetupPending) || !decoded.email) {
+      return res.status(401).json({ success: false, message: 'Invalid challenge session.' });
+    }
+
+    const admin = await Admin.findOne({ email: decoded.email.toLowerCase() })
+      .select('+twoFactorEnabled +twoFactorSecret +twoFactorPendingSecret +tokenVersion +isActive');
+    if (!admin || !admin.isActive) {
+      return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
+    }
+
+    // Generate a brand new TOTP secret
+    const newSecret = generateTwoFactorSecret();
+    admin.twoFactorPendingSecret = encryptSecret(newSecret);
+    admin.twoFactorEnabled = false;
+    await admin.save();
+
+    const qrCode = await generateTwoFactorQRCode(admin.email, newSecret);
+    const setupChallengeToken = jwt.sign(
+      { email: admin.email, twoFactorSetupPending: true },
+      getJWTSecret(),
+      { expiresIn: '15m' }
+    );
+
+    console.log('🔄 [2FA] Re-link requested and new secret generated for:', admin.email);
+
+    res.json({
+      success: true,
+      twoFactorSetupRequired: true,
+      challengeToken: setupChallengeToken,
+      qrCode,
+      manualEntryKey: newSecret,
+      email: admin.email,
+      message: 'New authenticator QR code generated. Scan this with Google Authenticator, Authy, or 1Password, then enter the 6-digit code to complete setup.'
+    });
+  } catch (error: any) {
+    console.error('Error resetting 2FA:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to reset 2FA' });
+  }
+};
+
+/**
  * Generate email verification QR code when 2FA passcode fails
  * Called during login when admin fails to verify with passcode
  */
@@ -2874,8 +2934,6 @@ export const generateTwoFactorEmailQR = async (req: any, res: any) => {
       return res.status(400).json({ success: false, message: 'Challenge token and email required' });
     }
 
-    // Import getJWTSecret
-    const { getJWTSecret } = require('../middleware/adminAuth');
     const jwtSecret = getJWTSecret();
 
     let challengeData;
@@ -2886,30 +2944,38 @@ export const generateTwoFactorEmailQR = async (req: any, res: any) => {
     }
 
     // Verify admin exists
-    const admin = await Admin.findOne({ email });
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
     if (!admin) {
       return res.status(404).json({ success: false, message: 'Admin not found' });
     }
 
+    const jti = crypto.randomUUID();
     // Generate one-time email verification JWT (valid for 15 minutes)
     const emailVerificationToken = jwt.sign(
-      { email, type: 'email_verification', purpose: '2fa_login' },
+      { email: admin.email, purpose: '2fa-email-confirm', jti },
       jwtSecret,
       { expiresIn: '15m' }
     );
 
-    // Generate verification link
-    const verificationLink = `${process.env.FRONTEND_URL || 'https://dine-in-go.vercel.app'}/admin/2fa-email-confirm?token=${emailVerificationToken}`;
+    // Save JTI on admin for single-use validation
+    admin.twoFactorEmailConfirmJti = jti;
+    admin.twoFactorEmailConfirmExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await admin.save();
+
+    const frontendUrl = process.env.FRONTEND_URL 
+      || process.env.CLIENT_URL 
+      || 'https://dine-in-go.vercel.app';
+    const verificationLink = `${frontendUrl}/admin/2fa/email-confirm?token=${emailVerificationToken}`;
 
     // Generate QR code for the verification link
     const qrCodeUrl = await generateQRCodeForUrl(verificationLink);
 
     // Send verification email with QR code
-    await emailService.sendTwoFactorEmailVerificationEmail(email, verificationLink, qrCodeUrl);
+    await emailService.sendTwoFactorEmailVerificationEmail(admin.email, verificationLink, qrCodeUrl);
 
     res.json({
       success: true,
-      message: 'Verification email sent with QR code',
+      message: 'Verification email sent with confirmation link and QR code',
       qrCodeUrl
     });
   } catch (error: any) {

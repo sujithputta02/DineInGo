@@ -254,6 +254,7 @@ function App() {
 
                 <Route path="/portal-secure-dino-x7b8w9v2q4m1n5p8r3t6y9" element={<AdminLoginPage />} />
                 <Route path="/admin/2fa/email-confirm" element={<Admin2FAEmailConfirmPage />} />
+                <Route path="/admin/2fa-email-confirm" element={<Admin2FAEmailConfirmPage />} />
                 
                 {/* Redirect standard admin paths to landing page (Security Trapdoor) */}
                 <Route path="/admin-login" element={<Navigate to="/" replace />} />

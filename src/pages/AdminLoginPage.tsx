@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Shield, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Clock, Smartphone, Copy, Key } from 'lucide-react';
+import { Shield, ShieldCheck, Lock, Mail, ArrowRight, AlertCircle, CheckCircle, Clock, Smartphone, Copy, Key, RefreshCw } from 'lucide-react';
 import DineInGoLogo from '../components/DineInGoLogo';
 import { createSession, getSessionToken } from '../utils/sessionGuard';
 import { API_CONFIG } from '../config/api';
@@ -176,6 +176,34 @@ function AdminLoginPage() {
       navigate(`/admin/${sessionToken}/dashboard`);
     } catch (err: any) {
       setError(err.message || '2FA verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 🛡️ RE-LINK 2FA: If authenticator is desynchronized or lost, generate a fresh QR code
+  const handleRelink2FA = async () => {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/2fa/reset-and-relink`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ challengeToken, email }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || 'Failed to re-link authenticator');
+      }
+      setChallengeToken(data.challengeToken);
+      setQrCode(data.qrCode);
+      setManualKey(data.manualEntryKey);
+      setTwoFactorCode('');
+      setStep('setup2fa');
+      setSuccess(data.message || 'Scan the new QR code in your authenticator app.');
+    } catch (err: any) {
+      setError(err.message || 'Failed to re-link authenticator');
     } finally {
       setLoading(false);
     }
@@ -442,6 +470,18 @@ function AdminLoginPage() {
                     <><Shield size={18} /> Verify & Login</>
                   )}
                 </button>
+
+                <div className="pt-2 border-t border-slate-100 flex flex-col items-center">
+                  <button
+                    type="button"
+                    onClick={handleRelink2FA}
+                    disabled={loading}
+                    className="text-xs font-semibold text-red-600 hover:text-red-700 flex items-center justify-center gap-1.5 py-2 px-3 hover:bg-red-50 rounded-xl transition-all w-full"
+                  >
+                    <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+                    Code not matching? Re-link Authenticator App (Scan New QR)
+                  </button>
+                </div>
               </form>
             ) : step === 'setup2fa' ? (
               <form onSubmit={handleSetup2FASubmit} className="space-y-6">
