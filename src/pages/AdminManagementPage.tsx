@@ -17,9 +17,11 @@ import {
   Crown,
   Ghost,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ShieldAlert
 } from 'lucide-react';
 import { adminApi } from '../utils/adminApi';
+import { API_CONFIG } from '../config/api';
 
 interface Pagination {
   currentPage: number;
@@ -326,6 +328,34 @@ function AdminManagementPage() {
     }
   };
 
+  const handleTrigger2FAScan = async () => {
+    setActionLoading('2fa-scan');
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const token = localStorage.getItem('adminToken');
+      const res = await fetch(`${API_CONFIG.BASE_URL}/api/v1/admin/2fa/enforce-scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || 'Failed to run 2FA scan');
+
+      const dead = data.results?.deadlines;
+      const rem = data.results?.reminders;
+      setSuccess(`2FA Enforcement Scan Complete: ${dead?.checked || 0} admins checked, ${dead?.deactivated || 0} deactivated, ${rem?.remindersSent || 0} reminder emails sent.`);
+      await loadAdmins();
+    } catch (err: any) {
+      setError(err.message || 'Failed to trigger 2FA scan');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const handleUpdateCapacity = async (e: React.FormEvent) => {
     e.preventDefault();
     setActionLoading('capacity');
@@ -456,8 +486,24 @@ function AdminManagementPage() {
 
       {/* Admin List */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="p-4 sm:p-6 border-b border-slate-200">
-          <h3 className="text-base sm:text-lg font-semibold text-slate-900">Admin Team Members</h3>
+        <div className="p-4 sm:p-6 border-b border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div>
+            <h3 className="text-base sm:text-lg font-semibold text-slate-900">Admin Team Members</h3>
+            <p className="text-xs text-slate-500 mt-0.5">Admins without 2FA receive automated reminders and auto-deactivate after 7 days</p>
+          </div>
+          <button
+            onClick={handleTrigger2FAScan}
+            disabled={actionLoading === '2fa-scan'}
+            className="px-3 py-2 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+            title="Scan deadlines, auto-deactivate expired accounts, and send pending 2FA alert emails"
+          >
+            {actionLoading === '2fa-scan' ? (
+              <div className="animate-spin rounded-full h-3.5 w-3.5 border-2 border-blue-700 border-t-transparent" />
+            ) : (
+              <ShieldAlert size={14} className="text-blue-600" />
+            )}
+            Run 2FA Reminder Scan
+          </button>
         </div>
         <div className="divide-y divide-slate-200">
           {admins.map((admin) => (

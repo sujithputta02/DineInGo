@@ -133,96 +133,122 @@ export async function sendTwoFactorReminder(adminEmail: string, reminderNumber: 
  * Scheduled job: Check for overdue 2FA deadlines and auto-deactivate
  * Runs daily to enforce 2FA compliance
  */
-export async function checkAndEnforceTwoFactorDeadlines(): Promise<void> {
+export async function checkAndEnforceTwoFactorDeadlines(): Promise<{ checked: number; deactivated: number }> {
+  let deactivatedCount = 0;
   try {
     console.log(`🔔 Running 2FA deadline enforcement check...`);
 
-    // Find admins without 2FA enabled who are past their deadline
-    const overdueAdmins = await Admin.find({
+    // Find all active non-super_admin accounts without 2FA enabled
+    const adminsWithout2FA = await Admin.find({
       twoFactorEnabled: { $ne: true },
-      twoFactorDeadline: { $lt: new Date() },
-      isActive: true,
-      twoFactorDeactivationReason: { $ne: '2FA_NOT_ENABLED' } // Prevent duplicate deactivations
-    }).select('+twoFactorDeadline +twoFactorDeactivationReason');
+      role: { $ne: 'super_admin' },
+      isActive: true
+    }).select('+twoFactorDeadline +twoFactorDeactivationReason +createdAt');
 
-    if (overdueAdmins.length === 0) {
-      console.log(`ℹ️ No overdue 2FA deadlines found`);
-      return;
-    }
+    console.log(`ℹ️ Found ${adminsWithout2FA.length} active admin(s) without 2FA enabled`);
 
-    console.log(`⚠️ Found ${overdueAdmins.length} admin(s) past 2FA deadline`);
+    const now = new Date();
 
-    for (const admin of overdueAdmins) {
+    for (const admin of adminsWithout2FA) {
       try {
-        // Deactivate the admin account
-        admin.isActive = false;
-        admin.twoFactorDeactivationReason = '2FA_NOT_ENABLED';
-        await admin.save();
+        // If deadline is not yet set, initialize it based on account creation date (7-day grace period)
+        if (!admin.twoFactorDeadline) {
+          const creationDate = admin.createdAt ? new Date(admin.createdAt) : now;
+          admin.twoFactorDeadline = dayjs(creationDate).add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
+          await admin.save();
+          console.log(`✓ Initialized 2FA deadline for ${admin.email}: ${admin.twoFactorDeadline.toISOString()}`);
+        }
 
-        console.log(`🔒 Auto-deactivated admin ${admin.email} due to 2FA non-compliance`);
-        
-        await logSecurityEvent(
-          '2fa_auto_deactivation',
-          admin.email,
-          'high',
-          `Admin account automatically deactivated due to 2FA enforcement deadline (${admin.twoFactorDeadline})`
-        );
+        // Check if deadline has passed
+        if (admin.twoFactorDeadline < now) {
+          // Deactivate the admin account temporarily
+          admin.isActive = false;
+          admin.twoFactorDeactivationReason = '2FA_NOT_ENABLED';
+          await admin.save();
 
-        // Send deactivation notification email
-        await emailService.sendTwoFactorDeactivationNoticeEmail(admin.email, admin.timezone || 'Asia/Kolkata');
+          deactivatedCount++;
+          console.log(`🔒 Auto-deactivated admin ${admin.email} due to 2FA non-compliance (Deadline: ${admin.twoFactorDeadline})`);
+          
+          await logSecurityEvent(
+            '2fa_auto_deactivation',
+            admin.email,
+            'high',
+            `Admin account automatically deactivated due to 2FA enforcement deadline passed (${admin.twoFactorDeadline.toISOString()})`
+          );
 
+          // Send deactivation notification email (non-blocking)
+          emailService.sendTwoFactorDeactivationNoticeEmail(admin.email, admin.timezone || 'Asia/Kolkata').catch(err =>
+            console.error(`Failed to send deactivation email to ${admin.email}:`, err)
+          );
+        }
       } catch (err: any) {
-        console.error(`🔴 Error deactivating admin ${admin.email}:`, err?.message || err);
-        await logSecurityEvent('2fa_deactivation_failed', admin.email, 'high', `Failed to auto-deactivate: ${err?.message}`);
+        console.error(`🔴 Error processing admin ${admin.email} for 2FA deadline:`, err?.message || err);
+        await logSecurityEvent('2fa_deactivation_failed', admin.email, 'high', `Failed to check/deactivate: ${err?.message}`);
       }
     }
 
+    return { checked: adminsWithout2FA.length, deactivated: deactivatedCount };
   } catch (error: any) {
     console.error(`🔴 Error in 2FA deadline enforcement check:`, error?.message || error);
     await logSecurityEvent('2fa_enforcement_check_failed', 'system', 'high', `Deadline check failed: ${error?.message}`);
+    return { checked: 0, deactivated: deactivatedCount };
   }
 }
 
 /**
  * Scheduled job: Check which admins are due for reminders and send them
- * Runs multiple times per day to send day-1, day-3, day-7 reminders
+ * Runs multiple times per day to send day-0, day-1, day-3, day-7 reminders
  */
-export async function scheduleAndSendPendingReminders(): Promise<void> {
+export async function scheduleAndSendPendingReminders(): Promise<{ checked: number; remindersSent: number }> {
+  let sentCount = 0;
   try {
-    console.log(`🔔 Checking for pending 2FA reminders...`);
+    console.log(`🔔 Checking for pending 2FA reminders to send...`);
 
     const adminsWithoutTwoFA = await Admin.find({
       twoFactorEnabled: { $ne: true },
-      twoFactorDeadline: { $exists: true },
+      role: { $ne: 'super_admin' },
       isActive: true
-    }).select('+twoFactorDeadline +twoFactorRemindersSent +lastReminderSentAt');
+    }).select('+twoFactorDeadline +twoFactorRemindersSent +lastReminderSentAt +createdAt');
+
+    const now = new Date();
 
     for (const admin of adminsWithoutTwoFA) {
       try {
-        const daysRemaining = calculateDaysRemaining(admin.twoFactorDeadline!);
+        // Ensure deadline is set
+        if (!admin.twoFactorDeadline) {
+          const creationDate = admin.createdAt ? new Date(admin.createdAt) : now;
+          admin.twoFactorDeadline = dayjs(creationDate).add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
+          await admin.save();
+        }
+
+        const daysRemaining = calculateDaysRemaining(admin.twoFactorDeadline);
         
         // Determine which reminder should be sent based on days remaining
         let reminderToSend: number | null = null;
 
-        if (daysRemaining >= 7 && (admin.twoFactorRemindersSent || 0) < 1) {
-          reminderToSend = 1; // Immediate
-        } else if (daysRemaining <= 6 && daysRemaining > 3 && (admin.twoFactorRemindersSent || 0) < 2) {
+        if (daysRemaining >= 6 && (admin.twoFactorRemindersSent || 0) < 1) {
+          reminderToSend = 1; // Immediate / Welcome reminder
+        } else if (daysRemaining <= 5 && daysRemaining > 3 && (admin.twoFactorRemindersSent || 0) < 2) {
           reminderToSend = 2; // Day 1
-        } else if (daysRemaining <= 3 && daysRemaining > 0 && (admin.twoFactorRemindersSent || 0) < 3) {
+        } else if (daysRemaining <= 3 && daysRemaining > 1 && (admin.twoFactorRemindersSent || 0) < 3) {
           reminderToSend = 3; // Day 3
-        } else if (daysRemaining <= 0 && (admin.twoFactorRemindersSent || 0) < 4) {
-          reminderToSend = 4; // Day 7 (Final) - even if past deadline
+        } else if (daysRemaining <= 1 && (admin.twoFactorRemindersSent || 0) < 4) {
+          reminderToSend = 4; // Day 7 (Final reminder before deactivation)
         }
 
         if (reminderToSend !== null) {
           await sendTwoFactorReminder(admin.email, reminderToSend);
+          sentCount++;
         }
       } catch (err: any) {
         console.error(`🔴 Error processing reminders for ${admin.email}:`, err?.message || err);
       }
     }
+
+    return { checked: adminsWithoutTwoFA.length, remindersSent: sentCount };
   } catch (error: any) {
     console.error(`🔴 Error in pending reminder scheduling:`, error?.message || error);
+    return { checked: 0, remindersSent: sentCount };
   }
 }
 

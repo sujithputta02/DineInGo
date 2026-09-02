@@ -42,7 +42,8 @@ import {
   getAdmin2FAStatus,
   getAllAdmins2FAStatus,
   generateTwoFactorEmailQR,
-  resetAndRelinkTwoFactor
+  resetAndRelinkTwoFactor,
+  trigger2FAEnforcementScan
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -177,6 +178,7 @@ router.delete('/remove', adminApiLimiter, verifyAdminToken, verifySuperAdmin, lo
 router.patch('/toggle-status', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleAdminStatus);
 router.patch('/toggle-impersonation-permission', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleImpersonationPermission);
 router.patch('/update-max-admins', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, updateMaxAdmins);
+router.post('/2fa/enforce-scan', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, trigger2FAEnforcementScan);
 
 // System health routes
 router.get('/system-health', adminApiLimiter, verifyAdminToken, logAdminAction, getSystemHealth);

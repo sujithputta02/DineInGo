@@ -243,6 +243,18 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
     // Initialize 2FA Enforcement Scheduler
     console.log('🔐 Initializing 2FA Enforcement Scheduler...');
     
+    // Run initial scan 5 seconds after startup
+    setTimeout(() => {
+      console.log('🔐 [2FA Scheduler] Running initial startup deadline and reminder checks...');
+      checkAndEnforceTwoFactorDeadlines()
+        .then(res => console.log(`✓ Initial 2FA deadline check complete: ${res.checked} checked, ${res.deactivated} deactivated`))
+        .catch(err => console.error('Error in initial 2FA deadline enforcement:', err));
+
+      scheduleAndSendPendingReminders()
+        .then(res => console.log(`✓ Initial 2FA reminder check complete: ${res.checked} checked, ${res.remindersSent} reminders sent`))
+        .catch(err => console.error('Error in initial 2FA reminder schedule:', err));
+    }, 5000);
+
     // Schedule daily deadline enforcement check at midnight (00:00 UTC)
     const scheduleDeadlineCheck = () => {
       const now = new Date();

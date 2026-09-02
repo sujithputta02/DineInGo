@@ -34,7 +34,9 @@ import {
 } from '../services/twoFactorService';
 import {
   initiateTwoFactorReminders,
-  stopTwoFactorReminders
+  stopTwoFactorReminders,
+  checkAndEnforceTwoFactorDeadlines,
+  scheduleAndSendPendingReminders
 } from '../services/twoFactorEnforcementService';
 
 // Super admin email (DineInGo owner)
@@ -2965,5 +2967,27 @@ export const generateTwoFactorEmailQR = async (req: any, res: any) => {
   } catch (error: any) {
     console.error('Error generating email verification QR:', error);
     res.status(500).json({ success: false, message: error.message || 'Failed to generate QR code' });
+  }
+};
+
+/**
+ * SUPER ADMIN: Trigger 2FA enforcement scan & send reminder alerts immediately
+ */
+export const trigger2FAEnforcementScan = async (req: Request, res: Response) => {
+  try {
+    const deadlineResult = await checkAndEnforceTwoFactorDeadlines();
+    const reminderResult = await scheduleAndSendPendingReminders();
+
+    res.json({
+      success: true,
+      message: '2FA enforcement and reminder scan completed successfully',
+      results: {
+        deadlines: deadlineResult,
+        reminders: reminderResult
+      }
+    });
+  } catch (error: any) {
+    console.error('Error running 2FA enforcement scan:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to run 2FA enforcement scan' });
   }
 };
