@@ -42,7 +42,8 @@ import foodScanRoutes from './routes/foodScanRoutes';
 import translationRoutes from './routes/translationRoutes';
 import {
   checkAndEnforceTwoFactorDeadlines,
-  scheduleAndSendPendingReminders
+  scheduleAndSendPendingReminders,
+  activateAndResetAllNon2FAAdminsFromToday
 } from './services/twoFactorEnforcementService';
 
 // SECURITY: Import security middleware and utilities
@@ -243,16 +244,22 @@ mongoose.connect(MONGODB_URI, mongooseOptions)
     // Initialize 2FA Enforcement Scheduler
     console.log('🔐 Initializing 2FA Enforcement Scheduler...');
     
-    // Run initial scan 5 seconds after startup
+    // Run initial activation & scan 5 seconds after startup
     setTimeout(() => {
-      console.log('🔐 [2FA Scheduler] Running initial startup deadline and reminder checks...');
+      console.log('🔐 [2FA Scheduler] Activating non-2FA admins and setting 7-day deadline from today...');
+      activateAndResetAllNon2FAAdminsFromToday()
+        .then(res => {
+          console.log(`✓ 2FA enforcement initiated from today: ${res.updated} admin(s) activated and sent alert emails (${res.emails.join(', ')})`);
+        })
+        .catch(err => console.error('Error in 2FA initial activation from today:', err));
+
       checkAndEnforceTwoFactorDeadlines()
-        .then(res => console.log(`✓ Initial 2FA deadline check complete: ${res.checked} checked, ${res.deactivated} deactivated`))
-        .catch(err => console.error('Error in initial 2FA deadline enforcement:', err));
+        .then(res => console.log(`✓ 2FA deadline check complete: ${res.checked} checked, ${res.deactivated} deactivated`))
+        .catch(err => console.error('Error in 2FA deadline enforcement:', err));
 
       scheduleAndSendPendingReminders()
-        .then(res => console.log(`✓ Initial 2FA reminder check complete: ${res.checked} checked, ${res.remindersSent} reminders sent`))
-        .catch(err => console.error('Error in initial 2FA reminder schedule:', err));
+        .then(res => console.log(`✓ 2FA reminder check complete: ${res.checked} checked, ${res.remindersSent} reminders sent`))
+        .catch(err => console.error('Error in 2FA reminder schedule:', err));
     }, 5000);
 
     // Schedule daily deadline enforcement check at midnight (00:00 UTC)

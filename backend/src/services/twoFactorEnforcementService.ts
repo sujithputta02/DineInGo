@@ -130,6 +130,55 @@ export async function sendTwoFactorReminder(adminEmail: string, reminderNumber: 
 }
 
 /**
+ * Activate all admins without 2FA and start their 7-day enforcement deadline from today
+ * Sends immediate reminder alert emails to each admin
+ */
+export async function activateAndResetAllNon2FAAdminsFromToday(): Promise<{ updated: number; emails: string[] }> {
+  const updatedEmails: string[] = [];
+  try {
+    const newDeadline = dayjs().add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
+    console.log(`🔐 Activating and starting 7-day 2FA enforcement from today (${newDeadline.toISOString()})...`);
+
+    const admins = await Admin.find({
+      twoFactorEnabled: { $ne: true },
+      role: { $ne: 'super_admin' }
+    }).select('+twoFactorDeadline +twoFactorRemindersSent +twoFactorDeactivationReason +lastReminderSentAt +isActive');
+
+    for (const admin of admins) {
+      admin.isActive = true;
+      admin.twoFactorDeadline = newDeadline;
+      admin.twoFactorRemindersSent = 1; // Mark reminder #1 sent
+      admin.twoFactorDeactivationReason = undefined;
+      admin.lastReminderSentAt = new Date();
+      await admin.save();
+
+      // Send the immediate 2FA setup reminder alert email starting today
+      try {
+        await emailService.sendTwoFactorReminderEmail(
+          admin.email,
+          1,
+          'Immediate Alert',
+          7,
+          admin.timezone || 'Asia/Kolkata'
+        );
+        console.log(`📧 Sent Day-0 2FA alert email to ${admin.email}`);
+      } catch (emailErr) {
+        console.error(`Failed to send 2FA alert email to ${admin.email}:`, emailErr);
+      }
+
+      await logSecurityEvent('2fa_activated_and_started_from_today', admin.email, 'low', `Admin activated and 7-day 2FA deadline set to ${newDeadline.toISOString()}`);
+      updatedEmails.push(admin.email);
+    }
+
+    console.log(`✓ Successfully activated and initiated 7-day 2FA deadline from today for ${updatedEmails.length} admin(s)`);
+    return { updated: updatedEmails.length, emails: updatedEmails };
+  } catch (error: any) {
+    console.error('🔴 Error activating and resetting non-2FA admins from today:', error);
+    return { updated: updatedEmails.length, emails: updatedEmails };
+  }
+}
+
+/**
  * Scheduled job: Check for overdue 2FA deadlines and auto-deactivate
  * Runs daily to enforce 2FA compliance
  */
@@ -151,15 +200,15 @@ export async function checkAndEnforceTwoFactorDeadlines(): Promise<{ checked: nu
 
     for (const admin of adminsWithout2FA) {
       try {
-        // If deadline is not yet set, initialize it based on account creation date (7-day grace period)
+        // If deadline is not yet set, initialize it for 7 days from now
         if (!admin.twoFactorDeadline) {
-          const creationDate = admin.createdAt ? new Date(admin.createdAt) : now;
-          admin.twoFactorDeadline = dayjs(creationDate).add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
+          admin.twoFactorDeadline = dayjs().add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
+          admin.twoFactorRemindersSent = 0;
           await admin.save();
-          console.log(`✓ Initialized 2FA deadline for ${admin.email}: ${admin.twoFactorDeadline.toISOString()}`);
+          console.log(`✓ Initialized 7-day 2FA deadline from today for ${admin.email}: ${admin.twoFactorDeadline.toISOString()}`);
         }
 
-        // Check if deadline has passed
+        // Check if deadline has passed (after full 7 days from deadline start)
         if (admin.twoFactorDeadline < now) {
           // Deactivate the admin account temporarily
           admin.isActive = false;
@@ -214,10 +263,9 @@ export async function scheduleAndSendPendingReminders(): Promise<{ checked: numb
 
     for (const admin of adminsWithoutTwoFA) {
       try {
-        // Ensure deadline is set
+        // Ensure deadline is set (7 days from now if missing)
         if (!admin.twoFactorDeadline) {
-          const creationDate = admin.createdAt ? new Date(admin.createdAt) : now;
-          admin.twoFactorDeadline = dayjs(creationDate).add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
+          admin.twoFactorDeadline = dayjs().add(TWO_FA_ENFORCEMENT_DAYS, 'day').toDate();
           await admin.save();
         }
 
