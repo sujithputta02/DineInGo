@@ -1,0 +1,6 @@
+Stage_Order,Stage_Name,Platform_Event_Name,Telemetry_Provider,Route_Path,Unique_Users,Conversion_Rate_Pct,Drop_Off_Rate_Pct,Telemetry_Properties_Sample,UX_Friction_Root_Cause
+1,1. Landing Page Visitors,$pageview / Page View,PostHog + Mixpanel,/,1240,100.0%,35.0%,"""{ referrer: 'organic', device: 'mobile', city: 'Bangalore' }""",DesignMeter Heuristic: Weak mobile CTA prominence and viewport fold cut-off
+2,2. Catalog & Restaurant Views,Search / view_section,Mixpanel + PostHog,/dashboard,806,65.0%,20.0%,"""{ term: 'Indiranagar', cuisine: 'North Indian' }""",Browsing cognitive load across Bangalore multi-cuisine catalog filters
+3,3. Interactive Floor Plan Open,User Interaction / select_time_slot,Mixpanel + PostHog,/restaurant/:id/table-selection,558,45.0%,15.0%,"""{ tableId: 'T4', timeSlot: '8:00 PM', dwellTimeSec: 142 }""",High floor plan engagement (+142s dwell) but 5-minute table hold timer expiry
+4,4. Table Selected & Checkout Initiated,Purchase,Mixpanel,/reservation-details,372,30.0%,12.0%,"""{ restaurantId: '6980d6a6ae7ec40527e24999', guests: 2 }""",Dynamic table fee hesitation and repetitive auth confirmation
+5,5. Booking Confirmed & Pass Issued,Conversion,Mixpanel + PostHog + MongoDB,/confirmation,223,18.0%,0.0%,"""{ bookingId: 'TB-104', status: 'confirmed', totalPaidINR: 600 }""","Booking fulfilled, Apple/Google Wallet pass generated and issued"

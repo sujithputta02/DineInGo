@@ -18,9 +18,19 @@ export interface IAdmin extends Document {
   twoFactorSecret?: string; // encrypted base32 secret
   twoFactorBackupCodes?: string[]; // hashed backup codes
   twoFactorPendingSecret?: string; // secret during setup, before user confirms
+  // Email-based 2FA fallback (magic link / confirm button in email)
+  twoFactorEmailConfirmJti?: string;  // JWT id of the issued email-confirm link (single-use)
+  twoFactorEmailConfirmExpires?: Date; // expiry of the issued email-confirm link
   // Session revocation: bumping this invalidates all previously issued JWTs
   tokenVersion?: number;
   required2FA?: boolean; // super admin can force 2FA for an account
+  
+  // 2FA Enforcement & Reminders
+  twoFactorRemindersSent?: number; // 0-3 reminders sent (immediate, day1, day3, day7)
+  twoFactorDeadline?: Date; // 7 days from activation/creation
+  twoFactorDeactivationReason?: string; // '2FA_NOT_ENABLED', 'MANUAL_DEACTIVATION', etc.
+  twoFactorReminderScheduled?: boolean; // Idempotency flag to prevent duplicate reminders
+  lastReminderSentAt?: Date; // Timestamp of last reminder sent
 }
 
 export interface IAdminOTP extends Document {
@@ -94,6 +104,14 @@ const AdminSchema = new Schema<IAdmin>({
       type: String,
       select: false
   },
+  twoFactorEmailConfirmJti: {
+      type: String,
+      select: false
+  },
+  twoFactorEmailConfirmExpires: {
+      type: Date,
+      select: false
+  },
   tokenVersion: {
       type: Number,
       default: 0
@@ -101,6 +119,31 @@ const AdminSchema = new Schema<IAdmin>({
   required2FA: {
       type: Boolean,
       default: false
+  },
+  // 2FA Enforcement & Reminders
+  twoFactorRemindersSent: {
+      type: Number,
+      default: 0,
+      min: 0,
+      max: 3
+  },
+  twoFactorDeadline: {
+      type: Date,
+      select: false
+  },
+  twoFactorDeactivationReason: {
+      type: String,
+      select: false,
+      enum: ['2FA_NOT_ENABLED', 'MANUAL_DEACTIVATION', 'SECURITY_POLICY', 'OTHER']
+  },
+  twoFactorReminderScheduled: {
+      type: Boolean,
+      default: false,
+      select: false
+  },
+  lastReminderSentAt: {
+      type: Date,
+      select: false
   }
 });
 
@@ -144,9 +187,9 @@ AdminSchema.virtual('isLocked').get(function() {
 
 // Pre-save middleware to handle failed login attempts
 AdminSchema.pre('save', function(next) {
-  // If we're modifying loginAttempts and it's not being reset
-  if (this.isModified('loginAttempts') && this.loginAttempts >= 5) {
-    this.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
+  // If we're modifying loginAttempts and it's not being reset (relaxed to 30 for multi-admin concurrency)
+  if (this.isModified('loginAttempts') && this.loginAttempts >= 30) {
+    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
   }
   next();
 });

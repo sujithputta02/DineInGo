@@ -1,0 +1,151 @@
+Master_Booking_ID,Channel,Venue_Name,Neighborhood,City,Selection_Method,Seat_Or_Table,Party_Size,Date,Time,Status,Revenue_INR,Created_At
+6a898a960f1f6ad24c064331,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T2,2,2026-08-22,7:30 PM,confirmed,450,2026-08-22T11:40:05.897Z
+6a8430760f1f6ad24c060b7b,Table Reservation,Loco Lane,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-08-18,7:30 PM,cancelled,0,2026-08-18T10:14:14.436Z
+6a8326960f1f6ad24c05f859,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T4,3,2026-08-18,7:00 PM,confirmed,450,2026-08-17T15:19:50.615Z
+6a7693d0f045bda74185e2fa,Table Reservation,Loco Lane,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T1,2,2026-08-08,10:30 PM,reserved,0,2026-08-08T02:26:24.117Z
+6a755531f045bda74185dbe7,Table Reservation,Burger Junction,"Marathahalli, Bangalore",Bangalore,Visual Floor Plan,T6,2,2026-08-07,9:30 PM,confirmed,275,2026-08-07T03:46:57.456Z
+6a755508f045bda74185dbe6,Table Reservation,Biryani House,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T7,3,2026-08-07,1:30 PM,confirmed,350,2026-08-07T03:46:16.671Z
+6a66204c9d97788cef0371b4,Table Reservation,Loco Lane,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-07-26,9:00 PM,confirmed,550,2026-07-26T14:57:16.306Z
+6a65d3bc9d97788cef035e4a,Table Reservation,Loco Lane,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-07-26,6:00 PM,cancelled,0,2026-07-26T09:30:36.144Z
+6a64ae9c9d97788cef032bcf,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-07-25,Night,confirmed,600,2026-07-25T12:39:56.343Z
+6a636e2f9d97788cef03157d,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-07-24,Night,cancelled,0,2026-07-24T14:16:17.272Z
+6a5740097e8b8b22c3218731,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-07-15,Afternoon,cancelled,0,2026-07-15T08:08:41.653Z
+6a48df0641b363de0ab927b2,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-07-04,Night,cancelled,0,2026-07-04T10:23:02.850Z
+6a100903565b3dfd731e1f0d,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-05-22,Evening,cancelled,0,2026-05-22T07:42:59.150Z
+6a0ffccd565b3dfd731e1ece,Table Reservation,Pizza Paradise,"Whitefield, Bangalore",Bangalore,Visual Floor Plan,T8,2,2026-05-22,7:00 PM,reserved,0,2026-05-22T06:50:53.362Z
+6a0ffb14565b3dfd731e1ec6,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-05-22,8:00 PM,confirmed,450,2026-05-22T06:43:32.808Z
+6a0dea4d565b3dfd731e097d,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-05-20,Night,cancelled,0,2026-05-20T17:07:25.660Z
+6a0dbf20565b3dfd731e091b,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-05-20,Evening,confirmed,600,2026-05-20T14:03:11.983Z
+6a0dbd91565b3dfd731e0918,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-05-20,Evening,cancelled,0,2026-05-20T13:56:33.418Z
+6a0db3d8565b3dfd731e0908,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-05-20,6:00 PM,confirmed,450,2026-05-20T13:15:04.624Z
+6a037116f4c19ff71c8b556c,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T1,2,2026-05-13,1:30 PM,confirmed,450,2026-05-12T18:27:34.618Z
+6a00b86df4c19ff71c8ad836,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-05-10,Night,cancelled,0,2026-05-10T16:55:09.785Z
+6a00aa74f4c19ff71c8ac533,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-05-10,Night,reserved,0,2026-05-10T15:55:32.404Z
+69fec0c7f4c19ff71c8a80b6,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-05-09,Afternoon,cancelled,0,2026-05-09T05:06:15.376Z
+69f77b963f13d900d92d1087,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-05-03,Afternoon,reserved,0,2026-05-03T16:45:09.940Z
+69df6e70999275168e9fdda3,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-04-15,6:00 PM,confirmed,450,2026-04-15T10:54:40.410Z
+69d4c5cb999275168e9f62c8,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T8,3,2026-04-07,8:00 PM,confirmed,450,2026-04-07T08:52:27.753Z
+69d3a292999275168e9f5b98,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-04-06,Night,cancelled,0,2026-04-06T12:09:54.075Z
+69d10ad9999275168e9f5190,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-04-04,Night,confirmed,600,2026-04-04T12:58:01.398Z
+69cd30106867bec510f91c70,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-04-01,Night,cancelled,0,2026-04-01T14:47:44.154Z
+69c7b4b56867bec510f8f586,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-03-28,Afternoon,cancelled,0,2026-03-28T11:00:05.599Z
+69c2c6df6867bec510f8e60e,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T6,6,2026-03-27,Evening,cancelled,0,2026-03-24T17:16:15.257Z
+69c20ebc6867bec510f8e3c4,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,5,2026-03-24,Night,cancelled,0,2026-03-24T04:10:35.916Z
+69c168576867bec510f8e37f,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,7,2026-03-29,11:30 AM,reserved,0,2026-03-23T16:20:39.775Z
+69c1616e6867bec510f8e37b,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-03-23,Night,cancelled,0,2026-03-23T15:51:10.398Z
+69c160db6867bec510f8e37a,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T7,6,2026-03-31,12:00 PM,reserved,0,2026-03-23T15:48:43.241Z
+69c15f286867bec510f8e378,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T6,8,2026-03-24,Morning,cancelled,0,2026-03-23T15:41:28.255Z
+69c15e486867bec510f8e375,Table Reservation,Sushi Master,"UB City, Bangalore",Bangalore,Visual Floor Plan,T6,8,2026-03-28,2:00 PM,reserved,0,2026-03-23T15:37:44.669Z
+69c15bdb6867bec510f8e374,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T6,2,2026-03-25,11:30 AM,confirmed,480,2026-03-23T15:27:23.308Z
+69c15a016867bec510f8e372,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T1,7,2026-03-25,11:30 AM,reserved,0,2026-03-23T15:19:28.983Z
+69c159da6867bec510f8e371,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,8,2026-04-21,12:30 PM,confirmed,480,2026-03-23T15:18:50.446Z
+69c157246867bec510f8e370,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T8,4,2026-03-25,2:00 PM,reserved,0,2026-03-23T15:07:16.670Z
+69c156aa6867bec510f8e36f,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T5,6,2026-03-25,1:00 PM,reserved,0,2026-03-23T15:05:14.574Z
+69c153646867bec510f8e36d,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T1,7,2026-03-24,12:30 PM,reserved,0,2026-03-23T14:51:16.851Z
+69c152e36867bec510f8e36c,Table Reservation,Sushi Master,"UB City, Bangalore",Bangalore,Visual Floor Plan,T6,2,2026-03-25,12:30 PM,confirmed,675,2026-03-23T14:49:07.435Z
+69c150fb6867bec510f8e36b,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-03-23,Evening,confirmed,600,2026-03-23T14:40:59.676Z
+69c14fda6867bec510f8e36a,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T1,2,2026-03-23,Evening,reserved,0,2026-03-23T14:36:10.091Z
+69c1481d6867bec510f8e367,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-03-31,Night,confirmed,600,2026-03-23T14:03:09.863Z
+69c141fb6867bec510f8e35f,Table Reservation,Biryani House,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T7,8,2026-03-24,1:30 PM,reserved,0,2026-03-23T13:36:59.616Z
+69c1412f6867bec510f8e35d,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,T4,5,2026-03-24,11:30 AM,reserved,0,2026-03-23T13:33:35.235Z
+69c0fb2c6867bec510f8e327,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,3,2026-03-26,Morning,confirmed,500,2026-03-23T08:34:52.695Z
+69c0b98a6867bec510f8defb,Table Reservation,Biryani House,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,T5,4,2026-03-24,11:00 AM,cancelled,0,2026-03-23T03:54:50.186Z
+69bf90186867bec510f8ddb0,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-03-22,Afternoon,confirmed,500,2026-03-22T06:45:44.013Z
+69beaa9e6867bec510f8dcd5,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,F7,2,2026-03-21,8:00 PM,confirmed,450,2026-03-21T14:26:38.408Z
+69bd62126867bec510f8b537,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-03-20,Night,cancelled,0,2026-03-20T15:04:50.755Z
+69bd0b886867bec510f8b470,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,2,2026-03-20,Evening,cancelled,0,2026-03-20T08:55:36.421Z
+69b8e9216867bec510f89db7,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-03-17,Afternoon,confirmed,500,2026-03-17T05:39:45.494Z
+69a11647346b7fcb4ef8df31,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-02-27,Evening,cancelled,0,2026-02-27T03:57:59.189Z
+69a11235346b7fcb4ef8de23,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,2,2026-02-27,Afternoon,confirmed,500,2026-02-27T03:40:37.436Z
+69a10f19346b7fcb4ef8de21,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T7,2,2026-02-27,Afternoon,cancelled,0,2026-02-27T03:27:21.306Z
+69a07c55346b7fcb4ef8a3bb,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-02-26,Night,confirmed,600,2026-02-26T17:01:09.688Z
+69a079ee346b7fcb4ef8a3ba,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-02-26,Night,confirmed,600,2026-02-26T16:50:54.081Z
+69a07832346b7fcb4ef8a3b9,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,2,2026-02-26,Night,confirmed,600,2026-02-26T16:43:30.587Z
+69a07672346b7fcb4ef8a3b8,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T1,2,2026-02-26,Night,confirmed,600,2026-02-26T16:36:02.601Z
+699c88ee6a87bd3a251b7dcd,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-02-23,Night,confirmed,600,2026-02-23T17:05:50.933Z
+699693fe6a87bd3a251af42a,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-02-19,Evening,confirmed,600,2026-02-19T04:39:26.007Z
+6992e9576a87bd3a251aae1e,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-02-16,Night,confirmed,600,2026-02-16T09:54:31.315Z
+6992e7916a87bd3a251aae1a,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-02-16,Evening,confirmed,600,2026-02-16T09:46:56.984Z
+6992e5a26a87bd3a251aae18,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T6,2,2026-02-16,Evening,confirmed,600,2026-02-16T09:38:42.404Z
+6992e1c46a87bd3a251aae15,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,2,2026-02-16,Night,confirmed,600,2026-02-16T09:22:12.450Z
+6992ae986a87bd3a2519a6dc,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-02-16,Afternoon,confirmed,500,2026-02-16T05:43:52.940Z
+6992a9b26a87bd3a2519a6da,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T4,2,2026-02-17,Afternoon,confirmed,500,2026-02-16T05:22:58.494Z
+6990b79c6a87bd3a2519a27b,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T2,2,2026-02-16,Morning,cancelled,0,2026-02-14T17:57:48.263Z
+698f39286a87bd3a25199ea6,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T5,2,2026-02-13,Night,confirmed,600,2026-02-13T14:46:00.107Z
+698ea2676a87bd3a25196344,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,T3,2,2026-02-13,Morning,confirmed,500,2026-02-13T04:02:46.722Z
+69817926cdf61f2c5c29da9f,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,G4,2,2026-02-03,8:00 PM,cancelled,0,2026-02-03T04:27:18.243Z
+698176b3cdf61f2c5c29da9e,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,G2,2,2026-02-03,6:30 PM,confirmed,450,2026-02-03T04:16:51.284Z
+69816e20cdf61f2c5c29da98,Table Reservation,Bombay Brasserie,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,G6,2,2026-02-03,1:30 PM,reserved,0,2026-02-03T03:40:16.351Z
+6980f65fcdf61f2c5c29da7f,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,G5,2,2026-02-02,12:00 PM,confirmed,480,2026-02-02T19:09:19.823Z
+6980daaccdf61f2c5c29da72,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,G5,2,2026-02-03,1:00 PM,cancelled,0,2026-02-02T17:11:08.149Z
+6980d99ccdf61f2c5c29da70,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,G8,2,2026-02-03,1:00 PM,confirmed,450,2026-02-02T17:06:36.633Z
+697839ac6fac4654a8840195,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,G6,2,2026-01-27,1:30 PM,cancelled,0,2026-01-27T04:06:04.415Z
+6958d33032e547114637d46c,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,S5,2,2026-01-03,6:00 PM,cancelled,0,2026-01-03T08:28:28.023Z
+6936f89c6b40a315659e598f,Table Reservation,Pizza Paradise,"Whitefield, Bangalore",Bangalore,Visual Floor Plan,S4,2,2025-12-09,12:00 PM,cancelled,0,2025-12-08T16:11:08.463Z
+6936ac906b40a315659e5979,Table Reservation,Biryani House,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,S5,2,2025-12-08,6:00 PM,confirmed,350,2025-12-08T10:46:34.557Z
+6936aa1f6b40a315659e5978,Table Reservation,The Coastal Kitchen,"Indiranagar, Bangalore",Bangalore,Visual Floor Plan,S4,2,2025-12-08,8:00 PM,cancelled,0,2025-12-08T10:36:09.909Z
+692c3c5f6b40a315659e3fae,Table Reservation,Pizza Paradise,"Whitefield, Bangalore",Bangalore,Visual Floor Plan,F4,4,2025-11-30,7:30 PM,confirmed,380,2025-11-30T12:45:16.242Z
+692c2e126b40a315659e3fa6,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,G5,2,2025-11-30,7:30 PM,cancelled,0,2025-11-30T11:44:15.428Z
+692c26f66b40a315659e3fa2,Table Reservation,Spice Garden,"MG Road, Bangalore",Bangalore,Visual Floor Plan,S7,2,2025-11-30,7:30 PM,cancelled,0,2025-11-30T11:13:55.527Z
+692c25cc6b40a315659e3f9a,Table Reservation,Sushi Master,"UB City, Bangalore",Bangalore,Visual Floor Plan,S7,2,2025-11-30,6:00 PM,confirmed,675,2025-11-30T11:08:57.785Z
+692c25286b40a315659e3f97,Table Reservation,Biryani House,"Koramangala, Bangalore",Bangalore,Visual Floor Plan,S7,2,2025-11-30,6:30 PM,confirmed,350,2025-11-30T11:06:13.889Z
+6a898aa50dc339cc80c7854d,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-08-22,7:30 PM,pending,497.5,2026-08-22T11:40:21.714Z
+6a8430834255d3c2cb3525dc,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-08-18,7:30 PM,cancelled,1810,2026-08-18T10:14:27.089Z
+6a8326c499f7ac7c6692eb96,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,3,2026-08-18,7:00 PM,pending,550,2026-08-17T15:20:36.225Z
+6a7555e0bcf61080fa3827a1,Event Ticket,South Indian Cooking Masterclass,Bangalore Central,Bangalore,Visual Seating Map,A2,1,2026-03-05,2:00 PM,confirmed,300,2026-08-07T03:49:52.616Z
+6a75553cbcf61080fa3825ca,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-08-07,9:30 PM,pending,256,2026-08-07T03:47:08.742Z
+6a75552dbcf61080fa3824fb,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,3,2026-08-07,1:30 PM,pending,392.5,2026-08-07T03:46:53.281Z
+6a6620f005f1b197f361026e,Event Ticket,Sunset Music Festival,Bangalore Central,Bangalore,Visual Seating Map,area-3,3,2026-03-16,17:00,confirmed,150,2026-07-26T15:00:00.403Z
+6a66206f05f1b197f3610118,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-07-26,9:00 PM,pending,970,2026-07-26T14:57:51.333Z
+6a64aeaaa99714ccb149c575,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-07-25,Night,pending,531.5,2026-07-25T12:40:10.626Z
+6a574043cde748388864072c,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-07-15,Afternoon,cancelled,563,2026-07-15T08:09:39.232Z
+6a48df15bcc48458f3fd800d,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-07-04,Night,cancelled,563,2026-07-04T10:23:17.808Z
+6a0ffb2f2f97e12fdd6e7202,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-22,8:00 PM,confirmed,497.5,2026-05-22T06:43:59.947Z
+6a0dea62b10611ba7e8f6770,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-20,Night,cancelled,531.5,2026-05-20T17:07:46.233Z
+6a0dbf270f527f34d620120e,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-20,Evening,pending,30,2026-05-20T14:03:19.099Z
+6a0dbd97ffa00737e2820eb0,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-20,Evening,cancelled,30,2026-05-20T13:56:39.573Z
+6a0db3ea3be4c03d2689ebe1,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-20,6:00 PM,confirmed,450,2026-05-20T13:15:22.901Z
+6a03711b3c7ceddddc131e90,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-13,1:30 PM,confirmed,350,2026-05-12T18:27:39.332Z
+6a00b8745449bdaab82de5d5,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-05-10,Night,cancelled,30,2026-05-10T16:55:16.547Z
+69df6e804af430caf4dbe1a9,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-04-15,6:00 PM,pending,700,2026-04-15T10:54:56.459Z
+69d4c5ed963346c2c377118c,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,3,2026-04-07,8:00 PM,confirmed,1300,2026-04-07T08:53:01.753Z
+69d3a296d0dcf4436e33a742,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-04-06,Night,cancelled,60,2026-04-06T12:09:58.327Z
+69d10add826dd5c57c502f8d,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-04-04,Night,confirmed,30,2026-04-04T12:58:05.860Z
+69cd4666414fb7f81b4b1b4d,Event Ticket,Sunset Music Festival,Bangalore Central,Bangalore,Visual Seating Map,area-3,6,2026-03-16,17:00,confirmed,300,2026-04-01T16:23:02.582Z
+69cd301588873a8409cae114,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-04-01,Night,cancelled,30,2026-04-01T14:47:49.157Z
+69c2c6f08836d314f71dd79f,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,6,2026-03-27,Evening,cancelled,60,2026-03-24T17:16:32.615Z
+69c15f42f298f2956b1ef9a3,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,8,2026-03-24,Morning,cancelled,30,2026-03-23T15:41:54.155Z
+69c15c0df298f2956b1ef1ce,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-25,11:30 AM,pending,550,2026-03-23T15:28:13.086Z
+69c159e0f298f2956b1eebf2,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,8,2026-04-21,12:30 PM,confirmed,2200,2026-03-23T15:18:56.003Z
+69c152f6f298f2956b1ee00a,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-25,12:30 PM,pending,250,2026-03-23T14:49:26.839Z
+69c152a0f298f2956b1edf3f,Event Ticket,South Indian Cooking Masterclass,Bangalore Central,Bangalore,Visual Seating Map,A3;A4;A5;A6;B6;B5;B4,7,2026-03-05,2:00 PM,confirmed,2100,2026-03-23T14:48:00.167Z
+69c15105f298f2956b1edbe3,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-23,Evening,pending,60,2026-03-23T14:41:09.126Z
+69c14829f298f2956b1eccb9,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-31,Night,confirmed,30,2026-03-23T14:03:21.516Z
+69c13fa5f298f2956b1ec6b2,Event Ticket,South Indian Cooking Masterclass,Bangalore Central,Bangalore,Visual Seating Map,A1,1,2026-03-05,2:00 PM,confirmed,300,2026-03-23T13:27:01.978Z
+69c0fb41d953b5c57c73c029,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,3,2026-03-26,Morning,confirmed,90,2026-03-23T08:35:13.478Z
+69c0b9a6a1bc187dc44e7278,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,4,2026-03-24,11:00 AM,cancelled,350,2026-03-23T03:55:18.295Z
+69bf9037b3fe2ef34254693f,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-22,Afternoon,confirmed,30,2026-03-22T06:46:15.621Z
+69beaaa21cb1f72fa52834a3,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-21,8:00 PM,confirmed,600,2026-03-21T14:26:42.368Z
+69bd0b8d62cd0017c427eed6,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-20,Evening,cancelled,30,2026-03-20T08:55:41.778Z
+69b8e92a8d6583b48d2245d4,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-03-17,Afternoon,confirmed,120,2026-03-17T05:39:54.492Z
+69a07c58279db3cc9ab97228,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-26,Night,cancelled,60,2026-02-26T17:01:12.171Z
+69a079f17708ee7cc90d3a2b,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-26,Night,cancelled,60,2026-02-26T16:50:57.342Z
+69a078347e03325810c68cf8,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-26,Night,cancelled,120,2026-02-26T16:43:32.990Z
+699c88fec4d96920b7a703f6,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-23,Night,pending,30,2026-02-23T17:06:06.116Z
+69969412e8808e5d95549799,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-19,Evening,cancelled,120,2026-02-19T04:39:46.652Z
+6992ae9c5264ba3cf92bd8f5,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-16,Afternoon,cancelled,120,2026-02-16T05:43:56.403Z
+6992a9ba112e20715d3d9bce,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-17,Afternoon,cancelled,30,2026-02-16T05:23:06.819Z
+6990b7a0ed91fc508b13a5b7,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2026-02-16,Morning,cancelled,90,2026-02-14T17:57:52.992Z
+6936ac8fdecf591c0ba37e73,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2025-12-08,6:00 PM,confirmed,500,2025-12-08T10:46:39.046Z
+6936aa24decf591c0ba37ddc,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2025-12-08,8:00 PM,cancelled,400,2025-12-08T10:36:20.337Z
+6936a8ece3ba5c2eafa68f70,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,5,2025-12-08,16:01:06 GMT+0530 (India Standard Time),confirmed,0,2025-12-08T10:31:08.372Z
+692c3cd41a8a1ed8e6d174c3,Event Ticket,Wine Tasting Experience,Bangalore Central,Bangalore,Visual Seating Map,E-5;E-4;E-3,3,2026-01-25,7:00 PM,cancelled,3000,2025-11-30T12:47:16.957Z
+692c3c641a8a1ed8e6d17412,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,4,2025-11-30,7:30 PM,confirmed,1400,2025-11-30T12:45:24.462Z
+692c2e190b1018c5aabe0c1f,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2025-11-30,7:30 PM,cancelled,700,2025-11-30T11:44:25.801Z
+692c26f90b1018c5aabe0b04,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2025-11-30,7:30 PM,cancelled,700,2025-11-30T11:14:01.934Z
+692c25cda6c330eb34915560,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2025-11-30,6:00 PM,cancelled,500,2025-11-30T11:09:01.777Z
+692c252cba716ca46145c46f,Event Ticket,Live Event Experience,Bangalore Central,Bangalore,General Admission,Standing,2,2025-11-30,6:30 PM,cancelled,600,2025-11-30T11:06:20.131Z
+692c22e5b0983a7e55d1bf3a,Event Ticket,Wine Tasting Experience,Bangalore Central,Bangalore,Visual Seating Map,H-1;H-2;H-3;H-4,4,2026-01-25,7:00 PM,cancelled,2000,2025-11-30T10:56:37.132Z
+692c1f4acfee2daf36affa86,Event Ticket,Craft Beer Workshop,Bangalore Central,Bangalore,Visual Seating Map,F-4;F-3,2,2026-02-20,6:00 PM,cancelled,600,2025-11-30T10:41:14.969Z
+692c1dc2cfee2daf36affa04,Event Ticket,Wine Tasting Experience,Bangalore Central,Bangalore,Visual Seating Map,E-1;E-2,2,2026-01-25,7:00 PM,cancelled,2000,2025-11-30T10:34:42.403Z
+692c1bb7cfee2daf36aff9a0,Event Ticket,Wine Tasting Experience,Bangalore Central,Bangalore,Visual Seating Map,G-3;G-2,2,2026-01-25,7:00 PM,cancelled,1000,2025-11-30T10:25:59.784Z

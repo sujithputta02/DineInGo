@@ -1,0 +1,15 @@
+KPI_Name,Metric_Value,Unit,Category,Source
+Total Table Bookings,90,Count,Core Bookings,MongoDB tablebookings
+Confirmed Table Bookings,44,Count,Core Bookings,MongoDB tablebookings
+Table Reservation Revenue (INR),₹22645.00,INR,Monetization,MongoDB tablebookings
+Visual Floor Plan Table Selection (TVSAR),100.0%,Percentage,Core UVP Adoption,MongoDB tablebookings
+Total Event Bookings,60,Count,Event Tickets,MongoDB bookings
+Event Ticket Revenue (INR),₹31752.50,INR,Monetization,MongoDB bookings
+Visual Seat Map Selection Rate,16.7%,Percentage,Event Feature Adoption,MongoDB bookings
+Total Food Pre-Orders,61,Count,Pre-Order Food,MongoDB preorders
+Pre-Order Revenue (INR),₹15886.50,INR,Monetization,MongoDB preorders
+Unified Master GMV (Table + Events INR),₹54397.50,INR,Unified Revenue,MongoDB tablebookings + bookings
+Total Platform Gross Value (All Streams INR),₹70284.00,INR,Total GMV,MongoDB tablebookings + bookings + preorders
+Early Access Waitlist Signups,100,Users,Acquisition,MongoDB earlyaccesses
+Early Access Converted,5,Users,Acquisition,MongoDB earlyaccesses
+Active Gamified Users (UserStats),43,Users,Engagement,MongoDB userstats

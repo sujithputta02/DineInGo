@@ -97,8 +97,14 @@ export const requestAdminOTP = async (req: Request, res: Response) => {
       });
     }
 
-    // Clear any old OTP records for this email first
-    await AdminOTP.deleteMany({ email: email.toLowerCase() });
+    // Clean up only expired or already used OTP records for this email, preserving active ones so simultaneous admins can receive and verify OTPs
+    await AdminOTP.deleteMany({
+      email: email.toLowerCase(),
+      $or: [
+        { isUsed: true },
+        { expiresAt: { $lt: new Date() } }
+      ]
+    });
 
     // Generate and save OTP
     const otp = generateOTP();
@@ -168,18 +174,18 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
         const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
         const { logFailedLogin } = await import('../middleware/adminAuditLog');
 
-        if (admin.loginAttempts >= 5) {
+        if (admin.loginAttempts >= 30) {
           admin.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
           await admin.save();
           
-          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked due to 5 failed attempts');
+          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked due to 30 failed attempts');
 
           // Log to Universal Security Log
           await SecurityLog.create({
             portal: 'admin',
             eventType: 'failed_login',
             severity: 'high',
-            details: `Admin account ${email} locked after 5 failed OTP attempts.`,
+            details: `Admin account ${email} locked after 30 failed OTP attempts.`,
             ip: String(ipAddress),
             userAgent: req.headers['user-agent'],
             path: req.path
@@ -194,14 +200,14 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
         } else {
           await admin.save();
           
-          await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/5 attempts)`);
+          await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/30 attempts)`);
 
           // Log to Universal Security Log
           await SecurityLog.create({
             portal: 'admin',
             eventType: 'failed_login',
             severity: 'medium',
-            details: `Invalid OTP attempt for ${email} (${admin.loginAttempts}/5 attempts)`,
+            details: `Invalid OTP attempt for ${email} (${admin.loginAttempts}/30 attempts)`,
             ip: String(ipAddress),
             userAgent: req.headers['user-agent'],
             path: req.path
@@ -212,7 +218,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid or expired OTP',
-        attemptsRemaining: admin ? 5 - admin.loginAttempts : undefined
+        attemptsRemaining: admin ? 30 - admin.loginAttempts : undefined
       });
     }
 

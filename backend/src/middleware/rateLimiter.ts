@@ -218,12 +218,11 @@ export const strictAiLimiter = rateLimit({
 
 /**
  * Admin Login Rate Limiter
- * 5 requests per 15 minutes per IP
- * Prevents brute force attacks on admin login
+ * Extended to 500 requests per 15 minutes to support multiple simultaneous admin sessions
  */
 export const adminLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 50,
+  max: 500, // Increased from 50
   message: 'Too many admin login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -239,12 +238,12 @@ export const adminLoginLimiter = rateLimit({
 
 /**
  * Admin API Rate Limiter
- * 200 requests per 15 minutes per IP
- * Allows for frequent admin operations and auto-refresh features
+ * 2000 requests per 15 minutes per IP
+ * Allows for frequent admin operations, live dashboards, and auto-refresh features across multiple admins
  */
 export const adminApiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: 2000, // Increased from 200
   message: 'Too many admin API requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,

@@ -214,6 +214,8 @@ function App() {
                 <Route path="/feedback" element={<UserFeedbackForm />} />
                 <Route path="/test-floor-designer" element={<FloorPlanDesigner />} />
                 <Route path="/test-event-designer" element={<EventSeatingDesigner />} />
+                <Route path="/analytics" element={<AdminAnalyticsPage />} />
+                <Route path="/mse1" element={<AdminAnalyticsPage />} />
                 <Route path="/debug-unblock" element={<DebugTableUnblock />} />
                 <Route path="/auth/action" element={<AuthActionHandler />} />
                 <Route path="/auth/impersonate" element={<ImpersonationHandler />} />

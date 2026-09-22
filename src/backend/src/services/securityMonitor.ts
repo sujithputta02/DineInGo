@@ -108,7 +108,8 @@ export async function recordFailedAttempt(
     existing.lastAttempt = new Date();
     existing.lastIp = ip;
 
-    if (existing.failedAttempts >= MAX_ATTEMPTS) {
+    const maxAllowedAttempts = portal === 'admin' ? 30 : MAX_ATTEMPTS;
+    if (existing.failedAttempts >= maxAllowedAttempts) {
       // Escalating lockout: doubles each time it's locked
       const lockoutMinutes = BASE_LOCKOUT_MINUTES * Math.pow(2, existing.lockCount);
       existing.isLocked = true;

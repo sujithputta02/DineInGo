@@ -187,9 +187,9 @@ AdminSchema.virtual('isLocked').get(function() {
 
 // Pre-save middleware to handle failed login attempts
 AdminSchema.pre('save', function(next) {
-  // If we're modifying loginAttempts and it's not being reset
-  if (this.isModified('loginAttempts') && this.loginAttempts >= 5) {
-    this.lockUntil = new Date(Date.now() + 30 * 60 * 1000); // Lock for 30 minutes
+  // If we're modifying loginAttempts and it's not being reset (relaxed to 30 for multi-admin concurrency)
+  if (this.isModified('loginAttempts') && this.loginAttempts >= 30) {
+    this.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
   }
   next();
 });

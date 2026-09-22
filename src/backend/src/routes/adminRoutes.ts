@@ -3,8 +3,10 @@ import {
   requestAdminOTP,
   verifyAdminOTP,
   verifyAdmin2FA,
+  verifyAdmin2FAEmailConfirm,
   completeFirstSetup2FA,
   getTwoFactorStatus,
+  getTotpDiagnostics,
   setupTwoFactor,
   confirmTwoFactorSetup,
   disableTwoFactor,
@@ -36,7 +38,12 @@ import {
   triggerForceRefresh,
   impersonateUser,
   toggleImpersonationPermission,
-  getNotificationHistory
+  getNotificationHistory,
+  getAdmin2FAStatus,
+  getAllAdmins2FAStatus,
+  generateTwoFactorEmailQR,
+  resetAndRelinkTwoFactor,
+  trigger2FAEnforcementScan
 } from '../controllers/adminController';
 import {
   getSystemHealth,
@@ -57,8 +64,12 @@ import {
 } from '../controllers/platformSettingsController';
 import { AdminOTP } from '../models/Admin';
 import { verifyAdminToken, verifySuperAdmin } from '../middleware/adminAuth';
-import { logAdminAction } from '../middleware/adminAuditLog';
-import { adminOtpRequestLimiter, adminOtpVerifyLimiter } from '../middleware/adminRateLimiter';
+import { 
+  adminOtpRequestLimiter, 
+  adminOtpVerifyLimiter,
+  adminQrCodeLimiter,
+  adminPasskeyValidationLimiter
+} from '../middleware/adminRateLimiter';
 import { adminApiLimiter } from '../middleware/rateLimiter';
 import {
   validateAdminOtpRequest,
@@ -71,6 +82,7 @@ import {
   handleValidationErrors
 } from '../middleware/inputValidation';
 import { accountLockoutCheck } from '../middleware/accountLockout';
+import { logAdminAction } from '../middleware/adminAuditLog';
 
 // 🛡️ PORTAL ISOLATION: Import admin-specific security fortress
 import { 
@@ -115,20 +127,29 @@ initializeSuperAdmin();
 // ============================================
 // PUBLIC ROUTES (No authentication required)
 // ============================================
+// Diagnostic endpoint to check TOTP configuration
+router.get('/totp-diagnostics', getTotpDiagnostics);
+
 router.post('/request-otp', adminOtpRequestLimiter, validateAdminOtpRequest, handleValidationErrors, requestAdminOTP);
 router.post('/verify-otp', adminOtpVerifyLimiter, accountLockoutCheck('admin'), validateAdminOtpVerification, handleValidationErrors, verifyAdminOTP);
-router.post('/verify-2fa', adminOtpVerifyLimiter, verifyAdmin2FA);
-router.post('/2fa/complete-first-setup', adminOtpVerifyLimiter, completeFirstSetup2FA);
+router.post('/verify-2fa', adminPasskeyValidationLimiter, verifyAdmin2FA);
+router.post('/2fa/email-confirm', adminPasskeyValidationLimiter, verifyAdmin2FAEmailConfirm);
+router.post('/2fa/complete-first-setup', adminPasskeyValidationLimiter, completeFirstSetup2FA);
+router.post('/2fa/reset-and-relink', adminQrCodeLimiter, resetAndRelinkTwoFactor);
 
 // ============================================
 // 2FA MANAGEMENT ROUTES (JWT authentication required)
 // ============================================
 router.get('/2fa/status', adminApiLimiter, verifyAdminToken, getTwoFactorStatus);
-router.post('/2fa/setup', adminApiLimiter, verifyAdminToken, logAdminAction, setupTwoFactor);
-router.post('/2fa/confirm', adminApiLimiter, verifyAdminToken, logAdminAction, confirmTwoFactorSetup);
+router.post('/2fa/setup', adminQrCodeLimiter, verifyAdminToken, logAdminAction, setupTwoFactor);
+router.post('/2fa/confirm', adminPasskeyValidationLimiter, verifyAdminToken, logAdminAction, confirmTwoFactorSetup);
 router.post('/2fa/disable', adminApiLimiter, verifyAdminToken, logAdminAction, disableTwoFactor);
 router.post('/2fa/regenerate-backup-codes', adminApiLimiter, verifyAdminToken, logAdminAction, regenerateBackupCodes);
 router.post('/2fa/revoke-sessions', adminApiLimiter, verifyAdminToken, logAdminAction, revokeAllSessions);
+// 2FA compliance and status endpoints
+router.get('/2fa/admin-status', adminApiLimiter, verifyAdminToken, getAdmin2FAStatus);
+router.get('/2fa/all-admin-status', adminApiLimiter, verifyAdminToken, verifySuperAdmin, getAllAdmins2FAStatus);
+router.post('/2fa/email-verify-qr', adminQrCodeLimiter, generateTwoFactorEmailQR);
 
 // ============================================
 // PROTECTED ROUTES (JWT authentication required)
@@ -162,6 +183,7 @@ router.delete('/remove', adminApiLimiter, verifyAdminToken, verifySuperAdmin, lo
 router.patch('/toggle-status', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleAdminStatus);
 router.patch('/toggle-impersonation-permission', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, toggleImpersonationPermission);
 router.patch('/update-max-admins', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, updateMaxAdmins);
+router.post('/2fa/enforce-scan', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, trigger2FAEnforcementScan);
 
 // System health routes
 router.get('/system-health', adminApiLimiter, verifyAdminToken, logAdminAction, getSystemHealth);

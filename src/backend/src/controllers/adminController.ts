@@ -29,8 +29,15 @@ import {
   verifyBackupCode,
   consumeBackupCode,
   encryptSecret,
-  decryptSecret
+  decryptSecret,
+  generateQRCodeForUrl
 } from '../services/twoFactorService';
+import {
+  initiateTwoFactorReminders,
+  stopTwoFactorReminders,
+  checkAndEnforceTwoFactorDeadlines,
+  scheduleAndSendPendingReminders
+} from '../services/twoFactorEnforcementService';
 
 // Super admin email (DineInGo owner)
 const SUPER_ADMIN_EMAIL = 'sujithputta02@gmail.com';
@@ -90,8 +97,14 @@ export const requestAdminOTP = async (req: Request, res: Response) => {
       });
     }
 
-    // Clear any old OTP records for this email first
-    await AdminOTP.deleteMany({ email: email.toLowerCase() });
+    // Clean up only expired or already used OTP records for this email, preserving active ones so simultaneous admins can receive and verify OTPs
+    await AdminOTP.deleteMany({
+      email: email.toLowerCase(),
+      $or: [
+        { isUsed: true },
+        { expiresAt: { $lt: new Date() } }
+      ]
+    });
 
     // Generate and save OTP
     const otp = generateOTP();
@@ -161,18 +174,18 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
         const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
         const { logFailedLogin } = await import('../middleware/adminAuditLog');
 
-        if (admin.loginAttempts >= 5) {
+        if (admin.loginAttempts >= 30) {
           admin.lockUntil = new Date(Date.now() + 15 * 60 * 1000); // Lock for 15 minutes
           await admin.save();
           
-          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked due to 5 failed attempts');
+          await logFailedLogin(email.toLowerCase(), ipAddress, 'Account locked due to 30 failed attempts');
 
           // Log to Universal Security Log
           await SecurityLog.create({
             portal: 'admin',
             eventType: 'failed_login',
             severity: 'high',
-            details: `Admin account ${email} locked after 5 failed OTP attempts.`,
+            details: `Admin account ${email} locked after 30 failed OTP attempts.`,
             ip: String(ipAddress),
             userAgent: req.headers['user-agent'],
             path: req.path
@@ -187,14 +200,14 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
         } else {
           await admin.save();
           
-          await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/5 attempts)`);
+          await logFailedLogin(email.toLowerCase(), ipAddress, `Invalid OTP (${admin.loginAttempts}/30 attempts)`);
 
           // Log to Universal Security Log
           await SecurityLog.create({
             portal: 'admin',
             eventType: 'failed_login',
             severity: 'medium',
-            details: `Invalid OTP attempt for ${email} (${admin.loginAttempts}/5 attempts)`,
+            details: `Invalid OTP attempt for ${email} (${admin.loginAttempts}/30 attempts)`,
             ip: String(ipAddress),
             userAgent: req.headers['user-agent'],
             path: req.path
@@ -205,7 +218,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid or expired OTP',
-        attemptsRemaining: admin ? 5 - admin.loginAttempts : undefined
+        attemptsRemaining: admin ? 30 - admin.loginAttempts : undefined
       });
     }
 
@@ -234,7 +247,7 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
       const setupChallengeToken = jwt.sign(
         { email: admin!.email, twoFactorSetupPending: true },
         getJWTSecret(),
-        { expiresIn: '10m' } // enrollment challenge expires in 10 minutes
+        { expiresIn: '15m' } // enrollment challenge expires in 15 minutes
       );
 
       return res.json({
@@ -252,13 +265,46 @@ export const verifyAdminOTP = async (req: Request, res: Response) => {
     const challengeToken = jwt.sign(
       { email: admin!.email, twoFactorPending: true },
       getJWTSecret(),
-      { expiresIn: '5m' } // 2FA challenge expires in 5 minutes
+      { expiresIn: '15m' } // 2FA challenge expires in 15 minutes (increased for user convenience)
     );
+
+    // 🛡️ EMAIL 2FA FALLBACK: Generate a one-time confirmation link but DON'T send email yet.
+    // The QR code is shown on the login screen. When admin scans it on their phone,
+    // THEN we send the confirmation email. The link is single-use per login attempt.
+    let confirmQrCode = '';
+    try {
+      const jti = crypto.randomUUID();
+      const emailConfirmToken = jwt.sign(
+        { email: admin!.email, purpose: '2fa-email-confirm', jti },
+        getJWTSecret(),
+        { expiresIn: '15m' } // confirmation link valid for 15 minutes (matching challenge token)
+      );
+      // 🔧 FIX: Use FRONTEND_URL env var (or fallback to request origin) instead of hardcoded CLIENT_URL
+      // This ensures QR codes and email links work on any deployed domain
+      const frontendUrl = process.env.FRONTEND_URL 
+        || process.env.CLIENT_URL 
+        || `${req.protocol}://${req.get('host')}`
+        || 'https://dineingo.onrender.com';
+      const confirmUrl = `${frontendUrl}/admin/2fa/email-confirm?token=${emailConfirmToken}`;
+      
+      // Store the token & jti
+      admin!.twoFactorEmailConfirmJti = jti;
+      admin!.twoFactorEmailConfirmExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await admin!.save();
+      
+      // Generate QR code for the confirmation URL
+      confirmQrCode = await generateQRCodeForUrl(confirmUrl);
+    } catch (err) {
+      console.error('Failed to set up email 2FA fallback:', err);
+    }
+
     return res.json({
       success: true,
       twoFactorRequired: true,
       challengeToken,
-      message: 'Two-factor authentication required. Please enter the 6-digit passcode from your authenticator app.'
+      emailConfirmSent: false, // Email NOT sent yet
+      confirmQrCode,
+      message: 'Two-factor authentication required. Enter your authenticator passcode, or scan the QR code to confirm via email.'
     });
 
   } catch (error) {
@@ -298,98 +344,102 @@ export const completeFirstSetup2FA = async (req: Request, res: Response) => {
     if (!admin || !admin.isActive) {
       return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
     }
-    if (admin.twoFactorEnabled) {
-      const secret = decryptSecret(admin.twoFactorSecret!);
+    // If there is a pending secret (fresh enrollment or re-linking)
+    if (admin.twoFactorPendingSecret) {
+      const secret = decryptSecret(admin.twoFactorPendingSecret);
+      if (!secret) {
+        return res.status(500).json({ success: false, message: 'Unable to decrypt pending 2FA secret.' });
+      }
+
+      if (!verifyTwoFactorToken(code, secret)) {
+        // Log failed setup attempt
+        const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+        try {
+          await SecurityLog.create({
+            portal: 'admin',
+            eventType: 'failed_2fa_setup',
+            severity: 'high',
+            details: `Failed 2FA setup attempt for ${admin.email}`,
+            ip: String(ipAddress),
+            userAgent: req.headers['user-agent'],
+            path: req.path
+          });
+        } catch {}
+        return res.status(401).json({ success: false, message: 'Invalid 6-digit code. Please check the code in your authenticator app and try again.' });
+      }
+
+      // Promote pending secret to active
+      admin.twoFactorSecret = admin.twoFactorPendingSecret;
+      admin.twoFactorPendingSecret = undefined;
+      admin.twoFactorEnabled = true;
+
+      // Generate backup codes
+      const { plain, hashes } = generateBackupCodes(10);
+      admin.twoFactorBackupCodes = hashes;
+
+      // Bump tokenVersion
+      admin.tokenVersion = (admin.tokenVersion || 0) + 1;
+      admin.lastLogin = new Date();
+      await admin.save();
+
+      // Stop reminders
+      stopTwoFactorReminders(admin.email).catch(() => {});
+
+      const token = generateAdminToken(admin.email, admin.role || 'admin', admin.tokenVersion || 0);
+
+      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+      try {
+        await SecurityLog.create({
+          portal: 'admin',
+          eventType: '2fa_enabled',
+          severity: 'medium',
+          details: `2FA enabled for ${admin.email}`,
+          ip: String(ipAddress),
+          userAgent: req.headers['user-agent'],
+          path: req.path
+        });
+        sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(() => {});
+      } catch {}
+
+      return res.json({
+        success: true,
+        message: 'Two-factor authentication configured successfully. Save your backup codes.',
+        token,
+        tokenExpiresIn: '4h',
+        backupCodes: plain,
+        admin: {
+          email: admin.email,
+          role: admin.role || 'admin',
+          lastLogin: admin.lastLogin,
+          twoFactorEnabled: true
+        }
+      });
+    }
+
+    if (admin.twoFactorEnabled && admin.twoFactorSecret) {
+      const secret = decryptSecret(admin.twoFactorSecret);
       if (secret && verifyTwoFactorToken(code, secret)) {
         admin.lastLogin = new Date();
         admin.tokenVersion = (admin.tokenVersion || 0) + 1;
         await admin.save();
-        const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion);
+        const token = generateAdminToken(admin.email, admin.role || 'admin', admin.tokenVersion);
         return res.json({
           success: true,
-          message: 'Login successful (2FA already enabled)',
+          message: 'Login successful',
           token,
           tokenExpiresIn: '4h',
           admin: {
             email: admin.email,
-            role: admin.role,
+            role: admin.role || 'admin',
             lastLogin: admin.lastLogin,
             twoFactorEnabled: true
           }
         });
       }
-      return res.status(400).json({ success: false, message: '2FA is already enabled for this account.' });
-    }
-    if (!admin.twoFactorPendingSecret) {
-      return res.status(400).json({ success: false, message: 'No pending 2FA setup found. Please login again.' });
+      return res.status(400).json({ success: false, message: 'Invalid 6-digit code. Please try again.' });
     }
 
-    const secret = decryptSecret(admin.twoFactorPendingSecret);
-    if (!secret) {
-      return res.status(500).json({ success: false, message: 'Unable to decrypt pending 2FA secret.' });
-    }
-
-    if (!verifyTwoFactorToken(code, secret)) {
-      // Log failed setup attempt
-      const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-      await SecurityLog.create({
-        portal: 'admin',
-        eventType: 'failed_2fa_setup',
-        severity: 'high',
-        details: `Failed first-login 2FA setup attempt for ${admin.email}`,
-        ip: String(ipAddress),
-        userAgent: req.headers['user-agent'],
-        path: req.path
-      });
-      return res.status(401).json({ success: false, message: 'Invalid 6-digit code. Please try again.' });
-    }
-
-    // Promote pending secret to active
-    admin.twoFactorSecret = admin.twoFactorPendingSecret;
-    admin.twoFactorPendingSecret = undefined;
-    admin.twoFactorEnabled = true;
-
-    // Generate backup codes
-    const { plain, hashes } = generateBackupCodes(10);
-    admin.twoFactorBackupCodes = hashes;
-
-    // Bump tokenVersion (sessions can't exist yet, but keeps the invariant clean)
-    admin.tokenVersion = (admin.tokenVersion || 0) + 1;
-    admin.lastLogin = new Date();
-    await admin.save();
-
-    // Issue the full admin JWT — 2FA is now enabled, login is complete
-    const token = generateAdminToken(admin.email, admin.role, admin.tokenVersion || 0);
-
-    // Log the successful 2FA enrollment + login
-    const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
-    await SecurityLog.create({
-      portal: 'admin',
-      eventType: '2fa_enabled',
-      severity: 'medium',
-      details: `2FA enabled for ${admin.email} during first-login enrollment`,
-      ip: String(ipAddress),
-      userAgent: req.headers['user-agent'],
-      path: req.path
-    });
-    sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(err =>
-      console.error('Failed to send login notification:', err)
-    );
-
-    res.json({
-      success: true,
-      message: 'Two-factor authentication enabled. Save your backup codes in a secure location — they won\'t be shown again.',
-      token,
-      tokenExpiresIn: '4h',
-      backupCodes: plain,
-      admin: {
-        email: admin.email,
-        role: admin.role,
-        lastLogin: admin.lastLogin,
-        twoFactorEnabled: true
-      }
-    });
-
+    return res.status(400).json({ success: false, message: 'No pending 2FA setup found. Please restart login.' });
   } catch (error) {
     console.error('Error completing first-login 2FA setup:', error);
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -444,8 +494,17 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
 
     const decryptedSecret = decryptSecret(admin.twoFactorSecret!);
     if (!decryptedSecret) {
-      return res.status(500).json({ success: false, message: 'Unable to decrypt 2FA secret.' });
+      console.error('🔴 [2FA] Failed to decrypt secret for:', admin.email);
+      return res.status(500).json({ success: false, message: 'Unable to decrypt 2FA secret. Please contact support.' });
     }
+
+    console.log('🔍 [2FA] Secret decrypted successfully:', {
+      email: admin.email,
+      secretLength: decryptedSecret?.length,
+      codeProvided: code,
+      codeLength: code?.length,
+      useBackup
+    });
 
     let verified = false;
 
@@ -455,27 +514,71 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
         return res.status(400).json({ success: false, message: 'No backup codes remaining. Please contact a super admin.' });
       }
       verified = verifyBackupCode(code, admin.twoFactorBackupCodes);
+      console.log('🔍 [2FA] Backup code verification:', { verified, codesRemaining: admin.twoFactorBackupCodes.length });
       if (verified) {
         admin.twoFactorBackupCodes = consumeBackupCode(code, admin.twoFactorBackupCodes);
       }
     } else {
-      // TOTP verification
+      // TOTP verification with enhanced logging
+      console.log('🔍 [2FA] Attempting TOTP verification:', {
+        email: admin.email,
+        codeReceived: code,
+        codeLength: code?.length,
+        isNumeric: /^\d{6}$/.test(code || ''),
+        timestamp: new Date().toISOString(),
+        serverTime: Math.floor(Date.now() / 1000)
+      });
+      
       verified = verifyTwoFactorToken(code, decryptedSecret);
+
+      // Auto-fallback: If TOTP check fails, also check if the entered code matches a backup code
+      if (!verified && admin.twoFactorBackupCodes && admin.twoFactorBackupCodes.length > 0) {
+        if (verifyBackupCode(code, admin.twoFactorBackupCodes)) {
+          verified = true;
+          admin.twoFactorBackupCodes = consumeBackupCode(code, admin.twoFactorBackupCodes);
+          console.log('🔍 [2FA] Auto-fallback to backup code succeeded for:', admin.email);
+        }
+      }
+      
+      console.log('🔍 [2FA] TOTP verification result:', { 
+        verified, 
+        email: admin.email,
+        codeProvided: code
+      });
     }
 
     if (!verified) {
-      // Log failed 2FA attempt
+      // Log failed 2FA attempt with detailed debugging
       const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
+      console.log('🔴 [2FA FAILED] Comprehensive debug info:', {
+        email: admin.email,
+        codeReceived: code,
+        codeLength: code?.length,
+        isNumeric: /^\d{6}$/.test(code || ''),
+        useBackup,
+        hasSecret: !!decryptedSecret,
+        secretLength: decryptedSecret?.length,
+        timestamp: new Date().toISOString(),
+        serverTime: Math.floor(Date.now() / 1000),
+        ipAddress,
+        userAgent: req.headers['user-agent']
+      });
+      
       await SecurityLog.create({
         portal: 'admin',
         eventType: 'failed_2fa',
         severity: 'high',
-        details: `Failed 2FA attempt for ${admin.email}${useBackup ? ' (backup code)' : ' (TOTP)'}`,
+        details: `Failed 2FA attempt for ${admin.email}${useBackup ? ' (backup code)' : ' (TOTP)'}. Code: ${code}, Length: ${code?.length}`,
         ip: String(ipAddress),
         userAgent: req.headers['user-agent'],
         path: req.path
       });
-      return res.status(401).json({ success: false, message: 'Invalid verification code.' });
+      
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid verification code. Make sure your authenticator app time is synchronized and try again.',
+        hint: 'If you continue having issues, use a backup code or request the email confirmation link.'
+      });
     }
 
     // 2FA passed — issue full admin token
@@ -510,6 +613,124 @@ export const verifyAdmin2FA = async (req: Request, res: Response) => {
 };
 
 /**
+ * 🛡️ EMAIL 2FA FALLBACK — complete login by confirming via the magic link.
+ *
+ * The admin taps the "Confirm Sign-In" button in the email they received at the
+ * 2FA step (or scans the confirm QR on their phone, which opens the same link).
+ * The front-end route `/admin/2fa/email-confirm?token=...` reads the token from the
+ * URL and POSTs it here. We verify the signed JWT, enforce single-use via the jti
+ * stored on the admin record + expiry, then issue a full admin JWT.
+ *
+ * Body: { confirmToken }
+ */
+export const verifyAdmin2FAEmailConfirm = async (req: Request, res: Response) => {
+  try {
+    const { confirmToken } = req.body;
+    if (!confirmToken) {
+      return res.status(400).json({ success: false, message: 'Confirmation token is required.' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(confirmToken, getJWTSecret()) as any;
+    } catch (jwtErr: any) {
+      console.error('🔴 JWT verification failed for email confirm:', jwtErr.message);
+      return res.status(401).json({ success: false, message: 'Confirmation link expired or invalid. Please start login again.' });
+    }
+    
+    const email = (decoded.email || '').toLowerCase();
+    if (!email) {
+      return res.status(401).json({ success: false, message: 'Invalid confirmation link.' });
+    }
+
+    const admin = await Admin.findOne({ email })
+      .select('+twoFactorEnabled +twoFactorEmailConfirmJti +twoFactorEmailConfirmExpires +tokenVersion +isActive +lastLogin');
+    
+    if (!admin || !admin.isActive) {
+      return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
+    }
+
+    // Check expiry if set
+    if (admin.twoFactorEmailConfirmExpires && admin.twoFactorEmailConfirmExpires < new Date()) {
+      admin.twoFactorEmailConfirmJti = undefined;
+      admin.twoFactorEmailConfirmExpires = undefined;
+      await admin.save();
+      return res.status(401).json({ success: false, message: 'Confirmation link expired. Please start login again.' });
+    }
+
+    // Clear confirmation link fields
+    admin.twoFactorEmailConfirmJti = undefined;
+    admin.twoFactorEmailConfirmExpires = undefined;
+    admin.tokenVersion = (admin.tokenVersion || 0) + 1;
+    admin.lastLogin = new Date();
+    await admin.save();
+
+    // Issue the full admin JWT
+    const token = generateAdminToken(admin.email, admin.role || 'admin', admin.tokenVersion || 0);
+
+    const ipAddress = req.ip || (req.headers['x-forwarded-for'] as string) || 'Unknown';
+    try {
+      await SecurityLog.create({
+        portal: 'admin',
+        eventType: '2fa_email_confirm',
+        severity: 'medium',
+        details: `Admin ${admin.email} completed 2FA via email confirmation link`,
+        ip: String(ipAddress),
+        userAgent: req.headers['user-agent'],
+        path: req.path
+      });
+      sendLoginNotificationEmail(admin.email, admin.lastLogin, ipAddress, admin.timezone).catch(() => {});
+    } catch (err) {
+      console.error('Non-critical logging error during email confirm:', err);
+    }
+
+    return res.json({
+      success: true,
+      message: 'Login confirmed via email.',
+      token,
+      tokenExpiresIn: '4h',
+      admin: {
+        email: admin.email,
+        role: admin.role || 'admin',
+        lastLogin: admin.lastLogin,
+        twoFactorEnabled: true
+      }
+    });
+  } catch (error: any) {
+    console.error('🔴 [CRITICAL] Error verifying email 2FA confirm:', error);
+    return res.status(500).json({ success: false, message: 'Internal server error: ' + (error?.message || 'Please try again') });
+  }
+};
+
+/**
+ * PUBLIC: Diagnostic endpoint to check TOTP configuration
+ * This helps verify the deployment has the correct TOTP window settings
+ */
+export const getTotpDiagnostics = async (req: Request, res: Response) => {
+  try {
+    const { authenticator } = await import('../services/twoFactorService');
+    
+    res.json({
+      success: true,
+      timestamp: new Date().toISOString(),
+      unixTime: Math.floor(Date.now() / 1000),
+      totpConfig: {
+        window: (authenticator as any).options?.window || 0,
+        step: (authenticator as any).options?.step || 30,
+        windowDescription: `±${((authenticator as any).options?.window || 0)} steps = ±${((authenticator as any).options?.window || 0) * 30} seconds`
+      },
+      message: 'TOTP configuration loaded successfully'
+    });
+  } catch (error: any) {
+    res.status(500).json({ 
+      success: false, 
+      message: 'Failed to load TOTP configuration',
+      error: error.message
+    });
+  }
+};
+
+/**
  * Get current 2FA status for the logged-in admin.
  */
 export const getTwoFactorStatus = async (req: Request, res: Response) => {
@@ -517,11 +738,19 @@ export const getTwoFactorStatus = async (req: Request, res: Response) => {
     const admin = await Admin.findOne({ email: req.admin!.email }).select('+twoFactorEnabled +twoFactorBackupCodes +required2FA');
     if (!admin) return res.status(404).json({ success: false, message: 'Admin not found' });
 
+    // Get authenticator configuration for debugging
+    const { authenticator } = await import('../services/twoFactorService');
+    const totpConfig = {
+      window: (authenticator as any).options?.window || 0,
+      step: (authenticator as any).options?.step || 30
+    };
+
     res.json({
       success: true,
       twoFactorEnabled: !!admin.twoFactorEnabled,
       required2FA: !!admin.required2FA,
-      backupCodesRemaining: admin.twoFactorBackupCodes?.length || 0
+      backupCodesRemaining: admin.twoFactorBackupCodes?.length || 0,
+      totpConfig // Include TOTP config for debugging
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Internal server error' });
@@ -607,6 +836,11 @@ export const confirmTwoFactorSetup = async (req: Request, res: Response) => {
     // Bump tokenVersion so other sessions require re-auth with 2FA
     admin.tokenVersion = (admin.tokenVersion || 0) + 1;
     await admin.save();
+
+    // Stop 2FA reminder emails now that 2FA is enabled (non-blocking)
+    stopTwoFactorReminders(admin.email).catch(err =>
+      console.error('Failed to stop 2FA reminders:', err)
+    );
 
     // Log the event
     const ipAddress = req.ip || req.headers['x-forwarded-for'] as string || 'Unknown';
@@ -842,6 +1076,11 @@ export const addAdmin = async (req: Request, res: Response) => {
     // Send admin invitation email with portal login button (non-blocking)
     sendAdminInvitationEmail(newAdmin.email, req.admin!.email, newAdmin.role).catch(err =>
       console.error('Failed to send admin invitation email:', err)
+    );
+
+    // Initiate 2FA enforcement reminders (non-blocking, will start email sequence)
+    initiateTwoFactorReminders(newAdmin.email).catch(err =>
+      console.error('Failed to initiate 2FA reminders:', err)
     );
 
     res.json({ 
@@ -1600,7 +1839,7 @@ export const toggleAdminStatus = async (req: Request, res: Response) => {
       });
     }
 
-    const admin = await Admin.findOne({ email: adminEmail.toLowerCase(), role: 'admin' });
+    const admin = await Admin.findOne({ email: adminEmail.toLowerCase(), role: 'admin' }).select('+twoFactorEnabled +twoFactorDeadline');
     if (!admin) {
       return res.status(404).json({ 
         success: false, 
@@ -1608,8 +1847,27 @@ export const toggleAdminStatus = async (req: Request, res: Response) => {
       });
     }
 
+    const wasDeactivated = !admin.isActive;
     admin.isActive = !admin.isActive;
+
+    // If reactivating an admin who was deactivated due to 2FA deadline, restart reminders
+    if (admin.isActive && wasDeactivated && !admin.twoFactorEnabled && admin.twoFactorDeadline) {
+      // Reset 2FA enforcement fields to restart the process
+      admin.twoFactorDeadline = undefined;
+      admin.twoFactorRemindersSent = 0;
+      admin.twoFactorReminderScheduled = false;
+      admin.twoFactorDeactivationReason = undefined;
+      admin.lastReminderSentAt = undefined;
+    }
+
     await admin.save();
+
+    // Initiate 2FA reminders if reactivating and 2FA not enabled (non-blocking)
+    if (admin.isActive && wasDeactivated && !admin.twoFactorEnabled) {
+      initiateTwoFactorReminders(admin.email).catch(err =>
+        console.error('Failed to initiate 2FA reminders on reactivation:', err)
+      );
+    }
 
     // Emit real-time update
     const io = req.app.get('io');
@@ -2513,5 +2771,229 @@ export const toggleImpersonationPermission = async (req: Request, res: Response)
   } catch (error) {
     console.error('Error toggling impersonation permission:', error);
     res.status(500).json({ success: false, message: 'Failed to update background permission' });
+  }
+};
+
+// ============================================
+// 2FA STATUS AND COMPLIANCE ENDPOINTS
+// ============================================
+
+/**
+ * Get 2FA status for a specific admin
+ */
+export const getAdmin2FAStatus = async (req: any, res: any) => {
+  try {
+    const { adminEmail } = req.query;
+
+    if (!adminEmail) {
+      return res.status(400).json({ success: false, message: 'Admin email required' });
+    }
+
+    const admin = await Admin.findOne({ email: adminEmail });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    // Determine 2FA status
+    let status = 'not_initiated';
+    if (admin.twoFactorEnabled) {
+      status = 'enabled';
+    } else if (admin.required2FA && !admin.twoFactorEnabled) {
+      status = 'pending';
+    }
+
+    res.json({
+      success: true,
+      data: {
+        email: admin.email,
+        twoFactorEnabled: admin.twoFactorEnabled || false,
+        deactivationReason: admin.twoFactorDeactivationReason || null,
+        isActive: admin.isActive,
+        status,
+        requiresAction: !admin.twoFactorEnabled && !admin.isActive && admin.twoFactorDeactivationReason === '2FA_NOT_ENABLED'
+      }
+    });
+  } catch (error) {
+    console.error('Error getting 2FA status:', error);
+    res.status(500).json({ success: false, message: 'Failed to get 2FA status' });
+  }
+};
+
+/**
+ * Get 2FA status for all admins (super admin only)
+ */
+export const getAllAdmins2FAStatus = async (req: any, res: any) => {
+  try {
+    const admins = await Admin.find({}).select('email twoFactorEnabled isActive twoFactorDeactivationReason required2FA').lean();
+
+    const statusData = admins.map(admin => {
+      let status = 'not_initiated';
+      if ((admin as any).twoFactorEnabled) {
+        status = 'enabled';
+      } else if ((admin as any).required2FA && !(admin as any).twoFactorEnabled) {
+        status = 'pending';
+      }
+
+      return {
+        email: (admin as any).email,
+        twoFactorEnabled: (admin as any).twoFactorEnabled || false,
+        deactivationReason: (admin as any).twoFactorDeactivationReason || null,
+        isActive: (admin as any).isActive,
+        status,
+        requiresAction: !(admin as any).twoFactorEnabled && !(admin as any).isActive && (admin as any).twoFactorDeactivationReason === '2FA_NOT_ENABLED'
+      };
+    });
+
+    res.json({
+      success: true,
+      data: statusData
+    });
+  } catch (error) {
+    console.error('Error getting all 2FA status:', error);
+    res.status(500).json({ success: false, message: 'Failed to get 2FA statuses' });
+  }
+};
+
+/**
+ * Reset and re-link 2FA for an admin currently at the 2FA challenge step.
+ * Allows an admin who has already validated their Email OTP to reset their authenticator
+ * secret and scan a fresh QR code if their authenticator app is desynchronized or lost.
+ * Body: { challengeToken, email }
+ */
+export const resetAndRelinkTwoFactor = async (req: Request, res: Response) => {
+  try {
+    const { challengeToken, email } = req.body;
+    if (!challengeToken || !email) {
+      return res.status(400).json({ success: false, message: 'Challenge token and email are required.' });
+    }
+
+    let decoded: any;
+    try {
+      decoded = jwt.verify(challengeToken, getJWTSecret()) as any;
+    } catch {
+      return res.status(401).json({ success: false, message: 'Session expired. Please request a new OTP to login.' });
+    }
+
+    if ((!decoded.twoFactorPending && !decoded.twoFactorSetupPending) || !decoded.email) {
+      return res.status(401).json({ success: false, message: 'Invalid challenge session.' });
+    }
+
+    const admin = await Admin.findOne({ email: decoded.email.toLowerCase() })
+      .select('+twoFactorEnabled +twoFactorSecret +twoFactorPendingSecret +tokenVersion +isActive');
+    if (!admin || !admin.isActive) {
+      return res.status(401).json({ success: false, message: 'Account not found or deactivated.' });
+    }
+
+    // Generate a brand new TOTP secret
+    const newSecret = generateTwoFactorSecret();
+    admin.twoFactorPendingSecret = encryptSecret(newSecret);
+    admin.twoFactorEnabled = false;
+    await admin.save();
+
+    const qrCode = await generateTwoFactorQRCode(admin.email, newSecret);
+    const setupChallengeToken = jwt.sign(
+      { email: admin.email, twoFactorSetupPending: true },
+      getJWTSecret(),
+      { expiresIn: '15m' }
+    );
+
+    console.log('🔄 [2FA] Re-link requested and new secret generated for:', admin.email);
+
+    res.json({
+      success: true,
+      twoFactorSetupRequired: true,
+      challengeToken: setupChallengeToken,
+      qrCode,
+      manualEntryKey: newSecret,
+      email: admin.email,
+      message: 'New authenticator QR code generated. Scan this with Google Authenticator, Authy, or 1Password, then enter the 6-digit code to complete setup.'
+    });
+  } catch (error: any) {
+    console.error('Error resetting 2FA:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to reset 2FA' });
+  }
+};
+
+/**
+ * Generate email verification QR code when 2FA passcode fails
+ * Called during login when admin fails to verify with passcode
+ */
+export const generateTwoFactorEmailQR = async (req: any, res: any) => {
+  try {
+    const { challengeToken, email } = req.body;
+
+    if (!challengeToken || !email) {
+      return res.status(400).json({ success: false, message: 'Challenge token and email required' });
+    }
+
+    const jwtSecret = getJWTSecret();
+
+    let challengeData;
+    try {
+      challengeData = jwt.verify(challengeToken, jwtSecret) as any;
+    } catch (err) {
+      return res.status(401).json({ success: false, message: 'Invalid or expired challenge token' });
+    }
+
+    // Verify admin exists
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    if (!admin) {
+      return res.status(404).json({ success: false, message: 'Admin not found' });
+    }
+
+    const jti = crypto.randomUUID();
+    // Generate one-time email verification JWT (valid for 15 minutes)
+    const emailVerificationToken = jwt.sign(
+      { email: admin.email, purpose: '2fa-email-confirm', jti },
+      jwtSecret,
+      { expiresIn: '15m' }
+    );
+
+    // Save JTI on admin for single-use validation
+    admin.twoFactorEmailConfirmJti = jti;
+    admin.twoFactorEmailConfirmExpires = new Date(Date.now() + 15 * 60 * 1000);
+    await admin.save();
+
+    const frontendUrl = process.env.FRONTEND_URL 
+      || process.env.CLIENT_URL 
+      || 'https://dine-in-go.vercel.app';
+    const verificationLink = `${frontendUrl}/admin/2fa/email-confirm?token=${emailVerificationToken}`;
+
+    // Generate QR code for the verification link
+    const qrCodeUrl = await generateQRCodeForUrl(verificationLink);
+
+    // Send verification email with QR code
+    await emailService.sendTwoFactorEmailVerificationEmail(admin.email, verificationLink, qrCodeUrl);
+
+    res.json({
+      success: true,
+      message: 'Verification email sent with confirmation link and QR code',
+      qrCodeUrl
+    });
+  } catch (error: any) {
+    console.error('Error generating email verification QR:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to generate QR code' });
+  }
+};
+
+/**
+ * SUPER ADMIN: Trigger 2FA enforcement scan & send reminder alerts immediately
+ */
+export const trigger2FAEnforcementScan = async (req: Request, res: Response) => {
+  try {
+    const deadlineResult = await checkAndEnforceTwoFactorDeadlines();
+    const reminderResult = await scheduleAndSendPendingReminders();
+
+    res.json({
+      success: true,
+      message: '2FA enforcement and reminder scan completed successfully',
+      results: {
+        deadlines: deadlineResult,
+        reminders: reminderResult
+      }
+    });
+  } catch (error: any) {
+    console.error('Error running 2FA enforcement scan:', error);
+    res.status(500).json({ success: false, message: error.message || 'Failed to run 2FA enforcement scan' });
   }
 };

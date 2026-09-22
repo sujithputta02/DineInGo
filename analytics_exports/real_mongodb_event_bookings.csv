@@ -1,0 +1,61 @@
+Booking_ID,Type,Event_ID,Event_Name,City,Guests,Selected_Seats,Seat_Selection_Type,Total_Amount_INR,Date,Time,Status,User_ID,Created_At
+6a898aa50dc339cc80c7854d,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,497.5,2026-08-22,7:30 PM,pending,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-08-22T11:40:21.714Z
+6a8430834255d3c2cb3525dc,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,1810,2026-08-18,7:30 PM,cancelled,JfgzIie9ZLQu0TxLjN849v7Ed4E2,2026-08-18T10:14:27.089Z
+6a8326c499f7ac7c6692eb96,Event Ticket,,Live Event Experience,Bangalore,3,,General Admission,550,2026-08-18,7:00 PM,pending,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-08-17T15:20:36.225Z
+6a7555e0bcf61080fa3827a1,Event Ticket,69a166b38375a3980d732501,South Indian Cooking Masterclass,Bangalore,1,A2,Visual Seating Map,300,2026-03-05,2:00 PM,confirmed,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-08-07T03:49:52.616Z
+6a75553cbcf61080fa3825ca,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,256,2026-08-07,9:30 PM,pending,tNhXtWeGmagRfkPrcRG0ck6byBo2,2026-08-07T03:47:08.742Z
+6a75552dbcf61080fa3824fb,Event Ticket,,Live Event Experience,Bangalore,3,,General Admission,392.5,2026-08-07,1:30 PM,pending,OAfglRMxOiYJ6Qfj8YdYTbfCSEJ2,2026-08-07T03:46:53.281Z
+6a6620f005f1b197f361026e,Event Ticket,69a12cd3753b600efa1a629e,Sunset Music Festival,Bangalore,3,area-3,Visual Seating Map,150,2026-03-16,17:00,confirmed,YuMRWok48sSXHTjQ3FaPPpnpXFu2,2026-07-26T15:00:00.403Z
+6a66206f05f1b197f3610118,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,970,2026-07-26,9:00 PM,pending,YuMRWok48sSXHTjQ3FaPPpnpXFu2,2026-07-26T14:57:51.333Z
+6a64aeaaa99714ccb149c575,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,531.5,2026-07-25,Night,pending,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-07-25T12:40:10.626Z
+6a574043cde748388864072c,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,563,2026-07-15,Afternoon,cancelled,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-07-15T08:09:39.232Z
+6a48df15bcc48458f3fd800d,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,563,2026-07-04,Night,cancelled,JfgzIie9ZLQu0TxLjN849v7Ed4E2,2026-07-04T10:23:17.808Z
+6a0ffb2f2f97e12fdd6e7202,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,497.5,2026-05-22,8:00 PM,confirmed,iZNzqEkit7PCKfDf8mJGI3sc2LM2,2026-05-22T06:43:59.947Z
+6a0dea62b10611ba7e8f6770,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,531.5,2026-05-20,Night,cancelled,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-05-20T17:07:46.233Z
+6a0dbf270f527f34d620120e,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-05-20,Evening,pending,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-05-20T14:03:19.099Z
+6a0dbd97ffa00737e2820eb0,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-05-20,Evening,cancelled,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-05-20T13:56:39.573Z
+6a0db3ea3be4c03d2689ebe1,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,450,2026-05-20,6:00 PM,confirmed,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-05-20T13:15:22.901Z
+6a03711b3c7ceddddc131e90,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,350,2026-05-13,1:30 PM,confirmed,iZNzqEkit7PCKfDf8mJGI3sc2LM2,2026-05-12T18:27:39.332Z
+6a00b8745449bdaab82de5d5,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-05-10,Night,cancelled,JfgzIie9ZLQu0TxLjN849v7Ed4E2,2026-05-10T16:55:16.547Z
+69df6e804af430caf4dbe1a9,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,700,2026-04-15,6:00 PM,pending,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-04-15T10:54:56.459Z
+69d4c5ed963346c2c377118c,Event Ticket,,Live Event Experience,Bangalore,3,,General Admission,1300,2026-04-07,8:00 PM,confirmed,OAfglRMxOiYJ6Qfj8YdYTbfCSEJ2,2026-04-07T08:53:01.753Z
+69d3a296d0dcf4436e33a742,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,60,2026-04-06,Night,cancelled,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-04-06T12:09:58.327Z
+69d10add826dd5c57c502f8d,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-04-04,Night,confirmed,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-04-04T12:58:05.860Z
+69cd4666414fb7f81b4b1b4d,Event Ticket,69a12cd3753b600efa1a629e,Sunset Music Festival,Bangalore,6,area-3,Visual Seating Map,300,2026-03-16,17:00,confirmed,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-04-01T16:23:02.582Z
+69cd301588873a8409cae114,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-04-01,Night,cancelled,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-04-01T14:47:49.157Z
+69c2c6f08836d314f71dd79f,Event Ticket,,Live Event Experience,Bangalore,6,,General Admission,60,2026-03-27,Evening,cancelled,OAfglRMxOiYJ6Qfj8YdYTbfCSEJ2,2026-03-24T17:16:32.615Z
+69c15f42f298f2956b1ef9a3,Event Ticket,,Live Event Experience,Bangalore,8,,General Admission,30,2026-03-24,Morning,cancelled,OAfglRMxOiYJ6Qfj8YdYTbfCSEJ2,2026-03-23T15:41:54.155Z
+69c15c0df298f2956b1ef1ce,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,550,2026-03-25,11:30 AM,pending,tV22ZEXLIheqS9YJLommJCkAtE52,2026-03-23T15:28:13.086Z
+69c159e0f298f2956b1eebf2,Event Ticket,,Live Event Experience,Bangalore,8,,General Admission,2200,2026-04-21,12:30 PM,confirmed,tNhXtWeGmagRfkPrcRG0ck6byBo2,2026-03-23T15:18:56.003Z
+69c152f6f298f2956b1ee00a,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,250,2026-03-25,12:30 PM,pending,AeevjNsIpzdOW9iTPLhNdkpYJBE2,2026-03-23T14:49:26.839Z
+69c152a0f298f2956b1edf3f,Event Ticket,69a166b38375a3980d732501,South Indian Cooking Masterclass,Bangalore,7,A3;A4;A5;A6;B6;B5;B4,Visual Seating Map,2100,2026-03-05,2:00 PM,confirmed,k6zxDwLCqxTBEEPeKc7OEsxMdDA2,2026-03-23T14:48:00.167Z
+69c15105f298f2956b1edbe3,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,60,2026-03-23,Evening,pending,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-03-23T14:41:09.126Z
+69c14829f298f2956b1eccb9,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-03-31,Night,confirmed,tNhXtWeGmagRfkPrcRG0ck6byBo2,2026-03-23T14:03:21.516Z
+69c13fa5f298f2956b1ec6b2,Event Ticket,69a166b38375a3980d732501,South Indian Cooking Masterclass,Bangalore,1,A1,Visual Seating Map,300,2026-03-05,2:00 PM,confirmed,svnQxuDPQjWo20kNQf8cZbuzrBn1,2026-03-23T13:27:01.978Z
+69c0fb41d953b5c57c73c029,Event Ticket,,Live Event Experience,Bangalore,3,,General Admission,90,2026-03-26,Morning,confirmed,XYigPpCs1mWsRYu5SLTKAw1V3mp1,2026-03-23T08:35:13.478Z
+69c0b9a6a1bc187dc44e7278,Event Ticket,,Live Event Experience,Bangalore,4,,General Admission,350,2026-03-24,11:00 AM,cancelled,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-03-23T03:55:18.295Z
+69bf9037b3fe2ef34254693f,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-03-22,Afternoon,confirmed,X2xzyYuf60WuPLfVxHWn5m3HIdl2,2026-03-22T06:46:15.621Z
+69beaaa21cb1f72fa52834a3,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,600,2026-03-21,8:00 PM,confirmed,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-03-21T14:26:42.368Z
+69bd0b8d62cd0017c427eed6,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-03-20,Evening,cancelled,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-03-20T08:55:41.778Z
+69b8e92a8d6583b48d2245d4,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,120,2026-03-17,Afternoon,confirmed,cT87VYgv1hgukQT7ehEt7x9Eh6h2,2026-03-17T05:39:54.492Z
+69a07c58279db3cc9ab97228,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,60,2026-02-26,Night,cancelled,IIshj8YqtxaFcEnOZaFyDsgwnB72,2026-02-26T17:01:12.171Z
+69a079f17708ee7cc90d3a2b,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,60,2026-02-26,Night,cancelled,IIshj8YqtxaFcEnOZaFyDsgwnB72,2026-02-26T16:50:57.342Z
+69a078347e03325810c68cf8,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,120,2026-02-26,Night,cancelled,IIshj8YqtxaFcEnOZaFyDsgwnB72,2026-02-26T16:43:32.990Z
+699c88fec4d96920b7a703f6,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-02-23,Night,pending,YuMRWok48sSXHTjQ3FaPPpnpXFu2,2026-02-23T17:06:06.116Z
+69969412e8808e5d95549799,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,120,2026-02-19,Evening,cancelled,moBv0RiJSiRQNxypHwKQGvcsNuC2,2026-02-19T04:39:46.652Z
+6992ae9c5264ba3cf92bd8f5,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,120,2026-02-16,Afternoon,cancelled,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-02-16T05:43:56.403Z
+6992a9ba112e20715d3d9bce,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,30,2026-02-17,Afternoon,cancelled,2g1QbEA3gHdSrfp4AvXTKvou0F73,2026-02-16T05:23:06.819Z
+6990b7a0ed91fc508b13a5b7,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,90,2026-02-16,Morning,cancelled,ccF0AmmQmFcksLxOXlTAYbZMFTr1,2026-02-14T17:57:52.992Z
+6936ac8fdecf591c0ba37e73,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,500,2025-12-08,6:00 PM,confirmed,JfgzIie9ZLQu0TxLjN849v7Ed4E2,2025-12-08T10:46:39.046Z
+6936aa24decf591c0ba37ddc,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,400,2025-12-08,8:00 PM,cancelled,JfgzIie9ZLQu0TxLjN849v7Ed4E2,2025-12-08T10:36:20.337Z
+6936a8ece3ba5c2eafa68f70,Event Ticket,,Live Event Experience,Bangalore,5,,General Admission,0,2025-12-08,16:01:06 GMT+0530 (India Standard Time),confirmed,user_a9f9d459-b567-41e5-b411-504f8180b826,2025-12-08T10:31:08.372Z
+692c3cd41a8a1ed8e6d174c3,Event Ticket,692c1a04011a6c69236dc1ca,Wine Tasting Experience,Bangalore,3,E-5;E-4;E-3,Visual Seating Map,3000,2026-01-25,7:00 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T12:47:16.957Z
+692c3c641a8a1ed8e6d17412,Event Ticket,,Live Event Experience,Bangalore,4,,General Admission,1400,2025-11-30,7:30 PM,confirmed,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T12:45:24.462Z
+692c2e190b1018c5aabe0c1f,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,700,2025-11-30,7:30 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T11:44:25.801Z
+692c26f90b1018c5aabe0b04,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,700,2025-11-30,7:30 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T11:14:01.934Z
+692c25cda6c330eb34915560,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,500,2025-11-30,6:00 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T11:09:01.777Z
+692c252cba716ca46145c46f,Event Ticket,,Live Event Experience,Bangalore,2,,General Admission,600,2025-11-30,6:30 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T11:06:20.131Z
+692c22e5b0983a7e55d1bf3a,Event Ticket,692c1a04011a6c69236dc1ca,Wine Tasting Experience,Bangalore,4,H-1;H-2;H-3;H-4,Visual Seating Map,2000,2026-01-25,7:00 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T10:56:37.132Z
+692c1f4acfee2daf36affa86,Event Ticket,692c1a04011a6c69236dc1cc,Craft Beer Workshop,Bangalore,2,F-4;F-3,Visual Seating Map,600,2026-02-20,6:00 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T10:41:14.969Z
+692c1dc2cfee2daf36affa04,Event Ticket,692c1a04011a6c69236dc1ca,Wine Tasting Experience,Bangalore,2,E-1;E-2,Visual Seating Map,2000,2026-01-25,7:00 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T10:34:42.403Z
+692c1bb7cfee2daf36aff9a0,Event Ticket,692c1a04011a6c69236dc1ca,Wine Tasting Experience,Bangalore,2,G-3;G-2,Visual Seating Map,1000,2026-01-25,7:00 PM,cancelled,PjeuuDbSsGOQSpXqgBRrP5EHr1R2,2025-11-30T10:25:59.784Z
