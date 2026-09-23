@@ -85,6 +85,7 @@ export async function adminApiRequest(
 
 // Admin API method implementations as hoisted functions
 export async function getStats() { return adminApiRequest('/api/v1/admin/stats'); }
+export async function getLiveTelemetry() { return adminApiRequest('/api/v1/admin/analytics/live-telemetry'); }
 
 export async function getUsers(params: { page?: number; limit?: number; search?: string; status?: string }) {
   const query = new URLSearchParams(params as any).toString();
@@ -342,6 +343,7 @@ export async function revokeAllSessions() {
 // Admin API combined object for backward compatibility
 export const adminApi = {
   getStats,
+  getLiveTelemetry,
   getUsers,
   toggleUserStatus,
   impersonateUser,

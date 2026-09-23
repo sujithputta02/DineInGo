@@ -19,6 +19,7 @@ import {
   updateMaxAdmins,
   initializeSuperAdmin,
   getAdminStats,
+  getLiveTelemetryAnalytics,
   getAllUsers,
   getAllBusinesses,
   toggleUserStatus,
@@ -161,6 +162,7 @@ router.post('/2fa/email-verify-qr', adminQrCodeLimiter, generateTwoFactorEmailQR
 
 // Dashboard and statistics
 router.get('/stats', adminApiLimiter, verifyAdminToken, logAdminAction, getAdminStats);
+router.get('/analytics/live-telemetry', adminApiLimiter, verifyAdminToken, logAdminAction, getLiveTelemetryAnalytics);
 
 // User management
 router.get('/users', adminApiLimiter, verifyAdminToken, logAdminAction, getAllUsers);
