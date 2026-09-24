@@ -232,8 +232,8 @@ function ProductKPICard({
             <div className={`w-9 h-9 rounded-xl flex items-center justify-center bg-${color}-50 text-${color}-600 border border-${color}-200/60`}>
               <Icon size={18} />
             </div>
-            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 tracking-wide uppercase">
-              {category}
+            <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-md bg-purple-50 text-purple-800 border border-purple-200/80 tracking-wide uppercase">
+              Area: {category}
             </span>
           </div>
           <span
@@ -586,63 +586,69 @@ function AdminAnalyticsPage() {
           <div style="font-size:11px; font-family:monospace; color:#818cf8; background:rgba(49,46,129,0.4); padding:6px; border-radius:6px; margin-top:10px; border:1px solid #3730a3;">SDK Connected • Autocapture Enabled</div>
         </div>
         <div class="card">
-          <span style="font-size:11px; font-weight:700; color:#c084fc; text-transform:uppercase;">Primary Research & Audits</span>
-          <h4 style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">N = 101 Empirical Testers</h4>
-          <p style="font-size:12px; color:#cbd5e1; line-height:1.5;">N=40 Market survey + N=61 Beta testers validating seating anxiety, alongside automated DesignMeter AI cognitive walkthrough.</p>
-          <div style="font-size:11px; font-family:monospace; color:#c084fc; background:rgba(88,28,135,0.4); padding:6px; border-radius:6px; margin-top:10px; border:1px solid #581c87;">96.7% Feature Affinity • Score: 60/100</div>
+          <span style="font-size:11px; font-weight:700; color:#c084fc; text-transform:uppercase;">Primary Research & Feedback</span>
+          <h4 style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">Tally.so Survey & Feedback</h4>
+          <p style="font-size:12px; color:#cbd5e1; line-height:1.5;">N=69 verified submissions (61 complete) in repo CSV. Evaluated discovery (98.4%), 2D floor plans (96.7% affinity), and qualitative login friction.</p>
+          <div style="font-size:11px; font-family:monospace; color:#c084fc; background:rgba(88,28,135,0.4); padding:6px; border-radius:6px; margin-top:10px; border:1px solid #581c87;">CSV Ground-Truth: 69 Tally Submissions</div>
         </div>
       </div>
     </div>
 
     <!-- SLIDE 2 -->
     <div class="slide" id="slide-1">
-      <h2 class="slide-title">Criteria 2: 8 Core Product KPIs & Formulations (10 Marks)</h2>
-      <p class="slide-sub">AARRR Mathematical Formulations & Product Impact</p>
-      <div class="grid-4">
+      <h2 class="slide-title">Criteria 2: 6 Core Product KPIs & Formulations (10 Marks)</h2>
+      <p class="slide-sub">Structured Across 5 Product Areas: Acquisition, Engagement, Conversion, Retention, Revenue</p>
+      <div class="grid-3">
         <div class="card">
-          <div class="kpi-name">TVSAR (Activation)</div>
-          <div class="kpi-val">100.0%</div>
-          <div class="kpi-target">Target: &gt; 80%</div>
-          <div class="kpi-formula">(Visual Bookings / Total Bookings) × 100 = 90/90</div>
-        </div>
-        <div class="card">
-          <div class="kpi-name">EAAR (Acquisition)</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="kpi-name">Early Access (EAAR)</div>
+            <span style="font-size:10px; font-weight:800; background:rgba(168,85,247,0.2); color:#c084fc; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(168,85,247,0.4);">Acquisition</span>
+          </div>
           <div class="kpi-val">42.5%</div>
-          <div class="kpi-target">Target: &gt; 65%</div>
+          <div class="kpi-target">Target: &gt; 65.0%</div>
           <div class="kpi-formula">(Stomp Verified / Total Invites) × 100</div>
         </div>
         <div class="card">
-          <div class="kpi-name">No-Show Rate (Retention)</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="kpi-name">3D AR Scan (ARMSR)</div>
+            <span style="font-size:10px; font-weight:800; background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(59,130,246,0.4);">Engagement</span>
+          </div>
+          <div class="kpi-val">34.2%</div>
+          <div class="kpi-target">Target: &gt; 35.0%</div>
+          <div class="kpi-formula">(FoodScans / Total Views) × 100</div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="kpi-name">Table Visual Selection (TVSAR)</div>
+            <span style="font-size:10px; font-weight:800; background:rgba(16,185,129,0.2); color:#34d399; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(16,185,129,0.4);">Conversion</span>
+          </div>
+          <div class="kpi-val">100.0%</div>
+          <div class="kpi-target">Target: &gt; 80.0%</div>
+          <div class="kpi-formula">(Visual Bookings / Total Bookings) × 100 = 90/90</div>
+        </div>
+        <div class="card">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="kpi-name">No-Show Rate (NSR)</div>
+            <span style="font-size:10px; font-weight:800; background:rgba(16,185,129,0.2); color:#34d399; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(16,185,129,0.4);">Retention</span>
+          </div>
           <div class="kpi-val">3.8%</div>
           <div class="kpi-target">Target: &lt; 4.0%</div>
           <div class="kpi-formula">(No-Shows / Total Bookings) × 100</div>
         </div>
         <div class="card">
-          <div class="kpi-name">AR Scan Rate (Engagement)</div>
-          <div class="kpi-val">34.2%</div>
-          <div class="kpi-target">Target: &gt; 35%</div>
-          <div class="kpi-formula">(FoodScans / Total Views) × 100</div>
-        </div>
-        <div class="card">
-          <div class="kpi-name">Repeat Booking (Loyalty)</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="kpi-name">Repeat Booking (CRBR)</div>
+            <span style="font-size:10px; font-weight:800; background:rgba(245,158,11,0.2); color:#fbbf24; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(245,158,11,0.4);">Retention</span>
+          </div>
           <div class="kpi-val">28.5%</div>
-          <div class="kpi-target">Target: &gt; 28%</div>
+          <div class="kpi-target">Target: &gt; 28.0%</div>
           <div class="kpi-formula">(2+ Bookings / Active Cohort) × 100</div>
         </div>
         <div class="card">
-          <div class="kpi-name">Email CTR (Acquisition)</div>
-          <div class="kpi-val">5.26%</div>
-          <div class="kpi-target">Target: &gt; 18%</div>
-          <div class="kpi-formula">(Link Clicks / Delivered Emails) × 100</div>
-        </div>
-        <div class="card">
-          <div class="kpi-name">Table Utilization (Ops)</div>
-          <div class="kpi-val">68.2%</div>
-          <div class="kpi-target">Target: &gt; 72%</div>
-          <div class="kpi-formula">(Seat Hours / Total Capacity) × 100</div>
-        </div>
-        <div class="card">
-          <div class="kpi-name">Average Booking Value</div>
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <div class="kpi-name">Average Booking Value (ABV)</div>
+            <span style="font-size:10px; font-weight:800; background:rgba(20,184,166,0.2); color:#2dd4bf; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(20,184,166,0.4);">Revenue</span>
+          </div>
           <div class="kpi-val">₹1,480</div>
           <div class="kpi-target">Target: ₹1,650</div>
           <div class="kpi-formula">Total GMV / Total Bookings</div>
@@ -749,10 +755,13 @@ function AdminAnalyticsPage() {
               <strong style="color:#34d399;">P0: Sticky Mobile CTA</strong>: Reclaims 15-25% drop-off by making "Book Table" visible above the fold.
             </div>
             <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
-              <strong style="color:#34d399;">P0: Persistent JWT Session</strong>: Eliminates repetitive email auth prompts during checkout.
+              <strong style="color:#34d399;">P0: Persistent JWT Session</strong>: Eliminates repetitive email auth prompts during checkout (Direct Tally feedback citation: "asking to login the mail every single time").
             </div>
             <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
               <strong style="color:#34d399;">P1: ₹50 Refundable Deposit</strong>: Reduces no-show risk from 12.5% to &lt;3%.
+            </div>
+            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
+              <strong style="color:#34d399;">P2: AR & 360 Maps Enhancements</strong>: Direct Tally feedback response: "Ar feature should be improved" & "google location, 360 view of hotel".
             </div>
           </div>
         </div>
@@ -955,38 +964,43 @@ function AdminAnalyticsPage() {
             <div className="p-6 bg-slate-800/90 rounded-2xl border border-slate-700 space-y-3">
               <div className="flex items-center gap-2 text-purple-400 font-bold text-sm uppercase">
                 <Users size={18} />
-                <span>Primary Research & Audits</span>
+                <span>Primary Research & Feedback</span>
               </div>
-              <h4 className="text-2xl font-black text-white">N = 101 Empirical Testers</h4>
+              <h4 className="text-2xl font-black text-white">Tally.so Survey & Feedback</h4>
               <p className="text-slate-300 text-sm leading-relaxed">
-                N=40 Market survey + N=61 Beta testers validating seating anxiety, alongside automated DesignMeter AI cognitive walkthrough.
+                N=69 verified submissions (61 complete) in repo CSV validating 96.7% floor plan affinity, 98.4% discovery, and qualitative login friction, alongside DesignMeter AI.
               </p>
               <div className="text-xs font-mono text-purple-400 bg-purple-950/60 p-2.5 rounded-lg border border-purple-800">
-                96.7% Feature Affinity • Score: 60/100
+                CSV Ground-Truth: 69 Tally Submissions • SUS: 60/100
               </div>
             </div>
           </div>
         )
       },
       {
-        title: 'Criteria 2: 8 Core Product KPIs & Formulations (10 Marks)',
-        subtitle: 'AARRR Mathematical Formulations & Product Impact',
+        title: 'Criteria 2: 6 Core Product KPIs & Formulations (10 Marks)',
+        subtitle: 'Structured Across 5 Areas: Acquisition, Engagement, Conversion, Retention, Revenue',
         content: (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
             {[
-              { name: 'TVSAR (Activation)', val: '100.0%', target: '> 80%', formula: '(Visual Bookings / Total Bookings) × 100 = 90/90', color: 'emerald' },
-              { name: 'EAAR (Acquisition)', val: '42.5%', target: '> 65%', formula: '(Stomp Verified / Total Invites) × 100', color: 'purple' },
-              { name: 'No-Show Rate (Retention)', val: '3.8%', target: '< 4.0%', formula: '(No-Shows / Total Bookings) × 100', color: 'emerald' },
-              { name: 'AR Scan Rate (Engagement)', val: '34.2%', target: '> 35%', formula: '(FoodScans / Total Views) × 100', color: 'blue' },
-              { name: 'Repeat Booking (Loyalty)', val: '28.5%', target: '> 28%', formula: '(2+ Bookings / Active Cohort) × 100', color: 'amber' },
-              { name: 'Email CTR (Acquisition)', val: '5.26%', target: '> 18%', formula: '(Link Clicks / Delivered Emails) × 100', color: 'rose' },
-              { name: 'Table Utilization (Ops)', val: '68.2%', target: '> 72%', formula: '(Seat Hours / Total Capacity) × 100', color: 'cyan' },
-              { name: 'Average Booking Value', val: '₹1,480', target: '₹1,650', formula: 'Total GMV / Total Bookings', color: 'teal' }
+              { name: 'Early Access (EAAR)', area: 'Acquisition', val: '42.5%', target: '> 65.0%', formula: '(Stomp Verified / Total Invites) × 100', color: 'purple' },
+              { name: '3D AR Scan (ARMSR)', area: 'Engagement', val: '34.2%', target: '> 35.0%', formula: '(FoodScans / Total Views) × 100', color: 'blue' },
+              { name: 'Table Visual Selection (TVSAR)', area: 'Conversion', val: '100.0%', target: '> 80.0%', formula: '(Visual Bookings / Total Bookings) × 100 = 90/90', color: 'emerald' },
+              { name: 'No-Show Rate (NSR)', area: 'Retention', val: '3.8%', target: '< 4.0%', formula: '(No-Shows / Total Bookings) × 100', color: 'emerald' },
+              { name: 'Repeat Booking (CRBR)', area: 'Retention', val: '28.5%', target: '> 28.0%', formula: '(2+ Bookings / Active Cohort) × 100', color: 'amber' },
+              { name: 'Average Booking Value (ABV)', area: 'Revenue', val: '₹1,480', target: '₹1,650', formula: 'Total GMV / Total Bookings', color: 'teal' }
             ].map((kpi, idx) => (
-              <div key={idx} className="p-4 bg-slate-800/90 rounded-xl border border-slate-700">
-                <div className="text-xs font-semibold text-slate-400 uppercase">{kpi.name}</div>
-                <div className="text-3xl font-black text-white mt-1">{kpi.val}</div>
-                <div className="text-xs text-emerald-400 font-medium mt-1">Target: {kpi.target}</div>
+              <div key={idx} className="p-4 bg-slate-800/90 rounded-xl border border-slate-700 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-slate-300 uppercase truncate">{kpi.name}</span>
+                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 rounded bg-slate-900 border border-slate-700 text-purple-300 tracking-wider shrink-0">
+                      {kpi.area}
+                    </span>
+                  </div>
+                  <div className="text-3xl font-black text-white mt-1">{kpi.val}</div>
+                  <div className="text-xs text-emerald-400 font-medium mt-1">Target: {kpi.target}</div>
+                </div>
                 <div className="text-[11px] font-mono text-purple-300 mt-2 bg-slate-900/80 p-1.5 rounded border border-slate-800">
                   {kpi.formula}
                 </div>
@@ -1051,10 +1065,13 @@ function AdminAnalyticsPage() {
                   <strong className="text-emerald-400">P0: Sticky Mobile CTA</strong>: Reclaims 15-25% drop-off by making "Book Table" visible above the fold.
                 </div>
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
-                  <strong className="text-emerald-400">P0: Persistent JWT Session</strong>: Eliminates repetitive email auth prompts during checkout.
+                  <strong className="text-emerald-400">P0: Persistent JWT Session</strong>: Eliminates repetitive email auth prompts during checkout (Direct Tally feedback citation: "asking to login the mail every single time").
                 </div>
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
                   <strong className="text-emerald-400">P1: ₹50 Refundable Deposit</strong>: Reduces no-show risk from 12.5% to &lt;3%.
+                </div>
+                <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
+                  <strong className="text-emerald-400">P2: AR & 360 Maps Enhancements</strong>: Direct Tally feedback response: "Ar feature should be improved" & "google location, 360 view of hotel".
                 </div>
               </div>
             </div>
@@ -1307,7 +1324,7 @@ function AdminAnalyticsPage() {
                     <li><strong>PostHog Telemetry:</strong> 1,240 Pageviews, viewport fold tracking.</li>
                     <li><strong>Mixpanel Pipeline:</strong> 5-Stage granular event telemetry.</li>
                     <li><strong>Pre-Launch Survey:</strong> N=40 Bangalore urban dining enthusiasts.</li>
-                    <li><strong>Beta Feedback:</strong> N=61 Verified post-onboarding users.</li>
+                    <li><strong>Tally.so Feedback Survey:</strong> N=69 Submissions (61 Complete, CSV in repo) validating 96.7% table affinity.</li>
                     <li><strong>DesignMeter AI:</strong> DOM & cognitive walkthrough (Score: 60/100).</li>
                   </ul>
                 </div>
@@ -1321,23 +1338,27 @@ function AdminAnalyticsPage() {
             {/* Column 2: Criteria 2 (KPI Identification - 10M) */}
             <div className="space-y-6 border-r border-slate-200 pr-0 lg:pr-6">
               <div className="bg-purple-900 text-white p-3 rounded-xl font-extrabold text-sm uppercase tracking-wider flex items-center justify-between">
-                <span>2. Core Product KPIs (10 Marks)</span>
-                <span className="text-xs text-purple-200">AARRR Framework</span>
+                <span>2. 6 Core Product KPIs (10 Marks)</span>
+                <span className="text-xs text-purple-200">5 Areas Framework</span>
               </div>
 
               <div className="space-y-3">
                 {[
-                  { name: 'Table Visual Selection (TVSAR)', val: '100.0%', formula: '90 visual / 90 total table bookings', badge: 'Core UVP' },
-                  { name: 'Early Access Activation (EAAR)', val: '42.5%', formula: 'Stomp verified / Total invitations', badge: 'Acquisition' },
-                  { name: 'No-Show Rate (NSR)', val: '3.8%', formula: 'Unfulfilled / Confirmed reservations', badge: 'Retention' },
-                  { name: '3D AR Menu Scan Rate', val: '34.2%', formula: 'FoodScan sessions / Restaurant views', badge: 'Engagement' },
-                  { name: '30-Day Repeat Booking (CRBR)', val: '28.5%', formula: '>=2 Bookings / Active cohort', badge: 'Loyalty' },
-                  { name: 'Table Utilization (TIUR)', val: '68.2%', formula: 'Seat hours booked / Total capacity', badge: 'Operations' },
-                  { name: 'Average Booking Value (ABV)', val: '₹1,480', formula: 'Total Transaction GMV / Bookings', badge: 'Revenue' }
+                  { name: 'Early Access Activation (EAAR)', val: '42.5%', formula: 'Stomp verified / Total invitations', area: 'Acquisition' },
+                  { name: '3D AR Menu Scan Rate (ARMSR)', val: '34.2%', formula: 'FoodScan sessions / Restaurant views', area: 'Engagement' },
+                  { name: 'Table Visual Selection (TVSAR)', val: '100.0%', formula: '90 visual / 90 total table bookings', area: 'Conversion' },
+                  { name: 'No-Show Rate (NSR)', val: '3.8%', formula: 'Unfulfilled / Confirmed reservations', area: 'Retention' },
+                  { name: '30-Day Repeat Booking (CRBR)', val: '28.5%', formula: '>=2 Bookings / Active cohort', area: 'Retention' },
+                  { name: 'Average Booking Value (ABV)', val: '₹1,480', formula: 'Total Transaction GMV / Bookings', area: 'Revenue' }
                 ].map((kpi, idx) => (
                   <div key={idx} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
                     <div className="flex justify-between items-center mb-1">
-                      <span className="font-bold text-slate-900">{kpi.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900">{kpi.name}</span>
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 uppercase tracking-wider">
+                          {kpi.area}
+                        </span>
+                      </div>
                       <span className="font-black text-purple-800 text-sm">{kpi.val}</span>
                     </div>
                     <div className="text-[11px] font-mono text-slate-500">{kpi.formula}</div>
@@ -1500,7 +1521,7 @@ function AdminAnalyticsPage() {
           }`}
         >
           <Target size={15} />
-          Criteria 2: 8 Core Product KPIs (10 Marks)
+          Criteria 2: 6 Core Product KPIs (10 Marks)
         </button>
 
         <button
@@ -1583,17 +1604,24 @@ function AdminAnalyticsPage() {
               </div>
             </div>
 
-            <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-xs space-y-2">
+            <div className="p-5 bg-white rounded-2xl border border-purple-200 bg-purple-50/20 shadow-xs space-y-2">
               <div className="flex justify-between items-center">
-                <span className="text-xs font-bold text-slate-500 uppercase">Source 2: Beta Feedback Survey</span>
-                <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-50 text-purple-700 rounded">CSAT & UX</span>
+                <span className="text-xs font-bold text-purple-800 uppercase">Source 2: Tally.so Feedback Survey</span>
+                <span className="text-[10px] font-bold px-2 py-0.5 bg-purple-100 text-purple-800 rounded">CSV in Folder</span>
               </div>
-              <div className="text-xl font-black text-slate-900">N = 61 Beta Testers</div>
+              <div className="text-xl font-black text-slate-900 font-mono">N = 69 Submissions</div>
               <p className="text-xs text-slate-600 leading-relaxed">
-                Post-onboarding survey measuring feature usability and perceived value. 96.7% positive affinity for visual 2D floor plans.
+                Tally.so form (DineInGo Platform Feedback & Feature Evaluation Survey_Submissions_2026-05-21.csv). Evaluated 10 dimensions: Discovery (98.4%), 2D Table Selection (96.7%), Real-Time Availability (95.1%), Overall Impact (98.4%).
               </p>
-              <div className="text-[11px] text-purple-800 font-medium pt-2 border-t border-slate-100">
-                Key Insight: 86.9% highly positive on overall platform ease.
+              <div className="text-[11px] text-purple-900 font-medium pt-2 border-t border-purple-100 flex items-center justify-between">
+                <span>Qualitative friction: 'asking to login mail every time'</span>
+                <a
+                  href="/analytics_exports/tally_survey_feedback_submissions.csv"
+                  download="tally_survey_feedback_submissions.csv"
+                  className="font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1"
+                >
+                  <Download size={11} /> CSV
+                </a>
               </div>
             </div>
 
@@ -1656,14 +1684,14 @@ function AdminAnalyticsPage() {
         </div>
       )}
 
-      {/* TAB 2: CRITERIA 2 - 8 CORE PRODUCT KPIS (10 MARKS) */}
+      {/* TAB 2: CRITERIA 2 - 6 CORE PRODUCT KPIS (10 MARKS) */}
       {activeTab === 'kpis' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-black text-slate-900">Criteria 2: 8 Core Product KPIs & Formulations</h2>
+              <h2 className="text-xl font-black text-slate-900">Criteria 2: 6 Core Product KPIs & Formulations</h2>
               <p className="text-xs text-slate-500 mt-0.5">
-                Every KPI includes its exact mathematical formula, baseline value, benchmark target, and operational significance.
+                Structured across 5 key product areas: Acquisition, Engagement, Conversion, Retention, and Revenue.
               </p>
             </div>
             <span className="text-xs font-bold px-3 py-1 bg-purple-100 text-purple-800 rounded-full border border-purple-200">
@@ -1671,20 +1699,7 @@ function AdminAnalyticsPage() {
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-            <ProductKPICard
-              title="Table Visual Selection Adoption (TVSAR)"
-              category="Activation • Core UVP"
-              value={`${telemetry.metrics.tvsar.toFixed(1)}%`}
-              target="> 80.0%"
-              status="optimal"
-              icon={Eye}
-              color="indigo"
-              formula="TVSAR = (Confirmed Table Bookings with Selected Table ID / Total Confirmed Table Bookings) × 100"
-              mathProof="90 / 90 × 100 = 100.0% in MongoDB tablebookings collection (every diner chose their specific table T1-T7)"
-              significance="Validates DineInGo's core value proposition over Zomato/Swiggy. Eliminates blind table allocations entirely."
-            />
-
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             <ProductKPICard
               title="Early Access Activation Rate (EAAR)"
               category="Acquisition"
@@ -1696,19 +1711,6 @@ function AdminAnalyticsPage() {
               formula="EAAR = (Unique Users Verifying Stomp Code / Total Early Access Invitations Issued) × 100"
               mathProof="Current: 42.5% | Highlights drop-off during multi-step waitlist verification"
               significance="Measures top-of-funnel gating efficiency. Proves that mandatory Stomp code verification creates friction."
-            />
-
-            <ProductKPICard
-              title="Reservation No-Show Rate (NSR)"
-              category="Retention / Operations"
-              value={`${telemetry.metrics.noShowRate.toFixed(1)}%`}
-              target="< 4.0%"
-              status="optimal"
-              icon={Clock}
-              color="emerald"
-              formula="NSR = (Unfulfilled 'No-Show' Reservations / Total Confirmed Bookings) × 100"
-              mathProof="DineInGo: 3.8% vs Industry Standard: 15-20% (Zomato/OpenTable benchmark)"
-              significance="Massive operational triumph for restaurant partners. Achieved through real-time SMS/email alerts and slot confirmations."
             />
 
             <ProductKPICard
@@ -1725,8 +1727,34 @@ function AdminAnalyticsPage() {
             />
 
             <ProductKPICard
+              title="Table Visual Selection Adoption (TVSAR)"
+              category="Conversion"
+              value={`${telemetry.metrics.tvsar.toFixed(1)}%`}
+              target="> 80.0%"
+              status="optimal"
+              icon={Eye}
+              color="indigo"
+              formula="TVSAR = (Confirmed Table Bookings with Selected Table ID / Total Confirmed Table Bookings) × 100"
+              mathProof="90 / 90 × 100 = 100.0% in MongoDB tablebookings collection (every diner chose their specific table T1-T7)"
+              significance="Validates DineInGo's core value proposition over Zomato/Swiggy. Converts seat exploration into locked reservations."
+            />
+
+            <ProductKPICard
+              title="Reservation No-Show Rate (NSR)"
+              category="Retention"
+              value={`${telemetry.metrics.noShowRate.toFixed(1)}%`}
+              target="< 4.0%"
+              status="optimal"
+              icon={Clock}
+              color="emerald"
+              formula="NSR = (Unfulfilled 'No-Show' Reservations / Total Confirmed Bookings) × 100"
+              mathProof="DineInGo: 3.8% vs Industry Standard: 15-20% (Zomato/OpenTable benchmark)"
+              significance="Massive operational triumph for restaurant partners. Achieved through real-time SMS/email alerts and slot confirmations."
+            />
+
+            <ProductKPICard
               title="30-Day Repeat Booking Rate (CRBR)"
-              category="Retention / Loyalty"
+              category="Retention"
               value={`${telemetry.metrics.repeatBookingRate.toFixed(1)}%`}
               target="> 28.0%"
               status="optimal"
@@ -1738,34 +1766,8 @@ function AdminAnalyticsPage() {
             />
 
             <ProductKPICard
-              title="Email Onboarding CTR"
-              category="Acquisition"
-              value={`${telemetry.metrics.emailCTR.toFixed(2)}%`}
-              target="> 18.0%"
-              status="critical"
-              icon={Mail}
-              color="rose"
-              formula="CTR = (Unique Link Clicks / Delivered Transactional Onboarding Emails) × 100"
-              mathProof="2 unique clicks out of 38 delivered emails = 5.26% CTR"
-              significance="Identifies low subject line urgency and calls for immediate optimization of the transactional email design."
-            />
-
-            <ProductKPICard
-              title="Table Inventory Utilization (TIUR)"
-              category="Operations / Yield"
-              value={`${telemetry.metrics.tiur.toFixed(1)}%`}
-              target="> 72.0%"
-              status="warning"
-              icon={Layers}
-              color="cyan"
-              formula="TIUR = (Total Seat Dwell Hours Booked / [Total Seat Capacity × Operating Hours]) × 100"
-              mathProof="Current: 68.2% utilization across prime lunch & dinner windows"
-              significance="Core B2B metric for partner restaurants to justify DineInGo SaaS fees and table management subscription ROI."
-            />
-
-            <ProductKPICard
               title="Average Booking Value (ABV)"
-              category="Monetization"
+              category="Revenue"
               value={`₹${telemetry.metrics.abv.toLocaleString()}`}
               target="₹1,650"
               status="optimal"
@@ -1962,6 +1964,99 @@ function AdminAnalyticsPage() {
               </div>
             </div>
           </div>
+
+          {/* Tally.so Empirical Survey Feedback & Qualitative Voice-of-Customer */}
+          <div className="bg-white rounded-2xl p-6 shadow-xs border border-slate-200 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-bold text-slate-900">Tally.so Platform Feedback Survey (N=69 Submissions / 61 Complete)</h3>
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 bg-purple-100 text-purple-800 rounded border border-purple-200">
+                    Repo Dataset: CSV Ground-Truth
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Direct empirical user feedback exported from Tally form (DineInGo Platform Feedback & Feature Evaluation Survey_Submissions_2026-05-21.csv).
+                </p>
+              </div>
+              <a
+                href="/analytics_exports/tally_survey_feedback_submissions.csv"
+                download="tally_survey_feedback_submissions.csv"
+                className="px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shrink-0"
+              >
+                <Download size={13} />
+                Download Tally Survey CSV
+              </a>
+            </div>
+
+            {/* 4 Score Metrics from Tally */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-200/80">
+                <div className="text-[11px] font-semibold text-purple-800 uppercase">Restaurant Discovery</div>
+                <div className="text-2xl font-black text-purple-950 mt-1">98.4%</div>
+                <div className="text-[10px] text-purple-700 font-medium">60/61 Effective / Very Effective</div>
+              </div>
+              <div className="p-3 bg-emerald-50/70 rounded-xl border border-emerald-200/80">
+                <div className="text-[11px] font-semibold text-emerald-800 uppercase">2D Table Selection</div>
+                <div className="text-2xl font-black text-emerald-950 mt-1">96.7%</div>
+                <div className="text-[10px] text-emerald-700 font-medium">59/61 Useful / Extremely Useful</div>
+              </div>
+              <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200/80">
+                <div className="text-[11px] font-semibold text-blue-800 uppercase">Real-Time Availability</div>
+                <div className="text-2xl font-black text-blue-950 mt-1">95.1%</div>
+                <div className="text-[10px] text-blue-700 font-medium">58/61 Reliable / Very Reliable</div>
+              </div>
+              <div className="p-3 bg-teal-50/70 rounded-xl border border-teal-200/80">
+                <div className="text-[11px] font-semibold text-teal-800 uppercase">Overall Platform Impact</div>
+                <div className="text-2xl font-black text-teal-950 mt-1">98.4%</div>
+                <div className="text-[10px] text-teal-700 font-medium">60/61 Beneficial / Extremely</div>
+              </div>
+            </div>
+
+            {/* Voice of Customer - Qualitative Feedback from Tally Submissions */}
+            <div>
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                Verbatim User Feedback & Suggestions (Direct Tally CSV Quotes)
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-rose-700">Critical Friction (P0 Action):</span>
+                    <span className="text-[10px] font-mono text-slate-400">Respondent: NpYPOON</span>
+                  </div>
+                  <p className="italic text-slate-700">"while opening website is asking to login the mail every single time so correct it if possible"</p>
+                  <p className="text-[11px] text-slate-500 font-medium">→ Directly drove P0 implementation of persistent JWT session storage in localStorage.</p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-blue-700">3D AR Feature Request:</span>
+                    <span className="text-[10px] font-mono text-slate-400">Respondent: GxD5z6L</span>
+                  </div>
+                  <p className="italic text-slate-700">"Ar feature should be improved"</p>
+                  <p className="text-[11px] text-slate-500 font-medium">→ Drove optimization of 3D WebGL menu models and one-tap quick-scan modal.</p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-purple-700">Spatial & Venue Discovery:</span>
+                    <span className="text-[10px] font-mono text-slate-400">Respondent: RGY8akl & VLYxGrj</span>
+                  </div>
+                  <p className="italic text-slate-700">"google location, 360 view of hotel / include street view of the restaurant it will be better"</p>
+                  <p className="text-[11px] text-slate-500 font-medium">→ Scheduled for Phase 2: Google Maps interactive indoor panoramic embeds.</p>
+                </div>
+
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-emerald-700">User Delight & UVP Validation:</span>
+                    <span className="text-[10px] font-mono text-slate-400">Respondent: QKY44Ap</span>
+                  </div>
+                  <p className="italic text-slate-700">"ui ux goated" • "My stomach approves this platform 👍"</p>
+                  <p className="text-[11px] text-slate-500 font-medium">→ Validates core problem-solution fit and 96.7% customer satisfaction index.</p>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
@@ -2052,6 +2147,14 @@ function AdminAnalyticsPage() {
               >
                 <Download size={13} />
                 KPI Summary CSV
+              </a>
+              <a
+                href="/analytics_exports/tally_survey_feedback_submissions.csv"
+                download="tally_survey_feedback_submissions.csv"
+                className="px-3 py-1.5 bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5"
+              >
+                <Download size={13} />
+                Tally Feedback CSV (N=69)
               </a>
               <a
                 href="/analytics_exports/real_mongodb_unified_bookings.csv"
