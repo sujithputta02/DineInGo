@@ -30,7 +30,8 @@ import {
   X,
   Maximize2,
   FileText,
-  AlertCircle
+  AlertCircle,
+  Presentation
 } from 'lucide-react';
 import {
   LineChart,
@@ -48,6 +49,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import { adminApi } from '../utils/adminApi';
+import PptxGenJS from 'pptxgenjs';
 
 interface AnalyticsData {
   overview: {
@@ -371,7 +373,7 @@ function AdminAnalyticsPage() {
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (viewMode !== 'presentation') return;
     if (e.key === 'ArrowRight' || e.key === ' ') {
-      setPresentationSlide(prev => Math.min(prev + 1, 3));
+      setPresentationSlide(prev => Math.min(prev + 1, 4));
     } else if (e.key === 'ArrowLeft') {
       setPresentationSlide(prev => Math.max(prev - 1, 0));
     } else if (e.key === 'Escape') {
@@ -384,439 +386,708 @@ function AdminAnalyticsPage() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [handleKeyDown]);
 
-  // Download entire presentation deck as multi-page landscape PDF
-  const handleDownloadDeckPdf = () => {
-    if (viewMode !== 'presentation') {
-      setViewMode('presentation');
-      setPresentationSlide(0);
-      setTimeout(() => {
-        window.print();
-      }, 350);
-    } else {
-      window.print();
+  // Export exact 16:9 presentation deck to native PowerPoint (.pptx)
+  const handleDownloadDeckPptx = async () => {
+    try {
+      const pptx = new PptxGenJS();
+      pptx.layout = 'LAYOUT_16x9';
+      pptx.author = 'Putta Sujith, K Vikas Aneesh Reddy, E Yashas Kumar, Karnati Mokshith, P Jeevan Kumar Reddy';
+      pptx.company = 'DineInGo';
+      pptx.title = 'DineInGo - Product Analytics (23CT4701) MSE Presentation';
+
+      // --- SLIDE 1: COVER SLIDE ---
+      const slide1 = pptx.addSlide();
+      slide1.background = { color: 'FFFFFF' };
+
+      // DineInGo Logo: DineIn (black) with red dot, Go (yellow)
+      slide1.addText([
+        { text: 'DineIn', options: { color: '111827', bold: true, fontSize: 44, fontFace: 'Arial' } },
+        { text: 'Go', options: { color: 'F59E0B', bold: true, fontSize: 44, fontFace: 'Arial' } }
+      ], { x: 3.5, y: 1.15, w: 3.0, h: 0.8, align: 'center', valign: 'middle' });
+
+      // Red circle accent for second 'i'
+      slide1.addShape('ellipse', {
+        x: 4.62, y: 1.30, w: 0.12, h: 0.12,
+        fill: { color: 'EF4444' }, line: { color: 'EF4444' }
+      });
+
+      // Green Pill Badge: MSE Presentation
+      slide1.addShape('roundRect', {
+        x: 3.8, y: 2.15, w: 2.4, h: 0.45, rectRadius: 0.22,
+        fill: { color: '059669' }, line: { color: '047857', width: 1.5 }
+      });
+      slide1.addText('MSE Presentation', {
+        x: 3.8, y: 2.15, w: 2.4, h: 0.45,
+        color: 'FFFFFF', bold: true, fontSize: 13, align: 'center', valign: 'middle', fontFace: 'Arial'
+      });
+
+      // Subject Title
+      slide1.addText('Product Analytics – 23CT4701', {
+        x: 1.5, y: 2.85, w: 7.0, h: 0.5,
+        color: '2563EB', bold: true, fontSize: 16, align: 'center', valign: 'middle', fontFace: 'Arial'
+      });
+
+      // Team Members (5 columns with vertical dividers)
+      const members = [
+        { name: 'Putta Sujith', usn: 'ENG23CT0058' },
+        { name: 'K Vikas Aneesh Reddy', usn: 'ENG23CT0052' },
+        { name: 'E Yashas Kumar', usn: 'ENG23CT0002' },
+        { name: 'Karnati Mokshith', usn: 'ENG23CT0053' },
+        { name: 'P Jeevan Kumar Reddy', usn: 'ENG23CT0036' }
+      ];
+
+      members.forEach((m, idx) => {
+        const startX = 0.5 + idx * 1.8;
+        slide1.addText([
+          { text: m.name + '\n', options: { bold: true, fontSize: 10, color: '111827' } },
+          { text: m.usn, options: { fontSize: 9, color: '4B5563' } }
+        ], { x: startX, y: 3.8, w: 1.7, h: 0.8, align: 'center', valign: 'middle' });
+
+        if (idx < members.length - 1) {
+          slide1.addShape('line', {
+            x: startX + 1.75, y: 3.9, w: 0, h: 0.6,
+            line: { color: 'CBD5E1', width: 1 }
+          });
+        }
+      });
+
+      // Bottom tricolor progress bar
+      const barY = 4.85;
+      const barW = 8.6;
+      slide1.addShape('roundRect', {
+        x: 0.7, y: barY, w: barW, h: 0.18, rectRadius: 0.09,
+        fill: { color: 'E2E8F0' }, line: { color: 'CBD5E1', width: 1 }
+      });
+      slide1.addShape('roundRect', {
+        x: 0.7, y: barY, w: barW * 0.35, h: 0.18, rectRadius: 0.09,
+        fill: { color: '10B981' }, line: { type: 'none' }
+      });
+      slide1.addShape('rect', {
+        x: 0.7 + barW * 0.35, y: barY, w: barW * 0.30, h: 0.18,
+        fill: { color: 'EF4444' }, line: { type: 'none' }
+      });
+      slide1.addShape('roundRect', {
+        x: 0.7 + barW * 0.65, y: barY, w: barW * 0.35, h: 0.18, rectRadius: 0.09,
+        fill: { color: 'FBBF24' }, line: { type: 'none' }
+      });
+
+      // --- SLIDE 2: CRITERIA 1 (DATA COLLECTION) ---
+      const slide2 = pptx.addSlide();
+      slide2.background = { color: '020617' };
+      slide2.addText('Criteria 1: Triangulated Data Collection Pipeline (5 Marks)', {
+        x: 0.8, y: 0.4, w: 8.4, h: 0.4, color: 'FFFFFF', bold: true, fontSize: 18, fontFace: 'Arial'
+      });
+      slide2.addText('Eliminating Self-Reporting Bias with Multi-Method Telemetry', {
+        x: 0.8, y: 0.85, w: 8.4, h: 0.3, color: 'A855F7', fontSize: 12, fontFace: 'Arial'
+      });
+
+      const s2Cards = [
+        {
+          title: 'MongoDB Atlas',
+          sub: 'GROUND-TRUTH LAYER',
+          desc: '150 Master Bookings (90 Tables, 60 Events), 61 Food Pre-orders, and ₹54,397.50 verified GMV across Bangalore venues.',
+          status: 'Status: Live • Verified Schema Telemetry',
+          accent: '10B981'
+        },
+        {
+          title: 'PostHog + Mixpanel',
+          sub: 'BEHAVIORAL TELEMETRY',
+          desc: '1,240 visitor pageviews, dwell time (+142s on 2D table selection), and 5-stage conversion drop-off events mapped in real time.',
+          status: 'SDK Connected • Autocapture Enabled',
+          accent: '6366F1'
+        },
+        {
+          title: 'Tally.so Survey',
+          sub: 'PRIMARY RESEARCH & FEEDBACK',
+          desc: 'N=69 verified submissions (61 complete) in repo CSV validating 96.7% floor plan affinity, 98.4% discovery, alongside DesignMeter AI.',
+          status: 'CSV Ground-Truth: 69 Responses',
+          accent: 'C084FC'
+        }
+      ];
+
+      s2Cards.forEach((c, idx) => {
+        const cardX = 0.8 + idx * 2.9;
+        slide2.addShape('roundRect', {
+          x: cardX, y: 1.4, w: 2.7, h: 3.6, rectRadius: 0.15,
+          fill: { color: '0F172A' }, line: { color: '334155', width: 1 }
+        });
+        slide2.addText(c.sub, {
+          x: cardX + 0.2, y: 1.6, w: 2.3, h: 0.3, color: c.accent, bold: true, fontSize: 9, fontFace: 'Arial'
+        });
+        slide2.addText(c.title, {
+          x: cardX + 0.2, y: 1.9, w: 2.3, h: 0.4, color: 'FFFFFF', bold: true, fontSize: 15, fontFace: 'Arial'
+        });
+        slide2.addText(c.desc, {
+          x: cardX + 0.2, y: 2.4, w: 2.3, h: 1.7, color: 'CBD5E1', fontSize: 10, fontFace: 'Arial'
+        });
+        slide2.addShape('roundRect', {
+          x: cardX + 0.2, y: 4.3, w: 2.3, h: 0.45, rectRadius: 0.08,
+          fill: { color: '1E293B' }, line: { color: '475569', width: 0.5 }
+        });
+        slide2.addText(c.status, {
+          x: cardX + 0.2, y: 4.3, w: 2.3, h: 0.45, color: c.accent, fontSize: 8, fontFace: 'Courier New', align: 'center', valign: 'middle'
+        });
+      });
+
+      // --- SLIDE 3: CRITERIA 2 (6 CORE KPIS) ---
+      const slide3 = pptx.addSlide();
+      slide3.background = { color: '020617' };
+      slide3.addText('Criteria 2: 6 Core Product KPIs & Formulations (10 Marks)', {
+        x: 0.8, y: 0.4, w: 8.4, h: 0.4, color: 'FFFFFF', bold: true, fontSize: 18, fontFace: 'Arial'
+      });
+      slide3.addText('Structured Across 5 Areas: Acquisition, Engagement, Conversion, Retention, Revenue', {
+        x: 0.8, y: 0.85, w: 8.4, h: 0.3, color: 'A855F7', fontSize: 12, fontFace: 'Arial'
+      });
+
+      const kpis = [
+        { name: 'Early Access (EAAR)', area: 'Acquisition', val: '42.5%', target: '> 65.0%', formula: '(Stomp Verified / Total Invites) × 100' },
+        { name: '3D AR Scan (ARMSR)', area: 'Engagement', val: '34.2%', target: '> 35.0%', formula: '(FoodScans / Total Views) × 100' },
+        { name: 'Table Visual Selection (TVSAR)', area: 'Conversion', val: '100.0%', target: '> 80.0%', formula: '(Visual Bookings / Total Bookings) × 100 = 90/90' },
+        { name: 'No-Show Rate (NSR)', area: 'Retention', val: '3.8%', target: '< 4.0%', formula: '(No-Shows / Total Bookings) × 100' },
+        { name: 'Repeat Booking (CRBR)', area: 'Retention', val: '28.5%', target: '> 28.0%', formula: '(2+ Bookings / Active Cohort) × 100' },
+        { name: 'Average Booking Value (ABV)', area: 'Revenue', val: '₹1,480', target: '₹1,650', formula: 'Total GMV / Total Bookings' }
+      ];
+
+      kpis.forEach((k, idx) => {
+        const col = idx % 3;
+        const row = Math.floor(idx / 3);
+        const kx = 0.8 + col * 2.9;
+        const ky = 1.35 + row * 1.85;
+
+        slide3.addShape('roundRect', {
+          x: kx, y: ky, w: 2.7, h: 1.7, rectRadius: 0.12,
+          fill: { color: '0F172A' }, line: { color: '334155', width: 1 }
+        });
+        slide3.addText(k.name, {
+          x: kx + 0.15, y: ky + 0.12, w: 1.6, h: 0.3, color: '94A3B8', bold: true, fontSize: 8, fontFace: 'Arial'
+        });
+        slide3.addShape('roundRect', {
+          x: kx + 1.8, y: ky + 0.12, w: 0.8, h: 0.25, rectRadius: 0.05,
+          fill: { color: '1E293B' }, line: { color: '475569', width: 0.5 }
+        });
+        slide3.addText(k.area.toUpperCase(), {
+          x: kx + 1.8, y: ky + 0.12, w: 0.8, h: 0.25, color: 'C084FC', bold: true, fontSize: 7, fontFace: 'Arial', align: 'center', valign: 'middle'
+        });
+        slide3.addText(k.val, {
+          x: kx + 0.15, y: ky + 0.45, w: 2.4, h: 0.45, color: 'FFFFFF', bold: true, fontSize: 18, fontFace: 'Arial'
+        });
+        slide3.addText('Target: ' + k.target, {
+          x: kx + 0.15, y: ky + 0.9, w: 2.4, h: 0.25, color: '10B981', bold: true, fontSize: 9, fontFace: 'Arial'
+        });
+        slide3.addText(k.formula, {
+          x: kx + 0.15, y: ky + 1.2, w: 2.4, h: 0.35, color: 'C084FC', fontSize: 7, fontFace: 'Courier New'
+        });
+      });
+
+      // --- SLIDE 4: CRITERIA 3 (AARRR FUNNEL) ---
+      const slide4 = pptx.addSlide();
+      slide4.background = { color: '020617' };
+      slide4.addText('Criteria 3: 5-Stage AARRR Conversion Funnel (15 Marks)', {
+        x: 0.8, y: 0.4, w: 8.4, h: 0.4, color: 'FFFFFF', bold: true, fontSize: 18, fontFace: 'Arial'
+      });
+      slide4.addText('1,240 Visitors → 223 Bookings (18% Net Conversion)', {
+        x: 0.8, y: 0.85, w: 8.4, h: 0.3, color: 'A855F7', fontSize: 12, fontFace: 'Arial'
+      });
+
+      const funnelStepsPpt = [
+        { step: '1. Landing Page Visitors', visitors: '1,240', pct: 100, drop: '0% Drop', event: '$pageview (PostHog)' },
+        { step: '2. Search & Catalog Viewed', visitors: '682', pct: 55, drop: '-45% Drop', event: 'SearchQuery (PostHog)' },
+        { step: '3. Interactive 2D Floor Plan', visitors: '496', pct: 40, drop: '-15% Drop', event: 'TableView (+142s Dwell)' },
+        { step: '4. Table Selected & Checkout', visitors: '372', pct: 30, drop: '-10% Drop', event: 'Purchase (Mixpanel)' },
+        { step: '5. Confirmed Booking & Pass', visitors: '223', pct: 18, drop: '18% Net Conv', event: 'BookingPass (MongoDB)' }
+      ];
+
+      funnelStepsPpt.forEach((s, idx) => {
+        const sy = 1.4 + idx * 0.72;
+        slide4.addShape('roundRect', {
+          x: 0.8, y: sy, w: 8.4, h: 0.6, rectRadius: 0.08,
+          fill: { color: '0F172A' }, line: { color: '334155', width: 0.8 }
+        });
+        slide4.addText(s.step, {
+          x: 1.0, y: sy + 0.08, w: 2.6, h: 0.25, color: 'FFFFFF', bold: true, fontSize: 10, fontFace: 'Arial'
+        });
+        slide4.addText(s.event, {
+          x: 1.0, y: sy + 0.32, w: 2.6, h: 0.2, color: '94A3B8', fontSize: 8, fontFace: 'Courier New'
+        });
+        slide4.addShape('roundRect', {
+          x: 3.8, y: sy + 0.18, w: 3.2, h: 0.22, rectRadius: 0.11,
+          fill: { color: '1E293B' }, line: { type: 'none' }
+        });
+        slide4.addShape('roundRect', {
+          x: 3.8, y: sy + 0.18, w: Math.max(0.2, 3.2 * (s.pct / 100)), h: 0.22, rectRadius: 0.11,
+          fill: { color: idx === 4 ? '10B981' : '8B5CF6' }, line: { type: 'none' }
+        });
+        slide4.addText(s.visitors + ' (' + s.pct + '%)', {
+          x: 7.1, y: sy + 0.08, w: 1.9, h: 0.25, color: 'FFFFFF', bold: true, fontSize: 10, fontFace: 'Arial', align: 'right'
+        });
+        slide4.addText(s.drop, {
+          x: 7.1, y: sy + 0.32, w: 1.9, h: 0.2, color: idx === 4 ? '10B981' : (s.drop.includes('-') ? 'F87171' : '94A3B8'), bold: true, fontSize: 8, fontFace: 'Arial', align: 'right'
+        });
+      });
+
+      // --- SLIDE 5: CRITERIA 3 (PERSONAS & ROADMAP) ---
+      const slide5 = pptx.addSlide();
+      slide5.background = { color: '020617' };
+      slide5.addText('Criteria 3: Personas, Insights & Strategic Action Roadmap', {
+        x: 0.8, y: 0.4, w: 8.4, h: 0.4, color: 'FFFFFF', bold: true, fontSize: 18, fontFace: 'Arial'
+      });
+      slide5.addText('Ground-Truth Tally Survey Feedback & Engineering Action Plan', {
+        x: 0.8, y: 0.85, w: 8.4, h: 0.3, color: 'A855F7', fontSize: 12, fontFace: 'Arial'
+      });
+
+      slide5.addShape('roundRect', {
+        x: 0.8, y: 1.35, w: 4.0, h: 3.8, rectRadius: 0.12,
+        fill: { color: '0F172A' }, line: { color: '334155', width: 1 }
+      });
+      slide5.addText('Empirical Personas (N=101)', {
+        x: 1.0, y: 1.5, w: 3.6, h: 0.3, color: 'C084FC', bold: true, fontSize: 12, fontFace: 'Arial'
+      });
+      slide5.addText([
+        { text: '1. Spontaneous Socialites (65%)\n', options: { bold: true, color: 'FFFFFF', fontSize: 10 } },
+        { text: 'Age 18-24 • Instant mobile booking, AR menus & gamified badges.\n\n', options: { color: '94A3B8', fontSize: 9 } },
+        { text: '2. Experience Seekers (25%)\n', options: { bold: true, color: 'FFFFFF', fontSize: 10 } },
+        { text: 'Age 22-32 • Willingness to pay refundable table deposits for events.\n\n', options: { color: '94A3B8', fontSize: 9 } },
+        { text: '3. Corporate Organizers (10%)\n', options: { bold: true, color: 'FFFFFF', fontSize: 10 } },
+        { text: 'Large groups (6+) • High ABV (₹5k+) • Require pre-orders.', options: { color: '94A3B8', fontSize: 9 } }
+      ], { x: 1.0, y: 1.9, w: 3.6, h: 3.0, fontFace: 'Arial' });
+
+      slide5.addShape('roundRect', {
+        x: 5.2, y: 1.35, w: 4.0, h: 3.8, rectRadius: 0.12,
+        fill: { color: '0F172A' }, line: { color: '334155', width: 1 }
+      });
+      slide5.addText('Actionable Fixes & Expected Uplift', {
+        x: 5.4, y: 1.5, w: 3.6, h: 0.3, color: '10B981', bold: true, fontSize: 12, fontFace: 'Arial'
+      });
+      slide5.addText([
+        { text: 'P0: Sticky Mobile CTA\n', options: { bold: true, color: '34D399', fontSize: 10 } },
+        { text: 'Reclaims 15-25% drop-off by making "Book Table" visible above the fold.\n\n', options: { color: '94A3B8', fontSize: 9 } },
+        { text: 'P0: Persistent JWT Session\n', options: { bold: true, color: '34D399', fontSize: 10 } },
+        { text: 'Direct Tally citation (NpYPOON): "asking to login the mail every single time".\n\n', options: { color: '94A3B8', fontSize: 9 } },
+        { text: 'P1: ₹50 Refundable Deposit\n', options: { bold: true, color: '34D399', fontSize: 10 } },
+        { text: 'Reduces no-show risk from 12.5% to <3%.\n\n', options: { color: '94A3B8', fontSize: 9 } },
+        { text: 'P2: AR & 360 Maps Enhancements\n', options: { bold: true, color: '34D399', fontSize: 10 } },
+        { text: 'Direct Tally feedback: "Ar feature should be improved" & 360 view.', options: { color: '94A3B8', fontSize: 9 } }
+      ], { x: 5.4, y: 1.9, w: 3.6, h: 3.0, fontFace: 'Arial' });
+
+      await pptx.writeFile({ fileName: 'DineInGo_MSE_Presentation.pptx' });
+    } catch (err) {
+      console.error('PPTX Export Error:', err);
     }
   };
 
-  // Download self-contained offline HTML presentation deck (Earlier 4-Slide Content)
-  const handleDownloadStandaloneDeck = () => {
-    const standaloneHtml = `<!DOCTYPE html>
+  // Generate isolated 16:9 HTML string for PDF rendering
+  const getIsolatedDeckHtml = () => {
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DineInGo - MSE-1 Product Analytics Presentation Deck</title>
+  <title>DineInGo - Product Analytics (23CT4701) MSE Presentation</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    @page {
+      size: 16in 9in;
+      margin: 0;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #020617;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+    .slide-page {
+      width: 16in;
+      height: 9in;
+      page-break-after: always;
+      break-after: page;
+      page-break-inside: avoid;
+      break-inside: avoid;
+      overflow: hidden;
+      box-sizing: border-box;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      position: relative;
+    }
+    .slide-page:last-child {
+      page-break-after: auto;
+      break-after: auto;
+    }
+    .cover-slide {
+      background-color: #ffffff;
+      color: #0f172a;
+      padding: 0.8in 1in 0.6in 1in;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      align-items: center;
+      text-align: center;
+      position: relative;
+    }
+    .cover-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.08;
+      background-repeat: repeat;
+      background-image: url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-rule='evenodd'%3E%3Cpath d='M30 20c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 4c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6 2.7-6 6-6zm50 40c-6.6 0-12 5.4-12 12s5.4 12 12 12 12-5.4 12-12-5.4-12-12-12zm-40 40c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm50-70c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8z'/%3E%3C/g%3E%3C/svg%3E");
+    }
+    .dark-slide {
       background-color: #020617;
       color: #f8fafc;
-      min-height: 100vh;
+      padding: 0.6in 0.8in;
+    }
+    .slide-header {
+      border-bottom: 2px solid #1e293b;
+      padding-bottom: 12px;
+      margin-bottom: 24px;
       display: flex;
-      flex-direction: column;
       justify-content: space-between;
+      align-items: flex-start;
     }
-    .top-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px;
-      border-bottom: 1px solid #1e293b;
-      background-color: rgba(2, 6, 23, 0.95);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: 9999px;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      background-color: rgba(147, 51, 234, 0.2);
-      color: #d8b4fe;
-      border: 1px solid rgba(168, 85, 247, 0.3);
-    }
-    .btn {
-      padding: 8px 14px;
-      border-radius: 10px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #9333ea, #4f46e5);
+    .slide-title {
+      font-size: 28px;
+      font-weight: 900;
       color: #ffffff;
+      letter-spacing: -0.02em;
     }
-    .btn-primary:hover { opacity: 0.9; }
-    .btn-secondary {
-      background-color: #1e293b;
-      color: #e2e8f0;
-      border: 1px solid #334155;
+    .slide-sub {
+      font-size: 14px;
+      font-weight: 600;
+      color: #c084fc;
+      margin-top: 4px;
     }
-    .btn-secondary:hover { background-color: #334155; }
-    .btn-secondary:disabled { opacity: 0.3; cursor: not-allowed; }
-    .controls { display: flex; align-items: center; gap: 8px; }
-    
-    .slide-container {
-      max-width: 1200px;
-      width: 100%;
-      margin: 0 auto;
-      padding: 32px 24px;
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-    }
-    .slide { display: none; }
-    .slide.active { display: block; animation: fadeIn 0.3s ease-in-out; }
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .slide-title { font-size: 32px; font-weight: 900; color: #ffffff; margin-bottom: 6px; letter-spacing: -0.02em; }
-    .slide-sub { font-size: 15px; font-weight: 600; color: #c084fc; margin-bottom: 24px; }
-    
     .card {
-      background-color: rgba(30, 41, 59, 0.9);
+      background-color: rgba(30, 41, 59, 0.95);
       border: 1px solid #334155;
       border-radius: 16px;
-      padding: 20px;
+      padding: 24px;
     }
-    .grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin-top: 16px; }
-    .grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; margin-top: 16px; }
-    .grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
-    
-    .kpi-name { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
-    .kpi-val { font-size: 26px; font-weight: 900; color: #ffffff; margin: 4px 0; }
-    .kpi-target { font-size: 12px; color: #34d399; font-weight: 600; }
-    .kpi-formula { font-size: 10px; font-family: monospace; color: #d8b4fe; background-color: rgba(15, 23, 42, 0.8); padding: 6px; border-radius: 6px; margin-top: 6px; border: 1px solid #1e293b; }
-    
-    .bottom-bar {
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 24px;
+    }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 24px;
+    }
+    .kpi-card {
+      background-color: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 14px;
+      padding: 18px;
       display: flex;
+      flex-direction: column;
       justify-content: space-between;
-      align-items: center;
-      padding: 16px 24px;
-      border-top: 1px solid #1e293b;
-      font-size: 12px;
-      color: #64748b;
-    }
-    .dots { display: flex; gap: 8px; }
-    .dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 9999px;
-      background-color: #1e293b;
-      border: none;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .dot.active {
-      width: 32px;
-      background-color: #a855f7;
-    }
-    
-    /* PRINT STYLES FOR LANDSCAPE MULTI-PAGE PDF */
-    @media print {
-      @page { size: landscape; margin: 10mm; }
-      body { background-color: #020617 !important; color: #f8fafc !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
-      .top-bar, .bottom-bar { display: none !important; }
-      .slide-container { max-width: 100% !important; padding: 0 !important; }
-      .slide {
-        display: flex !important;
-        flex-direction: column !important;
-        justify-content: space-between !important;
-        page-break-after: always !important;
-        break-after: page !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-        min-height: 92vh !important;
-        box-sizing: border-box !important;
-        padding: 24px 0 !important;
-      }
-      .slide:last-child { page-break-after: auto !important; break-after: auto !important; }
     }
   </style>
 </head>
 <body>
-  <div class="top-bar">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <span class="badge">MSE-1 Technical Presentation • DineInGo V1.0 Beta</span>
-      <span id="slideCounter" style="font-size:12px; color:#94a3b8; font-family:monospace;">Slide 1 of 4</span>
-    </div>
-    <div class="controls">
-      <button class="btn btn-primary" onclick="window.print()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-        Download Deck (PDF)
-      </button>
-      <button id="prevBtn" class="btn btn-secondary" onclick="navigate(-1)" disabled>← Prev</button>
-      <button id="nextBtn" class="btn btn-secondary" onclick="navigate(1)">Next →</button>
-    </div>
-  </div>
-
-  <div class="slide-container">
-    <!-- SLIDE 1 -->
-    <div class="slide active" id="slide-0">
-      <h2 class="slide-title">Criteria 1: Triangulated Data Collection Pipeline (5 Marks)</h2>
-      <p class="slide-sub">Eliminating Self-Reporting Bias with Multi-Method Telemetry</p>
-      <div class="grid-3">
-        <div class="card">
-          <span style="font-size:11px; font-weight:700; color:#34d399; text-transform:uppercase;">Ground-Truth Layer</span>
-          <h4 style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">MongoDB Atlas</h4>
-          <p style="font-size:12px; color:#cbd5e1; line-height:1.5;">150 Master Bookings (90 Tables, 60 Events), 61 Food Pre-orders, and ₹54,397.50 verified GMV across Bangalore venues.</p>
-          <div style="font-size:11px; font-family:monospace; color:#34d399; background:rgba(6,78,59,0.4); padding:6px; border-radius:6px; margin-top:10px; border:1px solid #065f46;">Status: Live • Verified Schema Telemetry</div>
-        </div>
-        <div class="card">
-          <span style="font-size:11px; font-weight:700; color:#818cf8; text-transform:uppercase;">Behavioral Telemetry</span>
-          <h4 style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">PostHog + Mixpanel</h4>
-          <p style="font-size:12px; color:#cbd5e1; line-height:1.5;">1,240 visitor pageviews, dwell time (+142s on 2D table selection), and 5-stage conversion drop-off events mapped in real time.</p>
-          <div style="font-size:11px; font-family:monospace; color:#818cf8; background:rgba(49,46,129,0.4); padding:6px; border-radius:6px; margin-top:10px; border:1px solid #3730a3;">SDK Connected • Autocapture Enabled</div>
-        </div>
-        <div class="card">
-          <span style="font-size:11px; font-weight:700; color:#c084fc; text-transform:uppercase;">Primary Research & Feedback</span>
-          <h4 style="font-size:18px; font-weight:800; color:#fff; margin:6px 0;">Tally.so Survey & Feedback</h4>
-          <p style="font-size:12px; color:#cbd5e1; line-height:1.5;">N=69 verified submissions (61 complete) in repo CSV. Evaluated discovery (98.4%), 2D floor plans (96.7% affinity), and qualitative login friction.</p>
-          <div style="font-size:11px; font-family:monospace; color:#c084fc; background:rgba(88,28,135,0.4); padding:6px; border-radius:6px; margin-top:10px; border:1px solid #581c87;">CSV Ground-Truth: 69 Tally Submissions</div>
-        </div>
+  <!-- SLIDE 1: COVER SLIDE -->
+  <div class="slide-page cover-slide">
+    <div class="cover-bg"></div>
+    <div style="position:relative; z-index:10; margin:auto 0; display:flex; flex-direction:column; align-items:center; gap:24px;">
+      <h1 style="font-size:80px; font-weight:900; color:#111827; letter-spacing:-0.03em; display:flex; align-items:baseline;">
+        <span>D</span><span style="position:relative; display:inline-block;">i<span style="position:absolute; top:2px; left:50%; transform:translateX(-50%); width:14px; height:14px; background:#EF4444; border-radius:50%;"></span></span><span>neIn</span><span style="color:#F59E0B; margin-left:4px;">Go</span>
+      </h1>
+      <div style="display:inline-block; padding:10px 36px; border-radius:9999px; background:linear-gradient(135deg, #059669, #10B981); color:#ffffff; font-weight:800; font-size:22px; box-shadow:0 8px 20px rgba(5,150,105,0.4); border:2px solid #047857;">
+        MSE Presentation
+      </div>
+      <div style="font-size:24px; font-weight:900; color:#1D4ED8; text-transform:uppercase; letter-spacing:0.05em;">
+        Product Analytics – 23CT4701
       </div>
     </div>
 
-    <!-- SLIDE 2 -->
-    <div class="slide" id="slide-1">
-      <h2 class="slide-title">Criteria 2: 6 Core Product KPIs & Formulations (10 Marks)</h2>
-      <p class="slide-sub">Structured Across 5 Product Areas: Acquisition, Engagement, Conversion, Retention, Revenue</p>
-      <div class="grid-3">
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="kpi-name">Early Access (EAAR)</div>
-            <span style="font-size:10px; font-weight:800; background:rgba(168,85,247,0.2); color:#c084fc; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(168,85,247,0.4);">Acquisition</span>
-          </div>
-          <div class="kpi-val">42.5%</div>
-          <div class="kpi-target">Target: &gt; 65.0%</div>
-          <div class="kpi-formula">(Stomp Verified / Total Invites) × 100</div>
+    <div style="position:relative; z-index:10; width:100%;">
+      <div style="display:grid; grid-template-columns:repeat(5, 1fr); text-align:center; margin-bottom:20px; border-top:1px solid #E2E8F0; padding-top:20px;">
+        <div style="border-right:1px solid #CBD5E1; padding:0 8px;">
+          <div style="font-size:16px; font-weight:800; color:#111827;">Putta Sujith</div>
+          <div style="font-size:13px; font-weight:600; color:#64748B;">ENG23CT0058</div>
         </div>
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="kpi-name">3D AR Scan (ARMSR)</div>
-            <span style="font-size:10px; font-weight:800; background:rgba(59,130,246,0.2); color:#60a5fa; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(59,130,246,0.4);">Engagement</span>
-          </div>
-          <div class="kpi-val">34.2%</div>
-          <div class="kpi-target">Target: &gt; 35.0%</div>
-          <div class="kpi-formula">(FoodScans / Total Views) × 100</div>
+        <div style="border-right:1px solid #CBD5E1; padding:0 8px;">
+          <div style="font-size:16px; font-weight:800; color:#111827;">K Vikas Aneesh Reddy</div>
+          <div style="font-size:13px; font-weight:600; color:#64748B;">ENG23CT0052</div>
         </div>
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="kpi-name">Table Visual Selection (TVSAR)</div>
-            <span style="font-size:10px; font-weight:800; background:rgba(16,185,129,0.2); color:#34d399; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(16,185,129,0.4);">Conversion</span>
-          </div>
-          <div class="kpi-val">100.0%</div>
-          <div class="kpi-target">Target: &gt; 80.0%</div>
-          <div class="kpi-formula">(Visual Bookings / Total Bookings) × 100 = 90/90</div>
+        <div style="border-right:1px solid #CBD5E1; padding:0 8px;">
+          <div style="font-size:16px; font-weight:800; color:#111827;">E Yashas Kumar</div>
+          <div style="font-size:13px; font-weight:600; color:#64748B;">ENG23CT0002</div>
         </div>
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="kpi-name">No-Show Rate (NSR)</div>
-            <span style="font-size:10px; font-weight:800; background:rgba(16,185,129,0.2); color:#34d399; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(16,185,129,0.4);">Retention</span>
-          </div>
-          <div class="kpi-val">3.8%</div>
-          <div class="kpi-target">Target: &lt; 4.0%</div>
-          <div class="kpi-formula">(No-Shows / Total Bookings) × 100</div>
+        <div style="border-right:1px solid #CBD5E1; padding:0 8px;">
+          <div style="font-size:16px; font-weight:800; color:#111827;">Karnati Mokshith</div>
+          <div style="font-size:13px; font-weight:600; color:#64748B;">ENG23CT0053</div>
         </div>
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="kpi-name">Repeat Booking (CRBR)</div>
-            <span style="font-size:10px; font-weight:800; background:rgba(245,158,11,0.2); color:#fbbf24; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(245,158,11,0.4);">Retention</span>
-          </div>
-          <div class="kpi-val">28.5%</div>
-          <div class="kpi-target">Target: &gt; 28.0%</div>
-          <div class="kpi-formula">(2+ Bookings / Active Cohort) × 100</div>
-        </div>
-        <div class="card">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-            <div class="kpi-name">Average Booking Value (ABV)</div>
-            <span style="font-size:10px; font-weight:800; background:rgba(20,184,166,0.2); color:#2dd4bf; padding:2px 8px; border-radius:4px; text-transform:uppercase; border:1px solid rgba(20,184,166,0.4);">Revenue</span>
-          </div>
-          <div class="kpi-val">₹1,480</div>
-          <div class="kpi-target">Target: ₹1,650</div>
-          <div class="kpi-formula">Total GMV / Total Bookings</div>
+        <div style="padding:0 8px;">
+          <div style="font-size:16px; font-weight:800; color:#111827;">P Jeevan Kumar Reddy</div>
+          <div style="font-size:13px; font-weight:600; color:#64748B;">ENG23CT0036</div>
         </div>
       </div>
-    </div>
 
-    <!-- SLIDE 3 -->
-    <div class="slide" id="slide-2">
-      <h2 class="slide-title">Criteria 3: 5-Stage AARRR Conversion Funnel (15 Marks)</h2>
-      <p class="slide-sub">1,240 Visitors → 223 Bookings (18% Net Conversion)</p>
-      <div style="display:flex; flex-direction:column; gap:12px; margin-top:16px;">
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px;">
-          <div style="width:30%;">
-            <div style="font-weight:700; color:#fff; font-size:14px;">1. Landing Page Visitors</div>
-            <div style="font-size:11px; color:#94a3b8; font-family:monospace;">$pageview / Page View</div>
-          </div>
-          <div style="flex:1; margin:0 20px; background:#334155; height:12px; border-radius:999px; overflow:hidden;">
-            <div style="background:linear-gradient(90deg, #a855f7, #34d399); width:100%; height:100%;"></div>
-          </div>
-          <div style="text-align:right; width:120px;">
-            <div style="font-weight:800; color:#fff; font-size:15px;">1,240 (100%)</div>
-            <div style="font-size:11px; color:#34d399; font-weight:700;">Fulfilled</div>
-          </div>
-        </div>
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px;">
-          <div style="width:30%;">
-            <div style="font-weight:700; color:#fff; font-size:14px;">2. Catalog & Restaurant Views</div>
-            <div style="font-size:11px; color:#94a3b8; font-family:monospace;">Search / view_section</div>
-          </div>
-          <div style="flex:1; margin:0 20px; background:#334155; height:12px; border-radius:999px; overflow:hidden;">
-            <div style="background:linear-gradient(90deg, #a855f7, #34d399); width:65%; height:100%;"></div>
-          </div>
-          <div style="text-align:right; width:120px;">
-            <div style="font-weight:800; color:#fff; font-size:15px;">806 (65%)</div>
-            <div style="font-size:11px; color:#f43f5e; font-weight:700;">-35% drop-off</div>
-          </div>
-        </div>
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px;">
-          <div style="width:30%;">
-            <div style="font-weight:700; color:#fff; font-size:14px;">3. Interactive Floor Plan Open</div>
-            <div style="font-size:11px; color:#94a3b8; font-family:monospace;">User Interaction / select_time_slot</div>
-          </div>
-          <div style="flex:1; margin:0 20px; background:#334155; height:12px; border-radius:999px; overflow:hidden;">
-            <div style="background:linear-gradient(90deg, #a855f7, #34d399); width:45%; height:100%;"></div>
-          </div>
-          <div style="text-align:right; width:120px;">
-            <div style="font-weight:800; color:#fff; font-size:15px;">558 (45%)</div>
-            <div style="font-size:11px; color:#f43f5e; font-weight:700;">-20% drop-off</div>
-          </div>
-        </div>
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px;">
-          <div style="width:30%;">
-            <div style="font-weight:700; color:#fff; font-size:14px;">4. Table Selected & Checkout</div>
-            <div style="font-size:11px; color:#94a3b8; font-family:monospace;">Purchase / initiate_checkout</div>
-          </div>
-          <div style="flex:1; margin:0 20px; background:#334155; height:12px; border-radius:999px; overflow:hidden;">
-            <div style="background:linear-gradient(90deg, #a855f7, #34d399); width:30%; height:100%;"></div>
-          </div>
-          <div style="text-align:right; width:120px;">
-            <div style="font-weight:800; color:#fff; font-size:15px;">372 (30%)</div>
-            <div style="font-size:11px; color:#f43f5e; font-weight:700;">-15% drop-off</div>
-          </div>
-        </div>
-        <div class="card" style="display:flex; justify-content:space-between; align-items:center; padding:16px 20px;">
-          <div style="width:30%;">
-            <div style="font-weight:700; color:#fff; font-size:14px;">5. Confirmed Booking & Pass</div>
-            <div style="font-size:11px; color:#94a3b8; font-family:monospace;">Conversion / booking_completed</div>
-          </div>
-          <div style="flex:1; margin:0 20px; background:#334155; height:12px; border-radius:999px; overflow:hidden;">
-            <div style="background:linear-gradient(90deg, #a855f7, #34d399); width:18%; height:100%;"></div>
-          </div>
-          <div style="text-align:right; width:120px;">
-            <div style="font-weight:800; color:#fff; font-size:15px;">223 (18%)</div>
-            <div style="font-size:11px; color:#34d399; font-weight:700;">Fulfilled (18%)</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- SLIDE 4 -->
-    <div class="slide" id="slide-3">
-      <h2 class="slide-title">Criteria 3: Personas, Insights & Strategic Action Roadmap</h2>
-      <p class="slide-sub">Addressing DesignMeter Severe Friction Score (39/100)</p>
-      <div class="grid-2">
-        <div class="card">
-          <h4 style="font-size:18px; font-weight:800; color:#c084fc; margin-bottom:12px;">Empirical Personas (N=101)</h4>
-          <div style="display:flex; flex-direction:column; gap:10px;">
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px;">
-              <span style="font-weight:700; color:#fff;">1. Spontaneous Socialites (65%)</span>: Age 18-24 • Need instant mobile booking, AR menus & gamified badges.
-            </div>
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px;">
-              <span style="font-weight:700; color:#fff;">2. Experience Seekers (25%)</span>: Age 22-32 • High willingness to pay refundable table deposits for events.
-            </div>
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px;">
-              <span style="font-weight:700; color:#fff;">3. Corporate Organizers (10%)</span>: Large groups (6+) • High ABV (₹5k+) • Require pre-orders.
-            </div>
-          </div>
-        </div>
-        <div class="card">
-          <h4 style="font-size:18px; font-weight:800; color:#34d399; margin-bottom:12px;">Actionable Fixes & Expected Uplift</h4>
-          <div style="display:flex; flex-direction:column; gap:10px;">
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
-              <strong style="color:#34d399;">P0: Sticky Mobile CTA</strong>: Reclaims 15-25% drop-off by making "Book Table" visible above the fold.
-            </div>
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
-              <strong style="color:#34d399;">P0: Persistent JWT Session</strong>: Eliminates repetitive email auth prompts during checkout (Direct Tally feedback citation: "asking to login the mail every single time").
-            </div>
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
-              <strong style="color:#34d399;">P1: ₹50 Refundable Deposit</strong>: Reduces no-show risk from 12.5% to &lt;3%.
-            </div>
-            <div style="background:#0f172a; padding:12px; border-radius:10px; border:1px solid #1e293b; font-size:13px; color:#cbd5e1;">
-              <strong style="color:#34d399;">P2: AR & 360 Maps Enhancements</strong>: Direct Tally feedback response: "Ar feature should be improved" & "google location, 360 view of hotel".
-            </div>
-          </div>
-        </div>
+      <div style="width:100%; height:14px; border-radius:9999px; border:1px solid #94A3B8; padding:2px; display:flex; background:#F1F5F9; overflow:hidden;">
+        <div style="width:35%; background:#10B981; height:100%; border-radius:9999px 0 0 9999px;"></div>
+        <div style="width:30%; background:#EF4444; height:100%;"></div>
+        <div style="width:35%; background:#FBBF24; height:100%; border-radius:0 9999px 9999px 0;"></div>
       </div>
     </div>
   </div>
 
-  <div class="bottom-bar">
-    <div>Use <kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#cbd5e1;">←</kbd> and <kbd style="background:#1e293b; padding:2px 6px; border-radius:4px; color:#cbd5e1;">→</kbd> arrows to navigate • DineInGo Analytics Team</div>
-    <div class="dots">
-      <button class="dot active" onclick="goToSlide(0)"></button>
-      <button class="dot" onclick="goToSlide(1)"></button>
-      <button class="dot" onclick="goToSlide(2)"></button>
-      <button class="dot" onclick="goToSlide(3)"></button>
+  <!-- SLIDE 2: CRITERIA 1 -->
+  <div class="slide-page dark-slide">
+    <div class="slide-header">
+      <div>
+        <div style="font-size:12px; font-weight:800; color:#c084fc; text-transform:uppercase;">DineInGo • Product Analytics (23CT4701)</div>
+        <h2 class="slide-title">Criteria 1: Triangulated Data Collection Pipeline (5 Marks)</h2>
+        <div class="slide-sub">Eliminating Self-Reporting Bias with Multi-Method Telemetry</div>
+      </div>
+      <div style="font-size:12px; font-family:monospace; background:#1e293b; color:#94a3b8; padding:6px 12px; border-radius:8px;">Slide 2 of 5</div>
+    </div>
+    <div class="grid-3" style="flex:1; align-items:stretch;">
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="color:#34d399; font-size:12px; font-weight:800; text-transform:uppercase;">Ground-Truth Layer</div>
+          <h3 style="font-size:24px; font-weight:800; color:#fff; margin:10px 0;">MongoDB Atlas</h3>
+          <p style="font-size:14px; color:#cbd5e1; line-height:1.6;">150 Master Bookings (90 Tables, 60 Events), 61 Food Pre-orders, and ₹54,397.50 verified GMV across Bangalore venues.</p>
+        </div>
+        <div style="font-size:12px; font-family:monospace; color:#34d399; background:rgba(6,78,59,0.4); padding:10px; border-radius:8px; border:1px solid #065f46;">Status: Live • Verified Schema Telemetry</div>
+      </div>
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="color:#818cf8; font-size:12px; font-weight:800; text-transform:uppercase;">Behavioral Telemetry</div>
+          <h3 style="font-size:24px; font-weight:800; color:#fff; margin:10px 0;">PostHog + Mixpanel</h3>
+          <p style="font-size:14px; color:#cbd5e1; line-height:1.6;">1,240 visitor pageviews, dwell time (+142s on 2D table selection), and 5-stage conversion drop-off events mapped in real time.</p>
+        </div>
+        <div style="font-size:12px; font-family:monospace; color:#818cf8; background:rgba(49,46,129,0.4); padding:10px; border-radius:8px; border:1px solid #3730a3;">SDK Connected • Autocapture Enabled</div>
+      </div>
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <div>
+          <div style="color:#c084fc; font-size:12px; font-weight:800; text-transform:uppercase;">Primary Research & Feedback</div>
+          <h3 style="font-size:24px; font-weight:800; color:#fff; margin:10px 0;">Tally.so Survey</h3>
+          <p style="font-size:14px; color:#cbd5e1; line-height:1.6;">N=69 verified submissions (61 complete) in repo CSV validating 96.7% floor plan affinity, 98.4% discovery, and qualitative login friction, alongside DesignMeter AI.</p>
+        </div>
+        <div style="font-size:12px; font-family:monospace; color:#c084fc; background:rgba(88,28,135,0.4); padding:10px; border-radius:8px; border:1px solid #581c87;">CSV Ground-Truth: 69 Submissions</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1e293b; padding-top:12px; font-size:11px; color:#64748b; font-family:monospace; display:flex; justify-content:space-between;">
+      <span>Bangalore Platform Telemetry</span>
+      <span>Putta Sujith • K Vikas Aneesh Reddy • E Yashas Kumar • Karnati Mokshith • P Jeevan Kumar Reddy</span>
     </div>
   </div>
 
-  <script>
-    let current = 0;
-    const total = 4;
-    const slides = document.querySelectorAll('.slide');
-    const dots = document.querySelectorAll('.dot');
-    const counter = document.getElementById('slideCounter');
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
+  <!-- SLIDE 3: CRITERIA 2 -->
+  <div class="slide-page dark-slide">
+    <div class="slide-header">
+      <div>
+        <div style="font-size:12px; font-weight:800; color:#c084fc; text-transform:uppercase;">DineInGo • Product Analytics (23CT4701)</div>
+        <h2 class="slide-title">Criteria 2: 6 Core Product KPIs & Formulations (10 Marks)</h2>
+        <div class="slide-sub">Structured Across 5 Areas: Acquisition, Engagement, Conversion, Retention, Revenue</div>
+      </div>
+      <div style="font-size:12px; font-family:monospace; background:#1e293b; color:#94a3b8; padding:6px 12px; border-radius:8px;">Slide 3 of 5</div>
+    </div>
+    <div class="grid-3" style="grid-template-rows:repeat(2, 1fr); gap:16px; flex:1;">
+      <div class="kpi-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Early Access (EAAR)</span>
+          <span style="font-size:10px; font-weight:800; background:#1e293b; color:#c084fc; padding:2px 8px; border-radius:4px;">ACQUISITION</span>
+        </div>
+        <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">42.5%</div>
+        <div style="font-size:12px; color:#34d399; font-weight:600;">Target: > 65.0%</div>
+        <div style="font-size:10px; font-family:monospace; color:#c084fc; background:rgba(15,23,42,0.9); padding:6px; border-radius:6px; border:1px solid #1e293b; margin-top:8px;">(Stomp Verified / Total Invites) × 100</div>
+      </div>
+      <div class="kpi-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">3D AR Scan (ARMSR)</span>
+          <span style="font-size:10px; font-weight:800; background:#1e293b; color:#818cf8; padding:2px 8px; border-radius:4px;">ENGAGEMENT</span>
+        </div>
+        <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">34.2%</div>
+        <div style="font-size:12px; color:#34d399; font-weight:600;">Target: > 35.0%</div>
+        <div style="font-size:10px; font-family:monospace; color:#818cf8; background:rgba(15,23,42,0.9); padding:6px; border-radius:6px; border:1px solid #1e293b; margin-top:8px;">(FoodScans / Total Views) × 100</div>
+      </div>
+      <div class="kpi-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Table Visual Select (TVSAR)</span>
+          <span style="font-size:10px; font-weight:800; background:#1e293b; color:#34d399; padding:2px 8px; border-radius:4px;">CONVERSION</span>
+        </div>
+        <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">100.0%</div>
+        <div style="font-size:12px; color:#34d399; font-weight:600;">Target: > 80.0%</div>
+        <div style="font-size:10px; font-family:monospace; color:#34d399; background:rgba(15,23,42,0.9); padding:6px; border-radius:6px; border:1px solid #1e293b; margin-top:8px;">(Visual Bookings / Total Bookings) × 100 = 90/90</div>
+      </div>
+      <div class="kpi-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">No-Show Rate (NSR)</span>
+          <span style="font-size:10px; font-weight:800; background:#1e293b; color:#34d399; padding:2px 8px; border-radius:4px;">RETENTION</span>
+        </div>
+        <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">3.8%</div>
+        <div style="font-size:12px; color:#34d399; font-weight:600;">Target: < 4.0%</div>
+        <div style="font-size:10px; font-family:monospace; color:#34d399; background:rgba(15,23,42,0.9); padding:6px; border-radius:6px; border:1px solid #1e293b; margin-top:8px;">(No-Shows / Total Bookings) × 100</div>
+      </div>
+      <div class="kpi-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Repeat Booking (CRBR)</span>
+          <span style="font-size:10px; font-weight:800; background:#1e293b; color:#fbbf24; padding:2px 8px; border-radius:4px;">RETENTION</span>
+        </div>
+        <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">28.5%</div>
+        <div style="font-size:12px; color:#34d399; font-weight:600;">Target: > 28.0%</div>
+        <div style="font-size:10px; font-family:monospace; color:#fbbf24; background:rgba(15,23,42,0.9); padding:6px; border-radius:6px; border:1px solid #1e293b; margin-top:8px;">(2+ Bookings / Active Cohort) × 100</div>
+      </div>
+      <div class="kpi-card">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Average Booking Value (ABV)</span>
+          <span style="font-size:10px; font-weight:800; background:#1e293b; color:#2dd4bf; padding:2px 8px; border-radius:4px;">REVENUE</span>
+        </div>
+        <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">₹1,480</div>
+        <div style="font-size:12px; color:#34d399; font-weight:600;">Target: ₹1,650</div>
+        <div style="font-size:10px; font-family:monospace; color:#2dd4bf; background:rgba(15,23,42,0.9); padding:6px; border-radius:6px; border:1px solid #1e293b; margin-top:8px;">Total GMV / Total Bookings</div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1e293b; padding-top:12px; font-size:11px; color:#64748b; font-family:monospace; display:flex; justify-content:space-between;">
+      <span>Strictly 6 Core Metrics • Zero Vanity Metrics</span>
+      <span>Putta Sujith • K Vikas Aneesh Reddy • E Yashas Kumar • Karnati Mokshith • P Jeevan Kumar Reddy</span>
+    </div>
+  </div>
 
-    function update() {
-      slides.forEach((s, i) => s.classList.toggle('active', i === current));
-      dots.forEach((d, i) => d.classList.toggle('active', i === current));
-      counter.textContent = 'Slide ' + (current + 1) + ' of ' + total;
-      prevBtn.disabled = current === 0;
-      nextBtn.disabled = current === total - 1;
-    }
+  <!-- SLIDE 4: CRITERIA 3 (FUNNEL) -->
+  <div class="slide-page dark-slide">
+    <div class="slide-header">
+      <div>
+        <div style="font-size:12px; font-weight:800; color:#c084fc; text-transform:uppercase;">DineInGo • Product Analytics (23CT4701)</div>
+        <h2 class="slide-title">Criteria 3: 5-Stage AARRR Conversion Funnel (15 Marks)</h2>
+        <div class="slide-sub">1,240 Visitors → 223 Bookings (18% Net Conversion)</div>
+      </div>
+      <div style="font-size:12px; font-family:monospace; background:#1e293b; color:#94a3b8; padding:6px 12px; border-radius:8px;">Slide 4 of 5</div>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:14px; flex:1; justify-content:center;">
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div style="width:260px;"><div style="font-size:15px; font-weight:800; color:#fff;">1. Landing Page Visitors</div><div style="font-size:11px; color:#94a3b8; font-family:monospace;">$pageview (PostHog)</div></div>
+        <div style="flex:1; background:#1e293b; height:14px; border-radius:9999px; overflow:hidden;"><div style="width:100%; height:100%; background:linear-gradient(90deg, #8b5cf6, #10b981); border-radius:9999px;"></div></div>
+        <div style="width:160px; text-align:right;"><div style="font-size:16px; font-weight:900; color:#fff;">1,240 (100%)</div><div style="font-size:11px; font-weight:700; color:#94a3b8;">Top of Funnel</div></div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div style="width:260px;"><div style="font-size:15px; font-weight:800; color:#fff;">2. Search & Catalog Viewed</div><div style="font-size:11px; color:#94a3b8; font-family:monospace;">SearchQuery (PostHog)</div></div>
+        <div style="flex:1; background:#1e293b; height:14px; border-radius:9999px; overflow:hidden;"><div style="width:55%; height:100%; background:linear-gradient(90deg, #8b5cf6, #10b981); border-radius:9999px;"></div></div>
+        <div style="width:160px; text-align:right;"><div style="font-size:16px; font-weight:900; color:#fff;">682 (55%)</div><div style="font-size:11px; font-weight:700; color:#f87171;">-45% drop-off</div></div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div style="width:260px;"><div style="font-size:15px; font-weight:800; color:#fff;">3. Interactive 2D Floor Plan</div><div style="font-size:11px; color:#94a3b8; font-family:monospace;">TableView (+142s Dwell)</div></div>
+        <div style="flex:1; background:#1e293b; height:14px; border-radius:9999px; overflow:hidden;"><div style="width:40%; height:100%; background:linear-gradient(90deg, #8b5cf6, #10b981); border-radius:9999px;"></div></div>
+        <div style="width:160px; text-align:right;"><div style="font-size:16px; font-weight:900; color:#fff;">496 (40%)</div><div style="font-size:11px; font-weight:700; color:#f87171;">-15% drop-off</div></div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div style="width:260px;"><div style="font-size:15px; font-weight:800; color:#fff;">4. Table Selected & Checkout</div><div style="font-size:11px; color:#94a3b8; font-family:monospace;">Purchase (Mixpanel)</div></div>
+        <div style="flex:1; background:#1e293b; height:14px; border-radius:9999px; overflow:hidden;"><div style="width:30%; height:100%; background:linear-gradient(90deg, #8b5cf6, #10b981); border-radius:9999px;"></div></div>
+        <div style="width:160px; text-align:right;"><div style="font-size:16px; font-weight:900; color:#fff;">372 (30%)</div><div style="font-size:11px; font-weight:700; color:#f87171;">-10% drop-off</div></div>
+      </div>
+      <div style="background:#0f172a; border:1px solid #334155; border-radius:12px; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; gap:20px;">
+        <div style="width:260px;"><div style="font-size:15px; font-weight:800; color:#fff;">5. Confirmed Booking & Pass</div><div style="font-size:11px; color:#94a3b8; font-family:monospace;">BookingPass (MongoDB)</div></div>
+        <div style="flex:1; background:#1e293b; height:14px; border-radius:9999px; overflow:hidden;"><div style="width:18%; height:100%; background:#10b981; border-radius:9999px;"></div></div>
+        <div style="width:160px; text-align:right;"><div style="font-size:16px; font-weight:900; color:#fff;">223 (18%)</div><div style="font-size:11px; font-weight:700; color:#34d399;">18% Net Conversion</div></div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1e293b; padding-top:12px; font-size:11px; color:#64748b; font-family:monospace; display:flex; justify-content:space-between;">
+      <span>DesignMeter Audit: High Dwell (+142s) on 2D Table Canvas</span>
+      <span>Putta Sujith • K Vikas Aneesh Reddy • E Yashas Kumar • Karnati Mokshith • P Jeevan Kumar Reddy</span>
+    </div>
+  </div>
 
-    function navigate(delta) {
-      current = Math.max(0, Math.min(total - 1, current + delta));
-      update();
-    }
+  <!-- SLIDE 5: CRITERIA 3 (PERSONAS & ROADMAP) -->
+  <div class="slide-page dark-slide">
+    <div class="slide-header">
+      <div>
+        <div style="font-size:12px; font-weight:800; color:#c084fc; text-transform:uppercase;">DineInGo • Product Analytics (23CT4701)</div>
+        <h2 class="slide-title">Criteria 3: Personas, Insights & Strategic Action Roadmap</h2>
+        <div class="slide-sub">Ground-Truth Tally Survey Feedback & Engineering Action Plan</div>
+      </div>
+      <div style="font-size:12px; font-family:monospace; background:#1e293b; color:#94a3b8; padding:6px 12px; border-radius:8px;">Slide 5 of 5</div>
+    </div>
+    <div class="grid-2" style="flex:1; align-items:stretch;">
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <h3 style="font-size:18px; font-weight:800; color:#c084fc; margin-bottom:14px;">Empirical Personas (N=101)</h3>
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <div style="background:#0f172a; padding:14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#fff; font-size:14px;">1. Spontaneous Socialites (65%)</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:4px;">Age 18-24 • Instant mobile booking, AR menus & gamified badges.</div>
+          </div>
+          <div style="background:#0f172a; padding:14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#fff; font-size:14px;">2. Experience Seekers (25%)</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:4px;">Age 22-32 • Willingness to pay refundable table deposits for events.</div>
+          </div>
+          <div style="background:#0f172a; padding:14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#fff; font-size:14px;">3. Corporate Organizers (10%)</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:4px;">Large groups (6+) • High ABV (₹5k+) • Require pre-orders.</div>
+          </div>
+        </div>
+      </div>
 
-    function goToSlide(idx) {
-      current = idx;
-      update();
-    }
-
-    window.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowRight' || e.key === ' ') navigate(1);
-      if (e.key === 'ArrowLeft') navigate(-1);
-    });
-  </script>
+      <div class="card" style="display:flex; flex-direction:column; justify-content:space-between;">
+        <h3 style="font-size:18px; font-weight:800; color:#34d399; margin-bottom:14px;">Actionable Fixes & Expected Uplift</h3>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#34d399; font-size:13px;">P0: Sticky Mobile CTA</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Reclaims 15-25% drop-off by making "Book Table" visible above the fold.</div>
+          </div>
+          <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#34d399; font-size:13px;">P0: Persistent JWT Session</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Direct Tally citation (NpYPOON): "asking to login the mail every single time".</div>
+          </div>
+          <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#34d399; font-size:13px;">P1: ₹50 Refundable Deposit</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Reduces no-show risk from 12.5% to &lt;3%.</div>
+          </div>
+          <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
+            <div style="font-weight:800; color:#34d399; font-size:13px;">P2: AR & 360 Maps Enhancements</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Direct Tally feedback: "Ar feature should be improved" & 360 view.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid #1e293b; padding-top:12px; font-size:11px; color:#64748b; font-family:monospace; display:flex; justify-content:space-between;">
+      <span>Empirical N=69 Tally Survey Dataset • Direct Voice of Customer Citations</span>
+      <span>Putta Sujith • K Vikas Aneesh Reddy • E Yashas Kumar • Karnati Mokshith • P Jeevan Kumar Reddy</span>
+    </div>
+  </div>
 </body>
 </html>`;
+  };
 
-    const blob = new Blob([standaloneHtml], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'DineInGo_MSE1_Product_Analytics_Deck.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  // Download exact 16:9 slides as PDF without webpage chrome
+  const handleDownloadDeckPdf = () => {
+    const existingFrame = document.getElementById('deck-print-iframe');
+    if (existingFrame) existingFrame.remove();
+
+    const iframe = document.createElement('iframe');
+    iframe.id = 'deck-print-iframe';
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.opacity = '0';
+    iframe.style.pointerEvents = 'none';
+    iframe.style.zIndex = '-999';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) return;
+
+    doc.open();
+    doc.write(getIsolatedDeckHtml());
+    doc.close();
+
+    setTimeout(() => {
+      try {
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (err) {
+        console.error('Iframe print failed, falling back:', err);
+        window.print();
+      }
+    }, 450);
+  };
+
+  // Redirect any legacy calls directly to PDF deck download
+  const handleDownloadStandaloneDeck = () => {
+    handleDownloadDeckPdf();
   };
 
   // Empirical data from Survey 1 (N=40)
@@ -922,6 +1193,82 @@ function AdminAnalyticsPage() {
   // =========================================================================
   if (viewMode === 'presentation') {
     const slides = [
+      {
+        title: 'MSE Presentation',
+        subtitle: 'Product Analytics – 23CT4701',
+        isCover: true,
+        content: (
+          <div className="relative w-full max-w-5xl mx-auto rounded-3xl overflow-hidden bg-white p-8 sm:p-12 shadow-2xl border border-slate-200 text-slate-900 flex flex-col justify-between min-h-[480px]">
+            {/* Background food doodles */}
+            <div 
+              className="absolute inset-0 opacity-[0.08] pointer-events-none bg-repeat"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg width='120' height='120' viewBox='0 0 120 120' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23000000' fill-rule='evenodd'%3E%3Cpath d='M30 20c-5.5 0-10 4.5-10 10s4.5 10 10 10 10-4.5 10-10-4.5-10-10-10zm0 4c3.3 0 6 2.7 6 6s-2.7 6-6 6-6-2.7-6-6 2.7-6 6-6zm50 40c-6.6 0-12 5.4-12 12s5.4 12 12 12 12-5.4 12-12-5.4-12-12-12zm-40 40c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8zm50-70c-4.4 0-8 3.6-8 8s3.6 8 8 8 8-3.6 8-8-3.6-8-8-8z'/%3E%3C/g%3E%3C/svg%3E")`
+              }}
+            />
+            
+            <div className="relative z-10 flex flex-col items-center justify-center text-center my-auto space-y-6 pt-4">
+              {/* DineInGo Logo */}
+              <div className="flex items-center justify-center">
+                <h1 className="text-5xl sm:text-7xl font-black tracking-tight text-slate-900 flex items-baseline">
+                  <span>D</span>
+                  <span className="relative inline-block">
+                    i
+                    <span className="absolute top-1 left-1/2 -translate-x-1/2 w-3.5 h-3.5 sm:w-4 sm:h-4 bg-red-500 rounded-full shadow-sm"></span>
+                  </span>
+                  <span>neIn</span>
+                  <span className="text-amber-500 font-extrabold ml-1">Go</span>
+                </h1>
+              </div>
+
+              {/* MSE Presentation Badge */}
+              <div>
+                <span className="inline-block px-8 py-2.5 rounded-full bg-gradient-to-r from-emerald-600 to-teal-500 text-white font-bold text-base sm:text-lg shadow-lg shadow-emerald-600/30 border border-emerald-700 tracking-wide">
+                  MSE Presentation
+                </span>
+              </div>
+
+              {/* Course Title */}
+              <div className="text-xl sm:text-2xl font-black text-blue-700 tracking-wide uppercase">
+                Product Analytics – 23CT4701
+              </div>
+            </div>
+
+            {/* Team Members & Progress Bar */}
+            <div className="relative z-10 mt-10 pt-6 border-t border-slate-200">
+              <div className="grid grid-cols-5 divide-x divide-slate-300 text-center mb-6">
+                <div className="px-2">
+                  <div className="text-sm font-bold text-slate-900">Putta Sujith</div>
+                  <div className="text-xs text-slate-500 font-semibold">ENG23CT0058</div>
+                </div>
+                <div className="px-2">
+                  <div className="text-sm font-bold text-slate-900">K Vikas Aneesh Reddy</div>
+                  <div className="text-xs text-slate-500 font-semibold">ENG23CT0052</div>
+                </div>
+                <div className="px-2">
+                  <div className="text-sm font-bold text-slate-900">E Yashas Kumar</div>
+                  <div className="text-xs text-slate-500 font-semibold">ENG23CT0002</div>
+                </div>
+                <div className="px-2">
+                  <div className="text-sm font-bold text-slate-900">Karnati Mokshith</div>
+                  <div className="text-xs text-slate-500 font-semibold">ENG23CT0053</div>
+                </div>
+                <div className="px-2">
+                  <div className="text-sm font-bold text-slate-900">P Jeevan Kumar Reddy</div>
+                  <div className="text-xs text-slate-500 font-semibold">ENG23CT0036</div>
+                </div>
+              </div>
+
+              {/* Tricolor Progress Bar */}
+              <div className="w-full h-3.5 rounded-full overflow-hidden border border-slate-400 p-0.5 bg-slate-100 flex shadow-inner">
+                <div className="w-[35%] bg-emerald-500 h-full rounded-l-full"></div>
+                <div className="w-[30%] bg-red-500 h-full"></div>
+                <div className="w-[35%] bg-amber-400 h-full rounded-r-full"></div>
+              </div>
+            </div>
+          </div>
+        )
+      },
       {
         title: 'Criteria 1: Triangulated Data Collection Pipeline (5 Marks)',
         subtitle: 'Eliminating Self-Reporting Bias with Multi-Method Telemetry',
@@ -1122,28 +1469,28 @@ function AdminAnalyticsPage() {
           <div className="flex flex-wrap items-center justify-between border-b border-slate-800 pb-4 gap-3">
             <div className="flex items-center gap-3">
               <span className="px-3 py-1 bg-purple-600/30 text-purple-300 border border-purple-500/40 rounded-full text-xs font-bold uppercase tracking-wider">
-                MSE-1 Product Analytics Deck • DineInGo V1.0 Beta
+                MSE Presentation • Product Analytics – 23CT4701
               </span>
-              <span className="text-xs text-slate-400 font-mono">Slide {presentationSlide + 1} of 4</span>
+              <span className="text-xs text-slate-400 font-mono">Slide {presentationSlide + 1} of 5</span>
             </div>
 
             <div className="flex items-center gap-2.5">
               <button
-                onClick={() => window.print()}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
-                title="Download / Save entire 4-slide deck as Landscape PDF"
+                onClick={handleDownloadDeckPptx}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
+                title="Download native 16:9 PowerPoint Presentation (.pptx)"
               >
-                <Printer size={15} />
-                Download Deck (PDF)
+                <Presentation size={15} />
+                Download Deck (PPTX)
               </button>
 
               <button
-                onClick={handleDownloadStandaloneDeck}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition-all"
-                title="Download self-contained offline HTML slide deck"
+                onClick={handleDownloadDeckPdf}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold shadow-md cursor-pointer transition-all"
+                title="Download exact 16:9 deck slides as Landscape PDF"
               >
-                <Download size={14} />
-                Offline HTML
+                <Printer size={15} />
+                Download Deck (PDF)
               </button>
 
               <div className="h-5 w-px bg-slate-800 mx-1 hidden sm:block" />
@@ -1157,8 +1504,8 @@ function AdminAnalyticsPage() {
                 <ChevronLeft size={18} />
               </button>
               <button
-                onClick={() => setPresentationSlide(prev => Math.min(prev + 1, 3))}
-                disabled={presentationSlide === 3}
+                onClick={() => setPresentationSlide(prev => Math.min(prev + 1, 4))}
+                disabled={presentationSlide === 4}
                 className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
                 title="Next Slide (→)"
               >
@@ -1184,21 +1531,26 @@ function AdminAnalyticsPage() {
               transition={{ duration: 0.25 }}
               className="max-w-6xl mx-auto"
             >
-              <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
-                {slides[presentationSlide].title}
-              </h2>
-              <p className="text-purple-400 text-base sm:text-lg font-medium mt-1">
-                {slides[presentationSlide].subtitle}
-              </p>
-
-              {slides[presentationSlide].content}
+              {slides[presentationSlide].isCover ? (
+                slides[presentationSlide].content
+              ) : (
+                <>
+                  <h2 className="text-3xl sm:text-4xl font-black text-white tracking-tight">
+                    {slides[presentationSlide].title}
+                  </h2>
+                  <p className="text-purple-400 text-base sm:text-lg font-medium mt-1">
+                    {slides[presentationSlide].subtitle}
+                  </p>
+                  {slides[presentationSlide].content}
+                </>
+              )}
             </motion.div>
           </div>
 
           <div className="border-t border-slate-800 pt-4 flex items-center justify-between text-xs text-slate-500">
-            <div>Use <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> and <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> to navigate • Click <strong className="text-purple-400">Download Deck (PDF)</strong> to save</div>
+            <div>Use <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">←</kbd> and <kbd className="px-1.5 py-0.5 bg-slate-800 rounded text-slate-300">→</kbd> to navigate • Click <strong className="text-amber-400">Download Deck (PPTX)</strong> or <strong className="text-purple-400">Deck (PDF)</strong> to save</div>
             <div className="flex gap-2">
-              {[0, 1, 2, 3].map(idx => (
+              {[0, 1, 2, 3, 4].map(idx => (
                 <button
                   key={idx}
                   onClick={() => setPresentationSlide(idx)}
@@ -1214,32 +1566,38 @@ function AdminAnalyticsPage() {
           {slides.map((s, idx) => (
             <div
               key={idx}
-              className="deck-slide-page p-6 bg-slate-950 text-white"
+              className={`deck-slide-page p-6 ${s.isCover ? 'bg-white text-slate-900' : 'bg-slate-950 text-white'}`}
             >
-              <div className="border-b border-slate-800 pb-3 flex justify-between items-start mb-4">
-                <div>
-                  <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
-                    DineInGo • MSE-1 Product Analytics Technical Evaluation (30 Marks)
-                  </span>
-                  <h2 className="text-2xl font-black text-white mt-0.5">{s.title}</h2>
-                  <p className="text-purple-300 text-xs font-semibold">{s.subtitle}</p>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs font-mono font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-md border border-slate-700">
-                    Slide {idx + 1} of {slides.length}
-                  </span>
-                </div>
-              </div>
+              {s.isCover ? (
+                s.content
+              ) : (
+                <>
+                  <div className="border-b border-slate-800 pb-3 flex justify-between items-start mb-4">
+                    <div>
+                      <span className="text-[11px] font-bold uppercase tracking-wider text-purple-400">
+                        DineInGo • Product Analytics (23CT4701) • MSE Presentation
+                      </span>
+                      <h2 className="text-2xl font-black text-white mt-0.5">{s.title}</h2>
+                      <p className="text-purple-300 text-xs font-semibold">{s.subtitle}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-mono font-bold text-slate-300 bg-slate-800 px-3 py-1 rounded-md border border-slate-700">
+                        Slide {idx + 1} of {slides.length}
+                      </span>
+                    </div>
+                  </div>
 
-              <div className="flex-1 py-2">
-                {s.content}
-              </div>
+                  <div className="flex-1 py-2">
+                    {s.content}
+                  </div>
 
-              <div className="border-t border-slate-800/80 pt-3 mt-4 flex justify-between items-center text-[10px] text-slate-400 font-medium">
-                <span>DineInGo Analytics Framework • Triangulated MongoDB & PostHog Telemetry</span>
-                <span>Author: Sujith Putta (DineInGo Team) • September 2026</span>
-                <span>Slide {idx + 1} of {slides.length}</span>
-              </div>
+                  <div className="border-t border-slate-800/80 pt-3 mt-4 flex justify-between items-center text-[10px] text-slate-400 font-medium">
+                    <span>DineInGo Analytics Framework • Triangulated MongoDB & PostHog Telemetry</span>
+                    <span>Putta Sujith • K Vikas Aneesh Reddy • E Yashas Kumar • Karnati Mokshith • P Jeevan Kumar Reddy</span>
+                    <span>Slide {idx + 1} of {slides.length}</span>
+                  </div>
+                </>
+              )}
             </div>
           ))}
         </div>
@@ -1467,21 +1825,21 @@ function AdminAnalyticsPage() {
           </button>
 
           <button
-            onClick={handleDownloadDeckPdf}
-            className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-700/80 hover:bg-purple-600 text-white rounded-xl shadow-md border border-purple-500/40 transition-all text-xs font-bold cursor-pointer"
-            title="Download/Print full 6-slide presentation deck as landscape PDF"
+            onClick={handleDownloadDeckPptx}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl shadow-md border border-amber-500/40 transition-all text-xs font-bold cursor-pointer"
+            title="Download native 16:9 PowerPoint Presentation (.pptx)"
           >
-            <Printer size={14} />
-            Download Deck (PDF)
+            <Presentation size={14} />
+            Download Deck (PPTX)
           </button>
 
           <button
-            onClick={handleDownloadStandaloneDeck}
-            className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 rounded-xl transition-all text-xs font-semibold cursor-pointer"
-            title="Download offline self-contained HTML slide deck"
+            onClick={handleDownloadDeckPdf}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-purple-700/80 hover:bg-purple-600 text-white rounded-xl shadow-md border border-purple-500/40 transition-all text-xs font-bold cursor-pointer"
+            title="Download exact 16:9 presentation slides as landscape PDF"
           >
-            <Download size={14} />
-            Offline HTML Deck
+            <Printer size={14} />
+            Download Deck (PDF)
           </button>
 
           <button
@@ -2111,20 +2469,20 @@ function AdminAnalyticsPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               <button
+                onClick={handleDownloadDeckPptx}
+                className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
+                title="Download native 16:9 PowerPoint presentation deck (.pptx)"
+              >
+                <Presentation size={13} />
+                Deck (PPTX)
+              </button>
+              <button
                 onClick={handleDownloadDeckPdf}
                 className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"
-                title="Download full 6-slide presentation deck as landscape PDF"
+                title="Download exact 16:9 presentation deck as landscape PDF"
               >
                 <Printer size={13} />
                 Deck (PDF)
-              </button>
-              <button
-                onClick={handleDownloadStandaloneDeck}
-                className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-purple-300 border border-purple-500/30 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Download offline self-contained HTML presentation deck"
-              >
-                <Download size={13} />
-                Deck (HTML)
               </button>
               <a
                 href="/analytics_exports/real_posthog_mixpanel_funnel_analytics.csv"
