@@ -12,7 +12,6 @@ import {
   RefreshCw,
   Download,
   Target,
-  Layers,
   CheckCircle2,
   Sparkles,
   Eye,
@@ -21,7 +20,6 @@ import {
   Clock,
   Award,
   HelpCircle,
-  Mail,
   ChevronRight,
   ChevronLeft,
   FileSpreadsheet,
@@ -104,8 +102,6 @@ interface LiveTelemetryState {
     noShowRate: number;
     arMenuScanRate: number;
     repeatBookingRate: number;
-    emailCTR: number;
-    tiur: number;
     abv: number;
   };
   sources: {
@@ -142,8 +138,6 @@ const DEFAULT_TELEMETRY: LiveTelemetryState = {
     noShowRate: 3.8,
     arMenuScanRate: 34.2,
     repeatBookingRate: 28.5,
-    emailCTR: 5.26,
-    tiur: 68.2,
     abv: 1480
   },
   sources: {
