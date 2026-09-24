@@ -4,7 +4,7 @@ import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './LandingPage';
 import CheckInPage from './pages/CheckInPage';
-import ARMenuPage from './pages/ARMenuPage';
+const ARMenuPage = React.lazy(() => import('./pages/ARMenuPage'));
 import BusinessLandingPage from './BusinessLandingPage';
 import LoginPage from './LoginPage';
 import SignupPage from './SignupPage';

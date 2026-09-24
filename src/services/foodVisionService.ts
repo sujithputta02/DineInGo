@@ -16,8 +16,7 @@
  *            Offline fallback — works without internet
  */
 
-import * as tf from '@tensorflow/tfjs';
-import { createWorker } from 'tesseract.js';
+import type { LayersModel, Tensor3D, Tensor } from '@tensorflow/tfjs';
 import { foodScanApi } from './api';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
@@ -34,7 +33,7 @@ const OPENROUTER_VISION_MODELS = [
 const SARVAM_MODEL = 'sarvam-30b';
 
 // ─── Constants & Cache ────────────────────────────────────────────────────────
-let cachedModel: tf.LayersModel | null = null;
+let cachedModel: LayersModel | null = null;
 let cachedLabels: string[] | null = null;
 
 const MODEL_PATH = '/models/food_recognition/model.json';
@@ -63,7 +62,7 @@ export interface VisionResult {
 }
 
 // ─── Local ML State ───────────────────────────────────────────────────────────
-let foodModel: tf.LayersModel | null = null;
+let foodModel: LayersModel | null = null;
 let foodLabels: string[] = [];
 let mlLoading = false;
 
@@ -71,6 +70,7 @@ export async function loadLocalMLModel(): Promise<boolean> {
   if (foodModel || mlLoading) return !!foodModel;
   mlLoading = true;
   try {
+    const tf = await import('@tensorflow/tfjs');
     await tf.ready();
 
     // 1. Load model and labels (with caching)
@@ -89,7 +89,7 @@ export async function loadLocalMLModel(): Promise<boolean> {
 
     if (!cachedModel || !cachedLabels) throw new Error('ML Engine failed to start');
 
-    foodModel = cachedModel as unknown as tf.LayersModel;
+    foodModel = cachedModel as unknown as LayersModel;
     foodLabels = cachedLabels;
 
     console.log(`[Vision] ✅ Food-101 engine ready. Loaded ${foodLabels.length} classes.`);
@@ -164,6 +164,7 @@ async function identifyViaOCRAndSarvam(
     onProgress?.('Scanning text from camera...');
     const dataURL = captureFrameAsDataURL(video);
 
+    const { createWorker } = await import('tesseract.js');
     const worker = await createWorker('eng', 1, {
       logger: m => {
         if (m.status === 'recognizing text') {
@@ -313,10 +314,11 @@ async function identifyViaLocalML(
   if (!foodModel || !foodLabels.length) return null;
 
   try {
+    const tf = await import('@tensorflow/tfjs');
     onProgress?.('Local Neural Engine (Food-101)...');
 
     // 1. Prepare image tensor (Async loading must happen outside tf.tidy)
-    let imgTensor: tf.Tensor3D;
+    let imgTensor: Tensor3D;
     if (overrideImage) {
       const imgEl = new Image();
       imgEl.src = `data:image/jpeg;base64,${overrideImage.includes('base64') ? overrideImage.split(',')[1] : overrideImage}`;
@@ -332,7 +334,7 @@ async function identifyViaLocalML(
       const offset = tf.scalar(127.5);
       const normalized = resized.sub(offset).div(offset).expandDims(0);
 
-      const prediction = foodModel!.predict(normalized) as tf.Tensor;
+      const prediction = foodModel!.predict(normalized) as Tensor;
       return prediction.dataSync();
     }) as Float32Array;
 

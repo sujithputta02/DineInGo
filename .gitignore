@@ -35,6 +35,7 @@ backend/diag.js
 backend/test-endpoint.ts
 backend/test-endpoint.js
 **/scratch.*
+scratch/
 
 # Build artifacts
 backend/dist/
