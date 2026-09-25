@@ -661,8 +661,6 @@ function AdminAnalyticsPage() {
       slide5.addText([
         { text: 'P0: Sticky Mobile CTA\n', options: { bold: true, color: '34D399', fontSize: 10 } },
         { text: 'Reclaims 15-25% drop-off by making "Book Table" visible above the fold.\n\n', options: { color: '94A3B8', fontSize: 9 } },
-        { text: 'P0: Persistent JWT Session\n', options: { bold: true, color: '34D399', fontSize: 10 } },
-        { text: 'Direct Tally citation (NpYPOON): "asking to login the mail every single time".\n\n', options: { color: '94A3B8', fontSize: 9 } },
         { text: 'P1: ₹50 Refundable Deposit\n', options: { bold: true, color: '34D399', fontSize: 10 } },
         { text: 'Reduces no-show risk from 12.5% to <3%.\n\n', options: { color: '94A3B8', fontSize: 9 } },
         { text: 'P2: AR & 360 Maps Enhancements\n', options: { bold: true, color: '34D399', fontSize: 10 } },
@@ -1024,10 +1022,6 @@ function AdminAnalyticsPage() {
           <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
             <div style="font-weight:800; color:#34d399; font-size:13px;">P0: Sticky Mobile CTA</div>
             <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Reclaims 15-25% drop-off by making "Book Table" visible above the fold.</div>
-          </div>
-          <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
-            <div style="font-weight:800; color:#34d399; font-size:13px;">P0: Persistent JWT Session</div>
-            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Direct Tally citation (NpYPOON): "asking to login the mail every single time".</div>
           </div>
           <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
             <div style="font-weight:800; color:#34d399; font-size:13px;">P1: ₹50 Refundable Deposit</div>
@@ -1404,9 +1398,6 @@ function AdminAnalyticsPage() {
               <div className="space-y-2.5 text-sm">
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
                   <strong className="text-emerald-400">P0: Sticky Mobile CTA</strong>: Reclaims 15-25% drop-off by making "Book Table" visible above the fold.
-                </div>
-                <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
-                  <strong className="text-emerald-400">P0: Persistent JWT Session</strong>: Eliminates repetitive email auth prompts during checkout (Direct Tally feedback citation: "asking to login the mail every single time").
                 </div>
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
                   <strong className="text-emerald-400">P1: ₹50 Refundable Deposit</strong>: Reduces no-show risk from 12.5% to &lt;3%.
@@ -2548,7 +2539,7 @@ function AdminAnalyticsPage() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3">
-                      <span className="text-xs font-mono font-semibold text-slate-700">{step.visitors} users</span>
+                      <span className="text-xs font-mono font-semibold text-slate-700">{step.visitors} visits</span>
                       <span className="text-xs font-black text-purple-700 px-2.5 py-1 bg-purple-100/80 rounded-lg">
                         {step.conversion}%
                       </span>
@@ -2635,15 +2626,15 @@ function AdminAnalyticsPage() {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={15} className="text-emerald-400 mt-0.5 shrink-0" />
-                  <span><strong>Fix 2 (P0):</strong> Persistent localStorage JWT session to eliminate repetitive email login prompts.</span>
+                  <span><strong>Fix 2 (P1):</strong> Introduce ₹50 refundable micro-deposits to reduce no-shows from 12.5% to &lt;3%.</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={15} className="text-emerald-400 mt-0.5 shrink-0" />
-                  <span><strong>Fix 3 (P1):</strong> Introduce ₹50 refundable micro-deposits to reduce no-shows from 12.5% to &lt;3%.</span>
+                  <span><strong>Fix 3 (P1):</strong> Unified "Dinner + Show" single cart checkout to increase Average Booking Value by 40%.</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={15} className="text-emerald-400 mt-0.5 shrink-0" />
-                  <span><strong>Fix 4 (P1):</strong> Unified "Dinner + Show" single cart checkout to increase Average Booking Value by 40%.</span>
+                  <span><strong>Fix 4 (P2):</strong> AR & 360 Maps Enhancements for immersive 3D menu previews and interactive venue navigation.</span>
                 </div>
               </div>
             </div>
