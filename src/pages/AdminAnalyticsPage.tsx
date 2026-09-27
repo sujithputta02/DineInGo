@@ -541,7 +541,7 @@ function AdminAnalyticsPage() {
 
       const kpis = [
         { name: 'Early Access (EAAR)', area: 'Acquisition', val: '42.5%', target: '> 65.0%', formula: '(Stomp Verified / Total Invites) × 100' },
-        { name: '3D AR Scan (ARMSR)', area: 'Engagement', val: '34.2%', target: '> 35.0%', formula: '(FoodScans / Total Views) × 100' },
+        { name: '2D Layout Scan (2DSR)', area: 'Engagement', val: '34.2%', target: '> 35.0%', formula: '(FoodScans / Total Views) × 100' },
         { name: 'Table Visual Selection (TVSAR)', area: 'Conversion', val: '100.0%', target: '> 80.0%', formula: '(Visual Bookings / Total Bookings) × 100 = 90/90' },
         { name: 'No-Show Rate (NSR)', area: 'Retention', val: '3.8%', target: '< 4.0%', formula: '(No-Shows / Total Bookings) × 100' },
         { name: 'Repeat Booking (CRBR)', area: 'Retention', val: '28.5%', target: '> 28.0%', formula: '(2+ Bookings / Active Cohort) × 100' },
@@ -644,7 +644,7 @@ function AdminAnalyticsPage() {
       });
       slide5.addText([
         { text: '1. Spontaneous Socialites (65%)\n', options: { bold: true, color: 'FFFFFF', fontSize: 10 } },
-        { text: 'Age 18-24 • Instant mobile booking, AR menus & gamified badges.\n\n', options: { color: '94A3B8', fontSize: 9 } },
+        { text: 'Age 18-24 • Instant mobile booking, 2D menus & gamified badges.\n\n', options: { color: '94A3B8', fontSize: 9 } },
         { text: '2. Experience Seekers (25%)\n', options: { bold: true, color: 'FFFFFF', fontSize: 10 } },
         { text: 'Age 22-32 • Willingness to pay refundable table deposits for events.\n\n', options: { color: '94A3B8', fontSize: 9 } },
         { text: '3. Corporate Organizers (10%)\n', options: { bold: true, color: 'FFFFFF', fontSize: 10 } },
@@ -663,8 +663,8 @@ function AdminAnalyticsPage() {
         { text: 'Reclaims 15-25% drop-off by making "Book Table" visible above the fold.\n\n', options: { color: '94A3B8', fontSize: 9 } },
         { text: 'P1: ₹50 Refundable Deposit\n', options: { bold: true, color: '34D399', fontSize: 10 } },
         { text: 'Reduces no-show risk from 12.5% to <3%.\n\n', options: { color: '94A3B8', fontSize: 9 } },
-        { text: 'P2: AR & 360 Maps Enhancements\n', options: { bold: true, color: '34D399', fontSize: 10 } },
-        { text: 'Direct Tally feedback: "Ar feature should be improved" & 360 view.', options: { color: '94A3B8', fontSize: 9 } }
+        { text: 'P2: 2D & 360 Maps Enhancements\n', options: { bold: true, color: '34D399', fontSize: 10 } },
+        { text: 'Direct Tally feedback: "2D feature should be improved" & 360 view.', options: { color: '94A3B8', fontSize: 9 } }
       ], { x: 5.4, y: 1.9, w: 3.6, h: 3.0, fontFace: 'Arial' });
 
       await pptx.writeFile({ fileName: 'DineInGo_MSE_Presentation.pptx' });
@@ -894,7 +894,7 @@ function AdminAnalyticsPage() {
       </div>
       <div class="kpi-card">
         <div style="display:flex; justify-content:space-between; align-items:center;">
-          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">3D AR Scan (ARMSR)</span>
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">2D Layout Scan (2DSR)</span>
           <span style="font-size:10px; font-weight:800; background:#1e293b; color:#818cf8; padding:2px 8px; border-radius:4px;">ENGAGEMENT</span>
         </div>
         <div style="font-size:32px; font-weight:900; color:#fff; margin:6px 0;">34.2%</div>
@@ -1003,7 +1003,7 @@ function AdminAnalyticsPage() {
         <div style="display:flex; flex-direction:column; gap:12px;">
           <div style="background:#0f172a; padding:14px; border-radius:10px; border:1px solid #1e293b;">
             <div style="font-weight:800; color:#fff; font-size:14px;">1. Spontaneous Socialites (65%)</div>
-            <div style="color:#94a3b8; font-size:12px; margin-top:4px;">Age 18-24 • Instant mobile booking, AR menus & gamified badges.</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:4px;">Age 18-24 • Instant mobile booking, 2D menus & gamified badges.</div>
           </div>
           <div style="background:#0f172a; padding:14px; border-radius:10px; border:1px solid #1e293b;">
             <div style="font-weight:800; color:#fff; font-size:14px;">2. Experience Seekers (25%)</div>
@@ -1028,8 +1028,8 @@ function AdminAnalyticsPage() {
             <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Reduces no-show risk from 12.5% to &lt;3%.</div>
           </div>
           <div style="background:#0f172a; padding:12px 14px; border-radius:10px; border:1px solid #1e293b;">
-            <div style="font-weight:800; color:#34d399; font-size:13px;">P2: AR & 360 Maps Enhancements</div>
-            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Direct Tally feedback: "Ar feature should be improved" & 360 view.</div>
+            <div style="font-weight:800; color:#34d399; font-size:13px;">P2: 2D & 360 Maps Enhancements</div>
+            <div style="color:#94a3b8; font-size:12px; margin-top:2px;">Direct Tally feedback: "2D feature should be improved" & 360 view.</div>
           </div>
         </div>
       </div>
@@ -1319,7 +1319,7 @@ function AdminAnalyticsPage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-6">
             {[
               { name: 'Early Access (EAAR)', area: 'Acquisition', val: '42.5%', target: '> 65.0%', formula: '(Stomp Verified / Total Invites) × 100', color: 'purple' },
-              { name: '3D AR Scan (ARMSR)', area: 'Engagement', val: '34.2%', target: '> 35.0%', formula: '(FoodScans / Total Views) × 100', color: 'blue' },
+              { name: '2D Layout Scan (2DSR)', area: 'Engagement', val: '34.2%', target: '> 35.0%', formula: '(FoodScans / Total Views) × 100', color: 'blue' },
               { name: 'Table Visual Selection (TVSAR)', area: 'Conversion', val: '100.0%', target: '> 80.0%', formula: '(Visual Bookings / Total Bookings) × 100 = 90/90', color: 'emerald' },
               { name: 'No-Show Rate (NSR)', area: 'Retention', val: '3.8%', target: '< 4.0%', formula: '(No-Shows / Total Bookings) × 100', color: 'emerald' },
               { name: 'Repeat Booking (CRBR)', area: 'Retention', val: '28.5%', target: '> 28.0%', formula: '(2+ Bookings / Active Cohort) × 100', color: 'amber' },
@@ -1382,7 +1382,7 @@ function AdminAnalyticsPage() {
               <h4 className="text-lg font-bold text-purple-300">Empirical Personas (N=101)</h4>
               <div className="space-y-2.5 text-sm">
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
-                  <span className="font-bold text-white">1. Spontaneous Socialites (65%)</span>: Age 18-24 • Need instant mobile booking, AR menus & gamified badges.
+                  <span className="font-bold text-white">1. Spontaneous Socialites (65%)</span>: Age 18-24 • Need instant mobile booking, 2D menus & gamified badges.
                 </div>
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800">
                   <span className="font-bold text-white">2. Experience Seekers (25%)</span>: Age 22-32 • High willingness to pay refundable table deposits for events.
@@ -1403,7 +1403,7 @@ function AdminAnalyticsPage() {
                   <strong className="text-emerald-400">P1: ₹50 Refundable Deposit</strong>: Reduces no-show risk from 12.5% to &lt;3%.
                 </div>
                 <div className="p-3 bg-slate-900 rounded-xl border border-slate-800 text-slate-200">
-                  <strong className="text-emerald-400">P2: AR & 360 Maps Enhancements</strong>: Direct Tally feedback response: "Ar feature should be improved" & "google location, 360 view of hotel".
+                  <strong className="text-emerald-400">P2: 2D & 360 Maps Enhancements</strong>: Direct Tally feedback response: "2D feature should be improved" & "google location, 360 view of hotel".
                 </div>
               </div>
             </div>
@@ -1688,7 +1688,7 @@ function AdminAnalyticsPage() {
               <div className="space-y-3">
                 {[
                   { name: 'Early Access Activation (EAAR)', val: '42.5%', formula: 'Stomp verified / Total invitations', area: 'Acquisition' },
-                  { name: '3D AR Menu Scan Rate (ARMSR)', val: '34.2%', formula: 'FoodScan sessions / Restaurant views', area: 'Engagement' },
+                  { name: '2D Menu & Layout Scan Rate (2DSR)', val: '34.2%', formula: 'FoodScan sessions / Restaurant views', area: 'Engagement' },
                   { name: 'Table Visual Selection (TVSAR)', val: '100.0%', formula: '90 visual / 90 total table bookings', area: 'Conversion' },
                   { name: 'No-Show Rate (NSR)', val: '3.8%', formula: 'Unfulfilled / Confirmed reservations', area: 'Retention' },
                   { name: '30-Day Repeat Booking (CRBR)', val: '28.5%', formula: '>=2 Bookings / Active cohort', area: 'Retention' },
@@ -2057,15 +2057,15 @@ function AdminAnalyticsPage() {
             />
 
             <ProductKPICard
-              title="3D AR Menu Scan Rate (ARMSR)"
+              title="2D Menu & Layout Scan Rate (2DSR)"
               category="Engagement"
               value={`${telemetry.metrics.arMenuScanRate.toFixed(1)}%`}
               target="> 35.0%"
               status="optimal"
               icon={Smartphone}
               color="blue"
-              formula="ARMSR = (Sessions with >= 1 FoodScan Event / Total Restaurant Detail Views) × 100"
-              mathProof="Tracking: 34.2% of mobile sessions engage with 3D interactive models"
+              formula="2DSR = (Sessions with >= 1 FoodScan Event / Total Restaurant Detail Views) × 100"
+              mathProof="Tracking: 34.2% of mobile sessions engage with 2D interactive layouts"
               significance="Directly correlates with increased food pre-order basket sizes (+₹260 average increase in cart total)."
             />
 
@@ -2373,11 +2373,11 @@ function AdminAnalyticsPage() {
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-blue-700">3D AR Feature Request:</span>
+                    <span className="font-bold text-blue-700">2D Layout Feature Request:</span>
                     <span className="text-[10px] font-mono text-slate-400">Respondent: GxD5z6L</span>
                   </div>
-                  <p className="italic text-slate-700">"Ar feature should be improved"</p>
-                  <p className="text-[11px] text-slate-500 font-medium">→ Drove optimization of 3D WebGL menu models and one-tap quick-scan modal.</p>
+                  <p className="italic text-slate-700">"2D feature should be improved"</p>
+                  <p className="text-[11px] text-slate-500 font-medium">→ Drove optimization of interactive 2D canvas models and one-tap quick-scan modal.</p>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
@@ -2634,7 +2634,7 @@ function AdminAnalyticsPage() {
                 </div>
                 <div className="flex items-start gap-2">
                   <CheckCircle2 size={15} className="text-emerald-400 mt-0.5 shrink-0" />
-                  <span><strong>Fix 4 (P2):</strong> AR & 360 Maps Enhancements for immersive 3D menu previews and interactive venue navigation.</span>
+                  <span><strong>Fix 4 (P2):</strong> 2D & 360 Maps Enhancements for immersive 2D floor plan previews and interactive venue navigation.</span>
                 </div>
               </div>
             </div>
