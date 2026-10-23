@@ -10,6 +10,7 @@ import { walletService } from '../services/walletService';
 import { toast } from 'react-toastify';
 import { DinoStepper } from '../components/DinoStepper';
 import mixpanel from 'mixpanel-browser';
+import { useExperiment } from '../contexts/ExperimentContext';
 
 const ReservationDetailsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -30,6 +31,13 @@ const ReservationDetailsPage: React.FC = () => {
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [dynamicTableFee, setDynamicTableFee] = useState<number | null>(null);
   const [isPeakTime, setIsPeakTime] = useState<boolean>(false);
+
+  // 🧪 A/B Testing: 100% Refundable Dining Credit vs Raw Table Fee (Stage 4 -> 5)
+  const { isVariantB: isRefundableDepositVariant, trackExposure: trackDepositExposure, trackConversion: trackDepositConversion } = useExperiment('exp_deposit_framing');
+
+  useEffect(() => {
+    trackDepositExposure();
+  }, [trackDepositExposure]);
   const [theme] = useState<'light' | 'dark' | 'system'>(() => {
     return (localStorage.getItem('theme') as 'light' | 'dark' | 'system') || 'system';
   });
@@ -327,6 +335,9 @@ const ReservationDetailsPage: React.FC = () => {
           'category': type
         });
 
+        // 🧪 A/B Testing: Conversion tracking for Deposit Framing
+        trackDepositConversion('booking_confirmed', getPricingBreakdown().total);
+
         // Show success overlay
         setShowSuccess(true);
         // Redirect to dashboard after a delay
@@ -606,16 +617,31 @@ const ReservationDetailsPage: React.FC = () => {
                   <span className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getPricingBreakdown().subtotal.toFixed(2)}</span>
                 </div>
                 {type !== 'event' && (
-                  <div className="flex justify-between items-center">
-                    <span className={`font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
-                      Table Reservation Fee (No GST):
-                      {isPeakTime && (
-                        <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-500 text-white rounded-full animate-pulse shadow-sm">
-                          ⚡ PEAK TIME SURGE
-                        </span>
-                      )}
-                    </span>
-                    <span className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getPricingBreakdown().tableFee.toFixed(2)}</span>
+                  <div className="flex flex-col gap-1.5 py-1">
+                    <div className="flex justify-between items-center">
+                      <span className={`font-bold ${isDarkMode ? 'text-gray-400' : 'text-gray-600'} flex items-center gap-2`}>
+                        {isRefundableDepositVariant ? (
+                          <span className="flex items-center gap-1.5 text-emerald-500 font-black">
+                            <span>🛡️</span>
+                            <span>Table Guarantee Deposit (100% Refundable / Deductible):</span>
+                          </span>
+                        ) : (
+                          'Table Reservation Fee (No GST):'
+                        )}
+                        {isPeakTime && (
+                          <span className="px-2 py-0.5 text-[9px] font-black uppercase tracking-wider bg-amber-500 text-white rounded-full animate-pulse shadow-sm">
+                            ⚡ PEAK TIME SURGE
+                          </span>
+                        )}
+                      </span>
+                      <span className={`font-black ${isDarkMode ? 'text-white' : 'text-gray-900'}`}>₹{getPricingBreakdown().tableFee.toFixed(2)}</span>
+                    </div>
+                    {isRefundableDepositVariant && (
+                      <div className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-3 py-2 rounded-xl border border-emerald-500/25 flex items-center gap-2">
+                        <span className="text-sm">✓</span>
+                        <span><strong>100% Deductible Guarantee:</strong> This ₹{getPricingBreakdown().tableFee.toFixed(2)} deposit is directly deducted from your dining & food bill at the table.</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 <div className="flex justify-between">

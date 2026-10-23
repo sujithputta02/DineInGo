@@ -78,6 +78,7 @@ import { getSessionToken } from './utils/sessionGuard';
 import socketService from './utils/socketService';
 import { toast } from 'react-toastify';
 import { FeatureFlagProvider, useFeatureFlags } from './contexts/FeatureFlagContext';
+import { ExperimentProvider } from './contexts/ExperimentContext';
 import SEO from './components/SEO';
 import AnalyticsTracker from './components/AnalyticsTracker';
 
@@ -167,6 +168,7 @@ function App() {
       }>
     <LanguageProvider>
       <AuthProvider>
+        <ExperimentProvider>
         <FeatureFlagProvider>
         <UserActivityProvider>
           <EntityProvider>
@@ -342,6 +344,7 @@ function App() {
           </EntityProvider>
         </UserActivityProvider>
         </FeatureFlagProvider>
+        </ExperimentProvider>
       </AuthProvider>
     </LanguageProvider>
       </React.Suspense>

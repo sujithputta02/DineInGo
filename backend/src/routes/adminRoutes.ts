@@ -63,6 +63,10 @@ import {
   resetSettings,
   getFeatureFlags
 } from '../controllers/platformSettingsController';
+import {
+  getAdminExperimentsAnalytics,
+  resetExperimentStats
+} from '../controllers/experimentController';
 import { AdminOTP } from '../models/Admin';
 import { verifyAdminToken, verifySuperAdmin } from '../middleware/adminAuth';
 import { 
@@ -222,5 +226,9 @@ router.get('/waitlist/stats', adminApiLimiter, verifyAdminToken, logAdminAction,
 router.post('/waitlist/broadcast', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, sendWaitlistBroadcast);
 router.get('/waitlist/all', adminApiLimiter, verifyAdminToken, logAdminAction, getWaitlistSignups);
 router.patch('/waitlist/update-status', adminApiLimiter, verifyAdminToken, logAdminAction, updateWaitlistStatus);
+
+// 📊 A/B Testing & Conversion Experiments
+router.get('/experiments', adminApiLimiter, verifyAdminToken, logAdminAction, getAdminExperimentsAnalytics);
+router.post('/experiments/:experimentId/reset', adminApiLimiter, verifyAdminToken, verifySuperAdmin, logAdminAction, resetExperimentStats);
 
 export default router;

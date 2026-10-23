@@ -8,6 +8,7 @@ import socketService from '../utils/socketService';
 import { toast } from 'react-toastify';
 import { DinoStepper } from '../components/DinoStepper';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useExperiment } from '../contexts/ExperimentContext';
 
 interface TableData {
   id: string;
@@ -187,6 +188,14 @@ const TableSelection: React.FC = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { t } = useLanguage();
+
+  // 🧪 A/B Testing: Hybrid Quick-Pick vs Pure 2D Canvas (Stage 3 -> 4)
+  const { isVariantB: isQuickPickVariant, trackExposure: trackTableExposure, trackConversion: trackTableConversion } = useExperiment('exp_table_quick_pick');
+
+  useEffect(() => {
+    trackTableExposure();
+  }, [trackTableExposure]);
+
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
   const [restaurantName, setRestaurantName] = useState<string>('');
   const [reservedTables, setReservedTables] = useState<string[]>([]);
@@ -754,6 +763,7 @@ const TableSelection: React.FC = () => {
     // Just update the selected table visually
     // Don't block it until user clicks "Proceed"
     setSelectedTable(table);
+    trackTableConversion('table_selected');
   };
 
   return (
@@ -857,23 +867,42 @@ const TableSelection: React.FC = () => {
       </div>
 
       {suggestedTableInfo && (
-        <div className="mx-6 mb-4 p-4 rounded-2xl bg-emerald-500/10 border-2 border-emerald-500/20 backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top duration-300">
+        <div className={`mx-6 mb-4 p-4 rounded-2xl backdrop-blur-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top duration-300 ${
+          isQuickPickVariant
+            ? 'bg-gradient-to-r from-emerald-950/80 via-slate-900/90 to-emerald-950/80 border-2 border-emerald-400/50 shadow-2xl shadow-emerald-500/20'
+            : 'bg-emerald-500/10 border-2 border-emerald-500/20'
+        }`}>
           <div className="flex items-start gap-3">
-            <span className="text-2xl mt-0.5">🦖</span>
+            <span className="text-2xl mt-0.5">{isQuickPickVariant ? '⚡' : '🦖'}</span>
             <div>
-              <h4 className="text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
-                Dino's Smart Suggestion
-              </h4>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs sm:text-sm font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                  {isQuickPickVariant ? 'Instant 1-Tap Table Recommendation' : "Dino's Smart Suggestion"}
+                </h4>
+                {isQuickPickVariant && (
+                  <span className="px-2 py-0.5 rounded-full bg-amber-400 text-slate-950 font-black text-[9px] uppercase tracking-wider">
+                    Faster Checkout
+                  </span>
+                )}
+              </div>
               <p className="text-slate-300 text-xs sm:text-sm mt-0.5 font-medium">
                 We recommend <strong className="text-emerald-400">Table {suggestedTableInfo.table.label || suggestedTableInfo.table.id}</strong>: {suggestedTableInfo.reason}.
               </p>
             </div>
           </div>
           <button
-            onClick={() => setSelectedTable(suggestedTableInfo.table.id)}
-            className="w-full sm:w-auto px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl text-xs font-black uppercase tracking-widest shadow-lg shadow-emerald-500/10 active:scale-95 transition-all whitespace-nowrap"
+            onClick={() => {
+              setSelectedTable(suggestedTableInfo.table.id);
+              trackTableConversion('quick_pick_claimed');
+              toast.success(`Selected Table ${suggestedTableInfo.table.label || suggestedTableInfo.table.id}!`);
+            }}
+            className={`w-full sm:w-auto px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest active:scale-95 transition-all whitespace-nowrap shadow-lg ${
+              isQuickPickVariant
+                ? 'bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 shadow-amber-400/20'
+                : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-500/10'
+            }`}
           >
-            Claim Suggestion
+            {isQuickPickVariant ? '⚡ 1-Tap Select Table' : 'Claim Suggestion'}
           </button>
         </div>
       )}

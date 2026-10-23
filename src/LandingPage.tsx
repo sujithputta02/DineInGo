@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import SEO from "./components/SEO";
 import { useLanguage } from "./contexts/LanguageContext";
 import DineInGoIntro from "./components/DineInGoIntro";
+import { useExperiment } from "./contexts/ExperimentContext";
 
 interface DoodleProps {
   type: 'plate' | 'fork' | 'star' | 'chair' | 'wave' | 'ticket';
@@ -513,6 +514,13 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { t } = useLanguage();
 
+  // 🧪 A/B Testing: Mobile Sticky Bottom CTA vs Hero Button (Stage 1 -> 2)
+  const { isVariantB: isStickyCtaVariant, trackExposure: trackCtaExposure, trackConversion: trackCtaConversion } = useExperiment('exp_mobile_sticky_cta');
+
+  useEffect(() => {
+    trackCtaExposure();
+  }, [trackCtaExposure]);
+
   // Track window width for responsiveness
   useEffect(() => {
     const handleResize = () => setWindowWidth(window.innerWidth);
@@ -845,7 +853,10 @@ export default function LandingPage() {
                 <motion.button
                   whileHover={{ scale: 1.05, y: -4, boxShadow: `0 12px 28px ${glassStyles.colors.primary}40` }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => navigate('/login')}
+                  onClick={() => {
+                    trackCtaConversion('hero_cta_click');
+                    navigate('/login');
+                  }}
                   style={{
                     ...glassStyles.button,
                     backgroundColor: glassStyles.colors.primary,
@@ -1562,6 +1573,47 @@ export default function LandingPage() {
             </div>
           </div>
         </footer>
+
+        {/* 🧪 A/B Test Variant B: Sticky Mobile CTA Floating Bar */}
+        {isStickyCtaVariant && (
+          <motion.div
+            initial={{ y: 100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.4, duration: 0.5, type: 'spring' }}
+            className="fixed bottom-4 left-4 right-4 z-50 md:hidden"
+            style={{
+              background: "rgba(4, 120, 87, 0.94)",
+              backdropFilter: "blur(24px) saturate(180%)",
+              WebkitBackdropFilter: "blur(24px) saturate(180%)",
+              borderRadius: "28px",
+              border: "1px solid rgba(255, 255, 255, 0.35)",
+              boxShadow: "0 16px 40px rgba(0, 0, 0, 0.35), 0 0 24px rgba(16, 185, 129, 0.45)",
+              padding: "12px 18px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "12px"
+            }}
+          >
+            <div className="flex flex-col text-left">
+              <span className="text-[10px] font-black text-emerald-200 tracking-widest uppercase flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping inline-block" />
+                Live Availability
+              </span>
+              <span className="text-sm font-black text-white leading-tight">Reserve Perfect Table</span>
+            </div>
+            <button
+              onClick={() => {
+                trackCtaConversion('sticky_bar_click');
+                navigate('/login');
+              }}
+              className="px-5 py-2.5 rounded-full bg-amber-400 hover:bg-amber-300 text-slate-950 font-black text-xs tracking-wider uppercase shadow-xl active:scale-95 transition-all flex items-center gap-1.5"
+            >
+              <span>Book Table</span>
+              <span className="text-base leading-none">→</span>
+            </button>
+          </motion.div>
+        )}
       </motion.div>
     </>
   );
