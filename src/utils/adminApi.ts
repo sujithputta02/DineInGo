@@ -340,6 +340,20 @@ export async function revokeAllSessions() {
   return adminApiRequest('/api/v1/admin/2fa/revoke-sessions', { method: 'POST' });
 }
 
+// ============================================
+// 📊 A/B TESTING & EXPERIMENTATION
+// ============================================
+
+export async function getExperimentsAnalytics() {
+  return adminApiRequest('/api/v1/admin/experiments');
+}
+
+export async function resetExperiment(experimentId: string) {
+  return adminApiRequest(`/api/v1/admin/experiments/${experimentId}/reset`, {
+    method: 'POST',
+  });
+}
+
 // Admin API combined object for backward compatibility
 export const adminApi = {
   getStats,
@@ -392,4 +406,6 @@ export const adminApi = {
   disable2FA,
   regenerateBackupCodes,
   revokeAllSessions,
+  getExperimentsAnalytics,
+  resetExperiment,
 };

@@ -40,6 +40,7 @@ import userOtpRoutes from './routes/userOtpRoutes';
 import earlyAccessRoutes from './routes/earlyAccessRoutes';
 import foodScanRoutes from './routes/foodScanRoutes';
 import translationRoutes from './routes/translationRoutes';
+import experimentRoutes from './routes/experimentRoutes';
 import {
   checkAndEnforceTwoFactorDeadlines,
   scheduleAndSendPendingReminders,
@@ -339,6 +340,7 @@ apiV1Router.use('/user-preferences', userPreferenceRoutes);
 apiV1Router.use('/auth/otp', userOtpRoutes);
 apiV1Router.use('/early-access', earlyAccessRoutes);
 apiV1Router.use('/recommendations', aiRecommendationRoutes);
+apiV1Router.use('/experiments', experimentRoutes);
 
 // Mount v1 API
 app.use('/api/v1', apiV1Router);
