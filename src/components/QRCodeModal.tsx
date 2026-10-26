@@ -18,13 +18,24 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
   title = 'Scan to Experience in AR',
   subtitle = 'Open on your mobile phone to place dishes into your physical space using native AR.'
 }) => {
+  const [activeUrl, setActiveUrl] = useState<string>(url);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copied, setCopied] = useState(false);
 
+  // Sync activeUrl when url prop changes
   useEffect(() => {
-    if (!isOpen || !url) return;
+    setActiveUrl(url);
+  }, [url]);
 
-    QRCode.toDataURL(url, {
+  const isLocalhost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || activeUrl.includes('localhost') || activeUrl.includes('127.0.0.1'));
+
+  const publicDeploymentUrl = 'https://dine-in-l4qxclrtx-sujithputta02s-projects.vercel.app/ar-demo';
+
+  useEffect(() => {
+    if (!isOpen || !activeUrl) return;
+
+    QRCode.toDataURL(activeUrl, {
       width: 320,
       margin: 2,
       color: {
@@ -34,11 +45,11 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
     })
       .then(setQrDataUrl)
       .catch((err) => console.error('Failed to generate QR code:', err));
-  }, [isOpen, url]);
+  }, [isOpen, activeUrl]);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(activeUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -52,7 +63,7 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
         await navigator.share({
           title: 'DineInGo 3D & AR Menu Demo',
           text: 'Explore interactive 3D dishes and augmented reality with DineInGo!',
-          url
+          url: activeUrl
         });
       } catch (err) {
         // User cancelled share
@@ -109,13 +120,41 @@ export const QRCodeModal: React.FC<QRCodeModalProps> = ({
             </p>
           </div>
 
+          {/* Localhost / Network Warning for Desktop-to-Phone Handoff */}
+          {isLocalhost && (
+            <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-left space-y-1.5">
+              <p className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
+                <span>⚠️ Localhost Testing Notice</span>
+              </p>
+              <p className="text-[10px] text-gray-300 leading-relaxed">
+                Phones cannot reach <code className="text-amber-200">localhost</code>. To test on a mobile device, use the live cloud deployment URL or connect via your local Wi-Fi IP.
+              </p>
+              {activeUrl !== publicDeploymentUrl ? (
+                <button
+                  onClick={() => setActiveUrl(publicDeploymentUrl)}
+                  className="mt-1 px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 rounded-lg text-[10px] font-bold transition-colors border border-amber-500/30 inline-flex items-center gap-1"
+                >
+                  <ExternalLink size={10} />
+                  <span>Switch QR to Live Cloud Demo</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => setActiveUrl(url)}
+                  className="mt-1 px-3 py-1 bg-white/10 hover:bg-white/20 text-gray-300 rounded-lg text-[10px] font-bold transition-colors border border-white/10"
+                >
+                  <span>Revert to Localhost URL</span>
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Share Actions */}
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <input
                 type="text"
                 readOnly
-                value={url}
+                value={activeUrl}
                 className="flex-1 px-3 py-2 bg-black/50 border border-white/10 rounded-xl text-xs font-mono text-gray-300 truncate focus:outline-none"
               />
               <button

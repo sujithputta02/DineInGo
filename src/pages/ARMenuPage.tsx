@@ -147,11 +147,22 @@ export const ARMenuPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [bookingId, searchParams]);
+  }, [bookingId]);
 
   useEffect(() => {
     loadMenuData();
   }, [loadMenuData]);
+
+  // Sync selected dish when query param changes via browser back/forward navigation
+  useEffect(() => {
+    const queryDish = searchParams.get('dish');
+    if (queryDish && menuItems.length > 0) {
+      const match = menuItems.find((i) => (i.id || i._id) === queryDish);
+      if (match) {
+        setSelectedDishId(match.id || match._id || null);
+      }
+    }
+  }, [searchParams, menuItems]);
 
   const activeDish =
     menuItems.find((i) => (i.id || i._id) === selectedDishId) || menuItems[0] || null;

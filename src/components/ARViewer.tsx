@@ -64,6 +64,8 @@ export const ARViewer: React.FC<ARViewerProps> = ({
     setArSupport(detectDeviceARSupport());
   }, []);
 
+  const activeModelUrlRef = useRef<string | null>(null);
+
   // Configure model-viewer event listeners & AR capability detection
   useEffect(() => {
     const viewer = modelViewerRef.current;
@@ -74,28 +76,35 @@ export const ARViewer: React.FC<ARViewerProps> = ({
       return;
     }
 
+    activeModelUrlRef.current = resolved.modelUrl;
     setModelState('loading');
     setLoadProgress(15);
     setErrorMessage(null);
 
     const handleProgress = (event: any) => {
+      if (activeModelUrlRef.current !== resolved.modelUrl) return;
       const progress = Math.round((event.detail?.totalProgress || 0) * 100);
       setLoadProgress(progress);
     };
 
     const handleLoad = () => {
+      if (activeModelUrlRef.current !== resolved.modelUrl) return;
       setModelState('ready');
       setLoadProgress(100);
 
-      // Check if native AR can be activated on this device
+      // Check if native AR can actually be activated on this viewer/device
       try {
         if (typeof viewer.canActivateAR === 'boolean') {
           setCanActivateAR(viewer.canActivateAR);
         } else if (typeof viewer.canActivateAR === 'function') {
           viewer.canActivateAR().then((supported: boolean) => {
-            setCanActivateAR(Boolean(supported));
+            if (activeModelUrlRef.current === resolved.modelUrl) {
+              setCanActivateAR(Boolean(supported));
+            }
           }).catch(() => {
-            setCanActivateAR(arSupport.isARSupported);
+            if (activeModelUrlRef.current === resolved.modelUrl) {
+              setCanActivateAR(arSupport.isARSupported);
+            }
           });
         } else {
           setCanActivateAR(arSupport.isARSupported);
@@ -106,6 +115,7 @@ export const ARViewer: React.FC<ARViewerProps> = ({
     };
 
     const handleError = (errorEvent: any) => {
+      if (activeModelUrlRef.current !== resolved.modelUrl) return;
       console.warn('[ARViewer] Model failed to load:', errorEvent);
       setModelState('error');
       setErrorMessage('Failed to load 3D model asset. High-resolution photo preview is available.');
@@ -129,26 +139,28 @@ export const ARViewer: React.FC<ARViewerProps> = ({
     };
   }, [resolved.hasModel, resolved.modelUrl, reloadKey, arSupport.isARSupported]);
 
-  // Handle AR Activation
-  const handleLaunchAR = useCallback(async () => {
+  // Handle AR Activation synchronously on user click gesture
+  const handleLaunchAR = useCallback(() => {
     const viewer = modelViewerRef.current;
-    if (!viewer || !resolved.hasModel) {
-      setShowCapabilityHelp(true);
+    if (!viewer || !resolved.hasModel || modelState !== 'ready') {
       return;
     }
 
-    // If device doesn't have native AR support (e.g. desktop), show helpful guidance
-    if (!arSupport.isARSupported) {
+    // If viewer does not confirm AR support, show guidance modal
+    if (!canActivateAR) {
       setShowCapabilityHelp(true);
       return;
     }
 
     try {
-      if (viewer.activateAR) {
-        await viewer.activateAR();
+      if (typeof viewer.activateAR === 'function') {
+        viewer.activateAR().catch((err: any) => {
+          console.warn('[ARViewer] activateAR failed:', err);
+          setArStatus('failed');
+        });
       } else {
         // Fallback: Trigger internal AR button click
-        const internalArButton = viewer.shadowRoot?.querySelector('#default-ar-button');
+        const internalArButton = viewer.shadowRoot?.querySelector('#default-ar-button') as HTMLButtonElement | null;
         if (internalArButton) {
           internalArButton.click();
         } else {
@@ -157,13 +169,9 @@ export const ARViewer: React.FC<ARViewerProps> = ({
       }
     } catch (err) {
       console.error('[ARViewer] Error activating AR:', err);
-      setShowCapabilityHelp(true);
+      setArStatus('failed');
     }
-  }, [viewerReadyCheck(), resolved.hasModel, arSupport.isARSupported]);
-
-  function viewerReadyCheck() {
-    return Boolean(modelViewerRef.current);
-  }
+  }, [resolved.hasModel, modelState, canActivateAR]);
 
   const handleResetCamera = () => {
     const viewer = modelViewerRef.current;
@@ -352,10 +360,16 @@ export const ARViewer: React.FC<ARViewerProps> = ({
         </AnimatePresence>
 
         {/* AR Session Status Indicator */}
-        {arStatus !== 'not-presenting' && (
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded-full text-[10px] font-bold text-emerald-300 uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5">
+        {arStatus === 'failed' && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-red-500/20 border border-red-500/40 rounded-full text-[10px] font-bold text-red-300 uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-lg">
+            <AlertCircle size={12} className="text-red-400" />
+            <span>AR Unavailable on this device • Reverted to 3D View</span>
+          </div>
+        )}
+        {(arStatus === 'session-started' || arStatus === 'object-placed') && (
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 px-3 py-1 bg-emerald-500/20 border border-emerald-500/40 rounded-full text-[10px] font-bold text-emerald-300 uppercase tracking-wider backdrop-blur-md flex items-center gap-1.5 shadow-lg">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            AR Environment Active: {arStatus}
+            <span>{arStatus === 'object-placed' ? 'Dish Placed in Your Environment' : 'AR Camera Active — Scan Surface'}</span>
           </div>
         )}
       </div>
@@ -392,15 +406,34 @@ export const ARViewer: React.FC<ARViewerProps> = ({
         <div className="flex items-center gap-2">
           {/* Primary View in AR Action Button */}
           {resolved.hasModel ? (
-            <button
-              onClick={handleLaunchAR}
-              className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-purple-600/30 hover:shadow-purple-600/50 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-              title="Place this 3D dish onto your table in Augmented Reality"
-            >
-              <Smartphone size={16} />
-              <span>View in Real AR</span>
-              <Sparkles size={14} className="opacity-80" />
-            </button>
+            modelState === 'loading' ? (
+              <button
+                disabled
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-zinc-800 text-gray-400 font-black text-xs uppercase tracking-widest cursor-not-allowed flex items-center justify-center gap-2 border border-white/5 opacity-80"
+              >
+                <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
+                <span>Loading 3D Twin...</span>
+              </button>
+            ) : canActivateAR ? (
+              <button
+                onClick={handleLaunchAR}
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 text-white font-black text-xs uppercase tracking-widest shadow-lg shadow-purple-600/30 hover:shadow-purple-600/50 hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                title="Place this 3D dish onto your table in Augmented Reality"
+              >
+                <Smartphone size={16} />
+                <span>View in Real AR</span>
+                <Sparkles size={14} className="opacity-80" />
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowCapabilityHelp(true)}
+                className="flex-1 py-3.5 px-6 rounded-2xl bg-zinc-900 hover:bg-zinc-800 text-purple-300 border border-purple-500/30 font-bold text-xs uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+                title="AR is available on mobile devices (Android ARCore & iOS Quick Look)"
+              >
+                <Smartphone size={16} className="text-purple-400" />
+                <span>📱 AR on Mobile (Instructions)</span>
+              </button>
+            )
           ) : (
             <div className="flex-1 py-3 px-4 rounded-2xl bg-white/5 border border-white/10 text-center text-xs font-semibold text-gray-400">
               3D Model In Progress • Photo View Only

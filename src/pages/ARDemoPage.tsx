@@ -31,10 +31,27 @@ export const ARDemoPage: React.FC = () => {
   const navigate = useNavigate();
 
   // Selected dish ID tracking (synced with ?dish= query param for deep linking)
-  const initialDishId = searchParams.get('dish') || DEMO_MENU_ITEMS[0].id;
-  const [selectedDishId, setSelectedDishId] = useState<string>(initialDishId);
+  const initialDishParam = searchParams.get('dish');
+  const validInitialDish = initialDishParam && DEMO_MENU_ITEMS.some((d) => d.id === initialDishParam || d._id === initialDishParam)
+    ? initialDishParam
+    : DEMO_MENU_ITEMS[0].id;
+
+  const [selectedDishId, setSelectedDishId] = useState<string>(validInitialDish);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
+  // Sync selected dish ID when browser back/forward changes query param
+  useEffect(() => {
+    const dishParam = searchParams.get('dish');
+    if (dishParam) {
+      const exists = DEMO_MENU_ITEMS.some((d) => d.id === dishParam || d._id === dishParam);
+      if (exists) {
+        setSelectedDishId(dishParam);
+      } else {
+        setSelectedDishId(DEMO_MENU_ITEMS[0].id);
+      }
+    }
+  }, [searchParams]);
 
   // Derive active dish
   const activeDish: DemoDish =

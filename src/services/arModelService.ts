@@ -49,11 +49,124 @@ export interface ResolvedDishModel {
 export interface ARSupportStatus {
   isARSupported: boolean;
   isMobile: boolean;
+  isSecureContext: boolean;
   platform: 'android' | 'ios' | 'desktop' | 'unknown';
   recommendedMode: 'scene-viewer' | 'quick-look' | 'webxr' | 'none';
   reason: string;
   canUseArQuickLook: boolean;
   canUseSceneViewer: boolean;
+}
+
+export interface ModelValidationResult {
+  valid: boolean;
+  reason?: string;
+}
+
+// Configurable whitelist of trusted external hosts for 3D model assets (HTTPS only)
+export const ALLOWED_EXTERNAL_MODEL_DOMAINS = [
+  'amazonaws.com',
+  'cloudfront.net',
+  'storage.googleapis.com',
+  'cloudinary.com',
+  'githubusercontent.com',
+  'github.com',
+  'vercel.app',
+  'onrender.com',
+  'dineingo.com'
+];
+
+/**
+ * Validates a 3D model URL against security policies:
+ * - Rejects dangerous schemes (javascript:, data:, file:, etc.)
+ * - Rejects path traversal and malformed relative paths
+ * - Validates relative paths resolve strictly within /models/
+ * - Enforces HTTPS and whitelisted domains for external URLs
+ * - Checks for .glb or .gltf asset extension
+ * - Rejects known placeholder URLs
+ */
+export function validateModelUrl(url: unknown): ModelValidationResult {
+  if (!url || typeof url !== 'string') {
+    return { valid: false, reason: 'URL must be a non-empty string' };
+  }
+
+  const trimmed = url.trim();
+  if (trimmed.length === 0) {
+    return { valid: false, reason: 'URL cannot be empty' };
+  }
+
+  // Reject dangerous schemes immediately
+  const lower = trimmed.toLowerCase();
+  if (
+    lower.startsWith('javascript:') ||
+    lower.startsWith('data:') ||
+    lower.startsWith('file:') ||
+    lower.startsWith('blob:') ||
+    lower.startsWith('vbscript:')
+  ) {
+    return { valid: false, reason: 'Disallowed URL scheme' };
+  }
+
+  // Reject known placeholder / mock URLs
+  if (
+    lower.includes('sketchfab.com/models/d1d1') ||
+    lower.includes('example.com') ||
+    lower.includes('placeholder')
+  ) {
+    return { valid: false, reason: 'Placeholder or mock model URLs are rejected' };
+  }
+
+  // Relative path resolution
+  if (trimmed.startsWith('/')) {
+    // Check for path traversal or protocol-relative '//'
+    if (trimmed.startsWith('//') || trimmed.includes('..') || trimmed.includes('\\')) {
+      return { valid: false, reason: 'Path traversal or malformed relative path' };
+    }
+
+    // Must resolve inside permitted /models/ asset directory
+    if (!trimmed.startsWith('/models/')) {
+      return { valid: false, reason: 'Relative models must reside within /models/' };
+    }
+
+    const cleanPath = trimmed.split('?')[0].split('#')[0].toLowerCase();
+    if (!cleanPath.endsWith('.glb') && !cleanPath.endsWith('.gltf')) {
+      return { valid: false, reason: 'Model asset must be a .glb or .gltf file' };
+    }
+
+    return { valid: true };
+  }
+
+  // External URL resolution
+  try {
+    const parsed = new URL(trimmed);
+
+    // Enforce HTTPS
+    if (parsed.protocol !== 'https:') {
+      return { valid: false, reason: 'External model URLs must use HTTPS' };
+    }
+
+    // Path must end with .glb or .gltf
+    const pathname = parsed.pathname.toLowerCase();
+    if (!pathname.endsWith('.glb') && !pathname.endsWith('.gltf')) {
+      return { valid: false, reason: 'External model URL pathname must end with .glb or .gltf' };
+    }
+
+    // Domain whitelist validation
+    const hostname = parsed.hostname.toLowerCase();
+    const isDomainAllowed = ALLOWED_EXTERNAL_MODEL_DOMAINS.some(
+      domain => hostname === domain || hostname.endsWith('.' + domain)
+    );
+
+    if (!isDomainAllowed) {
+      return {
+        valid: false,
+        reason: `Host "${hostname}" is not in the permitted model storage whitelist`
+      };
+    }
+
+    return { valid: true };
+  } catch (err) {
+    return { valid: false, reason: 'Malformed URL' };
+  }
 }
 
 // ============================================================================
@@ -69,19 +182,14 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     scale: '1 1 1',
     cameraOrbit: '45deg 60deg 1.8m',
     fieldOfView: '30deg',
+    // Strictly dish-specific keywords (generic soup keywords belong in categoryTags)
     keywords: [
       'french onion soup',
       'onion soup',
-      'soupe a l\'oignon',
-      'soup',
-      'soupe',
-      'chowder',
-      'bisque',
-      'broth',
-      'potage',
-      'bouillon'
+      'soupe a l onion',
+      'soupe a l\'oignon'
     ],
-    categoryTags: ['soup', 'soups', 'starter', 'starters', 'appetizer', 'appetizers'],
+    categoryTags: ['soup', 'soups', 'starter', 'starters', 'appetizer', 'appetizers', 'chowder', 'bisque', 'potage', 'broth'],
     attribution: {
       author: 'Velskins (O\'Bistrot WebAR Project)',
       source: 'https://github.com/Velskins/O-Bistrot_Carte_WebAR',
@@ -99,19 +207,14 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     scale: '1 1 1',
     cameraOrbit: '40deg 55deg 1.6m',
     fieldOfView: '30deg',
+    // Strictly dish-specific keywords
     keywords: [
       'caesar salad',
       'garden salad',
-      'greek salad',
-      'house salad',
-      'salad',
-      'salade',
-      'greens',
-      'bowl',
-      'lettuce',
-      'coleslaw'
+      'fresh garden caesar salad',
+      'house salad'
     ],
-    categoryTags: ['salad', 'salads', 'starter', 'starters', 'appetizer', 'healthy', 'vegetarian'],
+    categoryTags: ['salad', 'salads', 'starter', 'starters', 'appetizer', 'healthy', 'vegetarian', 'greens', 'bowl'],
     attribution: {
       author: 'Velskins (O\'Bistrot WebAR Project)',
       source: 'https://github.com/Velskins/O-Bistrot_Carte_WebAR',
@@ -129,20 +232,15 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     scale: '1 1 1',
     cameraOrbit: '45deg 60deg 2.0m',
     fieldOfView: '32deg',
+    // Strictly dish-specific keywords
     keywords: [
       'beef bourguignon',
       'braised beef',
-      'boeuf',
-      'steak medallion',
-      'beef steak',
-      'tenderloin',
-      'ribeye',
-      'sirloin',
-      'filet mignon',
-      'pot roast',
-      'beef'
+      'boeuf bourguignon',
+      'slow braised beef',
+      'beef tenderloin'
     ],
-    categoryTags: ['main', 'mains', 'entree', 'entrees', 'meat', 'beef', 'steaks'],
+    categoryTags: ['main', 'mains', 'entree', 'entrees', 'meat', 'beef', 'steaks', 'steak', 'tenderloin', 'ribeye', 'sirloin'],
     attribution: {
       author: 'Velskins (O\'Bistrot WebAR Project)',
       source: 'https://github.com/Velskins/O-Bistrot_Carte_WebAR',
@@ -160,19 +258,15 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     scale: '1 1 1',
     cameraOrbit: '35deg 55deg 1.5m',
     fieldOfView: '30deg',
+    // Strictly dish-specific keywords
     keywords: [
       'apple pie',
       'tarte tatin',
       'apple tart',
-      'pie',
-      'tarte',
-      'tart',
-      'quiche',
-      'pastry',
-      'baked pie',
-      'fruit pie'
+      'warm apple tarte',
+      'baked pie'
     ],
-    categoryTags: ['dessert', 'desserts', 'bakery', 'pastry', 'sweets'],
+    categoryTags: ['dessert', 'desserts', 'bakery', 'pastry', 'sweets', 'pie', 'tart', 'tarte', 'quiche'],
     attribution: {
       author: 'Velskins (O\'Bistrot WebAR Project)',
       source: 'https://github.com/Velskins/O-Bistrot_Carte_WebAR',
@@ -190,17 +284,14 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     scale: '1 1 1',
     cameraOrbit: '40deg 55deg 1.5m',
     fieldOfView: '30deg',
+    // Strictly dish-specific keywords
     keywords: [
       'creme brulee',
       'crème brûlée',
-      'custard',
-      'panna cotta',
-      'caramel custard',
-      'flan',
-      'pudding',
-      'creme'
+      'vanilla bean creme brulee',
+      'creme caramel'
     ],
-    categoryTags: ['dessert', 'desserts', 'sweet', 'sweets'],
+    categoryTags: ['dessert', 'desserts', 'sweet', 'sweets', 'custard', 'pudding', 'flan', 'panna cotta'],
     attribution: {
       author: 'Velskins (O\'Bistrot WebAR Project)',
       source: 'https://github.com/Velskins/O-Bistrot_Carte_WebAR',
@@ -287,12 +378,10 @@ export function resolveDishModel(dish: ResolvableDish | null | undefined): Resol
   }
 
   // --- Priority 1: Explicit Model URL linked to the item ---
-  if (dish.modelUrl && typeof dish.modelUrl === 'string' && dish.modelUrl.trim().length > 0) {
-    const cleanUrl = dish.modelUrl.trim();
-    const isGlb = cleanUrl.endsWith('.glb') || cleanUrl.endsWith('.gltf') || cleanUrl.includes('.glb?') || cleanUrl.includes('.gltf?');
-
-    // Only accept URLs that look like valid 3D models (and not fake placeholders)
-    if (isGlb && !cleanUrl.includes('sketchfab.com/models/d1d1')) {
+  if (dish.modelUrl && typeof dish.modelUrl === 'string') {
+    const validation = validateModelUrl(dish.modelUrl);
+    if (validation.valid) {
+      const cleanUrl = dish.modelUrl.trim();
       return {
         hasModel: true,
         modelUrl: cleanUrl,
@@ -371,6 +460,7 @@ export function detectDeviceARSupport(): ARSupportStatus {
     return {
       isARSupported: false,
       isMobile: false,
+      isSecureContext: false,
       platform: 'unknown',
       recommendedMode: 'none',
       reason: 'Server-side rendering environment',
@@ -379,6 +469,7 @@ export function detectDeviceARSupport(): ARSupportStatus {
     };
   }
 
+  const isSecure = Boolean(window.isSecureContext);
   const ua = navigator.userAgent || '';
   const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const isAndroid = /Android/i.test(ua);
@@ -400,9 +491,24 @@ export function detectDeviceARSupport(): ARSupportStatus {
     return {
       isARSupported: false,
       isMobile: false,
+      isSecureContext: isSecure,
       platform: 'desktop',
       recommendedMode: 'none',
       reason: 'Physical AR environment placement requires a mobile device with a camera and AR capabilities (Android ARCore or iOS Safari / Quick Look). Interactive 3D preview is active on desktop.',
+      canUseArQuickLook: false,
+      canUseSceneViewer: false
+    };
+  }
+
+  // Insecure context check on mobile (WebXR and camera APIs require HTTPS or localhost)
+  if (!isSecure && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+    return {
+      isARSupported: false,
+      isMobile: true,
+      isSecureContext: false,
+      platform,
+      recommendedMode: 'none',
+      reason: 'AR camera and WebXR features require a secure HTTPS connection. The page is currently served over insecure HTTP.',
       canUseArQuickLook: false,
       canUseSceneViewer: false
     };
@@ -412,6 +518,7 @@ export function detectDeviceARSupport(): ARSupportStatus {
     return {
       isARSupported: true,
       isMobile: true,
+      isSecureContext: isSecure,
       platform: 'android',
       recommendedMode: 'scene-viewer',
       reason: 'Google Scene Viewer / WebXR supported on compatible Android devices.',
@@ -424,6 +531,7 @@ export function detectDeviceARSupport(): ARSupportStatus {
     return {
       isARSupported: true,
       isMobile: true,
+      isSecureContext: isSecure,
       platform: 'ios',
       recommendedMode: 'quick-look',
       reason: 'Apple AR Quick Look supported on iOS Safari.',
@@ -435,6 +543,7 @@ export function detectDeviceARSupport(): ARSupportStatus {
   return {
     isARSupported: false,
     isMobile: true,
+    isSecureContext: isSecure,
     platform: 'unknown',
     recommendedMode: 'none',
     reason: 'Mobile device does not expose a supported native AR runtime.',
