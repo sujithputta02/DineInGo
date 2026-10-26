@@ -34,6 +34,8 @@ backend/.env.production
 backend/diag.js
 backend/test-endpoint.ts
 backend/test-endpoint.js
+backend/scripts/test-*.js
+backend/scripts/verify-user-totp.js
 **/scratch.*
 scratch/
 
@@ -60,6 +62,7 @@ firebase-service-account.json
 # Uploads (user-generated content)
 backend/uploads/
 uploads/
+backend/storage/
 
 # Database
 *.db
@@ -82,6 +85,12 @@ ml/food-101/
 ml/*.tar.gz
 ml/*.h5
 ml/*.zip
+reconstruction_service/venv/
+reconstruction_service/.venv/
+reconstruction_service/output/
+reconstruction_service/models/
+reconstruction_service/cache/
+**/.cache/
 **/__pycache__/
 *.pyc
 

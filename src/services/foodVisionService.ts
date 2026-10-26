@@ -18,19 +18,8 @@
 
 import type { LayersModel, Tensor3D, Tensor } from '@tensorflow/tfjs';
 import { foodScanApi } from './api';
+import { auth } from '../firebase';
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const SARVAM_API_KEY = import.meta.env.VITE_SARVAM_API_KEY || '';
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
-
-// Verified free vision models on OpenRouter (in preference order)
-// meta-llama/llama-3.2-11b-vision-instruct:free supports image input
-const OPENROUTER_VISION_MODELS = [
-  'meta-llama/llama-3.2-11b-vision-instruct:free',
-  'qwen/qwen2.5-vl-7b-instruct:free',
-];
-
-const SARVAM_MODEL = 'sarvam-30b';
 
 // ─── Constants & Cache ────────────────────────────────────────────────────────
 let cachedModel: LayersModel | null = null;
@@ -148,161 +137,47 @@ function cleanAILabel(label: string | null | undefined): string {
   return cleaned;
 }
 
-// ─── TIER 1: OCR → Sarvam AI ──────────────────────────────────────────────────
-/**
- * Step 1: Tesseract.js reads any text visible in the camera frame
- *         (e.g. menu card text, dish label, price tag)
- * Step 2: Sarvam AI's text model takes the raw OCR string and
- *         identifies/cleans the dish name (handles Indian scripts too)
- */
-async function identifyViaOCRAndSarvam(
-  video: HTMLVideoElement,
+// ─── TIER 1 & 2: Secure Backend AI Vision (OpenRouter & Sarvam) ───────────────
+async function identifyViaBackendVision(
+  imageBase64: string,
+  ocrText?: string,
   onProgress?: (msg: string) => void
 ): Promise<VisionResult | null> {
   try {
-    // ── Step 1: OCR ─────────────────────────────────────────────────────────
-    onProgress?.('Scanning text from camera...');
-    const dataURL = captureFrameAsDataURL(video);
+    onProgress?.('AI Vision: Secure cloud inference...');
+    const user = auth.currentUser;
+    const token = user ? await user.getIdToken() : '';
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const { createWorker } = await import('tesseract.js');
-    const worker = await createWorker('eng', 1, {
-      logger: m => {
-        if (m.status === 'recognizing text') {
-          onProgress?.(`OCR: ${Math.round(m.progress * 100)}%`);
-        }
-      }
-    });
-    const { data: { text } } = await worker.recognize(dataURL);
-    await worker.terminate();
-
-    const cleanedOCR = text.trim().replace(/\s+/g, ' ').slice(0, 500);
-    console.log('[Vision OCR] Raw text:', cleanedOCR);
-
-    if (!cleanedOCR || cleanedOCR.length < 3) {
-      console.log('[Vision OCR] No readable text found, skipping Sarvam');
-      return null;
-    }
-
-    // ── Step 2: Sarvam AI text model ─────────────────────────────────────────
-    if (!SARVAM_API_KEY || SARVAM_API_KEY === 'your_sarvam_api_key_here') {
-      return null;
-    }
-
-    onProgress?.('Sarvam AI identifying dish...');
-
-    const response = await fetch('https://api.sarvam.ai/v1/chat/completions', {
+    const res = await fetch('/api/v1/vision/identify', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${SARVAM_API_KEY}`,
-        'api-subscription-key': SARVAM_API_KEY,
-      },
+      headers,
       body: JSON.stringify({
-        model: SARVAM_MODEL,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a food expert specialising in Indian cuisine. Given raw OCR text scanned from a restaurant menu, identify and return ONLY the main dish name. Return just the dish name, nothing else.'
-          },
-          {
-            role: 'user',
-            content: `Scanned menu text: "${cleanedOCR}"\n\nWhat is the main dish name shown? Reply with only the dish name.`
-          }
-        ],
-        max_tokens: 30,
-        temperature: 0.1,
-      }),
+        image: imageBase64,
+        ocrText
+      })
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      console.warn('[Vision Sarvam] Error:', response.status, err.slice(0, 200));
+    if (!res.ok) {
+      console.warn('[Vision] Backend vision endpoint returned HTTP', res.status);
       return null;
     }
 
-    const data = await response.json();
-    const label = cleanAILabel(data?.choices?.[0]?.message?.content);
-
-    if (!label || label.length < 2) return null;
-
-    console.log('[Vision Sarvam] Identified dish:', label);
-    return {
-      label,
-      confidence: 0.90,
-      tier: 'sarvam-ocr',
-      ocrText: cleanedOCR,
-    };
-
-  } catch (error: any) {
-    console.warn('[Vision OCR+Sarvam] Failed:', error?.message);
+    const data = await res.json();
+    if (data.success && data.label) {
+      return {
+        label: data.label,
+        confidence: data.confidence || 0.90,
+        tier: data.tier === 'sarvam-ocr' ? 'sarvam-ocr' : 'openrouter',
+        ocrText
+      };
+    }
+    return null;
+  } catch (err: any) {
+    console.warn('[Vision] Backend inference error:', err.message);
     return null;
   }
-}
-
-// ─── TIER 2: OpenRouter Vision ────────────────────────────────────────────────
-async function identifyViaOpenRouter(
-  video: HTMLVideoElement,
-  onProgress?: (msg: string) => void,
-  overrideImage?: string
-): Promise<VisionResult | null> {
-  if (!OPENROUTER_API_KEY || OPENROUTER_API_KEY === 'your_openrouter_api_key_here') return null;
-
-  const imageBase64 = overrideImage ? (overrideImage.includes('base64') ? overrideImage.split(',')[1] : overrideImage) : captureFrameAsBase64(video);
-
-  // Try each vision model in order until one succeeds
-  for (const model of OPENROUTER_VISION_MODELS) {
-    try {
-      onProgress?.(`OpenRouter: ${model.split('/')[1]?.split(':')[0]}...`);
-
-      const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
-          'HTTP-Referer': window.location.origin,
-          'X-Title': 'DineInGo AR Menu',
-        },
-        body: JSON.stringify({
-          model,
-          messages: [
-            {
-              role: 'user',
-              content: [
-                {
-                  type: 'image_url',
-                  image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
-                },
-                {
-                  type: 'text',
-                  text: 'What food dish is shown in this image? Reply with ONLY the dish name. Example: "Margherita Pizza" or "Butter Chicken". If unsure, give the closest generic name.'
-                }
-              ]
-            }
-          ],
-          max_tokens: 30,
-          temperature: 0.1,
-        }),
-      });
-
-      if (!response.ok) {
-        console.warn(`[Vision OpenRouter] ${model} → ${response.status}, trying next...`);
-        continue;
-      }
-
-      const data = await response.json();
-      const label = cleanAILabel(data?.choices?.[0]?.message?.content);
-
-      if (!label || label.toLowerCase().includes('sorry') || label.toLowerCase().includes('cannot')) continue;
-
-      console.log(`[Vision OpenRouter] ${model} identified:`, label);
-      return { label, confidence: 0.92, tier: 'openrouter' };
-
-    } catch (error: any) {
-      console.warn(`[Vision OpenRouter] ${model} failed:`, error?.message);
-    }
-  }
-
-  return null;
 }
 
 // ─── TIER 3: Local Food-101 ML ────────────────────────────────────────────────
@@ -368,139 +243,49 @@ async function identifyViaLocalML(
 }
 
 // ─── Master Identify Function (Visual RAG / Fusion Strategy) ──────────────────
-// ─── Master Identify Function (Failsafe Chain Strategy) ───────────────────────
+// ─── Master Identify Function (Backend Vision + Local ML Fallback) ────────────
 export async function identifyFoodFromCamera(
-  video: HTMLVideoElement,
+  videoOrImage: HTMLVideoElement | string,
   onTierChange?: (msg: string) => void,
-  croppedImageBase64?: string // New: Optional pre-cropped image
+  croppedImageBase64?: string
 ): Promise<VisionResult | null> {
-
   let finalResult: VisionResult | null = null;
-  let ocrResult: VisionResult | null = null;
-  const targetSource = croppedImageBase64 || video;
+  let imageBase64: string;
+
+  if (typeof videoOrImage === 'string') {
+    imageBase64 = videoOrImage.includes('base64,') ? videoOrImage.split('base64,')[1] : videoOrImage;
+  } else if (croppedImageBase64) {
+    imageBase64 = croppedImageBase64.includes('base64,') ? croppedImageBase64.split('base64,')[1] : croppedImageBase64;
+  } else if (videoOrImage) {
+    imageBase64 = captureFrameAsBase64(videoOrImage);
+  } else {
+    return null;
+  }
 
   try {
-    // 0. MEMORY TIER (Contextual Recall)
-    const now = Date.now();
-    if (!sessionHistoryMap || (now - lastHistoryFetch > HISTORY_CACHE_TTL)) {
-      try {
-        const history = await foodScanApi.getHistory();
-        const newMap: Record<string, string> = {};
-        history.forEach((h: any) => {
-          // Key 1: Raw AI Label -> Correction
-          if (h.foodName && h.correctedName && h.foodName !== h.correctedName) {
-            newMap[h.foodName.toLowerCase()] = h.correctedName;
-          }
-          // Key 2: OCR Fingerprint -> Correction
-          if (h.metadata?.ocrText && h.correctedName) {
-            const ocrKey = h.metadata.ocrText.substring(0, 50).toLowerCase().trim();
-            if (ocrKey) newMap[`ocr_${ocrKey}`] = h.correctedName;
-          }
-        });
-        sessionHistoryMap = newMap;
-        lastHistoryFetch = now;
-      } catch (e) {
-        console.warn('[Vision Memory] Failed to refresh history map');
-      }
-    }
+    // 1. PRIMARY TIER: Secure Backend Vision (OpenRouter / Sarvam)
+    onTierChange?.('AI Vision: Analyzing dish...');
+    finalResult = await identifyViaBackendVision(imageBase64, undefined, onTierChange);
 
-    // Perform OCR early to use as a "Fingerprint" for memory recall
-    ocrResult = await identifyViaOCRAndSarvam(video, onTierChange).catch(() => null);
-    const currentOcrKey = ocrResult?.label?.substring(0, 50).toLowerCase().trim();
-
-    if (currentOcrKey && sessionHistoryMap?.[`ocr_${currentOcrKey}`]) {
-      const learnedLabel = sessionHistoryMap[`ocr_${currentOcrKey}`];
-      console.log(`[Vision Memory] 🧠 OCR Recall: "${currentOcrKey}" -> "${learnedLabel}"`);
-      onTierChange?.('Dino 🦖 remembers this menu item!');
-      return {
-        label: learnedLabel,
-        confidence: 0.99,
-        tier: 'sarvam-ocr',
-        imageData: croppedImageBase64 || captureFrameAsBase64(video)
-      };
-    }
-
-    // 1. QUICK START: Local ML (Instant)
-    onTierChange?.('Neural Engine checking...');
-    const mlRes = await identifyViaLocalML(video, onTierChange, croppedImageBase64);
-
-    // If ML found something, check if we have a "Memory" of correcting it
-    if (mlRes && sessionHistoryMap?.[mlRes.label.toLowerCase()]) {
-      const learnedLabel = sessionHistoryMap[mlRes.label.toLowerCase()];
-      console.log(`[Vision Memory] 🧠 ML Recall: "${mlRes.label}" -> "${learnedLabel}"`);
-      onTierChange?.('Dino 🦖 remembers this!');
-      return {
-        label: learnedLabel,
-        confidence: 0.98,
-        tier: 'local-ml',
-        imageData: croppedImageBase64 || captureFrameAsBase64(video)
-      };
-    }
-
-    // 2. PRIMARY: Fusion (OpenRouter Vision)
-    onTierChange?.('AI Fusion: Thinking...');
-    const visionRes = await identifyViaOpenRouter(video, onTierChange, croppedImageBase64).catch(e => {
-      console.warn('[Vision] OpenRouter failed:', e);
-      return null;
-    });
-
-    if (visionRes) {
-      console.log('[Vision] ✅ Tier 1 Success: OpenRouter');
-      // Fusion: Boost confidence if ML agrees
-      if (mlRes && mlRes.confidence > 0.4) {
-        visionRes.confidence = Math.min(0.99, visionRes.confidence + 0.05);
-      }
-      finalResult = visionRes;
-    }
-    else if (mlRes && mlRes.confidence > 0.15) {
-      // 3. SMART FALLBACK: ML + Sarvam Polish
-      onTierChange?.('Smart Fallback: Refining...');
-      try {
-        const polishedLabel = await polishMLResultWithSarvam(mlRes.label);
-        if (polishedLabel) {
-          console.log('[Vision] ✅ Tier 2 Success: ML + Sarvam');
-          finalResult = {
-            label: polishedLabel,
-            confidence: Math.min(0.85, mlRes.confidence + 0.2),
-            tier: 'local-ml'
-          };
-        }
-      } catch (err) {
-        console.warn('[Vision] Sarvam Polish failed:', err);
-      }
-
-      // If Sarvam failed but we have ML, keep ML as the result
-      if (!finalResult) {
-        console.log('[Vision] ✅ Tier 2b Success: Pure ML');
+    // 2. FALLBACK TIER: Local MobileNet Edge ML
+    if (!finalResult) {
+      onTierChange?.('Offline Neural Engine checking...');
+      const videoElement = typeof videoOrImage !== 'string' ? videoOrImage : (null as any);
+      const mlRes = await identifyViaLocalML(videoElement, onTierChange, imageBase64);
+      if (mlRes && mlRes.confidence >= 0.40) {
         finalResult = mlRes;
       }
     }
-
-    // 4. LAST RESORT: OCR (If nothing else worked)
-    if (!finalResult) {
-      onTierChange?.('OCR Backup: Scanning...');
-      const ocrRes = await identifyViaOCRAndSarvam(video, onTierChange).catch(() => null);
-      if (ocrRes) {
-        console.log('[Vision] ✅ Tier 3 Success: OCR');
-        finalResult = ocrRes;
-      }
-    }
-
   } catch (globalError) {
-    console.error('[Vision] Critical pipeline error:', globalError);
+    console.error('[Vision] Pipeline error:', globalError);
   }
 
-  // Final log and return
-  if (finalResult) {
-    // Attach OCR metadata if we captured it during the memory tier
-    if (ocrResult?.label) finalResult.ocrText = ocrResult.label;
-
-    // Attach the image that led to this result
-    finalResult.imageData = croppedImageBase64 || captureFrameAsBase64(video);
+  if (finalResult && finalResult.confidence >= 0.40) {
+    finalResult.imageData = imageBase64;
     return await logAndReturn(finalResult);
   }
 
-  console.log('[Vision] ❌ All tiers failed');
+  console.log('[Vision] Recognition inconclusive or low confidence.');
   return null;
 }
 
@@ -529,40 +314,6 @@ async function logAndReturn(result: VisionResult): Promise<VisionResult> {
   return result;
 }
 
-// Sarvam logic to clean up ML labels
-async function polishMLResultWithSarvam(mlLabel: string): Promise<string | null> {
-  if (!SARVAM_API_KEY) return null;
-
-  const response = await fetch('https://api.sarvam.ai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${SARVAM_API_KEY}`,
-      'api-subscription-key': SARVAM_API_KEY,
-    },
-    body: JSON.stringify({
-      model: SARVAM_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a food name specialist. Given a messy or generic label from a vision model, return the most likely specific Indian dish name. Reply with ONLY the name.'
-        },
-        {
-          role: 'user',
-          content: `The vision model detected: "${mlLabel}". What is the likely formal name of this dish?`
-        }
-      ],
-      max_tokens: 30,
-      temperature: 0.1,
-    }),
-  });
-
-  if (!response.ok) return null;
-  const data = await response.json();
-  const label = cleanAILabel(data?.choices?.[0]?.message?.content);
-
-  return label || null;
-}
 
 // ─── Menu Matching ────────────────────────────────────────────────────────────
 export function matchLabelToMenu(

@@ -119,20 +119,46 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
         setAnalysisStatus(msg);
       });
       setReport(result);
-      setCorrectedName(result.primaryFood.dishName);
+      setCorrectedName(result.primaryFood.dishName === 'Unrecognized Dish' ? '' : result.primaryFood.dishName);
+      if (result.primaryFood.confidence === 0 || result.primaryFood.dishName === 'Unrecognized Dish') {
+        setIsEditingName(true);
+      }
       setStep('review');
     } catch (err) {
       console.error('[FoodCapture] Analysis error:', err);
-      // Fallback result
-      const fallbackReport = await analyzeFoodImage('French Onion Soup');
-      setReport(fallbackReport);
-      setCorrectedName(fallbackReport.primaryFood.dishName);
+      // Honest unrecognized report - never substitute French Onion Soup
+      const honestFallback: FoodAnalysisReport = {
+        primaryFood: {
+          dishName: 'Unrecognized Dish',
+          category: 'Manual Selection Required',
+          confidence: 0,
+          confidenceTier: 'low',
+          visibleIngredients: [],
+          estimatedPortion: {
+            servingGrams: 250,
+            uncertaintyGrams: 100,
+            description: 'Please specify dish name manually'
+          },
+          visualEvidence: 'Automated recognition encountered an error or could not identify the image.',
+          undeterminedFactors: ['Dish identity', 'Ingredients', 'Portion size']
+        },
+        imageSnapshot: dataUrl,
+        needsUserConfirmation: true,
+        providerStatus: {
+          providerName: 'None',
+          isRealProvider: false,
+          setupNote: 'Recognition was inconclusive. Please type or select your dish name.'
+        }
+      };
+      setReport(honestFallback);
+      setCorrectedName('');
+      setIsEditingName(true);
       setStep('review');
     }
   };
 
   const handleConfirmAndProceed = () => {
-    const finalDishName = isEditingName ? correctedName : report?.primaryFood.dishName || 'French Onion Soup';
+    const finalDishName = (isEditingName ? correctedName.trim() : report?.primaryFood.dishName) || 'Custom Dish';
     
     if (onConfirmDish && report) {
       onConfirmDish(finalDishName, report);
@@ -140,12 +166,13 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
 
     onClose();
 
-    // Map to known demo dish if closely matching
-    let targetParam = 'french-onion-soup';
+    // Map to known demo dish only if clearly matching, otherwise general view
+    let targetParam = 'custom';
     const lower = finalDishName.toLowerCase();
-    if (lower.includes('salad') || lower.includes('caesar')) targetParam = 'salad-bowl';
-    else if (lower.includes('beef') || lower.includes('steak')) targetParam = 'braised-beef';
-    else if (lower.includes('pie') || lower.includes('tarte')) targetParam = 'baked-pie';
+    if (lower.includes('soup') || lower.includes('onion')) targetParam = 'french-onion-soup';
+    else if (lower.includes('salad') || lower.includes('caesar')) targetParam = 'salad-bowl';
+    else if (lower.includes('beef') || lower.includes('steak') || lower.includes('bourguignon')) targetParam = 'braised-beef';
+    else if (lower.includes('pie') || lower.includes('tarte') || lower.includes('tatin')) targetParam = 'baked-pie';
     else if (lower.includes('creme') || lower.includes('brulee')) targetParam = 'creme-brulee';
 
     navigate(`/ar-demo?dish=${targetParam}`);
@@ -271,10 +298,17 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                   <span className="text-[11px] font-black uppercase tracking-wider text-blue-400">
                     {report.primaryFood.category}
                   </span>
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[11px] font-black">
-                    <CheckCircle2 size={12} />
-                    {Math.round(report.primaryFood.confidence * 100)}% Confidence
-                  </div>
+                  {report.primaryFood.confidence > 0 ? (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[11px] font-black">
+                      <CheckCircle2 size={12} />
+                      {Math.round(report.primaryFood.confidence * 100)}% Confidence
+                    </div>
+                  ) : (
+                    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-400 text-[11px] font-black">
+                      <AlertTriangle size={12} />
+                      Manual Entry Needed
+                    </div>
+                  )}
                 </div>
 
                 {isEditingName ? (

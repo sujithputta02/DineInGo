@@ -22,7 +22,7 @@ export interface IReconstructionJob extends Document {
   imageUrl?: string;
   status: ReconstructionStatus;
   progress: number;
-  provider: 'meshy' | 'tripo3d' | 'illustrative-calibrated' | 'unconfigured';
+  provider: 'hf-triposr' | 'triposr' | 'meshy' | 'tripo3d' | 'illustrative-calibrated' | 'unconfigured';
   modelUrl?: string;
   assetQuality: ReconstructionAssetQuality;
   dimensions?: IReconstructionDimensions;
@@ -67,7 +67,7 @@ const ReconstructionJobSchema: Schema = new Schema({
   },
   provider: {
     type: String,
-    enum: ['meshy', 'tripo3d', 'illustrative-calibrated', 'unconfigured'],
+    enum: ['hf-triposr', 'triposr', 'meshy', 'tripo3d', 'illustrative-calibrated', 'unconfigured'],
     default: 'unconfigured'
   },
   modelUrl: {

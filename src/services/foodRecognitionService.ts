@@ -119,67 +119,94 @@ export async function analyzeFoodImage(
 
   if (typeof videoOrImage === 'string') {
     imageBase64 = videoOrImage;
-    // Create offscreen video or image if needed, or pass directly to fallback
   }
 
   onProgress?.('Inspecting dish geometry and colors...');
 
-  // If a live video element was passed
-  if (typeof videoOrImage !== 'string' && videoOrImage) {
-    try {
-      rawResult = await identifyFoodFromCamera(videoOrImage, onProgress);
-    } catch (e) {
-      console.warn('[FoodRecognition] Camera inference failed:', e);
-    }
+  // Invoke real inference pipeline for both video element and base64 image string
+  try {
+    rawResult = await identifyFoodFromCamera(videoOrImage, onProgress);
+  } catch (e: any) {
+    console.warn('[FoodRecognition] Vision inference failed:', e?.message);
   }
 
-  // Determine dish label from vision result or fallback
-  const rawLabel = rawResult?.label || (typeof videoOrImage === 'string' ? 'Artisanal Dish' : 'French Onion Soup');
-  const confidence = rawResult?.confidence || 0.88;
+  // TRUTHFULNESS: If no inference result or confidence is below threshold, report honest unrecognized state
+  if (!rawResult || !rawResult.label || rawResult.confidence < 0.30) {
+    const primaryFood: FoodRecognitionHypothesis = {
+      dishName: 'Unrecognized Dish',
+      category: 'Unknown / Selection Required',
+      confidence: 0,
+      confidenceTier: 'low',
+      visibleIngredients: [],
+      estimatedPortion: {
+        servingGrams: 250,
+        uncertaintyGrams: 100,
+        description: 'Portion estimate pending manual dish selection'
+      },
+      visualEvidence: 'No high-confidence culinary entity identified from visual analysis.',
+      undeterminedFactors: ['Actual dish identity', 'True ingredients and allergens', 'Preparation method'],
+      matchedMenuItem: resolveDishModel({ name: '' })
+    };
+
+    return {
+      primaryFood,
+      rawVisionResult: undefined,
+      imageSnapshot: imageBase64,
+      needsUserConfirmation: true, // Always require user review
+      providerStatus: {
+        providerName: 'None / Inconclusive Inference',
+        isRealProvider: false,
+        setupNote: 'Automated vision did not confidently identify this dish. Please select or search for your dish manually.'
+      }
+    };
+  }
+
+  // Real inference succeeded
+  const rawLabel = rawResult.label.trim();
+  const confidence = rawResult.confidence;
   const normalized = rawLabel.toLowerCase();
 
-  // Find knowledge match
-  let matchedKey = Object.keys(CULINARY_KNOWLEDGE).find(k => normalized.includes(k));
-  if (!matchedKey) {
-    if (normalized.includes('soup') || normalized.includes('onion')) matchedKey = 'french onion soup';
-    else if (normalized.includes('salad') || normalized.includes('caesar')) matchedKey = 'salad bowl';
-    else if (normalized.includes('beef') || normalized.includes('steak') || normalized.includes('meat')) matchedKey = 'braised beef';
-    else if (normalized.includes('pie') || normalized.includes('tarte') || normalized.includes('cake')) matchedKey = 'baked pie';
-    else if (normalized.includes('creme') || normalized.includes('brulee') || normalized.includes('custard')) matchedKey = 'creme brulee';
-    else matchedKey = 'french onion soup';
-  }
+  // Find culinary knowledge match if available
+  const matchedKey = Object.keys(CULINARY_KNOWLEDGE).find(k => 
+    normalized.includes(k) || k.includes(normalized)
+  );
 
-  const knowledge = CULINARY_KNOWLEDGE[matchedKey];
+  const knowledge = matchedKey ? CULINARY_KNOWLEDGE[matchedKey] : null;
   const matchedMenuItem = resolveDishModel({ name: rawLabel });
 
   const confidenceTier: 'high' | 'moderate' | 'low' = 
-    confidence >= 0.85 ? 'high' : confidence >= 0.65 ? 'moderate' : 'low';
+    confidence >= 0.85 ? 'high' : confidence >= 0.60 ? 'moderate' : 'low';
 
   const primaryFood: FoodRecognitionHypothesis = {
     dishName: matchedMenuItem.hasModel ? matchedMenuItem.dishName : rawLabel,
-    category: knowledge.category,
+    category: knowledge ? knowledge.category : 'General Food & Entrees',
     confidence,
     confidenceTier,
-    visibleIngredients: knowledge.ingredients,
-    estimatedPortion: {
+    // Never fabricate ingredients from generic culinary knowledge unless matched to specific knowledge
+    visibleIngredients: knowledge ? knowledge.ingredients : [],
+    estimatedPortion: knowledge ? {
       servingGrams: knowledge.typicalGrams,
       uncertaintyGrams: knowledge.uncertaintyGrams,
       description: `Approx. ${knowledge.typicalGrams}g (±${knowledge.uncertaintyGrams}g typical restaurant serving)`
+    } : {
+      servingGrams: 280,
+      uncertaintyGrams: 50,
+      description: 'Approx. 280g (±50g standard serving estimate)'
     },
-    visualEvidence: knowledge.evidence,
-    undeterminedFactors: knowledge.undetermined,
+    visualEvidence: knowledge ? knowledge.evidence : `Visual detection pattern matches "${rawLabel}".`,
+    undeterminedFactors: knowledge ? knowledge.undetermined : ['Actual oil and fat absorption during cooking', 'Hidden sodium and seasonings'],
     matchedMenuItem
   };
 
   return {
     primaryFood,
-    rawVisionResult: rawResult || undefined,
+    rawVisionResult: rawResult,
     imageSnapshot: imageBase64,
-    needsUserConfirmation: true, // Always require confirmation before logging
+    needsUserConfirmation: true, // User confirmation mandatory
     providerStatus: {
-      providerName: rawResult?.tier || 'Multi-Tier Neural Vision Cascade',
+      providerName: rawResult.tier === 'openrouter' ? 'Cloud Multimodal Vision' : rawResult.tier === 'sarvam-ocr' ? 'Sarvam OCR Pipeline' : 'On-Device Neural Model',
       isRealProvider: true,
-      setupNote: 'Analyzed using on-device neural models & OCR pipeline.'
+      setupNote: `Identified with ${Math.round(confidence * 100)}% confidence.`
     }
   };
 }

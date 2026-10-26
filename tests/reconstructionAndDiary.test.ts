@@ -32,14 +32,14 @@ test('2. 3D Reconstruction: Client service provides registered provider info and
   const { providers, activeProvider } = await getReconstructionProviders();
   assert.ok(providers.length >= 2);
 
-  const meshy = providers.find(p => p.id === 'meshy');
-  assert.ok(meshy);
-  assert.equal(meshy.requiresKey, 'MESHY_API_KEY');
+  const hfTripo = providers.find(p => p.id === 'hf-triposr');
+  assert.ok(hfTripo);
+  assert.equal(hfTripo.requiresKey, 'HF_TOKEN');
 
   const illustrative = providers.find(p => p.id === 'illustrative-calibrated');
   assert.ok(illustrative);
   assert.equal(illustrative.configured, true);
-  assert.equal(activeProvider, 'illustrative-calibrated');
+  assert.ok(activeProvider === 'hf-triposr' || activeProvider === 'illustrative-calibrated');
 });
 
 test('3. 3D Reconstruction: Lifecycle covers queued, processing, completed, failed, and cancelled states', () => {

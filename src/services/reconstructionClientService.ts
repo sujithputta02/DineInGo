@@ -1,12 +1,4 @@
-/**
- * DineInGo 3D Reconstruction Client Service
- * ─────────────────────────────────────────
- * Handles communication with backend reconstruction job endpoints:
- * - Queries provider capability & availability (Meshy / Tripo3D / Illustrative)
- * - Submits food image-to-3D jobs
- * - Polls job progress until ready or failed
- * - Validates output geometry & prevents broken model links
- */
+import { auth } from '../firebase';
 
 export type ReconstructionJobStatus = 'queued' | 'processing' | 'completed' | 'failed' | 'cancelled';
 
@@ -42,6 +34,22 @@ export interface ProviderInfo {
   description: string;
 }
 
+async function getAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const user = auth.currentUser;
+    if (user) {
+      const token = await user.getIdToken();
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+    }
+  } catch (err) {
+    console.warn('[ReconstructionClient] Could not get auth token:', err);
+  }
+  return headers;
+}
+
 /**
  * Fetch list of registered backend 3D reconstruction providers
  */
@@ -55,43 +63,44 @@ export async function getReconstructionProviders(): Promise<{
     const data = await res.json();
     return {
       providers: data.providers || [],
-      activeProvider: data.activeProvider || 'illustrative-calibrated'
+      activeProvider: data.activeProvider || 'hf-triposr'
     };
   } catch {
     return {
       providers: [
         {
+          id: 'hf-triposr',
+          name: 'DineInGo ZeroGPU TripoSR (Hugging Face)',
+          configured: true,
+          requiresKey: 'HF_TOKEN',
+          description: 'Generates real 3D food models from photographs using open-weight TripoSR (MIT License).'
+        },
+        {
           id: 'illustrative-calibrated',
           name: 'Calibrated Illustrative Service (Built-in)',
           configured: true,
           requiresKey: 'None',
-          description: 'Generates calibrated representative tableware models for known culinary items.'
-        },
-        {
-          id: 'meshy',
-          name: 'Meshy AI Food Reconstruction',
-          configured: false,
-          requiresKey: 'MESHY_API_KEY',
-          description: 'Generates quad-textured 3D models from food photos.'
+          description: 'Provides calibrated representative tableware models for known culinary items.'
         }
       ],
-      activeProvider: 'illustrative-calibrated'
+      activeProvider: 'hf-triposr'
     };
   }
 }
 
 /**
- * Submit an image-to-3D reconstruction job
+ * Submit an image-to-3D reconstruction job with authenticated user token
  */
 export async function submitFoodReconstructionJob(params: {
-  userId: string;
+  userId?: string;
   dishName: string;
   imageUrl?: string;
   referencePlateDiameterMeters?: number;
 }): Promise<string> {
+  const headers = await getAuthHeaders();
   const res = await fetch('/api/v1/reconstruction/jobs', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(params)
   });
 
@@ -105,18 +114,21 @@ export async function submitFoodReconstructionJob(params: {
 }
 
 /**
- * Poll job status until completion or failure
+ * Poll job status until completion or failure with verified ownership token
  */
 export async function pollReconstructionJob(
   jobId: string,
   onProgress?: (progress: number, status: ReconstructionJobStatus) => void,
-  maxAttempts: number = 30
+  maxAttempts: number = 40
 ): Promise<ReconstructionJobResponse> {
   let attempts = 0;
 
   while (attempts < maxAttempts) {
     attempts++;
-    const res = await fetch(`/api/v1/reconstruction/jobs/${encodeURIComponent(jobId)}`);
+    const headers = await getAuthHeaders();
+    const res = await fetch(`/api/v1/reconstruction/jobs/${encodeURIComponent(jobId)}`, {
+      headers
+    });
 
     if (!res.ok) {
       throw new Error(`Failed to check job status: HTTP ${res.status}`);
@@ -137,3 +149,4 @@ export async function pollReconstructionJob(
 
   throw new Error('Reconstruction job timed out.');
 }
+

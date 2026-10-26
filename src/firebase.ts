@@ -21,15 +21,17 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 import { getFunctions, httpsCallable } from "firebase/functions";
 
-// Firebase configuration
+// Firebase configuration with safe environment fallback
+const env = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' ? process.env : {}) as any;
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+  apiKey: env.VITE_FIREBASE_API_KEY || 'AIzaSyMockForTestEnvironmentOnly00',
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || 'dineingo-mock.firebaseapp.com',
+  projectId: env.VITE_FIREBASE_PROJECT_ID || 'dineingo-mock',
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || 'dineingo-mock.appspot.com',
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || '000000000000',
+  appId: env.VITE_FIREBASE_APP_ID || '1:000000000000:web:mockapp',
+  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -60,7 +62,7 @@ provider.addScope('https://www.googleapis.com/auth/userinfo.profile');
 
 // Initialize Analytics (only in production)
 let analytics = null;
-if (import.meta.env.MODE === 'production') {
+if (env && env.MODE === 'production') {
   analytics = getAnalytics(app);
 }
 

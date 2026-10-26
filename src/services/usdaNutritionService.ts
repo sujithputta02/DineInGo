@@ -1,10 +1,9 @@
 /**
- * USDA FoodData Central API Service
- * Free nutrition data for 800,000+ foods
+ * USDA FoodData Central & Regional Nutrition Service
+ * ──────────────────────────────────────────────────
+ * Queries backend nutrition endpoints to retrieve chemical composition.
+ * Client does NOT possess any private API keys.
  */
-
-const USDA_API_KEY = import.meta.env.VITE_USDA_API_KEY;
-const USDA_BASE_URL = 'https://api.nal.usda.gov/fdc/v1';
 
 export interface NutritionData {
   calories: number;
@@ -14,11 +13,11 @@ export interface NutritionData {
   fiber: number;
   sodium: number;
   sugar: number;
-  saturatedFat: number;
-  cholesterol: number;
-  vitaminC: number;
-  calcium: number;
-  iron: number;
+  saturatedFat?: number;
+  cholesterol?: number;
+  vitaminC?: number;
+  calcium?: number;
+  iron?: number;
 }
 
 export interface USDAFood {
@@ -31,34 +30,21 @@ export interface USDAFood {
 }
 
 /**
- * Search for food in USDA database
+ * Search for food via secure backend nutrition service
  */
 export async function searchFood(query: string): Promise<USDAFood[]> {
-  if (!USDA_API_KEY) {
-    console.error('[USDA] API key not configured');
-    return [];
-  }
-
   try {
-    const response = await fetch(
-      `${USDA_BASE_URL}/foods/search?query=${encodeURIComponent(query)}&pageSize=5&api_key=${USDA_API_KEY}`
-    );
+    const response = await fetch(`/api/v1/nutrition/search?query=${encodeURIComponent(query)}`);
 
     if (!response.ok) {
-      console.error('[USDA] API Error:', response.status);
+      console.warn('[Nutrition] Backend query error:', response.status);
       return [];
     }
 
     const data = await response.json();
-    
-    if (!data.foods || data.foods.length === 0) {
-      console.log('[USDA] No results found for:', query);
-      return [];
-    }
-
-    return data.foods.map((food: any) => parseUSDAFood(food));
+    return data.foods || [];
   } catch (error: any) {
-    console.error('[USDA] Error:', error.message);
+    console.warn('[Nutrition] Backend query unreachable:', error.message);
     return [];
   }
 }
@@ -70,8 +56,7 @@ export async function getNutritionForDish(dishName: string): Promise<NutritionDa
   const results = await searchFood(dishName);
   
   if (results.length === 0) {
-    console.log('[USDA] No nutrition data found for:', dishName);
-    return null;
+    return estimateIndianDishNutrition(dishName);
   }
 
   // Return the first (most relevant) result
@@ -79,109 +64,11 @@ export async function getNutritionForDish(dishName: string): Promise<NutritionDa
 }
 
 /**
- * Parse USDA food data into our format
- */
-function parseUSDAFood(food: any): USDAFood {
-  const nutrients = food.foodNutrients || [];
-  
-  const getNutrient = (name: string): number => {
-    const nutrient = nutrients.find((n: any) => 
-      n.nutrientName?.toLowerCase().includes(name.toLowerCase())
-    );
-    return nutrient?.value || 0;
-  };
-
-  return {
-    fdcId: food.fdcId,
-    description: food.description,
-    dataType: food.dataType,
-    nutrition: {
-      calories: getNutrient('Energy'),
-      protein: getNutrient('Protein'),
-      carbs: getNutrient('Carbohydrate'),
-      fat: getNutrient('Total lipid'),
-      fiber: getNutrient('Fiber'),
-      sodium: getNutrient('Sodium'),
-      sugar: getNutrient('Sugars'),
-      saturatedFat: getNutrient('Fatty acids, total saturated'),
-      cholesterol: getNutrient('Cholesterol'),
-      vitaminC: getNutrient('Vitamin C'),
-      calcium: getNutrient('Calcium'),
-      iron: getNutrient('Iron')
-    },
-    ingredients: food.ingredients,
-    allergens: extractAllergens(food)
-  };
-}
-
-/**
- * Extract common allergens from USDA data
- */
-function extractAllergens(food: any): string[] {
-  const allergens: string[] = [];
-  const description = (food.description || '').toLowerCase();
-  const ingredients = (food.ingredients || '').toLowerCase();
-  const text = `${description} ${ingredients}`;
-
-  const allergenKeywords = {
-    dairy: ['milk', 'cheese', 'butter', 'cream', 'yogurt', 'whey', 'casein'],
-    nuts: ['peanut', 'almond', 'walnut', 'cashew', 'pistachio', 'hazelnut'],
-    gluten: ['wheat', 'barley', 'rye', 'gluten'],
-    soy: ['soy', 'soybean', 'tofu'],
-    eggs: ['egg', 'eggs'],
-    fish: ['fish', 'salmon', 'tuna', 'cod'],
-    shellfish: ['shrimp', 'crab', 'lobster', 'shellfish'],
-    sesame: ['sesame', 'tahini']
-  };
-
-  for (const [allergen, keywords] of Object.entries(allergenKeywords)) {
-    if (keywords.some(keyword => text.includes(keyword))) {
-      allergens.push(allergen);
-    }
-  }
-
-  return allergens;
-}
-
-/**
- * Get detailed food information by FDC ID
- */
-export async function getFoodDetails(fdcId: number): Promise<USDAFood | null> {
-  if (!USDA_API_KEY) {
-    console.error('[USDA] API key not configured');
-    return null;
-  }
-
-  try {
-    const response = await fetch(
-      `${USDA_BASE_URL}/food/${fdcId}?api_key=${USDA_API_KEY}`
-    );
-
-    if (!response.ok) {
-      console.error('[USDA] API Error:', response.status);
-      return null;
-    }
-
-    const food = await response.json();
-    return parseUSDAFood(food);
-  } catch (error: any) {
-    console.error('[USDA] Error:', error.message);
-    return null;
-  }
-}
-
-/**
- * Test if USDA API is working
+ * Test if backend nutrition service is reachable
  */
 export async function testUSDAAPI(): Promise<boolean> {
-  if (!USDA_API_KEY) {
-    return false;
-  }
-
   try {
-    const response = await fetch(
-      `${USDA_BASE_URL}/foods/search?query=apple&pageSize=1&api_key=${USDA_API_KEY}`
-    );
+    const response = await fetch('/api/v1/nutrition/search?query=apple');
     return response.ok;
   } catch {
     return false;
@@ -194,7 +81,6 @@ export async function testUSDAAPI(): Promise<boolean> {
 export function estimateIndianDishNutrition(dishName: string): NutritionData {
   const normalized = dishName.toLowerCase();
   
-  // Common Indian dishes with typical nutrition values
   const estimates: Record<string, NutritionData> = {
     'biryani': {
       calories: 450, protein: 20, carbs: 55, fat: 18,
@@ -223,7 +109,6 @@ export function estimateIndianDishNutrition(dishName: string): NutritionData {
     }
   };
 
-  // Try to find a match
   for (const [key, nutrition] of Object.entries(estimates)) {
     if (normalized.includes(key)) {
       return nutrition;
