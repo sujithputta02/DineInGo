@@ -1,13 +1,15 @@
 # Pinned dependencies for Hugging Face ZeroGPU TripoSR inference
-git+https://github.com/VAST-AI-Research/TripoSR.git
-gradio==4.44.0
-spaces>=0.28.3
-rembg>=2.0.57
-trimesh>=4.4.1
-numpy>=1.24.4,<2.0.0
-scipy>=1.11.4
-pillow>=10.2.0
+omegaconf==2.3.0
+Pillow>=10.1.0
 einops>=0.7.0
 transformers>=4.38.0
-huggingface_hub>=0.22.0
-onnxruntime>=1.17.0
+trimesh>=4.4.1
+rembg>=2.0.57
+onnxruntime
+huggingface-hub==0.25.0
+scikit-build-core>=0.10
+pybind11>=2.10
+cmake
+ninja
+scipy>=1.11.4
+numpy>=1.24.4,<2.0.0

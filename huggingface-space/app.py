@@ -48,6 +48,21 @@ def load_triposr_model():
     if tsr_model is None:
         try:
             import torch  # type: ignore
+            try:
+                import torchmcubes  # type: ignore
+            except ImportError:
+                import shlex
+                import subprocess
+                print("[TripoSR App] Installing torchmcubes with CUDA support...")
+                try:
+                    subprocess.run(
+                        shlex.split("pip install --no-build-isolation git+https://github.com/tatsy/torchmcubes.git"),
+                        env={**os.environ, "TORCH_CUDA_ARCH_LIST": "12.0+PTX"},
+                        check=True,
+                    )
+                except Exception as ex:
+                    print(f"[TripoSR App] torchmcubes build error: {ex}")
+
             from tsr.system import TSR  # type: ignore
 
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
@@ -240,7 +255,7 @@ def reconstruct(image: Image.Image, reference_plate_diameter: float = 0.24, mc_r
     glb_path, metadata = calibrate_and_export_glb(raw_mesh, reference_plate_diameter)
     
     print(f"[TripoSR API] Successfully exported calibrated model: {glb_path} ({metadata['dimensions']})")
-    return glb_path, metadata
+    return glb_path, json.dumps(metadata, indent=2)
 
 # Build Gradio UI & API
 with gr.Blocks(title="DineInGo Food 3D Reconstruction") as demo:
@@ -268,7 +283,7 @@ with gr.Blocks(title="DineInGo Food 3D Reconstruction") as demo:
             
         with gr.Column():
             output_model = gr.Model3D(label="Calibrated 3D GLB Model")
-            output_meta = gr.JSON(label="AR Geometry Metadata")
+            output_meta = gr.Textbox(label="AR Geometry Metadata", lines=8)
 
     submit_btn.click(
         fn=reconstruct,
@@ -277,5 +292,7 @@ with gr.Blocks(title="DineInGo Food 3D Reconstruction") as demo:
         api_name="reconstruct"
     )
 
+demo.queue(max_size=10)
+
 if __name__ == "__main__":
-    demo.queue(max_size=20).launch()
+    demo.launch()
