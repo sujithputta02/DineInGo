@@ -14,6 +14,8 @@ export interface StorageSaveResult {
 export interface IReconstructionStorageAdapter {
   saveGLB(buffer: Buffer, requestedFilename?: string, isPublic?: boolean): Promise<StorageSaveResult>;
   getGLB(storageKey: string): Promise<Buffer | null>;
+  deleteGLB(storageKey: string): Promise<boolean>;
+  getDeliveryUrl(storageKey: string, isPublic?: boolean, ttlSeconds?: number): Promise<string> | string;
   isDurable(): boolean;
 }
 
@@ -38,7 +40,10 @@ async function getCloudinaryClient(): Promise<any> {
 /**
  * Cloudinary Object Storage Adapter
  * Stores GLB models in cloud object storage as raw binaries.
- * Guarantees cross-restart and cross-deployment durability on serverless and ephemeral container platforms.
+ * Enforces explicit public vs authenticated access control:
+ * - Public catalog assets (isPublic = true) use delivery type 'upload' (accessible via CDN)
+ * - Private user-generated assets (isPublic = false) use delivery type 'authenticated'
+ *   and require cryptographic HMAC signatures for retrieval, preventing unauthorized enumeration.
  */
 export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
   isDurable(): boolean {
@@ -51,23 +56,41 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
       : generateSafeAssetKey().replace(/\.glb$/i, '');
 
     const publicId = `recon_${Date.now()}_${rawKey}`;
+    const fullPublicId = `dineingo/reconstructions/${publicId}.glb`;
     const cl = await getCloudinaryClient();
 
     return new Promise<StorageSaveResult>((resolve, reject) => {
+      const uploadOptions: Record<string, any> = {
+        folder: 'dineingo/reconstructions',
+        public_id: `${publicId}.glb`,
+        resource_type: 'raw',
+        type: isPublic ? 'upload' : 'authenticated',
+        access_mode: isPublic ? 'public' : 'authenticated'
+      };
+
       const uploadStream = cl.uploader.upload_stream(
-        {
-          folder: 'dineingo/reconstructions',
-          public_id: publicId,
-          resource_type: 'raw',
-          format: 'glb'
-        },
+        uploadOptions,
         (error: any, result: any) => {
           if (error || !result) {
             return reject(new Error(`Cloudinary upload failed: ${error?.message || 'Unknown error'}`));
           }
 
+          const actualPublicId = result.public_id || fullPublicId;
+          const deliveryUrl = isPublic
+            ? (result.secure_url || cl.url(actualPublicId, {
+                resource_type: 'raw',
+                type: 'upload',
+                secure: true
+              }))
+            : cl.url(actualPublicId, {
+                resource_type: 'raw',
+                type: 'authenticated',
+                sign_url: true,
+                secure: true
+              });
+
           resolve({
-            url: result.secure_url,
+            url: deliveryUrl,
             storageType: 'cloudinary',
             storageKey: `${publicId}.glb`,
             byteSize: result.bytes || buffer.length,
@@ -82,15 +105,94 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
 
   async getGLB(storageKey: string): Promise<Buffer | null> {
     try {
-      const cleanKey = storageKey.replace(/\.glb$/i, '');
+      const cleanKey = storageKey
+        .replace(/^dineingo\/reconstructions\//, '')
+        .replace(/\.glb$/i, '');
+      const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
       const cl = await getCloudinaryClient();
-      const url = cl.url(`dineingo/reconstructions/${cleanKey}.glb`, { resource_type: 'raw' });
-      const res = await fetch(url);
+
+      // Attempt 1: Fetch using authenticated signed URL (for private user assets)
+      const signedUrl = cl.url(fullPublicId, {
+        resource_type: 'raw',
+        type: 'authenticated',
+        sign_url: true,
+        secure: true
+      });
+      let res = await fetch(signedUrl);
+
+      // Attempt 2: If rejected, fallback to public upload delivery URL (for public catalog assets)
+      if (!res.ok) {
+        const publicUrl = cl.url(fullPublicId, {
+          resource_type: 'raw',
+          type: 'upload',
+          secure: true
+        });
+        res = await fetch(publicUrl);
+      }
+
       if (!res.ok) return null;
       return Buffer.from(await res.arrayBuffer());
     } catch {
       return null;
     }
+  }
+
+  async deleteGLB(storageKey: string): Promise<boolean> {
+    try {
+      const cleanKey = storageKey
+        .replace(/^dineingo\/reconstructions\//, '')
+        .replace(/\.glb$/i, '');
+      const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
+      const cl = await getCloudinaryClient();
+
+      const authRes = await cl.uploader.destroy(fullPublicId, {
+        resource_type: 'raw',
+        type: 'authenticated'
+      });
+      if (authRes && authRes.result === 'ok') {
+        return true;
+      }
+
+      const pubRes = await cl.uploader.destroy(fullPublicId, {
+        resource_type: 'raw',
+        type: 'upload'
+      });
+      return Boolean(pubRes && pubRes.result === 'ok');
+    } catch {
+      return false;
+    }
+  }
+
+  async getDeliveryUrl(storageKey: string, isPublic = false, ttlSeconds = 86400): Promise<string> {
+    const cleanKey = storageKey
+      .replace(/^dineingo\/reconstructions\//, '')
+      .replace(/\.glb$/i, '');
+    const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
+    const cl = await getCloudinaryClient();
+
+    if (isPublic) {
+      return cl.url(fullPublicId, {
+        resource_type: 'raw',
+        type: 'upload',
+        secure: true
+      });
+    }
+
+    const options: Record<string, any> = {
+      resource_type: 'raw',
+      type: 'authenticated',
+      sign_url: true,
+      secure: true
+    };
+
+    if (process.env.CLOUDINARY_AUTH_TOKEN_KEY) {
+      options.auth_token = {
+        key: process.env.CLOUDINARY_AUTH_TOKEN_KEY,
+        duration: ttlSeconds
+      };
+    }
+
+    return cl.url(fullPublicId, options);
   }
 }
 
@@ -127,11 +229,7 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
     const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
     fs.writeFileSync(targetPath, buffer);
 
-    let assetUrl = `/api/v1/reconstruction/assets/${filename}`;
-    if (!isPublic) {
-      const { signedQuery } = signAssetUrl(filename);
-      assetUrl += `?${signedQuery}`;
-    }
+    const assetUrl = this.getDeliveryUrl(filename, isPublic);
 
     return {
       url: assetUrl,
@@ -151,6 +249,31 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
       return null;
     }
     return fs.readFileSync(targetPath);
+  }
+
+  async deleteGLB(storageKey: string): Promise<boolean> {
+    if (!isValidAssetFilename(storageKey)) {
+      return false;
+    }
+    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, storageKey);
+    if (!fs.existsSync(targetPath)) {
+      return false;
+    }
+    try {
+      fs.unlinkSync(targetPath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  getDeliveryUrl(storageKey: string, isPublic = false, ttlSeconds = 86400): string {
+    let assetUrl = `/api/v1/reconstruction/assets/${storageKey}`;
+    if (!isPublic) {
+      const { signedQuery } = signAssetUrl(storageKey, ttlSeconds);
+      assetUrl += `?${signedQuery}`;
+    }
+    return assetUrl;
   }
 }
 

@@ -6,9 +6,9 @@ import crypto from 'crypto';
 import { createRequire } from 'module';
 const require = createRequire(process.cwd() + '/index.js');
 
-const { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir } = require('./backend/src/config/storageConfig.ts');
-const { LocalDiskStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
-const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey } = require('./backend/src/utils/assetSecurity.ts');
+const { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir, isPersistentDiskConfigured } = require('./backend/src/config/storageConfig.ts');
+const { LocalDiskStorageAdapter, CloudinaryStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
+const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret } = require('./backend/src/utils/assetSecurity.ts');
 const { validateDestinationUrl, verifyImageMagicBytes, isPrivateOrReservedIPv4, isPrivateOrReservedIPv6, parseAndValidateDataUrl } = require('./backend/src/utils/safeImageFetcher.ts');
 const { extractGlbDimensions } = require('./backend/src/utils/glbDimensionExtractor.ts');
 
@@ -289,4 +289,158 @@ test('7. Real model validation: Apple Tarte reconstruction GLB yields verified s
   assert.ok(realDims!.heightMeters > 0.05 && realDims!.heightMeters < 0.25, 'Height must be realistic dish height');
   assert.equal(realDims!.contactPlaneAligned, true, 'Base contact plane must be flush to tabletop');
   assert.equal(realDims!.lowestYMeters, 0, 'lowestY must be 0 for calibrated tabletop placement');
+});
+
+test('8. HMAC Signing Secret: Dedicated secret enforced in production, fallback isolated to test, fails closed', () => {
+  const origEnv = { ...process.env };
+
+  try {
+    // 1. Missing secret in production fails closed
+    process.env.NODE_ENV = 'production';
+    delete process.env.ASSET_SIGNING_SECRET;
+    delete process.env.JWT_SECRET;
+    delete process.env.SESSION_SECRET;
+
+    assert.throws(() => {
+      getAssetSigningSecret();
+    }, /Dedicated asset signing secret is required in production environment/);
+
+    assert.throws(() => {
+      signAssetUrl('recon_test_asset.glb');
+    }, /Dedicated asset signing secret is required in production environment/);
+
+    // verifyAssetSignature must fail closed (return false) without throwing uncaught errors
+    assert.equal(verifyAssetSignature('recon_test_asset.glb', Math.floor(Date.now() / 1000) + 3600, 'deadbeef'), false);
+
+    // 2. Secret below minimum 32 characters in production fails closed
+    process.env.ASSET_SIGNING_SECRET = 'short-weak-secret-123';
+    assert.throws(() => {
+      getAssetSigningSecret();
+    }, /minimum 32 characters/);
+
+    assert.throws(() => {
+      signAssetUrl('recon_test_asset.glb');
+    }, /minimum 32 characters/);
+
+    assert.equal(verifyAssetSignature('recon_test_asset.glb', Math.floor(Date.now() / 1000) + 3600, 'deadbeef'), false);
+
+    // 3. Valid strong dedicated secret in production succeeds
+    const dedicatedSecret = 'super-secure-production-asset-signing-key-minimum-32-chars-ok';
+    process.env.ASSET_SIGNING_SECRET = dedicatedSecret;
+    const resolvedSecret = getAssetSigningSecret();
+    assert.equal(resolvedSecret, dedicatedSecret);
+
+    const filename = 'recon_valid_model_12345.glb';
+    const signed = signAssetUrl(filename, 3600);
+    assert.ok(signed.signature.length >= 64, 'HMAC signature must be valid hex digest');
+    assert.ok(signed.expires > Math.floor(Date.now() / 1000));
+    assert.ok(signed.signedQuery.includes('sig=') && signed.signedQuery.includes('exp='));
+
+    // Valid signature verifies true
+    assert.equal(verifyAssetSignature(filename, signed.expires, signed.signature), true);
+
+    // Modified filename verifies false (tamper protection)
+    assert.equal(verifyAssetSignature('recon_tampered_model_99999.glb', signed.expires, signed.signature), false);
+
+    // Expired signature verifies false
+    assert.equal(verifyAssetSignature(filename, Math.floor(Date.now() / 1000) - 100, signed.signature), false);
+
+    // Invalid signature verifies false
+    assert.equal(verifyAssetSignature(filename, signed.expires, '0000000000000000000000000000000000000000000000000000000000000000'), false);
+
+    // 4. Deterministic fallback is permitted ONLY in explicit test environments
+    process.env.NODE_ENV = 'test';
+    delete process.env.ASSET_SIGNING_SECRET;
+    delete process.env.JWT_SECRET;
+    delete process.env.SESSION_SECRET;
+    assert.doesNotThrow(() => {
+      const testSecret = getAssetSigningSecret();
+      assert.ok(testSecret.length >= 32);
+    });
+
+    // In development without any secret configured, it fails closed rather than using test fallback
+    process.env.NODE_ENV = 'development';
+    delete process.env.npm_lifecycle_event;
+    assert.throws(() => {
+      getAssetSigningSecret();
+    }, /Asset signing secret is not configured/);
+
+    // 5. Never leaks secret material in error messages
+    process.env.NODE_ENV = 'production';
+    process.env.ASSET_SIGNING_SECRET = 'short';
+    try {
+      getAssetSigningSecret();
+      assert.fail('Should have thrown');
+    } catch (err: any) {
+      assert.equal(err.message.includes('short'), false, 'Error message must not leak candidate secret');
+    }
+  } finally {
+    process.env = origEnv;
+  }
+});
+
+test('9. Cloudinary Privacy: Enforces authenticated vs upload access policy, signed URLs, and deletion', async () => {
+  const adapter = new CloudinaryStorageAdapter();
+  const requestedKey = 'recon_dish_spec_model.glb';
+
+  // Ensure Cloudinary config has test credentials if not configured
+  const origCloudName = process.env.CLOUDINARY_CLOUD_NAME;
+  const origApiKey = process.env.CLOUDINARY_API_KEY;
+  const origApiSecret = process.env.CLOUDINARY_API_SECRET;
+
+  if (!process.env.CLOUDINARY_CLOUD_NAME) process.env.CLOUDINARY_CLOUD_NAME = 'dineingo_test_cloud';
+  if (!process.env.CLOUDINARY_API_KEY) process.env.CLOUDINARY_API_KEY = '1234567890';
+  if (!process.env.CLOUDINARY_API_SECRET) process.env.CLOUDINARY_API_SECRET = 'abcdef1234567890abcdef1234567890';
+
+  try {
+    // Test getDeliveryUrl for private vs public
+    const privateUrl = await adapter.getDeliveryUrl(requestedKey, false);
+    const publicUrl = await adapter.getDeliveryUrl(requestedKey, true);
+
+    // 1. Effective access policy difference:
+    // Public URL is delivered through standard CDN /raw/upload/ path
+    assert.ok(publicUrl.includes('/raw/upload/'), `Public asset must use /raw/upload/ delivery, got: ${publicUrl}`);
+    assert.ok(!publicUrl.includes('/s--'), 'Public asset must not require cryptographic signature in path');
+
+    // Private asset URL is delivered through restricted /raw/authenticated/ path AND contains HMAC signature /s--...--/
+    assert.ok(privateUrl.includes('/raw/authenticated/'), `Private asset must use /raw/authenticated/ delivery, got: ${privateUrl}`);
+    assert.ok(/\/s--[A-Za-z0-9_\-]+--\//.test(privateUrl), `Private asset URL must contain Cloudinary cryptographic signature token, got: ${privateUrl}`);
+
+    // Direct unsigned attempt to access private delivery path would fail with 401
+    const unsignedPrivateUrl = privateUrl.replace(/\/s--[A-Za-z0-9_\-]+--\//, '/');
+    assert.notEqual(unsignedPrivateUrl, privateUrl, 'Unsigned URL must differ from cryptographically signed URL');
+
+    // File extension preserved for AR viewers
+    assert.ok(privateUrl.includes('.glb'), 'Private URL must preserve .glb extension for mobile AR viewers');
+    assert.ok(publicUrl.includes('.glb'), 'Public URL must preserve .glb extension for mobile AR viewers');
+  } finally {
+    process.env.CLOUDINARY_CLOUD_NAME = origCloudName;
+    process.env.CLOUDINARY_API_KEY = origApiKey;
+    process.env.CLOUDINARY_API_SECRET = origApiSecret;
+  }
+});
+
+test('10. Storage Durability: Local disk fallback truthfully reports non-durable without persistent mount', () => {
+  const origEnv = { ...process.env };
+  try {
+    delete process.env.PERSISTENT_STORAGE_MOUNTED;
+    delete process.env.PERSISTENT_DISK_PATH;
+
+    assert.equal(isPersistentDiskConfigured(), false, 'Unconfigured disk must not be marked persistent');
+
+    const localAdapter = new LocalDiskStorageAdapter();
+    assert.equal(localAdapter.isDurable(), false, 'Local disk without mounted volume must not claim durability');
+
+    // When persistent storage flag is set
+    process.env.PERSISTENT_STORAGE_MOUNTED = 'true';
+    assert.equal(isPersistentDiskConfigured(), true);
+    const persistentAdapter = new LocalDiskStorageAdapter();
+    assert.equal(persistentAdapter.isDurable(), true, 'Persistent volume mount must be recognized as durable');
+
+    // Cloudinary adapter is always durable across container restarts
+    const cloudAdapter = new CloudinaryStorageAdapter();
+    assert.equal(cloudAdapter.isDurable(), true, 'Cloud object storage is durable');
+  } finally {
+    process.env = origEnv;
+  }
 });

@@ -2,6 +2,7 @@ import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
 import { reconstructionService } from '../services/reconstructionService';
+import { getReconstructionStorageAdapter } from '../services/reconstructionStorageAdapter';
 import { verifyUserToken } from '../middleware/userAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
 import { RECONSTRUCTION_STORAGE_DIR } from '../config/storageConfig';
@@ -118,14 +119,21 @@ router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) 
       });
     }
 
-    // If local private asset, generate a fresh signed URL so AR viewer can fetch it securely
+    // Refresh signed URL for AR viewer if asset is private
     let modelUrl = job.modelUrl;
-    if (modelUrl && modelUrl.startsWith('/api/v1/reconstruction/assets/') && !job.isPublic) {
-      const filenameMatch = modelUrl.match(/\/api\/v1\/reconstruction\/assets\/([^?]+)/);
-      if (filenameMatch) {
-        const filename = filenameMatch[1];
-        const { signedQuery } = signAssetUrl(filename);
-        modelUrl = `/api/v1/reconstruction/assets/${filename}?${signedQuery}`;
+    if (modelUrl && !job.isPublic) {
+      if (modelUrl.startsWith('/api/v1/reconstruction/assets/')) {
+        const filenameMatch = modelUrl.match(/\/api\/v1\/reconstruction\/assets\/([^?]+)/);
+        if (filenameMatch) {
+          const filename = filenameMatch[1];
+          const { signedQuery } = signAssetUrl(filename);
+          modelUrl = `/api/v1/reconstruction/assets/${filename}?${signedQuery}`;
+        }
+      } else if (job.storageType === 'cloudinary' && job.storageKey) {
+        const storageAdapter = getReconstructionStorageAdapter();
+        if (typeof storageAdapter.getDeliveryUrl === 'function') {
+          modelUrl = await storageAdapter.getDeliveryUrl(job.storageKey, false);
+        }
       }
     }
 
@@ -191,7 +199,16 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
     }
 
     const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
-    if (!fs.existsSync(filePath)) {
+    let fileBuffer: Buffer | null = null;
+
+    if (fs.existsSync(filePath)) {
+      fileBuffer = fs.readFileSync(filePath);
+    } else {
+      const storageAdapter = getReconstructionStorageAdapter();
+      fileBuffer = await storageAdapter.getGLB(filename);
+    }
+
+    if (!fileBuffer) {
       return res.status(404).json({ success: false, message: '3D model asset not found' });
     }
 
@@ -200,7 +217,7 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
     if (sig && exp && verifyAssetSignature(filename, Number(exp), String(sig))) {
       res.setHeader('Content-Type', 'model/gltf-binary');
       res.setHeader('Cache-Control', 'private, max-age=3600');
-      return fs.createReadStream(filePath).pipe(res);
+      return res.send(fileBuffer);
     }
 
     // 2. Query database for job ownership and publication status
@@ -215,7 +232,7 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
     if (job && job.isPublic) {
       res.setHeader('Content-Type', 'model/gltf-binary');
       res.setHeader('Cache-Control', 'public, max-age=86400');
-      return fs.createReadStream(filePath).pipe(res);
+      return res.send(fileBuffer);
     }
 
     // 4. Authenticated request check
@@ -225,7 +242,7 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
         // If file exists but no job record is found, allow admins only
         if (authUser.isAdmin) {
           res.setHeader('Content-Type', 'model/gltf-binary');
-          return fs.createReadStream(filePath).pipe(res);
+          return res.send(fileBuffer);
         }
         return res.status(404).json({ success: false, message: 'Asset metadata not found' });
       }
@@ -233,7 +250,7 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
       if (job.userId === authUser.uid || authUser.isAdmin) {
         res.setHeader('Content-Type', 'model/gltf-binary');
         res.setHeader('Cache-Control', 'private, max-age=3600');
-        return fs.createReadStream(filePath).pipe(res);
+        return res.send(fileBuffer);
       } else {
         // Prevent cross-user access to private food models
         return res.status(403).json({

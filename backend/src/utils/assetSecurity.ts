@@ -1,17 +1,55 @@
 import crypto from 'crypto';
 
+const TEST_ENV_FALLBACK = 'dineingo-test-deterministic-reconstruction-signing-secret-key-32chars!';
+
 /**
- * Returns the signing secret for asset access tokens.
- * Prioritizes JWT_SECRET or SESSION_SECRET from environment.
+ * Returns the dedicated signing secret for 3D model asset access tokens.
+ * In production:
+ * - Requires a dedicated, sufficiently strong server-only asset-signing secret (minimum 32 characters).
+ * - Prioritizes ASSET_SIGNING_SECRET, then checks JWT_SECRET or SESSION_SECRET.
+ * - Fails closed if missing or below minimum complexity; NEVER falls back to hardcoded defaults in production.
+ * - Never logs or leaks the secret in error messages.
+ * In test environment:
+ * - Permits a deterministic fallback only inside explicitly isolated test environments (NODE_ENV === 'test').
  */
-function getAssetSecret(): string {
-  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET;
-  if (secret && secret.trim().length >= 16) {
-    return secret;
+export function getAssetSigningSecret(): string {
+  const isProduction = process.env.NODE_ENV === 'production';
+  const isExplicitTest = !isProduction && (
+    process.env.NODE_ENV === 'test' ||
+    process.env.npm_lifecycle_event === 'test'
+  );
+
+  const rawCandidate = process.env.ASSET_SIGNING_SECRET || process.env.JWT_SECRET || process.env.SESSION_SECRET;
+
+  if (rawCandidate && typeof rawCandidate === 'string') {
+    const trimmed = rawCandidate.trim();
+    if (trimmed.length >= 32) {
+      return trimmed;
+    }
+    // Candidate exists but is too weak (< 32 chars)
+    if (isProduction) {
+      throw new Error('Asset signing secret does not meet production complexity requirements (minimum 32 characters)');
+    }
   }
-  // Safe fallback in test environments if not explicitly set
-  return 'dineingo-reconstruction-hmac-security-key-2026';
+
+  // In production, strictly fail closed: no fallback is permitted under any circumstances
+  if (isProduction) {
+    throw new Error('Dedicated asset signing secret is required in production environment');
+  }
+
+  // Permit deterministic fallback ONLY in explicitly isolated test environments
+  if (isExplicitTest) {
+    return TEST_ENV_FALLBACK;
+  }
+
+  // In non-production/development without any secret configured:
+  throw new Error('Asset signing secret is not configured');
 }
+
+/**
+ * Backward-compatible alias for getAssetSigningSecret
+ */
+export const getAssetSecret = getAssetSigningSecret;
 
 /**
  * Generates an unguessable, cryptographically secure asset storage key with 128-bit entropy.
@@ -37,13 +75,17 @@ export function isValidAssetFilename(filename: string): boolean {
  * Signs an asset reference with an expiry timestamp and HMAC-SHA256 signature.
  * Allows temporary access for external 3D viewers (e.g., <model-viewer>, Android Scene Viewer, iOS QuickLook)
  * without making private user-generated models publicly enumerable.
+ * Fails closed if signing secret is missing or invalid in production.
  */
 export function signAssetUrl(
   filename: string,
   ttlSeconds: number = 86400 // Default 24 hours
 ): { signature: string; expires: number; signedQuery: string } {
+  if (!isValidAssetFilename(filename)) {
+    throw new Error('Invalid asset filename provided for URL signing');
+  }
   const expires = Math.floor(Date.now() / 1000) + ttlSeconds;
-  const secret = getAssetSecret();
+  const secret = getAssetSigningSecret();
   const payload = `${filename}:${expires}`;
   const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
   const signedQuery = `sig=${signature}&exp=${expires}`;
@@ -53,32 +95,39 @@ export function signAssetUrl(
 /**
  * Verifies an asset signature against the filename, expiry timestamp, and secret.
  * Uses timing-safe equality comparison to prevent side-channel timing attacks.
+ * Fails closed (returns false) if secret is missing or invalid, without leaking secrets.
  */
 export function verifyAssetSignature(
   filename: string,
   expires: number,
   signature: string
 ): boolean {
-  if (!filename || !expires || !signature) return false;
+  try {
+    if (!filename || !expires || !signature) return false;
+    if (!isValidAssetFilename(filename)) return false;
 
-  // 1. Check expiration
-  const currentEpoch = Math.floor(Date.now() / 1000);
-  if (expires < currentEpoch) {
-    return false; // Token expired
-  }
+    // 1. Check expiration
+    const currentEpoch = Math.floor(Date.now() / 1000);
+    if (expires < currentEpoch) {
+      return false; // Token expired
+    }
 
-  // 2. Recompute expected HMAC
-  const secret = getAssetSecret();
-  const payload = `${filename}:${expires}`;
-  const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    // 2. Recompute expected HMAC
+    const secret = getAssetSigningSecret();
+    const payload = `${filename}:${expires}`;
+    const expectedSignature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
 
-  // 3. Timing-safe comparison
-  const sigBuffer = Buffer.from(signature, 'hex');
-  const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+    // 3. Timing-safe comparison
+    const sigBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
 
-  if (sigBuffer.length !== expectedBuffer.length) {
+    if (sigBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+
+    return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
+  } catch {
+    // Fail closed if signing secret is missing or invalid, or malformed inputs
     return false;
   }
-
-  return crypto.timingSafeEqual(sigBuffer, expectedBuffer);
 }
