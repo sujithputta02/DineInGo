@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import path from 'path';
 
 const TEST_ENV_FALLBACK = 'dineingo-test-deterministic-reconstruction-signing-secret-key-32chars!';
 
@@ -83,6 +84,36 @@ export function normalizeStorageKey(storageKey: string | undefined | null): stri
     return null;
   }
   return stripped;
+}
+
+/**
+ * Safely extracts and validates the asset filename from a model URL or relative path.
+ * Resolves full URLs (e.g. Cloudinary HTTPS URLs with tokens/queries) and relative asset routes,
+ * comparing actual asset identity rather than relying on unescaped substrings.
+ * Returns the validated filename if valid (.glb), or null if invalid or malformed.
+ */
+export function extractAssetFilenameFromUrl(modelUrl: string | undefined | null): string | null {
+  if (!modelUrl || typeof modelUrl !== 'string') return null;
+  try {
+    let pathname: string;
+    if (modelUrl.startsWith('http://') || modelUrl.startsWith('https://')) {
+      const parsed = new URL(modelUrl);
+      pathname = parsed.pathname;
+    } else {
+      pathname = modelUrl.split(/[?#]/)[0];
+    }
+    if (pathname.includes('..') || pathname.includes('\0')) {
+      return null;
+    }
+    const filename = path.basename(pathname);
+    const decoded = decodeURIComponent(filename);
+    if (!isValidAssetFilename(decoded)) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
 }
 
 /**

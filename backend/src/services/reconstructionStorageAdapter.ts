@@ -233,10 +233,12 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   async getDeliveryUrl(storageKey: string, isPublic = false, ttlSeconds = 86400): Promise<string> {
-    const cleanKey = storageKey
-      .replace(/^dineingo\/reconstructions\//, '')
-      .replace(/\.glb$/i, '');
-    const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
+    const cleanKey = normalizeStorageKey(storageKey);
+    if (!cleanKey) {
+      throw new Error(`Invalid storage key provided for delivery URL: "${storageKey}"`);
+    }
+    const publicIdBase = cleanKey.replace(/\.glb$/i, '');
+    const fullPublicId = `dineingo/reconstructions/${publicIdBase}.glb`;
     const cl = await getCloudinaryClient();
 
     if (isPublic) {
@@ -267,7 +269,7 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
     // To ensure genuine cryptographic time-limiting without leaking secrets, route through
     // DineInGo's backend-proxied HMAC-signed URL with cryptographic expiry:
     // /api/v1/reconstruction/assets/${filename}?sig=...&exp=...
-    const filename = `${cleanKey}.glb`;
+    const filename = cleanKey;
     const { signedQuery } = signAssetUrl(filename, ttlSeconds);
     return `/api/v1/reconstruction/assets/${filename}?${signedQuery}`;
   }
@@ -377,7 +379,10 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   getDeliveryUrl(storageKey: string, isPublic = false, ttlSeconds = 86400): string {
-    const cleanKey = normalizeStorageKey(storageKey) || storageKey;
+    const cleanKey = normalizeStorageKey(storageKey);
+    if (!cleanKey) {
+      throw new Error(`Invalid storage key provided for delivery URL: "${storageKey}"`);
+    }
     let assetUrl = `/api/v1/reconstruction/assets/${cleanKey}`;
     if (!isPublic) {
       const { signedQuery } = signAssetUrl(cleanKey, ttlSeconds);

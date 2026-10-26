@@ -6,7 +6,13 @@ import { getReconstructionStorageAdapter } from '../services/reconstructionStora
 import { verifyUserToken } from '../middleware/userAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
 import { RECONSTRUCTION_STORAGE_DIR } from '../config/storageConfig';
-import { isValidAssetFilename, verifyAssetSignature, signAssetUrl } from '../utils/assetSecurity';
+import {
+  isValidAssetFilename,
+  verifyAssetSignature,
+  signAssetUrl,
+  normalizeStorageKey,
+  extractAssetFilenameFromUrl
+} from '../utils/assetSecurity';
 import { ReconstructionJob } from '../models/ReconstructionJob';
 import platformAuth from '../utils/firebaseAdmin';
 
@@ -258,7 +264,15 @@ router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) 
  * Extracts and verifies user token from Authorization header if present.
  */
 async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; isAdmin?: boolean; role?: string } | null> {
-  const authHeader = req.headers.authorization;
+  if ((req as any).user && (req as any).user.uid) {
+    return {
+      uid: (req as any).user.uid,
+      role: (req as any).user.role || 'user',
+      isAdmin: Boolean((req as any).user.isAdmin || (req as any).user.role === 'admin' || (req as any).user.role === 'super_admin')
+    };
+  }
+
+  const authHeader = req.headers?.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
   }
@@ -271,7 +285,7 @@ async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; i
     return {
       uid: decoded.uid,
       role: decoded.role || (decoded as any).role || 'user',
-      isAdmin: decoded.isAdmin || (decoded as any).role === 'admin'
+      isAdmin: Boolean(decoded.isAdmin || (decoded as any).role === 'admin' || (decoded as any).role === 'super_admin')
     };
   } catch {
     return null;
@@ -283,12 +297,13 @@ async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; i
  * Serves generated 3D GLB assets with strict authentication, ownership, and signed URL verification.
  * Private user-generated models are never made public without explicit publication or valid signed URLs.
  */
-router.get('/assets/:filename', async (req: Request, res: Response) => {
+export async function handleAssetRequest(req: Request, res: Response) {
   try {
-    const filename = path.basename(req.params.filename);
-    if (!isValidAssetFilename(filename)) {
+    const rawParam = req.params?.filename;
+    if (!rawParam || !isValidAssetFilename(rawParam)) {
       return res.status(400).json({ success: false, message: 'Invalid asset filename' });
     }
+    const filename = rawParam;
 
     const { sig, exp } = req.query;
 
@@ -320,14 +335,41 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
       return res.send(fileBuffer);
     }
 
-    // 2. Query database for job ownership and publication status
-    const job = await ReconstructionJob.findOne({
-      $or: [
-        { storageKey: filename },
-        { storageKey: `dineingo/reconstructions/${filename}` },
-        { modelUrl: new RegExp(filename) }
-      ]
+    // 2. Query database for job ownership and publication status with exact, validated asset-to-job resolution.
+    // Prefer exact storageKey matches for supported canonical and legacy key formats.
+    const exactKeys = [
+      filename,
+      `dineingo/reconstructions/${filename}`,
+      `/dineingo/reconstructions/${filename}`
+    ];
+
+    let job: any = await ReconstructionJob.findOne({
+      storageKey: { $in: exactKeys }
     });
+
+    if (job && job.storageKey) {
+      const normalizedKey = normalizeStorageKey(job.storageKey);
+      if (normalizedKey !== filename) {
+        job = null;
+      }
+    }
+
+    // Where modelUrl matching is required for backward compatibility, resolve the stored URL safely
+    // and compare its actual asset identity rather than relying on an unescaped substring regex.
+    if (!job) {
+      const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const candidates = await ReconstructionJob.find({
+        modelUrl: new RegExp(`(?:^|/)${escapedFilename}(?:$|[?#])`)
+      });
+
+      const candidateList = Array.isArray(candidates) ? candidates : (candidates ? [candidates] : []);
+      for (const candidate of candidateList) {
+        if (extractAssetFilenameFromUrl(candidate.modelUrl) === filename) {
+          job = candidate;
+          break;
+        }
+      }
+    }
 
     // 3. If asset has been deliberately published as public menu item
     if (job && job.isPublic) {
@@ -337,7 +379,7 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
         fileBuffer = fs.readFileSync(filePath);
       } else {
         const storageAdapter = getReconstructionStorageAdapter();
-        fileBuffer = await storageAdapter.getGLB(filename, true);
+        fileBuffer = await storageAdapter.getGLB(job.storageKey || filename, true);
       }
 
       if (!fileBuffer) {
@@ -374,7 +416,7 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
           fileBuffer = fs.readFileSync(filePath);
         } else {
           const storageAdapter = getReconstructionStorageAdapter();
-          fileBuffer = await storageAdapter.getGLB(filename, false);
+          fileBuffer = await storageAdapter.getGLB(job.storageKey || filename, false);
         }
 
         if (!fileBuffer) {
@@ -402,6 +444,8 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
     console.error('Error serving reconstructed asset:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve asset' });
   }
-});
+}
+
+router.get('/assets/:filename', handleAssetRequest);
 
 export default router;

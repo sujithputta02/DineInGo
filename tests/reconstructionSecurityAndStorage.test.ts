@@ -9,10 +9,10 @@ const require = createRequire(process.cwd() + '/index.js');
 
 const { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir, isPersistentDiskConfigured } = require('./backend/src/config/storageConfig.ts');
 const { LocalDiskStorageAdapter, CloudinaryStorageAdapter, setReconstructionStorageAdapter, getReconstructionStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
-const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret, normalizeStorageKey } = require('./backend/src/utils/assetSecurity.ts');
+const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret, normalizeStorageKey, extractAssetFilenameFromUrl } = require('./backend/src/utils/assetSecurity.ts');
 const { validateDestinationUrl, verifyImageMagicBytes, isPrivateOrReservedIPv4, isPrivateOrReservedIPv6, parseAndValidateDataUrl } = require('./backend/src/utils/safeImageFetcher.ts');
 const { extractGlbDimensions } = require('./backend/src/utils/glbDimensionExtractor.ts');
-const { isAuthorizedPublisher } = require('./backend/src/routes/reconstructionRoutes.ts');
+const { isAuthorizedPublisher, handleAssetRequest } = require('./backend/src/routes/reconstructionRoutes.ts');
 const { PublicationError, verifyRestaurantAuthorization, setRestaurantOwnershipResolver, reconstructionService } = require('./backend/src/services/reconstructionService.ts');
 const { ReconstructionJob } = require('./backend/src/models/ReconstructionJob.ts');
 const { Restaurant } = require('./backend/src/models/Restaurant.ts');
@@ -1406,6 +1406,434 @@ test('15. Failure-Safe Publication: Verifications, rollback of public copy, pres
     (ReconstructionJob as any).findOne = originalFindOne;
     setReconstructionStorageAdapter(originalStorageAdapter);
     setRestaurantOwnershipResolver(null);
+  }
+});
+
+// Helper to create mock Express HTTP request and response objects for route handler testing
+function createMockHttpExchange(params: {
+  filename?: string;
+  query?: Record<string, string>;
+  headers?: Record<string, string>;
+  user?: { uid: string; role?: string; isAdmin?: boolean };
+}) {
+  const req: any = {
+    params: { filename: params.filename },
+    query: params.query || {},
+    headers: params.headers || {},
+    user: params.user
+  };
+
+  const res: any = {
+    statusCode: 200,
+    headers: {} as Record<string, string>,
+    body: null as any,
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    setHeader(name: string, value: string) {
+      this.headers[name.toLowerCase()] = value;
+      return this;
+    },
+    json(data: any) {
+      this.body = data;
+      return this;
+    },
+    send(data: any) {
+      this.body = data;
+      return this;
+    }
+  };
+
+  return { req, res };
+}
+
+test('16. Delivery URL validation: LocalDiskStorageAdapter fails closed on invalid and traversal keys', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dineingo-deliv-url-test-'));
+  try {
+    const adapter = new LocalDiskStorageAdapter(tempDir);
+
+    // 1. Valid keys generate proper delivery URLs
+    const publicUrl = adapter.getDeliveryUrl('food.glb', true);
+    assert.equal(publicUrl, '/api/v1/reconstruction/assets/food.glb');
+
+    const privateUrl = adapter.getDeliveryUrl('food.glb', false);
+    assert.ok(privateUrl.startsWith('/api/v1/reconstruction/assets/food.glb?sig='));
+    assert.ok(privateUrl.includes('exp='));
+
+    // Prefixed valid keys are normalized properly
+    const prefixedPublic = adapter.getDeliveryUrl('dineingo/reconstructions/food.glb', true);
+    assert.equal(prefixedPublic, '/api/v1/reconstruction/assets/food.glb');
+
+    const prefixedPrivate = adapter.getDeliveryUrl('/dineingo/reconstructions/food.glb', false);
+    assert.ok(prefixedPrivate.startsWith('/api/v1/reconstruction/assets/food.glb?sig='));
+
+    // 2. Invalid and path-traversal inputs fail closed and throw Errors
+    const dangerousKeys = [
+      '../evil.glb',
+      '../../etc/passwd',
+      'foo/../bar.glb',
+      'food.txt',
+      'food..glb',
+      'food.glb\0',
+      '/etc/shadow',
+      'invalid_extension.png',
+      '',
+      null as any,
+      undefined as any
+    ];
+
+    for (const badKey of dangerousKeys) {
+      assert.throws(
+        () => adapter.getDeliveryUrl(badKey, true),
+        (err: any) => {
+          assert.ok(err instanceof Error);
+          assert.ok(err.message.includes('Invalid storage key provided for delivery URL'));
+          return true;
+        },
+        `getDeliveryUrl must throw on invalid key: "${badKey}"`
+      );
+
+      assert.throws(
+        () => adapter.getDeliveryUrl(badKey, false),
+        (err: any) => {
+          assert.ok(err instanceof Error);
+          assert.ok(err.message.includes('Invalid storage key provided for delivery URL'));
+          return true;
+        },
+        `getDeliveryUrl(private) must throw on invalid key: "${badKey}"`
+      );
+    }
+
+    // 3. Cloudinary adapter also fails closed on invalid storage keys
+    const cldAdapter = new CloudinaryStorageAdapter();
+    for (const badKey of ['../traversal.glb', 'foo.exe', '']) {
+      await assert.rejects(
+        () => cldAdapter.getDeliveryUrl(badKey, true),
+        (err: any) => {
+          assert.ok(err instanceof Error);
+          assert.ok(err.message.includes('Invalid storage key provided for delivery URL'));
+          return true;
+        }
+      );
+    }
+  } finally {
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('17. Asset-to-job matching regression: Distinct filenames (food.glb vs foodxglb.glb) and HTTP outcomes', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dineingo-asset-match-test-'));
+  const originalFindOne = ReconstructionJob.findOne;
+  const originalFind = ReconstructionJob.find;
+  const originalAdapter = getReconstructionStorageAdapter();
+
+  try {
+    const localAdapter = new LocalDiskStorageAdapter(tempDir);
+    setReconstructionStorageAdapter(localAdapter);
+
+    // Create two distinct GLB models with different binary buffers and physical properties
+    const bufferFood = createMinimalGLBBuffer(0.20, 0.10, 0.20);
+    const bufferFoodX = createMinimalGLBBuffer(0.40, 0.20, 0.30);
+
+    // Save them to isolated disk storage
+    fs.writeFileSync(path.join(tempDir, 'food.glb'), bufferFood);
+    fs.writeFileSync(path.join(tempDir, 'foodxglb.glb'), bufferFoodX);
+
+    // Two distinct database jobs:
+    // Job A is PUBLIC for foodxglb.glb
+    // Job B is PRIVATE for food.glb (owned by owner_alice_101)
+    const jobA_Public = {
+      jobId: 'job_foodxglb_public',
+      userId: 'chef_mario',
+      status: 'completed',
+      dishName: 'Food X Dish',
+      storageKey: 'foodxglb.glb',
+      storageType: 'local',
+      isPublic: true,
+      modelUrl: 'https://res.cloudinary.com/demo/raw/upload/dineingo/reconstructions/foodxglb.glb'
+    };
+
+    const jobB_Private = {
+      jobId: 'job_food_private',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      dishName: 'Alice Secret Recipe',
+      storageKey: 'food.glb',
+      storageType: 'local',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/food.glb?sig=temp'
+    };
+
+    const allJobs = [jobA_Public, jobB_Private];
+
+    // Mock ReconstructionJob.findOne to resolve exact storageKey matches
+    (ReconstructionJob as any).findOne = async (query: any) => {
+      if (query?.storageKey?.$in) {
+        const keys: string[] = query.storageKey.$in;
+        return allJobs.find(j => keys.includes(j.storageKey)) || null;
+      }
+      return null;
+    };
+
+    // Mock ReconstructionJob.find to resolve candidate modelUrl matches
+    (ReconstructionJob as any).find = async (query: any) => {
+      if (query?.modelUrl instanceof RegExp) {
+        return allJobs.filter(j => query.modelUrl.test(j.modelUrl));
+      }
+      return [];
+    };
+
+    // 1. Unauthenticated request to private food.glb MUST NOT match public foodxglb.glb
+    // In old buggy regex code, 'food.glb' matched 'foodxglb.glb' and served food.glb with public cache!
+    const { req: unauthReq, res: unauthRes } = createMockHttpExchange({ filename: 'food.glb' });
+    await handleAssetRequest(unauthReq, unauthRes);
+
+    assert.equal(unauthRes.statusCode, 401, 'Anonymous request to private food.glb must return 401 Unauthorized');
+    assert.equal(unauthRes.body.success, false);
+    assert.equal(unauthRes.body.message, 'Unauthorized: Access to private 3D assets requires authentication or a valid signed asset URL.');
+    assert.equal(unauthRes.headers['content-type'], undefined, 'Must not deliver binary payload to unauthorized request');
+
+    // 2. Unauthenticated request to exact public foodxglb.glb MUST succeed and deliver foodxglb buffer
+    const { req: pubReq, res: pubRes } = createMockHttpExchange({ filename: 'foodxglb.glb' });
+    await handleAssetRequest(pubReq, pubRes);
+
+    assert.equal(pubRes.statusCode, 200, 'Public asset foodxglb.glb must return 200 OK');
+    assert.equal(pubRes.headers['content-type'], 'model/gltf-binary');
+    assert.equal(pubRes.headers['cache-control'], 'public, max-age=86400');
+    assert.equal(Buffer.compare(pubRes.body, bufferFoodX), 0, 'Delivered buffer must match foodxglb.glb');
+
+    // 3. Asset owner Alice accesses her private food.glb -> 200 with private cache
+    const { req: aliceReq, res: aliceRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      user: { uid: 'owner_alice_101', role: 'user' }
+    });
+    await handleAssetRequest(aliceReq, aliceRes);
+
+    assert.equal(aliceRes.statusCode, 200, 'Owner Alice must have permitted access to her private asset');
+    assert.equal(aliceRes.headers['content-type'], 'model/gltf-binary');
+    assert.equal(aliceRes.headers['cache-control'], 'private, max-age=3600');
+    assert.equal(Buffer.compare(aliceRes.body, bufferFood), 0, 'Delivered buffer must match food.glb');
+
+    // 4. Administrator accesses private food.glb -> 200 with private cache
+    const { req: adminReq, res: adminRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      user: { uid: 'admin_sys', role: 'admin', isAdmin: true }
+    });
+    await handleAssetRequest(adminReq, adminRes);
+
+    assert.equal(adminRes.statusCode, 200, 'Administrator must have permitted access to private asset');
+    assert.equal(Buffer.compare(adminRes.body, bufferFood), 0);
+
+    // 5. Unrelated user Charlie tries to access private food.glb -> 403 Forbidden
+    const { req: charlieReq, res: charlieRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      user: { uid: 'user_charlie_999', role: 'user' }
+    });
+    await handleAssetRequest(charlieReq, charlieRes);
+
+    assert.equal(charlieRes.statusCode, 403, 'Unrelated user Charlie must be rejected with 403 Forbidden');
+    assert.equal(charlieRes.body.success, false);
+    assert.equal(charlieRes.body.message, 'Forbidden: You do not have permission to access this private asset.');
+
+    // 6. Valid HMAC signed URL permits temporary access to private food.glb
+    const validSig = signAssetUrl('food.glb', 3600);
+    const { req: sigReq, res: sigRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      query: { sig: validSig.signature, exp: String(validSig.expires) }
+    });
+    await handleAssetRequest(sigReq, sigRes);
+
+    assert.equal(sigRes.statusCode, 200, 'Valid signed URL must permit access');
+    assert.equal(sigRes.headers['cache-control'], 'private, max-age=3600');
+    assert.equal(Buffer.compare(sigRes.body, bufferFood), 0);
+
+    // 7. Expired signature is rejected with 401
+    const expiredSig = signAssetUrl('food.glb', -3600);
+    const { req: expReq, res: expRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      query: { sig: expiredSig.signature, exp: String(expiredSig.expires) }
+    });
+    await handleAssetRequest(expReq, expRes);
+
+    assert.equal(expRes.statusCode, 401, 'Expired signature must be rejected with 401');
+    assert.equal(expRes.body.message, 'Unauthorized: Asset signature is invalid or expired.');
+
+    // 8. Tampered signature is rejected with 401
+    const { req: tampReq, res: tampRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      query: { sig: '1234567890abcdef'.repeat(4), exp: String(validSig.expires) }
+    });
+    await handleAssetRequest(tampReq, tampRes);
+
+    assert.equal(tampRes.statusCode, 401, 'Tampered signature must be rejected with 401');
+
+    // 9. Signature for foodxglb.glb used on food.glb is rejected with 401
+    const foodxSig = signAssetUrl('foodxglb.glb', 3600);
+    const { req: crossSigReq, res: crossSigRes } = createMockHttpExchange({
+      filename: 'food.glb',
+      query: { sig: foodxSig.signature, exp: String(foodxSig.expires) }
+    });
+    await handleAssetRequest(crossSigReq, crossSigRes);
+
+    assert.equal(crossSigRes.statusCode, 401, 'Signature for different file must be rejected with 401');
+
+    // 10. Invalid filenames rejected with 400
+    for (const badFilename of ['../secret.glb', 'food.txt', 'food..glb', 'food.glb\0']) {
+      const { req: badReq, res: badRes } = createMockHttpExchange({ filename: badFilename });
+      await handleAssetRequest(badReq, badRes);
+      assert.equal(badRes.statusCode, 400, `Filename "${badFilename}" must return 400`);
+      assert.equal(badRes.body.message, 'Invalid asset filename');
+    }
+  } finally {
+    (ReconstructionJob as any).findOne = originalFindOne;
+    (ReconstructionJob as any).find = originalFind;
+    setReconstructionStorageAdapter(originalAdapter);
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
+  }
+});
+
+test('18. Safe modelUrl resolution: Overlapping and substring URLs do not produce false matches', async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dineingo-modelurl-match-test-'));
+  const originalFindOne = ReconstructionJob.findOne;
+  const originalFind = ReconstructionJob.find;
+  const originalAdapter = getReconstructionStorageAdapter();
+
+  try {
+    const localAdapter = new LocalDiskStorageAdapter(tempDir);
+    setReconstructionStorageAdapter(localAdapter);
+
+    const bufferFood = createMinimalGLBBuffer(0.2, 0.1, 0.2);
+    const bufferSuperFood = createMinimalGLBBuffer(0.5, 0.3, 0.4);
+    const bufferPizza = createMinimalGLBBuffer(0.3, 0.05, 0.3);
+
+    fs.writeFileSync(path.join(tempDir, 'food.glb'), bufferFood);
+    fs.writeFileSync(path.join(tempDir, 'super_food.glb'), bufferSuperFood);
+    fs.writeFileSync(path.join(tempDir, 'pizza.glb'), bufferPizza);
+
+    // Legacy jobs with NO storageKey, only modelUrl
+    const jobSuperFood_Public = {
+      jobId: 'job_legacy_super_food',
+      userId: 'chef_super',
+      status: 'completed',
+      storageKey: undefined,
+      isPublic: true,
+      modelUrl: 'https://res.cloudinary.com/demo/raw/upload/dineingo/reconstructions/super_food.glb'
+    };
+
+    const jobFood_Private = {
+      jobId: 'job_legacy_food_priv',
+      userId: 'owner_bob_202',
+      status: 'completed',
+      storageKey: undefined,
+      isPublic: false,
+      modelUrl: 'https://res.cloudinary.com/demo/raw/authenticated/dineingo/reconstructions/food.glb'
+    };
+
+    const jobPizza_PublicWithToken = {
+      jobId: 'job_legacy_pizza',
+      userId: 'chef_luigi',
+      status: 'completed',
+      storageKey: undefined,
+      isPublic: true,
+      modelUrl: 'https://res.cloudinary.com/demo/raw/upload/v1234/dineingo/reconstructions/pizza.glb?__cld_token__=exp=9999999999~hmac=abcdef'
+    };
+
+    const legacyJobs = [jobSuperFood_Public, jobFood_Private, jobPizza_PublicWithToken];
+
+    // findOne returns null for storageKey because storageKey is undefined
+    (ReconstructionJob as any).findOne = async () => null;
+
+    (ReconstructionJob as any).find = async (query: any) => {
+      if (query?.modelUrl instanceof RegExp) {
+        return legacyJobs.filter(j => query.modelUrl.test(j.modelUrl));
+      }
+      return [];
+    };
+
+    // 1. Verify extractAssetFilenameFromUrl correctly isolates filenames
+    assert.equal(
+      extractAssetFilenameFromUrl('https://res.cloudinary.com/demo/raw/upload/dineingo/reconstructions/super_food.glb'),
+      'super_food.glb'
+    );
+    assert.equal(
+      extractAssetFilenameFromUrl('https://res.cloudinary.com/demo/raw/authenticated/dineingo/reconstructions/food.glb'),
+      'food.glb'
+    );
+    assert.equal(
+      extractAssetFilenameFromUrl('https://res.cloudinary.com/demo/raw/upload/v1234/dineingo/reconstructions/pizza.glb?__cld_token__=exp=9999999999~hmac=abcdef'),
+      'pizza.glb'
+    );
+    assert.equal(extractAssetFilenameFromUrl('/api/v1/reconstruction/assets/food.glb?sig=123&exp=456'), 'food.glb');
+    assert.equal(extractAssetFilenameFromUrl('/api/v1/reconstruction/assets/../evil.glb'), null);
+    assert.equal(extractAssetFilenameFromUrl(''), null);
+    assert.equal(extractAssetFilenameFromUrl(null), null);
+
+    // 2. Anonymous request to 'food.glb' must NOT match 'super_food.glb'
+    // Under unescaped substring regex /food.glb/, 'super_food.glb' would match and authorize public access!
+    const { req: reqFood, res: resFood } = createMockHttpExchange({ filename: 'food.glb' });
+    await handleAssetRequest(reqFood, resFood);
+
+    assert.equal(resFood.statusCode, 401, 'Anonymous request to food.glb must not match public super_food.glb');
+    assert.equal(resFood.body.success, false);
+    assert.equal(resFood.body.message, 'Unauthorized: Access to private 3D assets requires authentication or a valid signed asset URL.');
+
+    // 3. Anonymous request to 'super_food.glb' matches Job C and succeeds with public Cache-Control
+    const { req: reqSuper, res: resSuper } = createMockHttpExchange({ filename: 'super_food.glb' });
+    await handleAssetRequest(reqSuper, resSuper);
+
+    assert.equal(resSuper.statusCode, 200, 'Anonymous request to public super_food.glb must return 200 OK');
+    assert.equal(resSuper.headers['cache-control'], 'public, max-age=86400');
+    assert.equal(Buffer.compare(resSuper.body, bufferSuperFood), 0);
+
+    // 4. Anonymous request to 'pizza.glb' matches Job with token query and succeeds with public Cache-Control
+    const { req: reqPizza, res: resPizza } = createMockHttpExchange({ filename: 'pizza.glb' });
+    await handleAssetRequest(reqPizza, resPizza);
+
+    assert.equal(resPizza.statusCode, 200, 'Anonymous request to public pizza.glb must return 200 OK');
+    assert.equal(resPizza.headers['cache-control'], 'public, max-age=86400');
+    assert.equal(Buffer.compare(resPizza.body, bufferPizza), 0);
+
+    // 5. Cloudinary storage adapter retrieval when file not on local disk
+    const mockCldBuffer = createMinimalGLBBuffer(0.3, 0.2, 0.1);
+    let requestedCloudinaryKey = '';
+    let requestedIsPublic: boolean | undefined = undefined;
+
+    setReconstructionStorageAdapter({
+      isDurable: () => true,
+      saveGLB: async () => ({ url: '', storageType: 'cloudinary' as const, storageKey: '', byteSize: 0, isDurable: true }),
+      getGLB: async (key: string, isPub?: boolean) => {
+        requestedCloudinaryKey = key;
+        requestedIsPublic = isPub;
+        return mockCldBuffer;
+      },
+      deleteGLB: async () => true,
+      publishGLB: async () => null,
+      getDeliveryUrl: () => 'https://cdn.example.com/asset.glb'
+    });
+
+    // Remove super_food.glb from local temp dir so it triggers storageAdapter.getGLB
+    fs.unlinkSync(path.join(tempDir, 'super_food.glb'));
+
+    const { req: reqCld, res: resCld } = createMockHttpExchange({ filename: 'super_food.glb' });
+    await handleAssetRequest(reqCld, resCld);
+
+    assert.equal(resCld.statusCode, 200);
+    assert.equal(resCld.headers['cache-control'], 'public, max-age=86400');
+    assert.equal(requestedCloudinaryKey, 'super_food.glb');
+    assert.equal(requestedIsPublic, true, 'Public model lookup must request public delivery from storage adapter');
+    assert.equal(Buffer.compare(resCld.body, mockCldBuffer), 0);
+  } finally {
+    (ReconstructionJob as any).findOne = originalFindOne;
+    (ReconstructionJob as any).find = originalFind;
+    setReconstructionStorageAdapter(originalAdapter);
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+    }
   }
 });
 
