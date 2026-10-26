@@ -9,6 +9,8 @@ export interface StorageSaveResult {
   storageKey: string;
   byteSize: number;
   isDurable: boolean;
+  originalPrivateKey?: string;
+  publicKey?: string;
 }
 
 export interface IReconstructionStorageAdapter {
@@ -210,12 +212,6 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
         uploadStream.end(buffer);
       });
 
-      // 3. Remove old private authenticated copy
-      await cl.uploader.destroy(fullPublicId, {
-        resource_type: 'raw',
-        type: 'authenticated'
-      }).catch(() => {});
-
       const deliveryUrl = result.secure_url || cl.url(result.public_id || fullPublicId, {
         resource_type: 'raw',
         type: 'upload',
@@ -226,6 +222,8 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
         url: deliveryUrl,
         storageType: 'cloudinary',
         storageKey: `${cleanKey}.glb`,
+        originalPrivateKey: storageKey,
+        publicKey: `${cleanKey}.glb`,
         byteSize: result.bytes || buffer.length,
         isDurable: true
       };
@@ -320,29 +318,33 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   async publishGLB(storageKey: string): Promise<StorageSaveResult | null> {
-    if (!isValidAssetFilename(storageKey)) {
+    const cleanKey = storageKey.replace(/^dineingo\/reconstructions\//, '');
+    if (!isValidAssetFilename(cleanKey)) {
       return null;
     }
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, storageKey);
+    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, cleanKey);
     if (!fs.existsSync(targetPath)) {
       return null;
     }
     const stat = fs.statSync(targetPath);
-    const publicUrl = this.getDeliveryUrl(storageKey, true);
+    const publicUrl = this.getDeliveryUrl(cleanKey, true);
     return {
       url: publicUrl,
       storageType: 'local',
-      storageKey,
+      storageKey: cleanKey,
+      originalPrivateKey: storageKey,
+      publicKey: cleanKey,
       byteSize: stat.size,
       isDurable: this.persistent
     };
   }
 
   async getGLB(storageKey: string, isPublic?: boolean): Promise<Buffer | null> {
-    if (!isValidAssetFilename(storageKey)) {
+    const cleanKey = storageKey.replace(/^dineingo\/reconstructions\//, '');
+    if (!isValidAssetFilename(cleanKey)) {
       return null;
     }
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, storageKey);
+    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, cleanKey);
     if (!fs.existsSync(targetPath)) {
       return null;
     }
@@ -350,10 +352,11 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   async deleteGLB(storageKey: string, isPublic?: boolean): Promise<boolean> {
-    if (!isValidAssetFilename(storageKey)) {
+    const cleanKey = storageKey.replace(/^dineingo\/reconstructions\//, '');
+    if (!isValidAssetFilename(cleanKey)) {
       return false;
     }
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, storageKey);
+    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, cleanKey);
     if (!fs.existsSync(targetPath)) {
       return false;
     }

@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import fs from 'fs';
 import path from 'path';
-import { reconstructionService } from '../services/reconstructionService';
+import { reconstructionService, PublicationError } from '../services/reconstructionService';
 import { getReconstructionStorageAdapter } from '../services/reconstructionStorageAdapter';
 import { verifyUserToken } from '../middleware/userAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
@@ -174,10 +174,15 @@ router.patch('/jobs/:jobId/publish', verifyUserToken, async (req: Request, res: 
     });
   } catch (error: any) {
     console.error('Error publishing reconstruction job:', error);
-    const statusCode = error.statusCode || error.status || 500;
-    res.status(statusCode).json({
+    if (error instanceof PublicationError || error?.name === 'PublicationError') {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    return res.status(500).json({
       success: false,
-      message: error.message || 'Internal server error publishing reconstruction job'
+      message: 'Internal server error publishing reconstruction job'
     });
   }
 });

@@ -33,7 +33,13 @@ export type RestaurantOwnershipResolver = (
   restaurantId: string | undefined | null,
   menuItemId: string | undefined | null,
   requester: RequesterAuthContext
-) => Promise<{ authorized: boolean; reason?: string; verifiedRestaurantId?: string }>;
+) => Promise<{
+  authorized: boolean;
+  statusCode?: number;
+  reason?: string;
+  verifiedRestaurantId?: string;
+  verifiedMenuItemId?: string;
+}>;
 
 let customOwnershipResolver: RestaurantOwnershipResolver | null = null;
 
@@ -43,115 +49,214 @@ export function setRestaurantOwnershipResolver(resolver: RestaurantOwnershipReso
 
 /**
  * Verifies server-side using persisted records that the requester owns or is authorized
- * to manage the specified restaurant or menu item.
+ * to manage the specified restaurant or menu item, and validates relationship integrity.
  */
 export async function verifyRestaurantAuthorization(
   restaurantId: string | undefined | null,
   menuItemId: string | undefined | null,
   requester: RequesterAuthContext
-): Promise<{ authorized: boolean; reason?: string; verifiedRestaurantId?: string }> {
+): Promise<{
+  authorized: boolean;
+  statusCode?: number;
+  reason?: string;
+  verifiedRestaurantId?: string;
+  verifiedMenuItemId?: string;
+}> {
   if (customOwnershipResolver) {
     return customOwnershipResolver(restaurantId, menuItemId, requester);
-  }
-
-  const isAdmin = Boolean(requester.isAdmin || requester.role === 'admin' || requester.role === 'super_admin');
-  if (isAdmin) {
-    return { authorized: true, verifiedRestaurantId: restaurantId || undefined };
   }
 
   if (!restaurantId && !menuItemId) {
     return {
       authorized: false,
-      reason: 'Reconstruction model is not linked to an authorized restaurant or menu item'
+      statusCode: 403,
+      reason: 'Reconstruction model is not linked to an authorized restaurant or menu item. Asset remains private.'
     };
   }
 
   if (mongoose.connection?.readyState !== 1) {
     return {
       authorized: false,
+      statusCode: 503,
       reason: 'Database connection unavailable to verify restaurant ownership'
     };
   }
 
-  // 1. If restaurantId is specified, check Restaurant and Business models in persisted DB
-  if (restaurantId) {
-    const isObjectId = mongoose.Types.ObjectId.isValid(restaurantId);
+  const isAdmin = Boolean(requester.isAdmin || requester.role === 'admin' || requester.role === 'super_admin');
 
+  // 1. If menuItemId is provided, resolve and verify canonical parent restaurant/business
+  if (menuItemId) {
+    let resolvedRestaurantId: string | null = null;
+    let resolvedOwnerId: string | null = null;
+    let foundMenuItem = false;
+
+    // 1a. Check standalone MenuItem model
     try {
-      const restaurant = await Restaurant.findOne({
-        $or: [
-          { restaurantId: restaurantId },
-          ...(isObjectId ? [{ _id: restaurantId }] : [])
-        ]
-      });
+      const isItemObjectId = mongoose.Types.ObjectId.isValid(menuItemId);
+      const standaloneItem = isItemObjectId
+        ? await MenuItem.findById(menuItemId)
+        : await MenuItem.findOne({ _id: menuItemId });
 
-      if (restaurant) {
-        if (restaurant.ownerId === requester.uid) {
-          return { authorized: true, verifiedRestaurantId: restaurant.restaurantId || String(restaurant._id) };
-        } else {
-          return { authorized: false, reason: 'Requester does not own the specified restaurant' };
-        }
-      }
-    } catch (dbErr) {
-      console.warn('[ReconstructionService] Error querying Restaurant model:', dbErr);
-    }
+      if (standaloneItem) {
+        foundMenuItem = true;
+        resolvedRestaurantId = standaloneItem.businessId;
 
-    if (isObjectId) {
-      try {
-        const business = await Business.findById(restaurantId);
-        if (business) {
-          if (business.ownerId === requester.uid) {
-            return { authorized: true, verifiedRestaurantId: String(business._id) };
-          } else {
-            return { authorized: false, reason: 'Requester does not own the specified business' };
+        if (resolvedRestaurantId) {
+          const isParentObjId = mongoose.Types.ObjectId.isValid(resolvedRestaurantId);
+          if (isParentObjId) {
+            const bus = await Business.findById(resolvedRestaurantId);
+            if (bus) resolvedOwnerId = bus.ownerId;
+          }
+          if (!resolvedOwnerId) {
+            const rest = await Restaurant.findOne({
+              $or: [
+                { restaurantId: resolvedRestaurantId },
+                ...(isParentObjId ? [{ _id: resolvedRestaurantId }] : [])
+              ]
+            });
+            if (rest) resolvedOwnerId = rest.ownerId;
           }
         }
-      } catch (dbErr) {
-        console.warn('[ReconstructionService] Error querying Business model:', dbErr);
+      }
+    } catch (err) {
+      console.warn('[ReconstructionService] Error querying standalone MenuItem:', err);
+    }
+
+    // 1b. Check embedded Restaurant.menu entries
+    if (!foundMenuItem) {
+      try {
+        const restWithEmbedded = await Restaurant.findOne({ 'menu.id': menuItemId });
+        if (restWithEmbedded) {
+          foundMenuItem = true;
+          resolvedRestaurantId = restWithEmbedded.restaurantId || String(restWithEmbedded._id);
+          resolvedOwnerId = restWithEmbedded.ownerId;
+        }
+      } catch (err) {
+        console.warn('[ReconstructionService] Error querying Restaurant embedded menu:', err);
       }
     }
+
+    // 1c. Check embedded Business.menu entries
+    if (!foundMenuItem) {
+      try {
+        const busWithEmbedded = await Business.findOne({ 'menu.id': menuItemId });
+        if (busWithEmbedded) {
+          foundMenuItem = true;
+          resolvedRestaurantId = String(busWithEmbedded._id);
+          resolvedOwnerId = busWithEmbedded.ownerId;
+        }
+      } catch (err) {
+        console.warn('[ReconstructionService] Error querying Business embedded menu:', err);
+      }
+    }
+
+    if (!foundMenuItem || !resolvedRestaurantId) {
+      return {
+        authorized: false,
+        statusCode: 404,
+        reason: `Menu item "${menuItemId}" was not found in persisted records.`
+      };
+    }
+
+    // If restaurantId is also specified, prove that the menu item actually belongs to that exact restaurant
+    if (restaurantId) {
+      const isRestObjId = mongoose.Types.ObjectId.isValid(restaurantId);
+      const isResolvedObjId = mongoose.Types.ObjectId.isValid(resolvedRestaurantId);
+
+      let matches = restaurantId === resolvedRestaurantId;
+      if (!matches) {
+        try {
+          const restA = await Restaurant.findOne({
+            $or: [{ restaurantId }, ...(isRestObjId ? [{ _id: restaurantId }] : [])]
+          });
+          const restB = await Restaurant.findOne({
+            $or: [{ restaurantId: resolvedRestaurantId }, ...(isResolvedObjId ? [{ _id: resolvedRestaurantId }] : [])]
+          });
+          if (restA && restB && String(restA._id) === String(restB._id)) {
+            matches = true;
+          }
+        } catch {}
+      }
+
+      if (!matches) {
+        return {
+          authorized: false,
+          statusCode: 403,
+          reason: `Menu item "${menuItemId}" belongs to restaurant "${resolvedRestaurantId}", not "${restaurantId}".`
+        };
+      }
+    }
+
+    // Verify ownership authorization
+    if (!isAdmin && resolvedOwnerId !== requester.uid) {
+      return {
+        authorized: false,
+        statusCode: 403,
+        reason: 'Requester does not own the restaurant associated with this menu item'
+      };
+    }
+
+    return {
+      authorized: true,
+      verifiedRestaurantId: resolvedRestaurantId,
+      verifiedMenuItemId: menuItemId
+    };
   }
 
-  // 2. If menuItemId is specified, check MenuItem and Restaurant models
-  if (menuItemId) {
-    const isItemObjectId = mongoose.Types.ObjectId.isValid(menuItemId);
-    if (isItemObjectId) {
-      try {
-        const menuItem = await MenuItem.findById(menuItemId);
-        if (menuItem && menuItem.businessId) {
-          if (mongoose.Types.ObjectId.isValid(menuItem.businessId)) {
-            const business = await Business.findById(menuItem.businessId);
-            if (business && business.ownerId === requester.uid) {
-              return { authorized: true, verifiedRestaurantId: String(business._id) };
-            }
-          }
-          const restaurant = await Restaurant.findOne({ restaurantId: menuItem.businessId });
-          if (restaurant && restaurant.ownerId === requester.uid) {
-            return { authorized: true, verifiedRestaurantId: restaurant.restaurantId };
-          }
-        }
-      } catch (dbErr) {
-        console.warn('[ReconstructionService] Error querying MenuItem model:', dbErr);
+  // 2. Only restaurantId is provided (no menuItemId)
+  const isObjectId = mongoose.Types.ObjectId.isValid(restaurantId!);
+  try {
+    const restaurant = await Restaurant.findOne({
+      $or: [
+        { restaurantId: restaurantId! },
+        ...(isObjectId ? [{ _id: restaurantId! }] : [])
+      ]
+    });
+
+    if (restaurant) {
+      if (isAdmin || restaurant.ownerId === requester.uid) {
+        return {
+          authorized: true,
+          verifiedRestaurantId: restaurant.restaurantId || String(restaurant._id)
+        };
+      } else {
+        return {
+          authorized: false,
+          statusCode: 403,
+          reason: 'Requester does not own the specified restaurant'
+        };
       }
     }
+  } catch (dbErr) {
+    console.warn('[ReconstructionService] Error querying Restaurant model:', dbErr);
+  }
 
+  if (isObjectId) {
     try {
-      const restWithEmbeddedMenu = await Restaurant.findOne({ 'menu.id': menuItemId });
-      if (restWithEmbeddedMenu) {
-        if (restWithEmbeddedMenu.ownerId === requester.uid) {
-          return { authorized: true, verifiedRestaurantId: restWithEmbeddedMenu.restaurantId };
+      const business = await Business.findById(restaurantId!);
+      if (business) {
+        if (isAdmin || business.ownerId === requester.uid) {
+          return {
+            authorized: true,
+            verifiedRestaurantId: String(business._id)
+          };
         } else {
-          return { authorized: false, reason: 'Requester does not own the restaurant containing this menu item' };
+          return {
+            authorized: false,
+            statusCode: 403,
+            reason: 'Requester does not own the specified business'
+          };
         }
       }
     } catch (dbErr) {
-      console.warn('[ReconstructionService] Error querying embedded menu:', dbErr);
+      console.warn('[ReconstructionService] Error querying Business model:', dbErr);
     }
   }
 
   return {
     authorized: false,
-    reason: 'Restaurant or menu item not found in persisted records'
+    statusCode: 404,
+    reason: `Restaurant "${restaurantId}" was not found in persisted records.`
   };
 }
 
@@ -735,7 +840,9 @@ export class ReconstructionService {
     }
 
     // 2. Validate storage key
-    if (!job.storageKey || !isValidAssetFilename(job.storageKey)) {
+    const currentStorageKey = job.storageKey;
+    const cleanStorageKey = currentStorageKey ? currentStorageKey.replace(/^dineingo\/reconstructions\//, '') : '';
+    if (!currentStorageKey || !cleanStorageKey || !isValidAssetFilename(cleanStorageKey)) {
       throw new PublicationError('Cannot publish job: valid storage key is missing.', 400);
     }
 
@@ -781,46 +888,57 @@ export class ReconstructionService {
       }
     }
 
-    if (!isAdmin) {
-      if (!targetRestaurantId && !targetMenuItemId) {
-        throw new PublicationError(
-          'Forbidden: Reconstruction model is not linked to an authorized restaurant or menu item. Asset remains private.',
-          403
-        );
-      }
-
-      const authCheck = await verifyRestaurantAuthorization(targetRestaurantId, targetMenuItemId, requester);
-      if (!authCheck.authorized) {
-        throw new PublicationError(
-          `Forbidden: ${authCheck.reason || 'You are not authorized to publish assets for this restaurant.'}`,
-          403
-        );
-      }
+    if (!targetRestaurantId && !targetMenuItemId) {
+      throw new PublicationError(
+        'Forbidden: Reconstruction model is not linked to an authorized restaurant or menu item. Asset remains private.',
+        403
+      );
     }
 
+    // Verify restaurant & menu-item relationship integrity
+    const authCheck = await verifyRestaurantAuthorization(targetRestaurantId, targetMenuItemId, requester);
+    if (!authCheck.authorized) {
+      throw new PublicationError(
+        authCheck.reason || 'Forbidden: You are not authorized to publish assets for this restaurant.',
+        authCheck.statusCode || 403
+      );
+    }
+
+    if (authCheck.verifiedRestaurantId && job.restaurantId && authCheck.verifiedRestaurantId !== job.restaurantId && !isAdmin) {
+      throw new PublicationError(
+        `Forbidden: Verified restaurant "${authCheck.verifiedRestaurantId}" does not match persisted job restaurant "${job.restaurantId}".`,
+        403
+      );
+    }
+
+    const finalRestaurantId = authCheck.verifiedRestaurantId || targetRestaurantId;
+    const finalMenuItemId = authCheck.verifiedMenuItemId || targetMenuItemId;
+
     if (job.isPublic) {
-      return job; // Already published
+      return job; // Already published (idempotent)
     }
 
     const storageAdapter = getReconstructionStorageAdapter();
 
     // 4. Verify existing private 3D asset binary exists before attempting any migration
-    const privateBuffer = await storageAdapter.getGLB(job.storageKey, false);
+    const privateBuffer = await storageAdapter.getGLB(currentStorageKey, false);
     if (!privateBuffer || privateBuffer.length === 0) {
       throw new PublicationError('Cannot publish job: private 3D model asset is missing or cannot be retrieved.', 404);
     }
 
-    // 5. Migrate asset to public CDN storage safely
+    // 5. Migrate asset to public CDN storage safely (keeps private copy intact)
     let publishResult: StorageSaveResult | null = null;
     try {
       if (typeof (storageAdapter as any).publishGLB === 'function') {
-        publishResult = await (storageAdapter as any).publishGLB(job.storageKey);
+        publishResult = await (storageAdapter as any).publishGLB(currentStorageKey);
       } else {
-        const publicUrl = await storageAdapter.getDeliveryUrl(job.storageKey, true);
+        const publicUrl = await storageAdapter.getDeliveryUrl(currentStorageKey, true);
         publishResult = {
           url: publicUrl,
           storageType: job.storageType === 'cloudinary' ? 'cloudinary' : 'local',
-          storageKey: job.storageKey,
+          storageKey: currentStorageKey,
+          originalPrivateKey: currentStorageKey,
+          publicKey: currentStorageKey,
           byteSize: privateBuffer.length,
           isDurable: storageAdapter.isDurable()
         };
@@ -836,16 +954,30 @@ export class ReconstructionService {
     }
 
     // 6. Verify the resulting public asset is retrievable on public CDN before updating database
-    const verifiedPublicBuffer = await storageAdapter.getGLB(publishResult.storageKey || job.storageKey, true);
+    const publicKey = publishResult.publicKey || publishResult.storageKey || currentStorageKey;
+    let verifiedPublicBuffer: Buffer | null = null;
+    try {
+      verifiedPublicBuffer = await storageAdapter.getGLB(publicKey, true);
+    } catch (verifyErr) {
+      console.error(`[ReconstructionService] Public CDN verification error for job ${job.jobId}:`, verifyErr);
+      verifiedPublicBuffer = null;
+    }
+
     if (!verifiedPublicBuffer || verifiedPublicBuffer.length === 0) {
-      // Rollback: delete published asset if it was created as a new key
-      if (publishResult.storageKey && publishResult.storageKey !== job.storageKey) {
-        await storageAdapter.deleteGLB(publishResult.storageKey, true).catch(() => {});
-      }
+      // Rollback public copy
+      await this.rollbackPublicCopy(storageAdapter, publishResult, currentStorageKey);
       throw new PublicationError('Failed to verify published 3D model asset on public delivery CDN.', 502);
     }
 
-    // 7. Update isPublic, modelUrl, storageKey, storage metadata and publication audit details consistently
+    // 7. Persist changes to ReconstructionJob
+    const previousIsPublic = job.isPublic;
+    const previousModelUrl = job.modelUrl;
+    const previousStorageKey = job.storageKey;
+    const previousStorageType = job.storageType;
+    const previousRestaurantId = job.restaurantId;
+    const previousMenuItemId = job.menuItemId;
+    const previousMetadata = { ...job.metadata };
+
     job.isPublic = true;
     job.modelUrl = publishResult.url;
     if (publishResult.storageKey) {
@@ -854,35 +986,105 @@ export class ReconstructionService {
     if (publishResult.storageType) {
       job.storageType = publishResult.storageType;
     }
-    if (targetRestaurantId && !job.restaurantId) {
-      job.restaurantId = targetRestaurantId;
+    if (finalRestaurantId) {
+      job.restaurantId = finalRestaurantId;
     }
-    if (targetMenuItemId && !job.menuItemId) {
-      job.menuItemId = targetMenuItemId;
+    if (finalMenuItemId) {
+      job.menuItemId = finalMenuItemId;
     }
     job.metadata = {
       ...job.metadata,
       publishedAt: new Date().toISOString(),
       publishedBy: requester.uid,
-      publishedRestaurantId: targetRestaurantId,
-      publishedMenuItemId: targetMenuItemId
+      publishedRestaurantId: finalRestaurantId,
+      publishedMenuItemId: finalMenuItemId
     };
-    await job.save();
 
-    // Sync modelUrl to MenuItem if linked
-    if (targetMenuItemId && mongoose.connection.readyState === 1) {
+    try {
+      await job.save();
+    } catch (saveErr) {
+      console.error(`[ReconstructionService] Database save failed for job ${job.jobId}:`, saveErr);
+      // Revert in-memory state
+      job.isPublic = previousIsPublic;
+      job.modelUrl = previousModelUrl;
+      job.storageKey = previousStorageKey;
+      job.storageType = previousStorageType;
+      job.restaurantId = previousRestaurantId;
+      job.menuItemId = previousMenuItemId;
+      job.metadata = previousMetadata;
+
+      // Rollback public copy so it does not remain exposed
+      await this.rollbackPublicCopy(storageAdapter, publishResult, currentStorageKey);
+      throw new PublicationError('Failed to persist published job state to database.', 500);
+    }
+
+    // 8. Scoped Menu Item update: only AFTER job.save() succeeds
+    if (finalMenuItemId && mongoose.connection?.readyState === 1) {
       try {
-        await MenuItem.findByIdAndUpdate(targetMenuItemId, { modelUrl: publishResult.url }).catch(() => {});
-        await Restaurant.updateOne(
-          { 'menu.id': targetMenuItemId },
-          { $set: { 'menu.$.modelUrl': publishResult.url } }
-        ).catch(() => {});
-      } catch {
-        // Non-fatal sync
+        if (finalRestaurantId) {
+          await MenuItem.updateOne(
+            { _id: finalMenuItemId, businessId: finalRestaurantId },
+            { $set: { modelUrl: publishResult.url } }
+          ).catch(() => {});
+
+          const isObjectId = mongoose.Types.ObjectId.isValid(finalRestaurantId);
+          await Restaurant.updateOne(
+            {
+              $or: [
+                { restaurantId: finalRestaurantId },
+                ...(isObjectId ? [{ _id: finalRestaurantId }] : [])
+              ],
+              'menu.id': finalMenuItemId
+            },
+            { $set: { 'menu.$.modelUrl': publishResult.url } }
+          ).catch(() => {});
+
+          if (isObjectId) {
+            await Business.updateOne(
+              { _id: finalRestaurantId, 'menu.id': finalMenuItemId },
+              { $set: { 'menu.$.modelUrl': publishResult.url } }
+            ).catch(() => {});
+          }
+        }
+      } catch (menuSyncErr) {
+        console.warn('[ReconstructionService] Non-fatal menu modelUrl sync error:', menuSyncErr);
+      }
+    }
+
+    // 9. Remove old private copy only after successful persistence
+    const originalPrivateKey = publishResult.originalPrivateKey || previousStorageKey;
+    if (originalPrivateKey && (publishResult.storageType === 'cloudinary' || originalPrivateKey !== job.storageKey)) {
+      try {
+        await storageAdapter.deleteGLB(originalPrivateKey, false);
+      } catch (cleanupErr) {
+        console.warn(`[ReconstructionService] Non-fatal cleanup issue removing private copy ${originalPrivateKey}:`, cleanupErr);
       }
     }
 
     return job;
+  }
+
+  private async rollbackPublicCopy(
+    storageAdapter: any,
+    publishResult: StorageSaveResult,
+    originalStorageKey: string
+  ): Promise<void> {
+    const publicKey = publishResult.publicKey || publishResult.storageKey;
+    if (!publicKey) return;
+
+    try {
+      if (publishResult.storageType === 'cloudinary') {
+        await storageAdapter.deleteGLB(publicKey, true);
+      } else {
+        const cleanPublic = publicKey.replace(/^dineingo\/reconstructions\//, '');
+        const cleanOrig = originalStorageKey.replace(/^dineingo\/reconstructions\//, '');
+        if (cleanPublic !== cleanOrig) {
+          await storageAdapter.deleteGLB(cleanPublic, true);
+        }
+      }
+    } catch (cleanupErr) {
+      console.warn('[ReconstructionService] Warning: Failed to clean up public copy during rollback:', cleanupErr);
+    }
   }
 }
 
