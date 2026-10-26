@@ -73,7 +73,7 @@ router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Resp
       });
     }
 
-    const { dishName, imageUrl, referencePlateDiameterMeters, metadata } = req.body;
+    const { dishName, imageUrl, referencePlateDiameterMeters, metadata, restaurantId, menuItemId } = req.body;
 
     if (!dishName || typeof dishName !== 'string' || dishName.trim().length === 0) {
       return res.status(400).json({
@@ -99,6 +99,8 @@ router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Resp
       dishName: dishName.trim(),
       imageUrl: typeof imageUrl === 'string' ? imageUrl : undefined,
       referencePlateDiameterMeters: Number(referencePlateDiameterMeters) || 0.24,
+      restaurantId: typeof restaurantId === 'string' ? restaurantId : undefined,
+      menuItemId: typeof menuItemId === 'string' ? menuItemId : undefined,
       metadata: typeof metadata === 'object' && metadata !== null ? metadata : undefined
     });
 
@@ -123,6 +125,7 @@ router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Resp
  * PATCH /api/v1/reconstruction/jobs/:jobId/publish
  * Explicitly publishes a reconstructed 3D model to the public restaurant catalog.
  * Strictly restricted to restaurant owners and administrators.
+ * Verifies restaurant ownership server-side and enforces completed job state.
  */
 router.patch('/jobs/:jobId/publish', verifyUserToken, async (req: Request, res: Response) => {
   try {
@@ -139,14 +142,20 @@ router.patch('/jobs/:jobId/publish', verifyUserToken, async (req: Request, res: 
     }
 
     const { jobId } = req.params;
-    const publishedJob = await reconstructionService.publishJob(jobId, authUser.uid);
+    const { restaurantId, menuItemId } = req.body || {};
 
-    if (!publishedJob) {
-      return res.status(404).json({
-        success: false,
-        message: `Reconstruction job "${jobId}" was not found.`
-      });
-    }
+    const publishedJob = await reconstructionService.publishJob(
+      jobId,
+      {
+        uid: authUser.uid,
+        role: authUser.role,
+        isAdmin: authUser.isAdmin
+      },
+      {
+        restaurantId: typeof restaurantId === 'string' ? restaurantId : undefined,
+        menuItemId: typeof menuItemId === 'string' ? menuItemId : undefined
+      }
+    );
 
     res.json({
       success: true,
@@ -157,15 +166,18 @@ router.patch('/jobs/:jobId/publish', verifyUserToken, async (req: Request, res: 
         status: publishedJob.status,
         isPublic: publishedJob.isPublic,
         modelUrl: publishedJob.modelUrl,
+        restaurantId: publishedJob.restaurantId,
+        menuItemId: publishedJob.menuItemId,
         publishedAt: publishedJob.metadata?.publishedAt,
         publishedBy: publishedJob.metadata?.publishedBy
       }
     });
   } catch (error: any) {
     console.error('Error publishing reconstruction job:', error);
-    res.status(500).json({
+    const statusCode = error.statusCode || error.status || 500;
+    res.status(statusCode).json({
       success: false,
-      message: 'Internal server error publishing reconstruction job'
+      message: error.message || 'Internal server error publishing reconstruction job'
     });
   }
 });

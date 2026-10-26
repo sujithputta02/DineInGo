@@ -7,11 +7,13 @@ import { createRequire } from 'module';
 const require = createRequire(process.cwd() + '/index.js');
 
 const { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir, isPersistentDiskConfigured } = require('./backend/src/config/storageConfig.ts');
-const { LocalDiskStorageAdapter, CloudinaryStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
+const { LocalDiskStorageAdapter, CloudinaryStorageAdapter, setReconstructionStorageAdapter, getReconstructionStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
 const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret } = require('./backend/src/utils/assetSecurity.ts');
 const { validateDestinationUrl, verifyImageMagicBytes, isPrivateOrReservedIPv4, isPrivateOrReservedIPv6, parseAndValidateDataUrl } = require('./backend/src/utils/safeImageFetcher.ts');
 const { extractGlbDimensions } = require('./backend/src/utils/glbDimensionExtractor.ts');
 const { isAuthorizedPublisher } = require('./backend/src/routes/reconstructionRoutes.ts');
+const { PublicationError, verifyRestaurantAuthorization, setRestaurantOwnershipResolver, reconstructionService } = require('./backend/src/services/reconstructionService.ts');
+const { ReconstructionJob } = require('./backend/src/models/ReconstructionJob.ts');
 
 // Helper: build minimal valid GLB buffer for testing
 function createMinimalGLBBuffer(width = 0.24, height = 0.12, depth = 0.18, lowestY = 0): Buffer {
@@ -575,3 +577,420 @@ test('13. Genuinely time-limited URL expiry: Access verified before expiry, reje
   assert.equal(handleAssetRequest({ sig: expiredSigned.signature, exp: String(expiredSigned.expires) }), 401, 'Expired signature must receive 401');
   assert.equal(handleAssetRequest({ sig: 'tampered', exp: String(freshSigned.expires) }), 401, 'Tampered signature must receive 401');
 });
+
+test('14. Publication Authorization: Enforces restaurant ownership, rejects cross-user and cross-restaurant publishing', async () => {
+  const normalUser = { uid: 'customer_usr_999', role: 'customer' };
+  const ownerA = { uid: 'owner_alice_101', role: 'restaurant_owner' };
+  const ownerB = { uid: 'owner_bob_202', role: 'restaurant_owner' };
+  const admin = { uid: 'admin_eve_303', role: 'admin', isAdmin: true };
+
+  // 1. Direct unit verification of verifyRestaurantAuthorization
+  setRestaurantOwnershipResolver(async (restaurantId: any, menuItemId: any, requester: any) => {
+    if (requester.isAdmin || requester.role === 'admin' || requester.role === 'super_admin') {
+      return { authorized: true, verifiedRestaurantId: restaurantId || 'admin_verified' };
+    }
+    if (restaurantId) {
+      if (restaurantId === 'rest_alice' && requester.uid === 'owner_alice_101') {
+        return { authorized: true, verifiedRestaurantId: 'rest_alice' };
+      }
+      if (restaurantId === 'rest_bob' && requester.uid === 'owner_bob_202') {
+        return { authorized: true, verifiedRestaurantId: 'rest_bob' };
+      }
+      return { authorized: false, reason: 'Requester does not own the target restaurant' };
+    }
+    if (menuItemId === 'item_alice_burger' && requester.uid === 'owner_alice_101') {
+      return { authorized: true, verifiedRestaurantId: 'rest_alice' };
+    }
+    return { authorized: false, reason: 'Requester does not own the target restaurant or menu item' };
+  });
+
+  const checkUnlinked = await verifyRestaurantAuthorization(undefined, undefined, ownerA);
+  assert.equal(checkUnlinked.authorized, false, 'Unlinked asset must be unauthorized');
+
+  const checkUnauthorizedOwner = await verifyRestaurantAuthorization('rest_bob', undefined, ownerA);
+  assert.equal(checkUnauthorizedOwner.authorized, false, 'Owner A cannot authorize restaurant owned by Owner B');
+
+  const checkAuthorizedOwner = await verifyRestaurantAuthorization('rest_alice', undefined, ownerA);
+  assert.equal(checkAuthorizedOwner.authorized, true, 'Owner A authorizes their own restaurant');
+  assert.equal(checkAuthorizedOwner.verifiedRestaurantId, 'rest_alice');
+
+  const checkAdmin = await verifyRestaurantAuthorization('rest_bob', undefined, admin);
+  assert.equal(checkAdmin.authorized, true, 'Admin is authorized to manage any restaurant');
+
+  // 2. Integration verification of ReconstructionService.publishJob()
+  const originalFindOne = ReconstructionJob.findOne;
+  const originalStorageAdapter = getReconstructionStorageAdapter();
+
+  const dummyGLB = createMinimalGLBBuffer(0.2, 0.1, 0.2);
+
+  // In-memory jobs
+  const jobs: Record<string, any> = {
+    job_alice: {
+      jobId: 'job_alice',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: 'recon_alice_model.glb',
+      storageType: 'local',
+      restaurantId: 'rest_alice',
+      menuItemId: 'item_alice_burger',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_alice_model.glb?sig=secret',
+      metadata: {},
+      save: async function() { return this; }
+    },
+    job_bob: {
+      jobId: 'job_bob',
+      userId: 'owner_bob_202',
+      status: 'completed',
+      storageKey: 'recon_bob_model.glb',
+      storageType: 'local',
+      restaurantId: 'rest_bob',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_bob_model.glb?sig=secret',
+      metadata: {},
+      save: async function() { return this; }
+    },
+    job_unlinked: {
+      jobId: 'job_unlinked',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: 'recon_unlinked_model.glb',
+      storageType: 'local',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_unlinked_model.glb?sig=secret',
+      metadata: {},
+      save: async function() { return this; }
+    }
+  };
+
+  (ReconstructionJob as any).findOne = async (query: { jobId: string }) => {
+    return jobs[query.jobId] || null;
+  };
+
+  const mockStorage = {
+    isDurable: () => true,
+    saveGLB: async () => ({ url: '', storageType: 'local' as const, storageKey: '', byteSize: 0, isDurable: true }),
+    getGLB: async (key: string, isPublic?: boolean) => dummyGLB,
+    deleteGLB: async () => true,
+    publishGLB: async (key: string) => ({
+      url: `https://res.cloudinary.com/dineingo/image/upload/v1/dineingo/reconstructions/${key}`,
+      storageType: 'cloudinary' as const,
+      storageKey: key,
+      byteSize: dummyGLB.length,
+      isDurable: true
+    }),
+    getDeliveryUrl: (key: string) => `https://cdn.example.com/${key}`
+  };
+  setReconstructionStorageAdapter(mockStorage as any);
+
+  try {
+    // 2a. Normal user cannot publish assets (403)
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_alice', normalUser),
+      (err: any) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /Only restaurant owners or administrators/);
+        return true;
+      }
+    );
+
+    // 2b. Cross-user protection: Owner A cannot publish Owner B's reconstruction even knowing the jobId (403)
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_bob', ownerA),
+      (err: any) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /another user's private reconstruction/);
+        return true;
+      }
+    );
+
+    // 2c. Unlinked reconstruction: Cannot be published by restaurant owner without restaurant authorization (403)
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_unlinked', ownerA),
+      (err: any) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /not linked to an authorized restaurant/);
+        return true;
+      }
+    );
+
+    // 2d. Cross-restaurant protection:
+    // (i) Owner A cannot publish an unlinked model claiming Owner B's restaurant (403)
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_unlinked', ownerA, { restaurantId: 'rest_bob' }),
+      (err: any) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /Requester does not own the target restaurant/);
+        return true;
+      }
+    );
+
+    // (ii) Owner A cannot override a persisted restaurant association to another restaurant (403)
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_alice', ownerA, { restaurantId: 'rest_bob' }),
+      (err: any) => {
+        assert.equal(err.statusCode, 403);
+        assert.match(err.message, /permanently associated with restaurant/);
+        return true;
+      }
+    );
+
+    // 2e. Authorized restaurant owner CAN publish their own model linked to their restaurant
+    const alicePublished = await reconstructionService.publishJob('job_alice', ownerA);
+    assert.equal(alicePublished.isPublic, true);
+    assert.equal(alicePublished.restaurantId, 'rest_alice');
+    assert.ok(alicePublished.modelUrl.includes('https://res.cloudinary.com'));
+    assert.equal(alicePublished.metadata?.publishedBy, 'owner_alice_101');
+    assert.equal(alicePublished.metadata?.publishedRestaurantId, 'rest_alice');
+
+    // 2f. Administrator CAN publish according to authorized policy
+    const adminPublished = await reconstructionService.publishJob('job_bob', admin);
+    assert.equal(adminPublished.isPublic, true);
+    assert.equal(adminPublished.metadata?.publishedBy, 'admin_eve_303');
+  } finally {
+    (ReconstructionJob as any).findOne = originalFindOne;
+    setReconstructionStorageAdapter(originalStorageAdapter);
+    setRestaurantOwnershipResolver(null);
+  }
+});
+
+test('15. Failure-Safe Publication: Completed status required, fail-closed on storage errors, rolls back on verification failure', async () => {
+  const ownerA = { uid: 'owner_alice_101', role: 'restaurant_owner' };
+  const originalFindOne = ReconstructionJob.findOne;
+  const originalStorageAdapter = getReconstructionStorageAdapter();
+  const dummyGLB = createMinimalGLBBuffer(0.2, 0.1, 0.2);
+
+  setRestaurantOwnershipResolver(async (restaurantId: any) => {
+    if (restaurantId === 'rest_alice') {
+      return { authorized: true, verifiedRestaurantId: 'rest_alice' };
+    }
+    return { authorized: false };
+  });
+
+  try {
+    // 1. Incomplete jobs cannot be published (queued, processing, failed)
+    const incompleteJobs: Array<{ status: string; key: string }> = [
+      { status: 'queued', key: 'job_queued' },
+      { status: 'processing', key: 'job_processing' },
+      { status: 'failed', key: 'job_failed' },
+      { status: 'cancelled', key: 'job_cancelled' }
+    ];
+
+    for (const item of incompleteJobs) {
+      const mockJob = {
+        jobId: item.key,
+        userId: 'owner_alice_101',
+        status: item.status,
+        storageKey: 'recon_incomplete.glb',
+        restaurantId: 'rest_alice',
+        isPublic: false,
+        modelUrl: '/api/v1/reconstruction/assets/recon_incomplete.glb?sig=secret',
+        metadata: {} as any,
+        save: async function() { return this; }
+      };
+      (ReconstructionJob as any).findOne = async () => mockJob;
+
+      await assert.rejects(
+        () => reconstructionService.publishJob(item.key, ownerA),
+        (err: any) => {
+          assert.equal(err.statusCode, 400);
+          assert.match(err.message, /Only completed jobs can be published/);
+          return true;
+        }
+      );
+      assert.equal(mockJob.isPublic, false, `Job with status "${item.status}" must remain private`);
+      assert.ok(!mockJob.metadata.publishedAt, 'Publication audit metadata must not be set');
+    }
+
+    // 2. Missing or invalid storage key rejects with 400 and keeps job private
+    const invalidKeyJob = {
+      jobId: 'job_invalid_key',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: '../../traversal.glb',
+      restaurantId: 'rest_alice',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/invalid?sig=secret',
+      metadata: {} as any,
+      save: async function() { return this; }
+    };
+    (ReconstructionJob as any).findOne = async () => invalidKeyJob;
+
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_invalid_key', ownerA),
+      (err: any) => {
+        assert.equal(err.statusCode, 400);
+        assert.match(err.message, /valid storage key is missing/);
+        return true;
+      }
+    );
+    assert.equal(invalidKeyJob.isPublic, false, 'Invalid storage key job must remain private');
+
+    // 3. Missing private asset binary fails closed with 404
+    const missingAssetJob = {
+      jobId: 'job_missing_binary',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: 'recon_missing_file.glb',
+      restaurantId: 'rest_alice',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_missing_file.glb?sig=secret',
+      metadata: {} as any,
+      save: async function() { return this; }
+    };
+    (ReconstructionJob as any).findOne = async () => missingAssetJob;
+
+    setReconstructionStorageAdapter({
+      isDurable: () => true,
+      saveGLB: async () => ({ url: '', storageType: 'local' as const, storageKey: '', byteSize: 0, isDurable: true }),
+      getGLB: async (key: string, isPublic?: boolean) => null, // Private buffer is missing!
+      deleteGLB: async () => true,
+      publishGLB: async () => null,
+      getDeliveryUrl: () => ''
+    });
+
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_missing_binary', ownerA),
+      (err: any) => {
+        assert.equal(err.statusCode, 404);
+        assert.match(err.message, /private 3D model asset is missing or cannot be retrieved/);
+        return true;
+      }
+    );
+    assert.equal(missingAssetJob.isPublic, false, 'Missing asset job must remain private');
+
+    // 4. Failed storage migration (publishGLB returns null or throws) retains private state and fails closed (502)
+    const migrationFailedJob = {
+      jobId: 'job_migration_fail',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: 'recon_valid_binary.glb',
+      restaurantId: 'rest_alice',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_valid_binary.glb?sig=secret',
+      metadata: {} as any,
+      save: async function() { return this; }
+    };
+    (ReconstructionJob as any).findOne = async () => migrationFailedJob;
+
+    // Storage adapter that throws on publishGLB
+    setReconstructionStorageAdapter({
+      isDurable: () => true,
+      saveGLB: async () => ({ url: '', storageType: 'local' as const, storageKey: '', byteSize: 0, isDurable: true }),
+      getGLB: async (key: string, isPublic?: boolean) => dummyGLB, // Private buffer exists
+      deleteGLB: async () => true,
+      publishGLB: async () => {
+        throw new Error('Cloudinary 503 Service Unavailable / Network Timeout');
+      },
+      getDeliveryUrl: () => ''
+    });
+
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_migration_fail', ownerA),
+      (err: any) => {
+        assert.equal(err.statusCode, 502);
+        assert.match(err.message, /Failed to migrate 3D asset to public storage delivery/);
+        return true;
+      }
+    );
+    assert.equal(migrationFailedJob.isPublic, false, 'Failed migration must leave isPublic false');
+    assert.equal(migrationFailedJob.modelUrl, '/api/v1/reconstruction/assets/recon_valid_binary.glb?sig=secret', 'modelUrl must not change on migration failure');
+    assert.ok(!migrationFailedJob.metadata.publishedAt, 'publishedAt must not be set');
+
+    // 5. Verification failure on public CDN triggers rollback and retains private state (502)
+    const verificationFailedJob = {
+      jobId: 'job_verification_fail',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: 'recon_private_source.glb',
+      restaurantId: 'rest_alice',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_private_source.glb?sig=secret',
+      metadata: {} as any,
+      save: async function() { return this; }
+    };
+    (ReconstructionJob as any).findOne = async () => verificationFailedJob;
+
+    let deletePublicCalledWith: string | null = null;
+    setReconstructionStorageAdapter({
+      isDurable: () => true,
+      saveGLB: async () => ({ url: '', storageType: 'local' as const, storageKey: '', byteSize: 0, isDurable: true }),
+      getGLB: async (key: string, isPublic?: boolean) => {
+        if (!isPublic) return dummyGLB; // Private source exists
+        return null; // Public CDN returns 404 / empty buffer (corrupted or unverified)
+      },
+      deleteGLB: async (key: string, isPublic?: boolean) => {
+        if (isPublic) deletePublicCalledWith = key;
+        return true;
+      },
+      publishGLB: async (key: string) => ({
+        url: `https://res.cloudinary.com/dineingo/image/upload/v1/dineingo/reconstructions/new_public_key.glb`,
+        storageType: 'cloudinary' as const,
+        storageKey: 'new_public_key.glb',
+        byteSize: dummyGLB.length,
+        isDurable: true
+      }),
+      getDeliveryUrl: () => ''
+    });
+
+    await assert.rejects(
+      () => reconstructionService.publishJob('job_verification_fail', ownerA),
+      (err: any) => {
+        assert.equal(err.statusCode, 502);
+        assert.match(err.message, /Failed to verify published 3D model asset on public delivery CDN/);
+        return true;
+      }
+    );
+    assert.equal(verificationFailedJob.isPublic, false, 'Verification failure must retain private state');
+    assert.equal(verificationFailedJob.modelUrl, '/api/v1/reconstruction/assets/recon_private_source.glb?sig=secret', 'modelUrl must remain private URL');
+    assert.equal(deletePublicCalledWith, 'new_public_key.glb', 'Rollback cleanup must delete unverified public asset');
+
+    // 6. Successful publication updates all metadata and public state consistently
+    const successfulJob = {
+      jobId: 'job_success',
+      userId: 'owner_alice_101',
+      status: 'completed',
+      storageKey: 'recon_success_source.glb',
+      restaurantId: 'rest_alice',
+      menuItemId: 'menu_item_pasta',
+      isPublic: false,
+      modelUrl: '/api/v1/reconstruction/assets/recon_success_source.glb?sig=secret',
+      metadata: { originalScanNote: 'Chef special' } as any,
+      save: async function() { return this; }
+    };
+    (ReconstructionJob as any).findOne = async () => successfulJob;
+
+    setReconstructionStorageAdapter({
+      isDurable: () => true,
+      saveGLB: async () => ({ url: '', storageType: 'local' as const, storageKey: '', byteSize: 0, isDurable: true }),
+      getGLB: async (key: string, isPublic?: boolean) => dummyGLB, // Both private and public verified
+      deleteGLB: async () => true,
+      publishGLB: async (key: string) => ({
+        url: `https://res.cloudinary.com/dineingo/image/upload/v1/dineingo/reconstructions/published_model.glb`,
+        storageType: 'cloudinary' as const,
+        storageKey: 'published_model.glb',
+        byteSize: dummyGLB.length,
+        isDurable: true
+      }),
+      getDeliveryUrl: () => ''
+    });
+
+    const result = await reconstructionService.publishJob('job_success', ownerA);
+    assert.equal(result.isPublic, true, 'isPublic must be true');
+    assert.equal(result.modelUrl, 'https://res.cloudinary.com/dineingo/image/upload/v1/dineingo/reconstructions/published_model.glb');
+    assert.equal(result.storageKey, 'published_model.glb');
+    assert.equal(result.storageType, 'cloudinary');
+    assert.equal(result.restaurantId, 'rest_alice');
+    assert.equal(result.menuItemId, 'menu_item_pasta');
+    assert.equal(result.metadata.publishedBy, 'owner_alice_101');
+    assert.equal(result.metadata.publishedRestaurantId, 'rest_alice');
+    assert.equal(result.metadata.publishedMenuItemId, 'menu_item_pasta');
+    assert.ok(result.metadata.publishedAt, 'publishedAt timestamp must be recorded');
+    assert.equal(result.metadata.originalScanNote, 'Chef special', 'Pre-existing metadata must be preserved');
+  } finally {
+    (ReconstructionJob as any).findOne = originalFindOne;
+    setReconstructionStorageAdapter(originalStorageAdapter);
+    setRestaurantOwnershipResolver(null);
+  }
+});
+

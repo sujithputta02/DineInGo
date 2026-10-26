@@ -28,6 +28,8 @@ export interface IReconstructionJob extends Document {
   dimensions?: IReconstructionDimensions;
   contactPlaneAligned: boolean;
   isPublic?: boolean;
+  restaurantId?: string;
+  menuItemId?: string;
   storageKey?: string;
   storageType?: 'cloudinary' | 'local' | 's3';
   metadata?: Record<string, any>;
@@ -93,6 +95,14 @@ const ReconstructionJobSchema: Schema = new Schema({
   isPublic: {
     type: Boolean,
     default: false,
+    index: true
+  },
+  restaurantId: {
+    type: String,
+    index: true
+  },
+  menuItemId: {
+    type: String,
     index: true
   },
   storageKey: {
