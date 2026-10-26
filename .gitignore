@@ -109,7 +109,11 @@ push-early-access.sh
 docs/
 
 # Scripts folder
-scripts/
+scripts/*
+!scripts/*.js
+!scripts/diagnose-models.cjs
+!scripts/calibrate-models.cjs
+!scripts/verify-calibration.cjs
 
 # Libraries
 lib/

@@ -12,6 +12,9 @@
     "start:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "security:check": "node scripts/security-check.js",
     "test": "tsx --test tests/**/*.test.ts",
+    "ar:verify": "node scripts/verify-calibration.cjs",
+    "ar:calibrate": "node scripts/calibrate-models.cjs",
+    "ar:diagnose": "node scripts/diagnose-models.cjs",
     "precommit": "npm run security:check",
     "prepare": "husky"
   },

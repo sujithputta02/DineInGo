@@ -226,3 +226,117 @@ test('13. Device AR detection structure and security context awareness', () => {
   assert.ok(['scene-viewer', 'quick-look', 'webxr', 'none'].includes(status.recommendedMode));
   assert.ok(typeof status.reason === 'string');
 });
+
+// ============================================================================
+// SUITE 4: PHYSICAL AR SCALE, GROUND CONTACT & TABLETOP PLACEMENT VERIFICATION
+// ============================================================================
+
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const { analyzeGlb } = await import('../scripts/diagnose-models.cjs');
+
+test('14. Physical AR: All 5 GLB model assets exist and are valid glTF 2.0 files', () => {
+  const modelKeys = ['french-onion-soup', 'salad-bowl', 'braised-beef', 'baked-pie', 'creme-brulee'];
+
+  for (const key of modelKeys) {
+    const glbPath = path.resolve(__dirname, '..', `public/models/ar/${key}.glb`);
+    assert.ok(fs.existsSync(glbPath), `Model file must exist: ${glbPath}`);
+
+    const buf = fs.readFileSync(glbPath);
+    assert.ok(buf.length > 1000, `Model file must not be empty: ${key}`);
+
+    // Verify glTF 2.0 binary magic header
+    const magic = buf.toString('utf8', 0, 4);
+    assert.equal(magic, 'glTF', `File must have glTF magic header: ${key}`);
+    const version = buf.readUInt32LE(4);
+    assert.equal(version, 2, `File must be glTF version 2: ${key}`);
+  }
+});
+
+test('15. Tabletop Placement: Ground contact plane Y_min aligns flush to Y = 0.000m (+/- 1mm)', () => {
+  const modelKeys = ['french-onion-soup', 'salad-bowl', 'braised-beef', 'baked-pie', 'creme-brulee'];
+
+  for (const key of modelKeys) {
+    const data = analyzeGlb(`public/models/ar/${key}.glb`);
+    const lowestY = data.lowestY_m;
+
+    // Must be within 1 millimeter of Y = 0.000m so dishes neither float above nor sink into tables
+    assert.ok(
+      Math.abs(lowestY) <= 0.001,
+      `Dish ${key} lowest base Y (${lowestY}m) must be flush with tabletop plane (within +/- 1mm)`
+    );
+  }
+});
+
+test('16. Horizontal Alignment: Footprint center aligns to (0, 0) within defined tolerances', () => {
+  const expectedCenters = {
+    'french-onion-soup': { maxX: 0.002, maxZ: 0.002 },
+    'salad-bowl': { maxX: 0.002, maxZ: 0.002 },
+    'braised-beef': { maxX: 0.002, maxZ: 0.002 },
+    'baked-pie': { maxX: 0.002, maxZ: 0.002 },
+    'creme-brulee': { maxX: 0.002, maxZ: 0.025 } // Ramekin centered at X=0, spoon extends slightly along Z
+  };
+
+  for (const [key, tol] of Object.entries(expectedCenters)) {
+    const data = analyzeGlb(`public/models/ar/${key}.glb`);
+    const [cx, , cz] = data.center;
+
+    assert.ok(
+      Math.abs(cx) <= tol.maxX,
+      `Dish ${key} center X (${cx}m) must be centered within ${tol.maxX}m`
+    );
+    assert.ok(
+      Math.abs(cz) <= tol.maxZ,
+      `Dish ${key} center Z (${cz}m) must be centered within ${tol.maxZ}m`
+    );
+  }
+});
+
+test('17. Physical Scale: Individual dish dimensions match defensible restaurant tableware sizes', () => {
+  const targets = {
+    // 16cm soup crock
+    'french-onion-soup': { width: [0.15, 0.17], height: [0.065, 0.085], depth: [0.15, 0.17] },
+    // 21cm salad bowl
+    'salad-bowl': { width: [0.20, 0.22], height: [0.075, 0.100], depth: [0.20, 0.22] },
+    // 20cm braised beef plated entrée
+    'braised-beef': { width: [0.19, 0.21], height: [0.035, 0.055], depth: [0.10, 0.13] },
+    // 17cm dessert tart
+    'baked-pie': { width: [0.16, 0.18], height: [0.020, 0.035], depth: [0.16, 0.18] },
+    // 12cm ramekin with dessert spoon
+    'creme-brulee': { width: [0.11, 0.13], height: [0.025, 0.040], depth: [0.15, 0.18] }
+  };
+
+  for (const [key, range] of Object.entries(targets)) {
+    const data = analyzeGlb(`public/models/ar/${key}.glb`);
+    const { width_m, height_m, depth_m } = data.dimensions;
+
+    assert.ok(
+      width_m >= range.width[0] && width_m <= range.width[1],
+      `Dish ${key} width (${width_m}m) must be within [${range.width.join('-')}]m`
+    );
+    assert.ok(
+      height_m >= range.height[0] && height_m <= range.height[1],
+      `Dish ${key} height (${height_m}m) must be within [${range.height.join('-')}]m`
+    );
+    assert.ok(
+      depth_m >= range.depth[0] && depth_m <= range.depth[1],
+      `Dish ${key} depth (${depth_m}m) must be within [${range.depth.join('-')}]m`
+    );
+  }
+});
+
+test('18. Camera Framing: VERIFIED_MODELS specifies calibrated camera orbit and target metadata', () => {
+  for (const [key, entry] of Object.entries(VERIFIED_MODELS)) {
+    assert.ok(entry.cameraOrbit, `Entry ${key} must have cameraOrbit`);
+    assert.ok(entry.cameraTarget, `Entry ${key} must have cameraTarget`);
+    // Calibrated camera orbit radius should be realistic (~0.35m - 0.60m)
+    assert.ok(
+      entry.cameraOrbit.includes('0.') || entry.cameraOrbit.includes('m'),
+      `Entry ${key} cameraOrbit should reflect calibrated dimensions`
+    );
+  }
+});

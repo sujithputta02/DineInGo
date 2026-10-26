@@ -26,6 +26,7 @@ export interface VerifiedModelEntry {
   format: 'glb' | 'gltf';
   scale?: string;
   cameraOrbit?: string;
+  cameraTarget?: string;
   fieldOfView?: string;
   keywords: string[];
   categoryTags: string[];
@@ -41,6 +42,7 @@ export interface ResolvedDishModel {
   isRepresentativePreview: boolean;
   scale?: string;
   cameraOrbit?: string;
+  cameraTarget?: string;
   fieldOfView?: string;
   attribution?: ARModelAttribution;
   dishName: string;
@@ -180,7 +182,8 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     modelUrl: '/models/ar/french-onion-soup.glb',
     format: 'glb',
     scale: '1 1 1',
-    cameraOrbit: '45deg 60deg 1.8m',
+    cameraOrbit: '45deg 60deg 0.45m',
+    cameraTarget: '0m 0.04m 0m',
     fieldOfView: '30deg',
     // Strictly dish-specific keywords (generic soup keywords belong in categoryTags)
     keywords: [
@@ -205,7 +208,8 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     modelUrl: '/models/ar/salad-bowl.glb',
     format: 'glb',
     scale: '1 1 1',
-    cameraOrbit: '40deg 55deg 1.6m',
+    cameraOrbit: '40deg 55deg 0.50m',
+    cameraTarget: '0m 0.045m 0m',
     fieldOfView: '30deg',
     // Strictly dish-specific keywords
     keywords: [
@@ -230,7 +234,8 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     modelUrl: '/models/ar/braised-beef.glb',
     format: 'glb',
     scale: '1 1 1',
-    cameraOrbit: '45deg 60deg 2.0m',
+    cameraOrbit: '45deg 60deg 0.45m',
+    cameraTarget: '0m 0.02m 0m',
     fieldOfView: '32deg',
     // Strictly dish-specific keywords
     keywords: [
@@ -256,7 +261,8 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     modelUrl: '/models/ar/baked-pie.glb',
     format: 'glb',
     scale: '1 1 1',
-    cameraOrbit: '35deg 55deg 1.5m',
+    cameraOrbit: '35deg 55deg 0.45m',
+    cameraTarget: '0m 0.015m 0m',
     fieldOfView: '30deg',
     // Strictly dish-specific keywords
     keywords: [
@@ -282,7 +288,8 @@ export const VERIFIED_MODELS: Record<string, VerifiedModelEntry> = {
     modelUrl: '/models/ar/creme-brulee.glb',
     format: 'glb',
     scale: '1 1 1',
-    cameraOrbit: '40deg 55deg 1.5m',
+    cameraOrbit: '40deg 55deg 0.40m',
+    cameraTarget: '0m 0.015m 0.02m',
     fieldOfView: '30deg',
     // Strictly dish-specific keywords
     keywords: [
@@ -411,6 +418,7 @@ export function resolveDishModel(dish: ResolvableDish | null | undefined): Resol
         isRepresentativePreview: false,
         scale: entry.scale,
         cameraOrbit: entry.cameraOrbit,
+        cameraTarget: entry.cameraTarget,
         fieldOfView: entry.fieldOfView,
         attribution: entry.attribution,
         dishName
@@ -431,6 +439,7 @@ export function resolveDishModel(dish: ResolvableDish | null | undefined): Resol
           isRepresentativePreview: true,
           scale: entry.scale,
           cameraOrbit: entry.cameraOrbit,
+          cameraTarget: entry.cameraTarget,
           fieldOfView: entry.fieldOfView,
           attribution: entry.attribution,
           dishName

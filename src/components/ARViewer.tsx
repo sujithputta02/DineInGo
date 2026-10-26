@@ -175,8 +175,9 @@ export const ARViewer: React.FC<ARViewerProps> = ({
 
   const handleResetCamera = () => {
     const viewer = modelViewerRef.current;
-    if (viewer && resolved.cameraOrbit) {
-      viewer.cameraOrbit = resolved.cameraOrbit;
+    if (viewer) {
+      if (resolved.cameraOrbit) viewer.cameraOrbit = resolved.cameraOrbit;
+      if (resolved.cameraTarget) viewer.cameraTarget = resolved.cameraTarget;
       viewer.fieldOfView = resolved.fieldOfView || '30deg';
       viewer.jumpCameraToGoal();
     }
@@ -264,15 +265,17 @@ export const ARViewer: React.FC<ARViewerProps> = ({
             alt={`3D Augmented Reality Model of ${dish.name}`}
             ar
             ar-modes="webxr scene-viewer quick-look"
-            ar-scale="auto"
+            ar-scale="fixed"
             ar-placement="floor"
+            scale={resolved.scale || '1 1 1'}
             camera-controls
             auto-rotate={isAutoRotating}
             rotation-per-second="25deg"
             shadow-intensity="1.5"
             shadow-softness="0.8"
             exposure="1.0"
-            camera-orbit={resolved.cameraOrbit || '45deg 55deg 2m'}
+            camera-orbit={resolved.cameraOrbit || '45deg 55deg 0.5m'}
+            camera-target={resolved.cameraTarget || 'auto auto auto'}
             field-of-view={resolved.fieldOfView || '30deg'}
             poster={dish.image}
             loading="eager"

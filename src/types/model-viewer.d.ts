@@ -22,9 +22,11 @@ declare global {
           'shadow-softness'?: string;
           exposure?: string;
           'camera-orbit'?: string;
+          'camera-target'?: string;
           'min-camera-orbit'?: string;
           'max-camera-orbit'?: string;
           'field-of-view'?: string;
+          scale?: string;
           'environment-image'?: string;
           crossorigin?: string;
           ref?: React.Ref<any>;
