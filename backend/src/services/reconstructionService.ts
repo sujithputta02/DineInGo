@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
+import https from 'https';
+import http from 'http';
 import { ReconstructionJob, IReconstructionJob, ReconstructionStatus, ReconstructionAssetQuality } from '../models/ReconstructionJob';
 
 export interface ReconstructionInput {
@@ -140,45 +142,173 @@ export class HuggingFaceTripoSRProvider implements Food3DReconstructionProvider 
     }
 
     const token = process.env.HF_TOKEN;
-    const timeoutMs = Number(process.env.HF_RECONSTRUCTION_TIMEOUT_MS) || 120000;
+    const sessionHash = 'sess_' + crypto.randomBytes(8).toString('hex');
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    return {
+      jobId: crypto.randomUUID(),
+      providerJobId: sessionHash
+    };
+  }
 
-    try {
-      // Call Gradio /reconstruct endpoint
-      const response = await fetch(`${readiness.host}/gradio_api/call/reconstruct`, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          data: [
-            input.imageUrl,
-            input.referencePlateDiameterMeters || 0.24,
-            256
-          ]
-        })
+  async reconstructRemote(input: ReconstructionInput, onProgress?: (pct: number) => void): Promise<{
+    modelUrl: string;
+    dimensions: { widthMeters: number; heightMeters: number; depthMeters: number };
+    metadata: any;
+  }> {
+    const readiness = await this.checkSpaceReadiness();
+    if (!readiness.ready) {
+      throw new Error(readiness.message || 'Hugging Face Space is not ready.');
+    }
+
+    const token = process.env.HF_TOKEN;
+    const timeoutMs = Number(process.env.HF_RECONSTRUCTION_TIMEOUT_MS) || 180000;
+
+    // Step 1: Upload input image to Gradio /upload endpoint
+    onProgress?.(30);
+    let imageBuffer: Buffer;
+    if (input.imageUrl && input.imageUrl.startsWith('data:')) {
+      const base64Data = input.imageUrl.split(',')[1];
+      imageBuffer = Buffer.from(base64Data, 'base64');
+    } else if (input.imageBuffer) {
+      imageBuffer = input.imageBuffer;
+    } else if (input.imageUrl) {
+      const imgRes = await fetch(input.imageUrl);
+      imageBuffer = Buffer.from(await imgRes.arrayBuffer());
+    } else {
+      throw new Error('No image provided for 3D reconstruction.');
+    }
+
+    const boundary = '----DineInGoUpload' + crypto.randomBytes(8).toString('hex');
+    let formHeader = '--' + boundary + '\r\n';
+    formHeader += 'Content-Disposition: form-data; name="files"; filename="food_input.jpg"\r\n';
+    formHeader += 'Content-Type: image/jpeg\r\n\r\n';
+
+    const uploadPayload = Buffer.concat([
+      Buffer.from(formHeader, 'utf8'),
+      imageBuffer,
+      Buffer.from('\r\n--' + boundary + '--\r\n', 'utf8')
+    ]);
+
+    const uploadRes = await fetch(`${readiness.host}/upload`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': `multipart/form-data; boundary=${boundary}`
+      },
+      body: uploadPayload
+    });
+
+    if (!uploadRes.ok) {
+      throw new Error(`Failed to upload food image to Space (${uploadRes.status})`);
+    }
+
+    const [remoteImagePath] = await uploadRes.json();
+    onProgress?.(45);
+
+    // Step 2: Join Gradio Queue
+    const sessionHash = 'sess_' + crypto.randomBytes(8).toString('hex');
+    const joinRes = await fetch(`${readiness.host}/queue/join`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        data: [{ path: remoteImagePath }, input.referencePlateDiameterMeters || 0.24, 256],
+        fn_index: 0,
+        session_hash: sessionHash
+      })
+    });
+
+    if (!joinRes.ok) {
+      throw new Error(`Failed to join ZeroGPU queue (${joinRes.status})`);
+    }
+
+    onProgress?.(60);
+
+    // Step 3: Stream queue events until process_completed
+    const result = await new Promise<{ glbUrl: string; metaObj: any }>((resolve, reject) => {
+      const abortTimer = setTimeout(() => {
+        reject(new Error('ZeroGPU inference timed out waiting for queue results.'));
+      }, timeoutMs);
+
+      const client = readiness.host.startsWith('https') ? https : http;
+      const streamReq = client.get(`${readiness.host}/queue/data?session_hash=${sessionHash}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      }, (streamRes) => {
+        let buffer = '';
+        streamRes.on('data', (chunk) => {
+          buffer += chunk.toString();
+          const lines = buffer.split('\n');
+          buffer = lines.pop() || '';
+
+          for (const line of lines) {
+            if (line.startsWith('data:')) {
+              try {
+                const event = JSON.parse(line.substring(5).trim());
+                if (event.msg === 'process_starts') {
+                  onProgress?.(75);
+                } else if (event.msg === 'process_completed') {
+                  clearTimeout(abortTimer);
+                  streamRes.destroy();
+                  if (event.success && event.output?.data) {
+                    const [glbData, metaRaw] = event.output.data;
+                    const metaObj = typeof metaRaw === 'string' ? JSON.parse(metaRaw) : metaRaw;
+                    resolve({ glbUrl: glbData.url, metaObj });
+                  } else {
+                    const errMsg = event.output?.error || 'Reconstruction failed on remote model';
+                    reject(new Error(errMsg));
+                  }
+                }
+              } catch (_) {}
+            }
+          }
+        });
+
+        streamRes.on('error', (err) => {
+          clearTimeout(abortTimer);
+          reject(err);
+        });
       });
 
-      clearTimeout(timeout);
+      streamReq.on('error', (err) => {
+        clearTimeout(abortTimer);
+        reject(err);
+      });
+    });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Space reconstruction request failed (${response.status}): ${sanitizeSecrets(errText)}`);
-      }
+    onProgress?.(90);
 
-      const callData = await response.json();
-      return {
-        jobId: crypto.randomUUID(),
-        providerJobId: callData.event_id || crypto.randomUUID()
-      };
-    } catch (e: any) {
-      clearTimeout(timeout);
-      throw e;
+    // Step 4: Download and persist GLB
+    const glbRes = await fetch(result.glbUrl, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+
+    if (!glbRes.ok) {
+      throw new Error(`Failed to download finished GLB model from Space (${glbRes.status})`);
     }
+
+    const glbBuffer = Buffer.from(await glbRes.arrayBuffer());
+    
+    // Step 5: Validate GLB Magic Header (0x46546C67)
+    if (glbBuffer.length < 12 || glbBuffer.readUInt32LE(0) !== 0x46546C67) {
+      throw new Error('Downloaded asset failed glTF 2.0 binary validation');
+    }
+
+    const storageDir = path.join(process.cwd(), 'backend', 'storage', 'reconstructions');
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+
+    const filename = `recon_${crypto.randomBytes(8).toString('hex')}.glb`;
+    const localFilePath = path.join(storageDir, filename);
+    fs.writeFileSync(localFilePath, glbBuffer);
+
+    return {
+      modelUrl: `/api/v1/reconstruction/assets/${filename}`,
+      dimensions: result.metaObj?.dimensions || { widthMeters: 0.24, heightMeters: 0.12, depthMeters: 0.24 },
+      metadata: result.metaObj
+    };
   }
 
   async checkJobStatus(providerJobId: string): Promise<{
@@ -361,25 +491,17 @@ export class ReconstructionService {
 
       if (provider.id === 'hf-triposr') {
         const hfProvider = provider as HuggingFaceTripoSRProvider;
-        // Verify Space readiness
-        const readiness = await hfProvider.checkSpaceReadiness();
-        if (!readiness.ready) {
-          throw new Error(readiness.message || 'Hugging Face Space is not ready for inference.');
-        }
+        const result = await hfProvider.reconstructRemote(input, async (pct) => {
+          job.progress = pct;
+          await job.save();
+        });
 
-        job.progress = 40;
-        await job.save();
-
-        const { providerJobId } = await hfProvider.createJob(input);
-        job.metadata = { ...job.metadata, providerJobId };
-        job.progress = 60;
-        await job.save();
-
-        // Download generated asset if URL returned
-        // For Gradio, if direct model path or event returned:
-        // Set completed once file saved and validated
-        job.status = 'processing';
-        job.progress = 80;
+        job.status = 'completed';
+        job.progress = 100;
+        job.modelUrl = result.modelUrl;
+        job.assetQuality = 'reconstructed-model';
+        job.dimensions = result.dimensions;
+        job.metadata = { ...job.metadata, ...result.metadata };
         await job.save();
       } else {
         // Illustrative fallback provider
