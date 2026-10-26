@@ -27,6 +27,9 @@ export interface IReconstructionJob extends Document {
   assetQuality: ReconstructionAssetQuality;
   dimensions?: IReconstructionDimensions;
   contactPlaneAligned: boolean;
+  isPublic?: boolean;
+  storageKey?: string;
+  storageType?: 'cloudinary' | 'local' | 's3';
   metadata?: Record<string, any>;
   error?: string;
   createdAt: Date;
@@ -86,6 +89,20 @@ const ReconstructionJobSchema: Schema = new Schema({
   contactPlaneAligned: {
     type: Boolean,
     default: true
+  },
+  isPublic: {
+    type: Boolean,
+    default: false,
+    index: true
+  },
+  storageKey: {
+    type: String,
+    index: true
+  },
+  storageType: {
+    type: String,
+    enum: ['cloudinary', 'local', 's3'],
+    default: 'local'
   },
   metadata: {
     type: Schema.Types.Mixed

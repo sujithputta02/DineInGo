@@ -4,6 +4,10 @@ import path from 'path';
 import https from 'https';
 import http from 'http';
 import { ReconstructionJob, IReconstructionJob, ReconstructionStatus, ReconstructionAssetQuality } from '../models/ReconstructionJob';
+import { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir } from '../config/storageConfig';
+import { getReconstructionStorageAdapter } from './reconstructionStorageAdapter';
+import { safeFetchImage, parseAndValidateDataUrl, verifyImageMagicBytes } from '../utils/safeImageFetcher';
+import { extractGlbDimensions } from '../utils/glbDimensionExtractor';
 
 export interface ReconstructionInput {
   userId: string;
@@ -40,10 +44,8 @@ export interface Food3DReconstructionProvider {
   }>;
 }
 
-const STORAGE_DIR = path.join(process.cwd(), 'storage', 'reconstructions');
-if (!fs.existsSync(STORAGE_DIR)) {
-  fs.mkdirSync(STORAGE_DIR, { recursive: true });
-}
+// Initialize storage directory deterministically
+ensureReconstructionStorageDir();
 
 function sanitizeSecrets(text: string | null | undefined): string {
   if (!text) return '';
@@ -150,9 +152,17 @@ export class HuggingFaceTripoSRProvider implements Food3DReconstructionProvider 
     };
   }
 
-  async reconstructRemote(input: ReconstructionInput, onProgress?: (pct: number) => void): Promise<{
+  async reconstructRemote(
+    input: ReconstructionInput,
+    onProgress?: (pct: number) => void,
+    isPublic: boolean = false
+  ): Promise<{
     modelUrl: string;
-    dimensions: { widthMeters: number; heightMeters: number; depthMeters: number };
+    storageKey: string;
+    storageType: string;
+    isDurable: boolean;
+    dimensions?: { widthMeters: number; heightMeters: number; depthMeters: number };
+    contactPlaneAligned: boolean;
     metadata: any;
   }> {
     const readiness = await this.checkSpaceReadiness();
@@ -163,17 +173,21 @@ export class HuggingFaceTripoSRProvider implements Food3DReconstructionProvider 
     const token = process.env.HF_TOKEN;
     const timeoutMs = Number(process.env.HF_RECONSTRUCTION_TIMEOUT_MS) || 180000;
 
-    // Step 1: Upload input image to Gradio /upload endpoint
+    // Step 1: Safely validate and ingest input image
     onProgress?.(30);
     let imageBuffer: Buffer;
     if (input.imageUrl && input.imageUrl.startsWith('data:')) {
-      const base64Data = input.imageUrl.split(',')[1];
-      imageBuffer = Buffer.from(base64Data, 'base64');
+      const parsed = parseAndValidateDataUrl(input.imageUrl);
+      imageBuffer = parsed.buffer;
     } else if (input.imageBuffer) {
+      const magic = verifyImageMagicBytes(input.imageBuffer);
+      if (!magic.valid) {
+        throw new Error('Provided image buffer does not match supported image formats (JPEG, PNG, WebP).');
+      }
       imageBuffer = input.imageBuffer;
     } else if (input.imageUrl) {
-      const imgRes = await fetch(input.imageUrl);
-      imageBuffer = Buffer.from(await imgRes.arrayBuffer());
+      const fetched = await safeFetchImage(input.imageUrl);
+      imageBuffer = fetched.buffer;
     } else {
       throw new Error('No image provided for 3D reconstruction.');
     }
@@ -295,19 +309,35 @@ export class HuggingFaceTripoSRProvider implements Food3DReconstructionProvider 
       throw new Error('Downloaded asset failed glTF 2.0 binary validation');
     }
 
-    const storageDir = path.join(process.cwd(), 'backend', 'storage', 'reconstructions');
-    if (!fs.existsSync(storageDir)) {
-      fs.mkdirSync(storageDir, { recursive: true });
-    }
+    // Step 6: Derive verified dimensions from the actual GLB geometry
+    const extractedDims = extractGlbDimensions(glbBuffer);
+    const dimensions = extractedDims ? {
+      widthMeters: extractedDims.widthMeters,
+      heightMeters: extractedDims.heightMeters,
+      depthMeters: extractedDims.depthMeters
+    } : undefined;
 
-    const filename = `recon_${crypto.randomBytes(8).toString('hex')}.glb`;
-    const localFilePath = path.join(storageDir, filename);
-    fs.writeFileSync(localFilePath, glbBuffer);
+    // Step 7: Persist model using storage adapter (Cloudinary or local verified disk)
+    const storageAdapter = getReconstructionStorageAdapter();
+    const storageResult = await storageAdapter.saveGLB(glbBuffer, undefined, isPublic);
 
     return {
-      modelUrl: `/api/v1/reconstruction/assets/${filename}`,
-      dimensions: result.metaObj?.dimensions || { widthMeters: 0.24, heightMeters: 0.12, depthMeters: 0.24 },
-      metadata: result.metaObj
+      modelUrl: storageResult.url,
+      storageKey: storageResult.storageKey,
+      storageType: storageResult.storageType,
+      isDurable: storageResult.isDurable,
+      dimensions,
+      contactPlaneAligned: extractedDims?.contactPlaneAligned ?? true,
+      metadata: {
+        ...result.metaObj,
+        dimensionSource: extractedDims ? 'gltf-accessor-measured' : 'unknown',
+        lowestYMeters: extractedDims?.lowestYMeters,
+        centerMeters: extractedDims?.centerMeters,
+        totalVertices: extractedDims?.totalVertices,
+        byteSize: glbBuffer.length,
+        storageType: storageResult.storageType,
+        isDurable: storageResult.isDurable
+      }
     };
   }
 
@@ -440,11 +470,9 @@ export class ReconstructionService {
       provider: provider.id as any,
       assetQuality: provider.id === 'hf-triposr' ? 'reconstructed-model' : 'illustrative-model',
       contactPlaneAligned: true,
-      dimensions: {
-        widthMeters: 0.20,
-        heightMeters: 0.08,
-        depthMeters: 0.20
-      },
+      isPublic: Boolean(input.metadata?.isPublic),
+      // No arbitrary dimensions invented here; verified dimensions are derived from actual GLB geometry on completion
+      dimensions: undefined,
       metadata: {
         requestedProvider: provider.id,
         referencePlateDiameterMeters: input.referencePlateDiameterMeters || 0.24,
@@ -482,8 +510,11 @@ export class ReconstructionService {
         job.status = 'completed';
         job.progress = 100;
         job.modelUrl = existingUserJob.modelUrl;
+        job.storageKey = existingUserJob.storageKey;
+        job.storageType = existingUserJob.storageType;
         job.assetQuality = existingUserJob.assetQuality;
         job.dimensions = existingUserJob.dimensions;
+        job.contactPlaneAligned = existingUserJob.contactPlaneAligned;
         job.metadata = { ...job.metadata, cachedFromJobId: existingUserJob.jobId };
         await job.save();
         return;
@@ -494,13 +525,16 @@ export class ReconstructionService {
         const result = await hfProvider.reconstructRemote(input, async (pct) => {
           job.progress = pct;
           await job.save();
-        });
+        }, Boolean(job.isPublic));
 
         job.status = 'completed';
         job.progress = 100;
         job.modelUrl = result.modelUrl;
+        job.storageKey = result.storageKey;
+        job.storageType = result.storageType as any;
         job.assetQuality = 'reconstructed-model';
         job.dimensions = result.dimensions;
+        job.contactPlaneAligned = result.contactPlaneAligned;
         job.metadata = { ...job.metadata, ...result.metadata };
         await job.save();
       } else {

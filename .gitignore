@@ -121,6 +121,7 @@ docs/*
 # Scripts folder
 scripts/*
 !scripts/*.js
+!scripts/*.ts
 !scripts/diagnose-models.cjs
 !scripts/calibrate-models.cjs
 !scripts/verify-calibration.cjs

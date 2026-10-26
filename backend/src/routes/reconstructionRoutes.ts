@@ -4,6 +4,10 @@ import path from 'path';
 import { reconstructionService } from '../services/reconstructionService';
 import { verifyUserToken } from '../middleware/userAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
+import { RECONSTRUCTION_STORAGE_DIR } from '../config/storageConfig';
+import { isValidAssetFilename, verifyAssetSignature, signAssetUrl } from '../utils/assetSecurity';
+import { ReconstructionJob } from '../models/ReconstructionJob';
+import platformAuth from '../utils/firebaseAdmin';
 
 const router = express.Router();
 
@@ -114,6 +118,17 @@ router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) 
       });
     }
 
+    // If local private asset, generate a fresh signed URL so AR viewer can fetch it securely
+    let modelUrl = job.modelUrl;
+    if (modelUrl && modelUrl.startsWith('/api/v1/reconstruction/assets/') && !job.isPublic) {
+      const filenameMatch = modelUrl.match(/\/api\/v1\/reconstruction\/assets\/([^?]+)/);
+      if (filenameMatch) {
+        const filename = filenameMatch[1];
+        const { signedQuery } = signAssetUrl(filename);
+        modelUrl = `/api/v1/reconstruction/assets/${filename}?${signedQuery}`;
+      }
+    }
+
     res.json({
       success: true,
       job: {
@@ -123,7 +138,7 @@ router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) 
         progress: job.progress,
         provider: job.provider,
         assetQuality: job.assetQuality,
-        modelUrl: job.modelUrl,
+        modelUrl,
         dimensions: job.dimensions,
         contactPlaneAligned: job.contactPlaneAligned,
         error: job.error,
@@ -141,24 +156,98 @@ router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) 
 });
 
 /**
+ * Extracts and verifies user token from Authorization header if present.
+ */
+async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; isAdmin?: boolean } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.split('Bearer ')[1]?.trim();
+  if (!token || !platformAuth) {
+    return null;
+  }
+  try {
+    const decoded = await platformAuth.auth().verifyIdToken(token);
+    return {
+      uid: decoded.uid,
+      isAdmin: decoded.isAdmin || (decoded as any).role === 'admin'
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * GET /api/v1/reconstruction/assets/:filename
- * Serves generated 3D GLB assets with security checks
+ * Serves generated 3D GLB assets with strict authentication, ownership, and signed URL verification.
+ * Private user-generated models are never made public without explicit publication or valid signed URLs.
  */
 router.get('/assets/:filename', async (req: Request, res: Response) => {
   try {
     const filename = path.basename(req.params.filename);
-    if (!/^[a-zA-Z0-9_\-]+\.glb$/.test(filename)) {
+    if (!isValidAssetFilename(filename)) {
       return res.status(400).json({ success: false, message: 'Invalid asset filename' });
     }
 
-    const filePath = path.join(process.cwd(), 'storage', 'reconstructions', filename);
+    const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
     if (!fs.existsSync(filePath)) {
       return res.status(404).json({ success: false, message: '3D model asset not found' });
     }
 
-    res.setHeader('Content-Type', 'model/gltf-binary');
-    res.setHeader('Cache-Control', 'public, max-age=86400');
-    fs.createReadStream(filePath).pipe(res);
+    // 1. Check for valid HMAC-signed URL query parameters (for mobile AR / model-viewer)
+    const { sig, exp } = req.query;
+    if (sig && exp && verifyAssetSignature(filename, Number(exp), String(sig))) {
+      res.setHeader('Content-Type', 'model/gltf-binary');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      return fs.createReadStream(filePath).pipe(res);
+    }
+
+    // 2. Query database for job ownership and publication status
+    const job = await ReconstructionJob.findOne({
+      $or: [
+        { storageKey: filename },
+        { modelUrl: new RegExp(filename) }
+      ]
+    });
+
+    // 3. If asset has been deliberately published as public menu item
+    if (job && job.isPublic) {
+      res.setHeader('Content-Type', 'model/gltf-binary');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return fs.createReadStream(filePath).pipe(res);
+    }
+
+    // 4. Authenticated request check
+    const authUser = await extractUserFromAuthHeader(req);
+    if (authUser) {
+      if (!job) {
+        // If file exists but no job record is found, allow admins only
+        if (authUser.isAdmin) {
+          res.setHeader('Content-Type', 'model/gltf-binary');
+          return fs.createReadStream(filePath).pipe(res);
+        }
+        return res.status(404).json({ success: false, message: 'Asset metadata not found' });
+      }
+
+      if (job.userId === authUser.uid || authUser.isAdmin) {
+        res.setHeader('Content-Type', 'model/gltf-binary');
+        res.setHeader('Cache-Control', 'private, max-age=3600');
+        return fs.createReadStream(filePath).pipe(res);
+      } else {
+        // Prevent cross-user access to private food models
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You do not have permission to access this private asset.'
+        });
+      }
+    }
+
+    // 5. Unauthenticated request to private asset
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized: Access to private 3D assets requires authentication or a valid signed asset URL.'
+    });
   } catch (error: any) {
     console.error('Error serving reconstructed asset:', error);
     res.status(500).json({ success: false, message: 'Failed to retrieve asset' });
