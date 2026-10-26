@@ -12,7 +12,7 @@ import { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir } from '../c
 import { getReconstructionStorageAdapter, StorageSaveResult } from './reconstructionStorageAdapter';
 import { safeFetchImage, parseAndValidateDataUrl, verifyImageMagicBytes } from '../utils/safeImageFetcher';
 import { extractGlbDimensions } from '../utils/glbDimensionExtractor';
-import { isValidAssetFilename } from '../utils/assetSecurity';
+import { isValidAssetFilename, normalizeStorageKey } from '../utils/assetSecurity';
 
 export class PublicationError extends Error {
   statusCode: number;
@@ -841,8 +841,8 @@ export class ReconstructionService {
 
     // 2. Validate storage key
     const currentStorageKey = job.storageKey;
-    const cleanStorageKey = currentStorageKey ? currentStorageKey.replace(/^dineingo\/reconstructions\//, '') : '';
-    if (!currentStorageKey || !cleanStorageKey || !isValidAssetFilename(cleanStorageKey)) {
+    const cleanStorageKey = normalizeStorageKey(currentStorageKey);
+    if (!currentStorageKey || !cleanStorageKey) {
       throw new PublicationError('Cannot publish job: valid storage key is missing.', 400);
     }
 
@@ -1053,11 +1053,33 @@ export class ReconstructionService {
 
     // 9. Remove old private copy only after successful persistence
     const originalPrivateKey = publishResult.originalPrivateKey || previousStorageKey;
-    if (originalPrivateKey && (publishResult.storageType === 'cloudinary' || originalPrivateKey !== job.storageKey)) {
-      try {
-        await storageAdapter.deleteGLB(originalPrivateKey, false);
-      } catch (cleanupErr) {
-        console.warn(`[ReconstructionService] Non-fatal cleanup issue removing private copy ${originalPrivateKey}:`, cleanupErr);
+    const publishedKey = job.storageKey;
+
+    if (originalPrivateKey) {
+      if (publishResult.storageType === 'cloudinary') {
+        // Cloudinary uses separate access tiers: 'authenticated' (private) vs 'upload' (public).
+        // The private authenticated resource must be cleaned up now that the public upload copy is verified & persisted.
+        try {
+          await storageAdapter.deleteGLB(originalPrivateKey, false);
+        } catch (cleanupErr) {
+          console.warn(`[ReconstructionService] Non-fatal cleanup issue removing private copy ${originalPrivateKey}:`, cleanupErr);
+        }
+      } else {
+        // For LocalDiskStorageAdapter (or any local filesystem storage):
+        // Publication only alters database visibility/access state; both 'dineingo/reconstructions/file.glb'
+        // and 'file.glb' resolve to the EXACT SAME physical file on disk.
+        // We must ONLY delete originalPrivateKey if the private and public resources are genuinely distinct files!
+        const normOriginal = normalizeStorageKey(originalPrivateKey);
+        const normPublished = normalizeStorageKey(publishedKey);
+        const areDistinctFiles = Boolean(normOriginal && normPublished && normOriginal !== normPublished);
+
+        if (areDistinctFiles) {
+          try {
+            await storageAdapter.deleteGLB(originalPrivateKey, false);
+          } catch (cleanupErr) {
+            console.warn(`[ReconstructionService] Non-fatal cleanup issue removing private copy ${originalPrivateKey}:`, cleanupErr);
+          }
+        }
       }
     }
 
@@ -1076,10 +1098,11 @@ export class ReconstructionService {
       if (publishResult.storageType === 'cloudinary') {
         await storageAdapter.deleteGLB(publicKey, true);
       } else {
-        const cleanPublic = publicKey.replace(/^dineingo\/reconstructions\//, '');
-        const cleanOrig = originalStorageKey.replace(/^dineingo\/reconstructions\//, '');
-        if (cleanPublic !== cleanOrig) {
-          await storageAdapter.deleteGLB(cleanPublic, true);
+        const normPublic = normalizeStorageKey(publicKey);
+        const normOrig = normalizeStorageKey(originalStorageKey);
+        // Only delete the public copy if it was created as a genuinely distinct file on disk
+        if (normPublic && normOrig && normPublic !== normOrig) {
+          await storageAdapter.deleteGLB(normPublic, true);
         }
       }
     } catch (cleanupErr) {

@@ -3,12 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import os from 'os';
 import { createRequire } from 'module';
 const require = createRequire(process.cwd() + '/index.js');
 
 const { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir, isPersistentDiskConfigured } = require('./backend/src/config/storageConfig.ts');
 const { LocalDiskStorageAdapter, CloudinaryStorageAdapter, setReconstructionStorageAdapter, getReconstructionStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
-const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret } = require('./backend/src/utils/assetSecurity.ts');
+const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret, normalizeStorageKey } = require('./backend/src/utils/assetSecurity.ts');
 const { validateDestinationUrl, verifyImageMagicBytes, isPrivateOrReservedIPv4, isPrivateOrReservedIPv6, parseAndValidateDataUrl } = require('./backend/src/utils/safeImageFetcher.ts');
 const { extractGlbDimensions } = require('./backend/src/utils/glbDimensionExtractor.ts');
 const { isAuthorizedPublisher } = require('./backend/src/routes/reconstructionRoutes.ts');
@@ -95,6 +96,16 @@ test('1. Storage consistency: GLB saved via storage adapter can be retrieved fro
   if (fs.existsSync(expectedDiskPath)) {
     fs.unlinkSync(expectedDiskPath);
   }
+
+  // Verify normalizeStorageKey handles both unprefixed and prefixed keys, and rejects invalid keys
+  assert.equal(normalizeStorageKey('food.glb'), 'food.glb');
+  assert.equal(normalizeStorageKey('dineingo/reconstructions/food.glb'), 'food.glb');
+  assert.equal(normalizeStorageKey('/dineingo/reconstructions/food.glb'), 'food.glb');
+  assert.equal(normalizeStorageKey('../evil.glb'), null);
+  assert.equal(normalizeStorageKey('dineingo/reconstructions/../evil.glb'), null);
+  assert.equal(normalizeStorageKey('foo.txt'), null);
+  assert.equal(normalizeStorageKey(null), null);
+  assert.equal(normalizeStorageKey(undefined), null);
 });
 
 test('2. Unauthorized asset access: Private assets blocked without signature or ownership', () => {
@@ -1251,6 +1262,146 @@ test('15. Failure-Safe Publication: Verifications, rollback of public copy, pres
     const secondCall = await reconstructionService.publishJob('job_success_lifecycle', ownerA);
     assert.equal(secondCall.isPublic, true);
     assert.equal(secondCall.modelUrl, pubResult.modelUrl);
+
+    // 9. Actual LocalDiskStorageAdapter with isolated temporary storage directory
+    // Tests that publication preserves the physical GLB file for both unprefixed and prefixed keys,
+    // and verifies that cleanup never deletes the backing file when aliases resolve to the same local asset.
+    const tempStorageDir = fs.mkdtempSync(path.join(os.tmpdir(), 'dineingo-local-test-'));
+    try {
+      const localAdapter = new LocalDiskStorageAdapter(tempStorageDir);
+      setReconstructionStorageAdapter(localAdapter);
+
+      // 9a. Test successful publication with an ordinary unprefixed local key
+      const unprefixedFilename = 'recon_local_unprefixed.glb';
+      await localAdapter.saveGLB(dummyGLB, unprefixedFilename, false);
+      const unprefixedDiskPath = path.join(tempStorageDir, unprefixedFilename);
+      assert.equal(fs.existsSync(unprefixedDiskPath), true, 'Unprefixed GLB file must exist before publish');
+
+      const localUnprefixedJob = {
+        jobId: 'job_local_unprefixed',
+        userId: 'owner_alice_101',
+        status: 'completed',
+        storageKey: unprefixedFilename,
+        storageType: 'local' as const,
+        restaurantId: 'rest_alice',
+        menuItemId: 'item_pasta',
+        isPublic: false,
+        modelUrl: `/api/v1/reconstruction/assets/${unprefixedFilename}?sig=temp&exp=9999999999`,
+        metadata: { scanNote: 'Unprefixed dish' } as any,
+        save: async function() { return this; }
+      };
+
+      (ReconstructionJob as any).findOne = async (query: { jobId: string }) => {
+        if (query.jobId === 'job_local_unprefixed') return localUnprefixedJob;
+        return null;
+      };
+
+      const publishedUnprefixed = await reconstructionService.publishJob('job_local_unprefixed', ownerA);
+
+      // Verify job state
+      assert.equal(publishedUnprefixed.isPublic, true, 'job.isPublic must be true');
+      assert.equal(publishedUnprefixed.storageKey, unprefixedFilename);
+      assert.equal(publishedUnprefixed.modelUrl, `/api/v1/reconstruction/assets/${unprefixedFilename}`);
+
+      // Verify physical file is preserved and retrievable
+      assert.equal(fs.existsSync(unprefixedDiskPath), true, 'Physical GLB file must NOT be deleted by cleanup');
+      const retrievedUnprefixed = await localAdapter.getGLB(unprefixedFilename, true);
+      assert.ok(retrievedUnprefixed !== null && retrievedUnprefixed.length > 0, 'Original GLB file must be retrievable');
+      assert.equal(Buffer.compare(retrievedUnprefixed!, dummyGLB), 0, 'Retrieved buffer must match original GLB');
+
+      // Idempotent second publication attempt
+      const secondUnprefixed = await reconstructionService.publishJob('job_local_unprefixed', ownerA);
+      assert.equal(secondUnprefixed.isPublic, true);
+      assert.equal(secondUnprefixed.modelUrl, `/api/v1/reconstruction/assets/${unprefixedFilename}`);
+      assert.equal(fs.existsSync(unprefixedDiskPath), true, 'File must still exist after second publication');
+
+      // 9b. Test successful publication with a prefixed local key (e.g. 'dineingo/reconstructions/food.glb')
+      const prefixedBaseFilename = 'recon_local_prefixed.glb';
+      const prefixedStorageKey = `dineingo/reconstructions/${prefixedBaseFilename}`;
+      await localAdapter.saveGLB(dummyGLB, prefixedBaseFilename, false);
+      const prefixedDiskPath = path.join(tempStorageDir, prefixedBaseFilename);
+      assert.equal(fs.existsSync(prefixedDiskPath), true, 'Prefixed GLB file must exist before publish');
+
+      const localPrefixedJob = {
+        jobId: 'job_local_prefixed',
+        userId: 'owner_alice_101',
+        status: 'completed',
+        storageKey: prefixedStorageKey,
+        storageType: 'local' as const,
+        restaurantId: 'rest_alice',
+        menuItemId: 'item_pasta',
+        isPublic: false,
+        modelUrl: `/api/v1/reconstruction/assets/${prefixedBaseFilename}?sig=temp&exp=9999999999`,
+        metadata: { scanNote: 'Prefixed dish' } as any,
+        save: async function() { return this; }
+      };
+
+      (ReconstructionJob as any).findOne = async (query: { jobId: string }) => {
+        if (query.jobId === 'job_local_prefixed') return localPrefixedJob;
+        return null;
+      };
+
+      const publishedPrefixed = await reconstructionService.publishJob('job_local_prefixed', ownerA);
+
+      // Verify job state
+      assert.equal(publishedPrefixed.isPublic, true, 'job.isPublic must be true');
+      assert.equal(publishedPrefixed.storageKey, prefixedBaseFilename, 'storageKey must be normalized');
+      assert.equal(publishedPrefixed.modelUrl, `/api/v1/reconstruction/assets/${prefixedBaseFilename}`);
+
+      // Verify physical file is preserved and retrievable via both base and prefixed key
+      assert.equal(fs.existsSync(prefixedDiskPath), true, 'Physical GLB file must NOT be deleted by cleanup for prefixed keys');
+      const retrievedPrefixed = await localAdapter.getGLB(prefixedBaseFilename, true);
+      assert.ok(retrievedPrefixed !== null && retrievedPrefixed.length > 0, 'GLB must be retrievable by clean key');
+      assert.equal(Buffer.compare(retrievedPrefixed!, dummyGLB), 0);
+
+      const retrievedViaPrefixed = await localAdapter.getGLB(prefixedStorageKey, true);
+      assert.ok(retrievedViaPrefixed !== null && retrievedViaPrefixed.length > 0, 'GLB must be retrievable via prefixed key');
+      assert.equal(Buffer.compare(retrievedViaPrefixed!, dummyGLB), 0);
+
+      // Idempotent second publication attempt
+      const secondPrefixed = await reconstructionService.publishJob('job_local_prefixed', ownerA);
+      assert.equal(secondPrefixed.isPublic, true);
+      assert.equal(secondPrefixed.modelUrl, `/api/v1/reconstruction/assets/${prefixedBaseFilename}`);
+      assert.equal(fs.existsSync(prefixedDiskPath), true, 'Physical file must still exist after second publication');
+
+      // 9c. Test that rollback does NOT delete the private file when publication fails
+      const rollbackFilename = 'recon_local_rollback.glb';
+      await localAdapter.saveGLB(dummyGLB, rollbackFilename, false);
+      const rollbackDiskPath = path.join(tempStorageDir, rollbackFilename);
+
+      const localRollbackJob = {
+        jobId: 'job_local_rollback',
+        userId: 'owner_alice_101',
+        status: 'completed',
+        storageKey: `dineingo/reconstructions/${rollbackFilename}`,
+        storageType: 'local' as const,
+        restaurantId: 'rest_alice',
+        menuItemId: 'item_pasta',
+        isPublic: false,
+        modelUrl: `/api/v1/reconstruction/assets/${rollbackFilename}?sig=temp&exp=9999999999`,
+        metadata: {} as any,
+        save: async function() {
+          throw new Error('Database disk full error');
+        }
+      };
+
+      (ReconstructionJob as any).findOne = async () => localRollbackJob;
+
+      await assert.rejects(
+        () => reconstructionService.publishJob('job_local_rollback', ownerA),
+        (err: any) => {
+          assert.equal(err.statusCode, 500);
+          return true;
+        }
+      );
+
+      assert.equal(fs.existsSync(rollbackDiskPath), true, 'Rollback must NOT delete the private source file on disk');
+      assert.equal(localRollbackJob.isPublic, false, 'Job must remain private');
+    } finally {
+      if (fs.existsSync(tempStorageDir)) {
+        fs.rmSync(tempStorageDir, { recursive: true, force: true });
+      }
+    }
   } finally {
     (ReconstructionJob as any).findOne = originalFindOne;
     setReconstructionStorageAdapter(originalStorageAdapter);

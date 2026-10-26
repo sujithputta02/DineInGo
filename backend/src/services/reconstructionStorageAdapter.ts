@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { RECONSTRUCTION_STORAGE_DIR, ensureReconstructionStorageDir, isPersistentDiskConfigured } from '../config/storageConfig';
-import { generateSafeAssetKey, isValidAssetFilename, signAssetUrl } from '../utils/assetSecurity';
+import { generateSafeAssetKey, isValidAssetFilename, signAssetUrl, normalizeStorageKey } from '../utils/assetSecurity';
 
 export interface StorageSaveResult {
   url: string;
@@ -280,8 +280,10 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
  */
 export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   private persistent: boolean;
+  private storageDir: string;
 
-  constructor() {
+  constructor(customStorageDir?: string) {
+    this.storageDir = customStorageDir ? path.resolve(customStorageDir) : RECONSTRUCTION_STORAGE_DIR;
     this.persistent = isPersistentDiskConfigured();
     if (!this.persistent && process.env.NODE_ENV === 'production') {
       console.warn(
@@ -296,14 +298,20 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
     return this.persistent;
   }
 
+  getStorageDir(): string {
+    return this.storageDir;
+  }
+
   async saveGLB(buffer: Buffer, requestedFilename?: string, isPublic = false): Promise<StorageSaveResult> {
-    ensureReconstructionStorageDir();
+    if (!fs.existsSync(this.storageDir)) {
+      fs.mkdirSync(this.storageDir, { recursive: true });
+    }
 
     const filename = requestedFilename && isValidAssetFilename(requestedFilename)
       ? requestedFilename
       : generateSafeAssetKey();
 
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+    const targetPath = path.join(this.storageDir, filename);
     fs.writeFileSync(targetPath, buffer);
 
     const assetUrl = this.getDeliveryUrl(filename, isPublic);
@@ -318,11 +326,11 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   async publishGLB(storageKey: string): Promise<StorageSaveResult | null> {
-    const cleanKey = storageKey.replace(/^dineingo\/reconstructions\//, '');
-    if (!isValidAssetFilename(cleanKey)) {
+    const cleanKey = normalizeStorageKey(storageKey);
+    if (!cleanKey) {
       return null;
     }
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, cleanKey);
+    const targetPath = path.join(this.storageDir, cleanKey);
     if (!fs.existsSync(targetPath)) {
       return null;
     }
@@ -340,11 +348,11 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   async getGLB(storageKey: string, isPublic?: boolean): Promise<Buffer | null> {
-    const cleanKey = storageKey.replace(/^dineingo\/reconstructions\//, '');
-    if (!isValidAssetFilename(cleanKey)) {
+    const cleanKey = normalizeStorageKey(storageKey);
+    if (!cleanKey) {
       return null;
     }
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, cleanKey);
+    const targetPath = path.join(this.storageDir, cleanKey);
     if (!fs.existsSync(targetPath)) {
       return null;
     }
@@ -352,11 +360,11 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   async deleteGLB(storageKey: string, isPublic?: boolean): Promise<boolean> {
-    const cleanKey = storageKey.replace(/^dineingo\/reconstructions\//, '');
-    if (!isValidAssetFilename(cleanKey)) {
+    const cleanKey = normalizeStorageKey(storageKey);
+    if (!cleanKey) {
       return false;
     }
-    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, cleanKey);
+    const targetPath = path.join(this.storageDir, cleanKey);
     if (!fs.existsSync(targetPath)) {
       return false;
     }
@@ -369,9 +377,10 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
   }
 
   getDeliveryUrl(storageKey: string, isPublic = false, ttlSeconds = 86400): string {
-    let assetUrl = `/api/v1/reconstruction/assets/${storageKey}`;
+    const cleanKey = normalizeStorageKey(storageKey) || storageKey;
+    let assetUrl = `/api/v1/reconstruction/assets/${cleanKey}`;
     if (!isPublic) {
-      const { signedQuery } = signAssetUrl(storageKey, ttlSeconds);
+      const { signedQuery } = signAssetUrl(cleanKey, ttlSeconds);
       assetUrl += `?${signedQuery}`;
     }
     return assetUrl;

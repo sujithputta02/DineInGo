@@ -67,8 +67,22 @@ export function isValidAssetFilename(filename: string): boolean {
   if (filename.includes('..') || filename.includes('/') || filename.includes('\\') || filename.includes('\0')) {
     return false;
   }
-  // Strictly enforce .glb extension with alphanumeric and underscore/dash characters
+// Strictly enforce .glb extension with alphanumeric and underscore/dash characters
   return /^[a-zA-Z0-9_\-]{3,64}\.glb$/.test(filename);
+}
+
+/**
+ * Normalizes a storage key by stripping the supported DineInGo reconstruction prefix
+ * (e.g. 'dineingo/reconstructions/filename.glb' -> 'filename.glb') and validates the resulting filename.
+ * Returns the normalized safe filename, or null if the key is invalid or contains path traversal.
+ */
+export function normalizeStorageKey(storageKey: string | undefined | null): string | null {
+  if (!storageKey || typeof storageKey !== 'string') return null;
+  const stripped = storageKey.replace(/^\/?dineingo\/reconstructions\//, '');
+  if (!isValidAssetFilename(stripped)) {
+    return null;
+  }
+  return stripped;
 }
 
 /**
