@@ -113,6 +113,9 @@
     "http-proxy-agent": "^9.0.0",
     "teeny-request": "^10.1.2",
     "retry-request": "^7.0.2",
-    "cloudinary": "^2.10.0"
+    "cloudinary": "^2.10.0",
+    "@google/model-viewer": {
+      "three": "$three"
+    }
   }
 }
