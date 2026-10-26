@@ -1,0 +1,451 @@
+import express, { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
+import { reconstructionService, PublicationError } from '../services/reconstructionService';
+import { getReconstructionStorageAdapter } from '../services/reconstructionStorageAdapter';
+import { verifyUserToken } from '../middleware/userAuth';
+import { apiLimiter } from '../middleware/rateLimiter';
+import { RECONSTRUCTION_STORAGE_DIR } from '../config/storageConfig';
+import {
+  isValidAssetFilename,
+  verifyAssetSignature,
+  signAssetUrl,
+  normalizeStorageKey,
+  extractAssetFilenameFromUrl
+} from '../utils/assetSecurity';
+import { ReconstructionJob } from '../models/ReconstructionJob';
+import platformAuth from '../utils/firebaseAdmin';
+
+const router = express.Router();
+
+/**
+ * GET /api/v1/reconstruction/providers
+ * Returns public reconstruction capabilities without exposing internal keys
+ */
+router.get('/providers', (req: Request, res: Response) => {
+  try {
+    const rawCapabilities = reconstructionService.getProviderCapabilities();
+    // Sanitize: do not leak environment variable names or internal configuration
+    const providers = rawCapabilities.map(p => ({
+      id: p.id,
+      name: p.name,
+      configured: p.configured,
+      description: p.description,
+      latencySecondsEstimate: p.latencySecondsEstimate,
+      mobileARCompliant: p.mobileARCompliant
+    }));
+
+    res.json({
+      success: true,
+      providers,
+      activeProvider: reconstructionService.getActiveProvider().id
+    });
+  } catch (error: any) {
+    res.status(500).json({ success: false, message: 'Failed to retrieve providers' });
+  }
+});
+
+/**
+ * Helper to determine if a user has publisher permissions (restaurant owner or administrator).
+ */
+export function isAuthorizedPublisher(user: { uid: string; isAdmin?: boolean; role?: string } | null | undefined): boolean {
+  if (!user) return false;
+  return Boolean(
+    user.isAdmin ||
+    user.role === 'admin' ||
+    user.role === 'restaurant_owner' ||
+    user.role === 'owner' ||
+    user.role === 'super_admin'
+  );
+}
+
+/**
+ * POST /api/v1/reconstruction/jobs
+ * Initiates an image-to-3D food reconstruction job
+ * Requires authenticated user. User identity taken strictly from token context.
+ */
+router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    if (!authUser || !authUser.uid) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required.' });
+    }
+
+    // Reject unauthorized attempts to create public assets
+    if ((req.body.isPublic === true || req.body.isPublic === 'true') && !isAuthorizedPublisher(authUser)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only restaurant owners or administrators can publish public assets.'
+      });
+    }
+
+    const { dishName, imageUrl, referencePlateDiameterMeters, metadata, restaurantId, menuItemId } = req.body;
+
+    if (!dishName || typeof dishName !== 'string' || dishName.trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid dishName: must be a non-empty string.'
+      });
+    }
+
+    if (referencePlateDiameterMeters !== undefined) {
+      const diam = Number(referencePlateDiameterMeters);
+      if (isNaN(diam) || diam < 0.05 || diam > 1.5) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid referencePlateDiameterMeters: must be between 0.05m and 1.5m.'
+        });
+      }
+    }
+
+    // Submit job strictly using verified authUser.uid
+    // Newly generated user reconstructions are private by default.
+    const job = await reconstructionService.submitJob({
+      userId: authUser.uid,
+      dishName: dishName.trim(),
+      imageUrl: typeof imageUrl === 'string' ? imageUrl : undefined,
+      referencePlateDiameterMeters: Number(referencePlateDiameterMeters) || 0.24,
+      restaurantId: typeof restaurantId === 'string' ? restaurantId : undefined,
+      menuItemId: typeof menuItemId === 'string' ? menuItemId : undefined,
+      metadata: typeof metadata === 'object' && metadata !== null ? metadata : undefined
+    });
+
+    res.status(202).json({
+      success: true,
+      message: '3D food reconstruction job queued',
+      jobId: job.jobId,
+      status: job.status,
+      assetQuality: job.assetQuality,
+      provider: job.provider
+    });
+  } catch (error: any) {
+    console.error('Error creating 3D reconstruction job:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error queuing reconstruction job'
+    });
+  }
+});
+
+/**
+ * PATCH /api/v1/reconstruction/jobs/:jobId/publish
+ * Explicitly publishes a reconstructed 3D model to the public restaurant catalog.
+ * Strictly restricted to restaurant owners and administrators.
+ * Verifies restaurant ownership server-side and enforces completed job state.
+ */
+router.patch('/jobs/:jobId/publish', verifyUserToken, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    if (!authUser || !authUser.uid) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required.' });
+    }
+
+    if (!isAuthorizedPublisher(authUser)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only restaurant owners or administrators can publish public assets.'
+      });
+    }
+
+    const { jobId } = req.params;
+    const { restaurantId, menuItemId } = req.body || {};
+
+    const publishedJob = await reconstructionService.publishJob(
+      jobId,
+      {
+        uid: authUser.uid,
+        role: authUser.role,
+        isAdmin: authUser.isAdmin
+      },
+      {
+        restaurantId: typeof restaurantId === 'string' ? restaurantId : undefined,
+        menuItemId: typeof menuItemId === 'string' ? menuItemId : undefined
+      }
+    );
+
+    res.json({
+      success: true,
+      message: '3D model published to public catalog',
+      job: {
+        jobId: publishedJob.jobId,
+        dishName: publishedJob.dishName,
+        status: publishedJob.status,
+        isPublic: publishedJob.isPublic,
+        modelUrl: publishedJob.modelUrl,
+        restaurantId: publishedJob.restaurantId,
+        menuItemId: publishedJob.menuItemId,
+        publishedAt: publishedJob.metadata?.publishedAt,
+        publishedBy: publishedJob.metadata?.publishedBy
+      }
+    });
+  } catch (error: any) {
+    console.error('Error publishing reconstruction job:', error);
+    if (error instanceof PublicationError || error?.name === 'PublicationError') {
+      return res.status(error.statusCode || 400).json({
+        success: false,
+        message: error.message
+      });
+    }
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error publishing reconstruction job'
+    });
+  }
+});
+
+/**
+ * GET /api/v1/reconstruction/jobs/:jobId
+ * Polls status and retrieval for a reconstruction job
+ * Requires authenticated user and verifies job ownership
+ */
+router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    if (!authUser || !authUser.uid) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required.' });
+    }
+
+    const { jobId } = req.params;
+    const job = await reconstructionService.getJob(jobId);
+
+    // Non-disclosing 404 for unowned or missing jobs
+    if (!job || job.userId !== authUser.uid) {
+      return res.status(404).json({
+        success: false,
+        message: `Reconstruction job "${jobId}" was not found.`
+      });
+    }
+
+    // Refresh signed URL for AR viewer if asset is private
+    let modelUrl = job.modelUrl;
+    if (modelUrl && !job.isPublic) {
+      if (modelUrl.startsWith('/api/v1/reconstruction/assets/')) {
+        const filenameMatch = modelUrl.match(/\/api\/v1\/reconstruction\/assets\/([^?]+)/);
+        if (filenameMatch) {
+          const filename = filenameMatch[1];
+          const { signedQuery } = signAssetUrl(filename);
+          modelUrl = `/api/v1/reconstruction/assets/${filename}?${signedQuery}`;
+        }
+      } else if (job.storageType === 'cloudinary' && job.storageKey) {
+        const storageAdapter = getReconstructionStorageAdapter();
+        if (typeof storageAdapter.getDeliveryUrl === 'function') {
+          modelUrl = await storageAdapter.getDeliveryUrl(job.storageKey, false);
+        }
+      }
+    }
+
+    res.json({
+      success: true,
+      job: {
+        jobId: job.jobId,
+        dishName: job.dishName,
+        status: job.status,
+        progress: job.progress,
+        provider: job.provider,
+        assetQuality: job.assetQuality,
+        modelUrl,
+        dimensions: job.dimensions,
+        contactPlaneAligned: job.contactPlaneAligned,
+        error: job.error,
+        createdAt: job.createdAt,
+        updatedAt: job.updatedAt
+      }
+    });
+  } catch (error: any) {
+    console.error('Error fetching reconstruction job:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error retrieving reconstruction status'
+    });
+  }
+});
+
+/**
+ * Extracts and verifies user token from Authorization header if present.
+ */
+async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; isAdmin?: boolean; role?: string } | null> {
+  if ((req as any).user && (req as any).user.uid) {
+    return {
+      uid: (req as any).user.uid,
+      role: (req as any).user.role || 'user',
+      isAdmin: Boolean((req as any).user.isAdmin || (req as any).user.role === 'admin' || (req as any).user.role === 'super_admin')
+    };
+  }
+
+  const authHeader = req.headers?.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return null;
+  }
+  const token = authHeader.split('Bearer ')[1]?.trim();
+  if (!token || !platformAuth) {
+    return null;
+  }
+  try {
+    const decoded = await platformAuth.auth().verifyIdToken(token);
+    return {
+      uid: decoded.uid,
+      role: decoded.role || (decoded as any).role || 'user',
+      isAdmin: Boolean(decoded.isAdmin || (decoded as any).role === 'admin' || (decoded as any).role === 'super_admin')
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * GET /api/v1/reconstruction/assets/:filename
+ * Serves generated 3D GLB assets with strict authentication, ownership, and signed URL verification.
+ * Private user-generated models are never made public without explicit publication or valid signed URLs.
+ */
+export async function handleAssetRequest(req: Request, res: Response) {
+  try {
+    const rawParam = req.params?.filename;
+    if (!rawParam || !isValidAssetFilename(rawParam)) {
+      return res.status(400).json({ success: false, message: 'Invalid asset filename' });
+    }
+    const filename = rawParam;
+
+    const { sig, exp } = req.query;
+
+    // 1. Check for HMAC-signed URL query parameters (for mobile AR / model-viewer)
+    if (sig || exp) {
+      if (!sig || !exp || !verifyAssetSignature(filename, Number(exp), String(sig))) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized: Asset signature is invalid or expired.'
+        });
+      }
+
+      // Valid cryptographic signature: retrieve asset buffer
+      const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+      let fileBuffer: Buffer | null = null;
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      } else {
+        const storageAdapter = getReconstructionStorageAdapter();
+        fileBuffer = await storageAdapter.getGLB(filename, false);
+      }
+
+      if (!fileBuffer) {
+        return res.status(404).json({ success: false, message: '3D model asset not found' });
+      }
+
+      res.setHeader('Content-Type', 'model/gltf-binary');
+      res.setHeader('Cache-Control', 'private, max-age=3600');
+      return res.send(fileBuffer);
+    }
+
+    // 2. Query database for job ownership and publication status with exact, validated asset-to-job resolution.
+    // Prefer exact storageKey matches for supported canonical and legacy key formats.
+    const exactKeys = [
+      filename,
+      `dineingo/reconstructions/${filename}`,
+      `/dineingo/reconstructions/${filename}`
+    ];
+
+    let job: any = await ReconstructionJob.findOne({
+      storageKey: { $in: exactKeys }
+    });
+
+    if (job && job.storageKey) {
+      const normalizedKey = normalizeStorageKey(job.storageKey);
+      if (normalizedKey !== filename) {
+        job = null;
+      }
+    }
+
+    // Where modelUrl matching is required for backward compatibility, resolve the stored URL safely
+    // and compare its actual asset identity rather than relying on an unescaped substring regex.
+    if (!job) {
+      const escapedFilename = filename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const candidates = await ReconstructionJob.find({
+        modelUrl: new RegExp(`(?:^|/)${escapedFilename}(?:$|[?#])`)
+      });
+
+      const candidateList = Array.isArray(candidates) ? candidates : (candidates ? [candidates] : []);
+      for (const candidate of candidateList) {
+        if (extractAssetFilenameFromUrl(candidate.modelUrl) === filename) {
+          job = candidate;
+          break;
+        }
+      }
+    }
+
+    // 3. If asset has been deliberately published as public menu item
+    if (job && job.isPublic) {
+      const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+      let fileBuffer: Buffer | null = null;
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      } else {
+        const storageAdapter = getReconstructionStorageAdapter();
+        fileBuffer = await storageAdapter.getGLB(job.storageKey || filename, true);
+      }
+
+      if (!fileBuffer) {
+        return res.status(404).json({ success: false, message: '3D model asset not found' });
+      }
+
+      res.setHeader('Content-Type', 'model/gltf-binary');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+      return res.send(fileBuffer);
+    }
+
+    // 4. Authenticated request check
+    const authUser = await extractUserFromAuthHeader(req);
+    if (authUser) {
+      if (!job) {
+        // If file exists but no job record is found, allow admins only
+        if (authUser.isAdmin) {
+          const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+          const fileBuffer = fs.existsSync(filePath)
+            ? fs.readFileSync(filePath)
+            : await getReconstructionStorageAdapter().getGLB(filename, false);
+          if (fileBuffer) {
+            res.setHeader('Content-Type', 'model/gltf-binary');
+            return res.send(fileBuffer);
+          }
+        }
+        return res.status(404).json({ success: false, message: 'Asset metadata not found' });
+      }
+
+      if (job.userId === authUser.uid || authUser.isAdmin) {
+        const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+        let fileBuffer: Buffer | null = null;
+        if (fs.existsSync(filePath)) {
+          fileBuffer = fs.readFileSync(filePath);
+        } else {
+          const storageAdapter = getReconstructionStorageAdapter();
+          fileBuffer = await storageAdapter.getGLB(job.storageKey || filename, false);
+        }
+
+        if (!fileBuffer) {
+          return res.status(404).json({ success: false, message: '3D model asset not found' });
+        }
+
+        res.setHeader('Content-Type', 'model/gltf-binary');
+        res.setHeader('Cache-Control', 'private, max-age=3600');
+        return res.send(fileBuffer);
+      } else {
+        // Prevent cross-user access to private food models
+        return res.status(403).json({
+          success: false,
+          message: 'Forbidden: You do not have permission to access this private asset.'
+        });
+      }
+    }
+
+    // 5. Unauthenticated request to private asset
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized: Access to private 3D assets requires authentication or a valid signed asset URL.'
+    });
+  } catch (error: any) {
+    console.error('Error serving reconstructed asset:', error);
+    res.status(500).json({ success: false, message: 'Failed to retrieve asset' });
+  }
+}
+
+router.get('/assets/:filename', handleAssetRequest);
+
+export default router;

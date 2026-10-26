@@ -1,23 +1,26 @@
 import express from 'express';
 import * as menuController from '../controllers/menuController';
+import { verifyUserToken } from '../middleware/userAuth';
 
 const router = express.Router();
 
-// Category routes
-router.post('/categories', menuController.createCategory);
+// Public read routes (accessible by customers and guests)
 router.get('/categories/:businessId', menuController.getCategories);
-router.put('/categories/:categoryId', menuController.updateCategory);
-router.delete('/categories/:categoryId', menuController.deleteCategory);
-
-// Menu item routes
-router.post('/items', menuController.createMenuItem);
 router.get('/items/:businessId', menuController.getMenuItems);
-router.get('/menu/:businessId', menuController.getFullMenu); // Get full menu with categories
-router.put('/items/:itemId', menuController.updateMenuItem);
-router.patch('/items/:itemId/availability', menuController.toggleItemAvailability);
-router.delete('/items/:itemId', menuController.deleteMenuItem);
+router.get('/menu/:businessId', menuController.getFullMenu);
 
-// Bulk operations
-router.post('/items/bulk/display-order', menuController.bulkUpdateDisplayOrder);
+// Category management (authenticated business owners)
+router.post('/categories', verifyUserToken, menuController.createCategory);
+router.put('/categories/:categoryId', verifyUserToken, menuController.updateCategory);
+router.delete('/categories/:categoryId', verifyUserToken, menuController.deleteCategory);
+
+// Menu item management (authenticated business owners)
+router.post('/items', verifyUserToken, menuController.createMenuItem);
+router.put('/items/:itemId', verifyUserToken, menuController.updateMenuItem);
+router.patch('/items/:itemId/availability', verifyUserToken, menuController.toggleItemAvailability);
+router.delete('/items/:itemId', verifyUserToken, menuController.deleteMenuItem);
+
+// Bulk operations (authenticated business owners)
+router.post('/items/bulk/display-order', verifyUserToken, menuController.bulkUpdateDisplayOrder);
 
 export default router;

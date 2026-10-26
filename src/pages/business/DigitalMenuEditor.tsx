@@ -31,6 +31,7 @@ interface MenuItem {
     description: string;
     price: number;
     image?: string;
+    modelUrl?: string;
     dietaryTags: string[];
     allergens: string[];
     isAvailable: boolean;
@@ -60,6 +61,7 @@ function DigitalMenuEditor() {
         description: '',
         price: '',
         image: '',
+        modelUrl: '',
         dietaryTags: [] as string[],
         allergens: [] as string[]
     });
@@ -236,6 +238,7 @@ function DigitalMenuEditor() {
             description: '',
             price: '',
             image: '',
+            modelUrl: '',
             dietaryTags: [],
             allergens: []
         });
@@ -250,6 +253,7 @@ function DigitalMenuEditor() {
             description: item.description,
             price: item.price.toString(),
             image: item.image || '',
+            modelUrl: item.modelUrl || '',
             dietaryTags: item.dietaryTags,
             allergens: item.allergens
         });
@@ -567,6 +571,20 @@ function DigitalMenuEditor() {
                                                     <p className="text-[10px] sm:text-xs text-gray-500">PNG, JPG, GIF up to 5MB</p>
                                                 </div>
                                             </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                                                3D Model Asset / URL (.glb) <span className="text-gray-400 font-normal text-[11px]">(Optional for AR)</span>
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={itemForm.modelUrl || ''}
+                                                onChange={(e) => setItemForm({ ...itemForm, modelUrl: e.target.value })}
+                                                className="w-full px-3 sm:px-4 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-xs sm:text-sm font-mono"
+                                                placeholder="e.g. /models/ar/braised-beef.glb or https://.../dish.glb"
+                                            />
+                                            <p className="text-[10px] text-gray-500 mt-1">If blank, automatically provides verified category previews or high-res photo fallback.</p>
                                         </div>
                                     </div>
 

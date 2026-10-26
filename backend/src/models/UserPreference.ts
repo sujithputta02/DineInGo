@@ -15,6 +15,14 @@ export interface IUserPreference extends Document {
         timestamp: Date;
     }[];
     lastMood?: string;
+    nutritionGoals?: {
+        dailyCaloriesTarget?: number;
+        proteinTargetG?: number;
+        carbTargetG?: number;
+        fatTargetG?: number;
+        preferredPortion?: 'small' | 'standard' | 'large';
+    };
+    dislikedIngredients?: string[];
 }
 
 const UserPreferenceSchema = new Schema<IUserPreference>({
@@ -25,6 +33,14 @@ const UserPreferenceSchema = new Schema<IUserPreference>({
     }],
     dietaryPreferences: [{ type: String }],
     allergens: [{ type: String }],
+    dislikedIngredients: [{ type: String }],
+    nutritionGoals: {
+        dailyCaloriesTarget: { type: Number, default: 2000 },
+        proteinTargetG: { type: Number, default: 60 },
+        carbTargetG: { type: Number, default: 250 },
+        fatTargetG: { type: Number, default: 65 },
+        preferredPortion: { type: String, enum: ['small', 'standard', 'large'], default: 'standard' }
+    },
     averageSpend: { type: Number, default: 0 },
     interactionHistory: [{
         restaurantId: { type: String, required: true },

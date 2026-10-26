@@ -15,6 +15,7 @@ import { identifyFoodWithHF } from '../services/huggingFaceService';
 import { getPersonalizedRecommendation, type UserProfile, type DishInfo } from '../services/groqService';
 import { getNutritionForDish, estimateIndianDishNutrition } from '../services/usdaNutritionService';
 import { get3DVisualization } from '../services/free3DService';
+import { ARViewer } from './ARViewer';
 
 // --- Types ---
 interface ARMenuSectionProps {
@@ -144,6 +145,19 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     };
     initEngine();
   }, []);
+
+  // Ensure camera streams are completely stopped on unmount
+  useEffect(() => {
+    return () => {
+      if (pendingStreamRef.current) {
+        pendingStreamRef.current.getTracks().forEach((track) => track.stop());
+        pendingStreamRef.current = null;
+      }
+      if (cameraStream) {
+        cameraStream.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [cameraStream]);
 
   // --- Camera Controls ---
   const startCamera = async () => {
@@ -657,24 +671,13 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
             animate={{ opacity: 1, y: 0 }}
             className="grid grid-cols-1 lg:grid-cols-2 gap-8"
           >
-            {/* Left: 3D Visualization */}
-            <div className={`${isDarkMode ? 'bg-zinc-950/40 border border-white/5 shadow-2xl' : 'bg-white shadow-xl'} backdrop-blur-3xl rounded-[3rem] p-6 h-[500px] relative overflow-hidden group`}>
-              <div className="absolute top-8 left-8 z-10">
-                <span className="px-4 py-1.5 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-black uppercase tracking-widest border border-purple-500/10">
-                  <Sparkles size={10} className="inline mr-1" />
-                  High Fidelity Digital Twin
-                </span>
-              </div>
-              
-              <DishModel3D
-                color={scannedDish?.isVegetarian ? '#10b981' : '#ec4899'}
-                isVeg={scannedDish?.isVegetarian}
+            {/* Left: 3D Visualization & Real AR */}
+            <div className="h-[520px] w-full">
+              <ARViewer
+                dish={scannedDish}
+                showDetailsOverlay={false}
+                autoRotateDefault={true}
               />
-
-              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-black/40 backdrop-blur-xl px-6 py-2.5 rounded-full border border-white/10 whitespace-nowrap">
-                <Box size={14} className="text-purple-400" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">Drag to rotate 360° visualization</span>
-              </div>
             </div>
 
             {/* Right: Data & Analytics */}

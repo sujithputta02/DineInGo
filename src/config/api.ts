@@ -1,10 +1,12 @@
+const safeEnv = (typeof import.meta !== 'undefined' && import.meta.env) ? import.meta.env : (typeof process !== 'undefined' ? process.env : {}) as any;
+
 // API Configuration
 export const API_CONFIG = {
   // Backend API base URL
   // Backend API base URL with production-aware fallback
   BASE_URL: (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '0.0.0.0'))
     ? '' // Use relative paths to leverage Vite proxy and avoid CORS/hostname issues
-    : (import.meta.env.VITE_API_URL || 'https://dineingo-backend.onrender.com'),
+    : (safeEnv.VITE_API_URL || 'https://dineingo-backend.onrender.com'),
   
   // API endpoints
   ENDPOINTS: {

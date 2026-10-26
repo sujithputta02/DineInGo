@@ -300,7 +300,29 @@ export default function BusinessLandingPage() {
                                 boxShadow: "0 10px 30px rgba(217, 119, 6, 0.15)",
                             }}
                         >
-                            Explore Reservation Features
+                            Explore Features
+                        </motion.button>
+
+                        <motion.button
+                            whileHover={{ scale: 1.08, y: -5 }}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => navigate('/ar-demo')}
+                            style={{
+                                backgroundColor: "#18181b",
+                                padding: "clamp(14px, 3vw, 18px) clamp(28px, 5vw, 40px)",
+                                fontSize: "clamp(0.95rem, 2vw, 1.2rem)",
+                                fontWeight: "800",
+                                borderRadius: "16px",
+                                border: "2px solid #a855f7",
+                                cursor: "pointer",
+                                color: "#fff",
+                                boxShadow: "0 10px 30px rgba(168, 85, 247, 0.35)",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: "10px"
+                            }}
+                        >
+                            <span>📱 Try Live AR Demo</span>
                         </motion.button>
                     </motion.div>
 

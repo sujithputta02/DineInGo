@@ -11,6 +11,12 @@
     "dev:server": "cd backend && npm install && npm run dev",
     "start:all": "concurrently \"npm run dev\" \"npm run dev:server\"",
     "security:check": "node scripts/security-check.js",
+    "test": "tsx --test tests/**/*.test.ts",
+    "test:hf-live": "tsx scripts/test-live-hf-reconstruction.ts",
+    "test:cloudinary-live": "tsx scripts/test-live-cloudinary-privacy.ts",
+    "ar:verify": "node scripts/verify-calibration.cjs",
+    "ar:calibrate": "node scripts/calibrate-models.cjs",
+    "ar:diagnose": "node scripts/diagnose-models.cjs",
     "precommit": "npm run security:check",
     "prepare": "husky"
   },
@@ -20,6 +26,7 @@
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.0",
     "@fontsource/league-spartan": "^5.0.17",
+    "@google/model-viewer": "^3.5.0",
     "@mui/icons-material": "^7.1.2",
     "@mui/material": "^7.1.2",
     "@posthog/react": "^1.8.2",
@@ -30,6 +37,7 @@
     "@tensorflow/tfjs": "^4.22.0",
     "@types/axios": "^0.9.36",
     "@types/leaflet": "^1.9.17",
+    "@types/qrcode": "^1.5.6",
     "@types/react-leaflet": "^2.8.3",
     "@vercel/analytics": "^2.0.1",
     "axios": "^1.8.4",
@@ -57,6 +65,7 @@
     "pdfkit": "^0.17.2",
     "posthog-js": "^1.363.6",
     "pptxgenjs": "^4.0.1",
+    "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-easy-crop": "^5.4.2",
@@ -109,6 +118,9 @@
     "http-proxy-agent": "^9.0.0",
     "teeny-request": "^10.1.2",
     "retry-request": "^7.0.2",
-    "cloudinary": "^2.10.0"
+    "cloudinary": "^2.10.0",
+    "@google/model-viewer": {
+      "three": "$three"
+    }
   }
 }

@@ -1,0 +1,14 @@
+{
+  "include": [
+    "huggingface-space",
+    "scripts"
+  ],
+  "exclude": [
+    "**/node_modules",
+    "**/.venv",
+    "**/dist"
+  ],
+  "reportMissingImports": "none",
+  "reportMissingModuleSource": "none",
+  "pythonVersion": "3.10"
+}

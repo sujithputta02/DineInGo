@@ -7,6 +7,7 @@ export interface IMenuItem extends Document {
     description: string;
     price: number;
     image?: string; // Base64 or URL
+    modelUrl?: string; // Optional 3D GLB/GLTF model URL
     dietaryTags: string[]; // e.g., 'vegetarian', 'vegan', 'gluten-free', 'halal', 'kosher'
     allergens: string[]; // e.g., 'nuts', 'dairy', 'eggs', 'shellfish'
     isAvailable: boolean;
@@ -47,6 +48,10 @@ const MenuItemSchema = new Schema<IMenuItem>({
     },
     image: {
         type: String
+    },
+    modelUrl: {
+        type: String,
+        trim: true
     },
     dietaryTags: [{
         type: String,
