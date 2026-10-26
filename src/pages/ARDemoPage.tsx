@@ -14,11 +14,17 @@ import {
   ChevronRight,
   ShieldCheck,
   Building2,
-  HelpCircle
+  HelpCircle,
+  ScanLine,
+  Camera,
+  BookOpen
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ARViewer } from '../components/ARViewer';
 import { QRCodeModal } from '../components/QRCodeModal';
+import { QRScannerModal } from '../components/QRScannerModal';
+import { FoodCaptureModal } from '../components/FoodCaptureModal';
+import { FoodDiaryModal } from '../components/FoodDiaryModal';
 import {
   DEMO_RESTAURANT,
   DEMO_MENU_ITEMS,
@@ -39,6 +45,9 @@ export const ARDemoPage: React.FC = () => {
   const [selectedDishId, setSelectedDishId] = useState<string>(validInitialDish);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+  const [isFoodCaptureOpen, setIsFoodCaptureOpen] = useState(false);
+  const [isFoodDiaryOpen, setIsFoodDiaryOpen] = useState(false);
 
   // Sync selected dish ID when browser back/forward changes query param
   useEffect(() => {
@@ -127,15 +136,42 @@ export const ARDemoPage: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <button
+              onClick={() => setIsQRScannerOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-white text-xs font-bold transition-all border border-white/10"
+              title="Scan Table QR Code"
+            >
+              <ScanLine size={14} className="text-emerald-400" />
+              <span className="hidden sm:inline">Scan QR</span>
+            </button>
+
+            <button
+              onClick={() => setIsFoodCaptureOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-white text-xs font-bold transition-all border border-white/10"
+              title="Scan Food with Camera"
+            >
+              <Camera size={14} className="text-blue-400" />
+              <span className="hidden sm:inline">AI Food Scan</span>
+            </button>
+
+            <button
+              onClick={() => setIsFoodDiaryOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-850 hover:bg-zinc-800 text-white text-xs font-bold transition-all border border-white/10"
+              title="View Daily Food Diary"
+            >
+              <BookOpen size={14} className="text-purple-400" />
+              <span className="hidden sm:inline">Diary</span>
+            </button>
+
+            <button
               onClick={() => setIsShareModalOpen(true)}
-              className="hidden sm:inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all border border-white/10"
+              className="hidden md:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition-all border border-white/10"
             >
               <Smartphone size={14} className="text-purple-400" />
-              <span>Open on Phone</span>
+              <span>Share AR</span>
             </button>
             <button
               onClick={() => navigate('/business')}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:brightness-110 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-600/20 transition-all"
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:brightness-110 text-white text-xs font-black uppercase tracking-wider shadow-lg shadow-purple-600/20 transition-all"
             >
               For Restaurants
             </button>
@@ -310,6 +346,25 @@ export const ARDemoPage: React.FC = () => {
         url={typeof window !== 'undefined' ? `${window.location.origin}/ar-demo?dish=${selectedDishId}` : 'https://dineingo.app/ar-demo'}
         title="Experience AR On Your Phone"
         subtitle="Scan with your iPhone or Android camera to immediately preview this dish in real-world Augmented Reality."
+      />
+
+      {/* QR Scanner Modal */}
+      <QRScannerModal
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+      />
+
+      {/* AI Food Capture Modal */}
+      <FoodCaptureModal
+        isOpen={isFoodCaptureOpen}
+        onClose={() => setIsFoodCaptureOpen(false)}
+      />
+
+      {/* Food Diary Modal */}
+      <FoodDiaryModal
+        isOpen={isFoodDiaryOpen}
+        onClose={() => setIsFoodDiaryOpen(false)}
+        onOpenCapture={() => setIsFoodCaptureOpen(true)}
       />
 
     </div>

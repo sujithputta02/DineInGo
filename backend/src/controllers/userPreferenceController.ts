@@ -26,23 +26,28 @@ export const getUserPreference = async (req: Request, res: Response): Promise<vo
 
 export const upsertUserPreference = async (req: Request, res: Response): Promise<void> => {
     try {
-        const { userId, cuisines, dietaryPreferences, allergens, averageSpend, lastMood } = req.body;
+        const { userId, cuisines, dietaryPreferences, allergens, dislikedIngredients, nutritionGoals, averageSpend, lastMood } = req.body;
 
         if (!userId) {
             res.status(400).json({ success: false, message: 'User ID is required' });
             return;
         }
 
+        const updateData: any = {
+            userId,
+            cuisines,
+            dietaryPreferences,
+            allergens,
+            averageSpend,
+            lastMood
+        };
+
+        if (dislikedIngredients !== undefined) updateData.dislikedIngredients = dislikedIngredients;
+        if (nutritionGoals !== undefined) updateData.nutritionGoals = nutritionGoals;
+
         const preferences = await UserPreference.findOneAndUpdate(
             { userId },
-            {
-                userId,
-                cuisines,
-                dietaryPreferences,
-                allergens,
-                averageSpend,
-                lastMood
-            },
+            updateData,
             { new: true, upsert: true }
         );
 

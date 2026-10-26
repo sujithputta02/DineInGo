@@ -106,7 +106,8 @@ push-early-access.sh
 .env*.local
 
 # Documentation (auto-generated, should not be in repo)
-docs/
+docs/*
+!docs/DATASET_RESEARCH_AND_EVALUATION.md
 
 # Scripts folder
 scripts/*

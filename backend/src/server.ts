@@ -39,6 +39,8 @@ import userPreferenceRoutes from './routes/userPreferenceRoutes';
 import userOtpRoutes from './routes/userOtpRoutes';
 import earlyAccessRoutes from './routes/earlyAccessRoutes';
 import foodScanRoutes from './routes/foodScanRoutes';
+import foodDiaryRoutes from './routes/foodDiaryRoutes';
+import reconstructionRoutes from './routes/reconstructionRoutes';
 import translationRoutes from './routes/translationRoutes';
 import experimentRoutes from './routes/experimentRoutes';
 import {
@@ -313,6 +315,8 @@ import aiRecommendationRoutes from './routes/aiRecommendationRoutes';
 const apiV1Router = express.Router();
 
 apiV1Router.use('/food-scans', foodScanRoutes);
+apiV1Router.use('/food-diary', foodDiaryRoutes);
+apiV1Router.use('/reconstruction', reconstructionRoutes);
 apiV1Router.use('/admin', adminRoutes);
 apiV1Router.use('/users', userRoutes);
 apiV1Router.use('/bookings', bookingRoutes);
