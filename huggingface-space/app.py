@@ -138,14 +138,16 @@ def generate_3d_mesh(processed_image: Image.Image, mc_resolution: int = 256):
     Executes real TripoSR feed-forward neural reconstruction on Hugging Face ZeroGPU.
     """
     import torch  # type: ignore
+    from tsr.utils import to_gradio_3d_orientation  # type: ignore
     model = load_triposr_model()
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     
     with torch.no_grad():
         scene_codes = model(processed_image, device=device)
-        meshes = model.extract_mesh(scene_codes, resolution=int(mc_resolution), threshold=25.0)
+        meshes = model.extract_mesh(scene_codes, True, resolution=int(mc_resolution), threshold=25.0)
         
-    return meshes[0]
+    mesh = to_gradio_3d_orientation(meshes[0])
+    return mesh
 
 def calibrate_and_export_glb(raw_mesh, reference_plate_diameter: float = 0.24) -> tuple[str, dict]:
     """
@@ -235,13 +237,20 @@ def calibrate_and_export_glb(raw_mesh, reference_plate_diameter: float = 0.24) -
 
     return output_path, metadata
 
-def reconstruct(image: Image.Image, reference_plate_diameter: float = 0.24, mc_resolution: int = 256):
+def reconstruct(image, reference_plate_diameter: float = 0.24, mc_resolution: int = 256):
     """
     Main Gradio API endpoint:
     Takes food image -> pre-processes -> runs ZeroGPU inference -> calibrates -> returns GLB & metadata.
     """
     if image is None:
         raise gr.Error("No food image was provided.")
+
+    if isinstance(image, str):
+        image = Image.open(image)
+    elif isinstance(image, dict) and "path" in image:
+        image = Image.open(image["path"])
+    elif isinstance(image, np.ndarray):
+        image = Image.fromarray(image)
 
     print(f"[TripoSR API] Processing reconstruction request (plate reference: {reference_plate_diameter}m)...")
     
@@ -252,7 +261,7 @@ def reconstruct(image: Image.Image, reference_plate_diameter: float = 0.24, mc_r
     raw_mesh = generate_3d_mesh(processed, mc_resolution=mc_resolution)
     
     # Calibrate and export
-    glb_path, metadata = calibrate_and_export_glb(raw_mesh, reference_plate_diameter)
+    glb_path, metadata = calibrate_and_export_glb(raw_mesh, float(reference_plate_diameter))
     
     print(f"[TripoSR API] Successfully exported calibrated model: {glb_path} ({metadata['dimensions']})")
     return glb_path, json.dumps(metadata, indent=2)
