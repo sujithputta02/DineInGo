@@ -61,62 +61,93 @@ async function runLiveCloudinaryPrivacyTest() {
   const testGLB = createMinimalGLBBuffer();
   const testKey = `recon_live_priv_${crypto.randomBytes(6).toString('hex')}.glb`;
 
+  // 1. Upload private GLB asset with isPublic=false
   console.log(`\n1. Uploading private GLB asset: ${testKey} with isPublic=false...`);
   const saveResult = await adapter.saveGLB(testGLB, testKey, false);
 
   console.log(`✅ Upload successful:`);
   console.log(`   - Storage Type: ${saveResult.storageType}`);
   console.log(`   - Storage Key:  ${saveResult.storageKey}`);
-  console.log(`   - Signed URL:   ${saveResult.url}`);
+  console.log(`   - Delivery URL: ${saveResult.url}`);
 
-  if (!saveResult.url.includes('/raw/authenticated/')) {
-    throw new Error(`Expected /raw/authenticated/ delivery path, got: ${saveResult.url}`);
+  if (process.env.CLOUDINARY_AUTH_TOKEN_KEY) {
+    if (!saveResult.url.includes('__cld_token__=exp=')) {
+      throw new Error(`Expected Cloudinary tokenized URL with __cld_token__, got: ${saveResult.url}`);
+    }
+    console.log(`✅ Direct token-expiring URL verified via CLOUDINARY_AUTH_TOKEN_KEY`);
+  } else {
+    if (!saveResult.url.startsWith('/api/v1/reconstruction/assets/') || !saveResult.url.includes('sig=')) {
+      throw new Error(`Expected DineInGo backend-proxied HMAC URL with cryptographic expiry, got: ${saveResult.url}`);
+    }
+    console.log(`✅ Backend-proxied HMAC time-limited URL verified (CLOUDINARY_AUTH_TOKEN_KEY not set)`);
   }
-  if (!/\/s--[A-Za-z0-9_\-]+--\//.test(saveResult.url)) {
-    throw new Error(`Expected HMAC signature token in URL, got: ${saveResult.url}`);
-  }
 
-  // 2. Unsigned request test: strip the signature segment
-  const unsignedUrl = saveResult.url.replace(/\/s--[A-Za-z0-9_\-]+--\//, '/');
-  console.log(`\n2. Testing UNAUTHORIZED request without cryptographic signature:`);
-  console.log(`   URL: ${unsignedUrl}`);
+  // 2. Direct Cloudinary unauthorized fetch check
+  const cleanKey = saveResult.storageKey.replace(/\.glb$/i, '');
+  const directUnauthUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/authenticated/dineingo/reconstructions/${cleanKey}.glb`;
+  const directPublicUrl = `https://res.cloudinary.com/${process.env.CLOUDINARY_CLOUD_NAME}/raw/upload/dineingo/reconstructions/${cleanKey}.glb`;
 
-  const unauthRes = await fetch(unsignedUrl);
-  console.log(`   Response Status: ${unauthRes.status} ${unauthRes.statusText}`);
-
+  console.log(`\n2. Testing direct unauthenticated Cloudinary access attempts:`);
+  console.log(`   Direct Authenticated URL: ${directUnauthUrl}`);
+  const unauthRes = await fetch(directUnauthUrl);
+  console.log(`   Response: HTTP ${unauthRes.status} ${unauthRes.statusText}`);
   if (unauthRes.status !== 401 && unauthRes.status !== 404) {
-    throw new Error(`Expected HTTP 401 or 404 for unsigned request, got: ${unauthRes.status}`);
+    throw new Error(`Expected HTTP 401/404 for unauthenticated Cloudinary access, got: ${unauthRes.status}`);
   }
-  console.log(`✅ UNAUTHORIZED REQUEST REJECTED as expected (HTTP ${unauthRes.status})`);
+  console.log(`✅ Direct /raw/authenticated/ request rejected as expected`);
 
-  // 3. Authorized request test with full signed URL
-  console.log(`\n3. Testing AUTHORIZED request with signed URL:`);
-  console.log(`   URL: ${saveResult.url}`);
-
-  const authRes = await fetch(saveResult.url);
-  console.log(`   Response Status: ${authRes.status} ${authRes.statusText}`);
-
-  if (!authRes.ok) {
-    throw new Error(`Expected HTTP 200 for signed URL request, got: ${authRes.status}`);
+  console.log(`   Direct Upload URL: ${directPublicUrl}`);
+  const publicRes = await fetch(directPublicUrl);
+  console.log(`   Response: HTTP ${publicRes.status} ${publicRes.statusText}`);
+  if (publicRes.status !== 401 && publicRes.status !== 404) {
+    throw new Error(`Expected HTTP 401/404 for premature public Cloudinary access, got: ${publicRes.status}`);
   }
+  console.log(`✅ Direct /raw/upload/ request rejected as expected (asset is private)`);
 
-  const downloadedBuffer = Buffer.from(await authRes.arrayBuffer());
-  if (Buffer.compare(downloadedBuffer, testGLB) !== 0) {
-    throw new Error('Downloaded GLB buffer does not match original uploaded buffer');
-  }
-  console.log(`✅ AUTHORIZED REQUEST SUCCEEDED: Downloaded ${downloadedBuffer.length} bytes (matches original GLB)`);
-
-  // 4. Retrieve via adapter getGLB
-  console.log(`\n4. Testing adapter.getGLB("${saveResult.storageKey}"):`);
-  const retrievedBuffer = await adapter.getGLB(saveResult.storageKey);
+  // 3. Retrieve private asset via adapter getGLB
+  console.log(`\n3. Testing adapter.getGLB("${saveResult.storageKey}", false):`);
+  const retrievedBuffer = await adapter.getGLB(saveResult.storageKey, false);
   if (!retrievedBuffer || Buffer.compare(retrievedBuffer, testGLB) !== 0) {
     throw new Error('adapter.getGLB() failed to retrieve matching private buffer');
   }
   console.log(`✅ adapter.getGLB() retrieved ${retrievedBuffer.length} bytes matching uploaded model`);
 
-  // 5. Cleanup: delete asset from Cloudinary
-  console.log(`\n5. Cleaning up test asset from Cloudinary:`);
-  const deleted = await adapter.deleteGLB(saveResult.storageKey);
+  // 4. Test fail-closed behavior: non-existent asset never falls back to public upload
+  console.log(`\n4. Testing fail-closed behavior on non-existent asset:`);
+  const nonExistentResult = await adapter.getGLB('nonexistent_asset_key_00000.glb', false);
+  if (nonExistentResult !== null) {
+    throw new Error('adapter.getGLB() should return null for non-existent asset, but returned non-null');
+  }
+  console.log(`✅ adapter.getGLB() cleanly failed closed (returned null without public fallback)`);
+
+  // 5. Test publishing: migrate private asset to public catalog
+  console.log(`\n5. Testing adapter.publishGLB("${saveResult.storageKey}"):`);
+  const publishResult = await adapter.publishGLB(saveResult.storageKey);
+  if (!publishResult || !publishResult.url) {
+    throw new Error('adapter.publishGLB() failed to publish asset');
+  }
+  console.log(`✅ Asset published:`);
+  console.log(`   - Public URL: ${publishResult.url}`);
+
+  if (!publishResult.url.includes('/raw/upload/')) {
+    throw new Error(`Expected public URL to contain /raw/upload/, got: ${publishResult.url}`);
+  }
+
+  // Verify public delivery via direct HTTP fetch
+  const directPublicDeliveryRes = await fetch(publishResult.url);
+  console.log(`   Direct HTTP Fetch of Public URL: HTTP ${directPublicDeliveryRes.status}`);
+  if (!directPublicDeliveryRes.ok) {
+    throw new Error(`Published asset failed to load via public CDN: HTTP ${directPublicDeliveryRes.status}`);
+  }
+  const publishedDownloadedBuffer = Buffer.from(await directPublicDeliveryRes.arrayBuffer());
+  if (Buffer.compare(publishedDownloadedBuffer, testGLB) !== 0) {
+    throw new Error('Published GLB buffer does not match original uploaded buffer');
+  }
+  console.log(`✅ Published asset downloaded from public CDN: ${publishedDownloadedBuffer.length} bytes match!`);
+
+  // 6. Cleanup published asset from Cloudinary
+  console.log(`\n6. Cleaning up test asset from Cloudinary:`);
+  const deleted = await adapter.deleteGLB(saveResult.storageKey, true);
   console.log(`✅ Cleanup result: ${deleted ? 'Asset deleted successfully' : 'Delete returned false'}`);
 
   console.log('\n====================================================');

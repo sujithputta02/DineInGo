@@ -40,6 +40,20 @@ router.get('/providers', (req: Request, res: Response) => {
 });
 
 /**
+ * Helper to determine if a user has publisher permissions (restaurant owner or administrator).
+ */
+export function isAuthorizedPublisher(user: { uid: string; isAdmin?: boolean; role?: string } | null | undefined): boolean {
+  if (!user) return false;
+  return Boolean(
+    user.isAdmin ||
+    user.role === 'admin' ||
+    user.role === 'restaurant_owner' ||
+    user.role === 'owner' ||
+    user.role === 'super_admin'
+  );
+}
+
+/**
  * POST /api/v1/reconstruction/jobs
  * Initiates an image-to-3D food reconstruction job
  * Requires authenticated user. User identity taken strictly from token context.
@@ -49,6 +63,14 @@ router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Resp
     const authUser = (req as any).user;
     if (!authUser || !authUser.uid) {
       return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required.' });
+    }
+
+    // Reject unauthorized attempts to create public assets
+    if ((req.body.isPublic === true || req.body.isPublic === 'true') && !isAuthorizedPublisher(authUser)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only restaurant owners or administrators can publish public assets.'
+      });
     }
 
     const { dishName, imageUrl, referencePlateDiameterMeters, metadata } = req.body;
@@ -71,6 +93,7 @@ router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Resp
     }
 
     // Submit job strictly using verified authUser.uid
+    // Newly generated user reconstructions are private by default.
     const job = await reconstructionService.submitJob({
       userId: authUser.uid,
       dishName: dishName.trim(),
@@ -92,6 +115,57 @@ router.post('/jobs', verifyUserToken, apiLimiter, async (req: Request, res: Resp
     res.status(500).json({
       success: false,
       message: 'Internal server error queuing reconstruction job'
+    });
+  }
+});
+
+/**
+ * PATCH /api/v1/reconstruction/jobs/:jobId/publish
+ * Explicitly publishes a reconstructed 3D model to the public restaurant catalog.
+ * Strictly restricted to restaurant owners and administrators.
+ */
+router.patch('/jobs/:jobId/publish', verifyUserToken, async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as any).user;
+    if (!authUser || !authUser.uid) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: Authentication required.' });
+    }
+
+    if (!isAuthorizedPublisher(authUser)) {
+      return res.status(403).json({
+        success: false,
+        message: 'Forbidden: Only restaurant owners or administrators can publish public assets.'
+      });
+    }
+
+    const { jobId } = req.params;
+    const publishedJob = await reconstructionService.publishJob(jobId, authUser.uid);
+
+    if (!publishedJob) {
+      return res.status(404).json({
+        success: false,
+        message: `Reconstruction job "${jobId}" was not found.`
+      });
+    }
+
+    res.json({
+      success: true,
+      message: '3D model published to public catalog',
+      job: {
+        jobId: publishedJob.jobId,
+        dishName: publishedJob.dishName,
+        status: publishedJob.status,
+        isPublic: publishedJob.isPublic,
+        modelUrl: publishedJob.modelUrl,
+        publishedAt: publishedJob.metadata?.publishedAt,
+        publishedBy: publishedJob.metadata?.publishedBy
+      }
+    });
+  } catch (error: any) {
+    console.error('Error publishing reconstruction job:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Internal server error publishing reconstruction job'
     });
   }
 });
@@ -166,7 +240,7 @@ router.get('/jobs/:jobId', verifyUserToken, async (req: Request, res: Response) 
 /**
  * Extracts and verifies user token from Authorization header if present.
  */
-async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; isAdmin?: boolean } | null> {
+async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; isAdmin?: boolean; role?: string } | null> {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;
@@ -179,6 +253,7 @@ async function extractUserFromAuthHeader(req: Request): Promise<{ uid: string; i
     const decoded = await platformAuth.auth().verifyIdToken(token);
     return {
       uid: decoded.uid,
+      role: decoded.role || (decoded as any).role || 'user',
       isAdmin: decoded.isAdmin || (decoded as any).role === 'admin'
     };
   } catch {
@@ -198,23 +273,31 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, message: 'Invalid asset filename' });
     }
 
-    const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
-    let fileBuffer: Buffer | null = null;
-
-    if (fs.existsSync(filePath)) {
-      fileBuffer = fs.readFileSync(filePath);
-    } else {
-      const storageAdapter = getReconstructionStorageAdapter();
-      fileBuffer = await storageAdapter.getGLB(filename);
-    }
-
-    if (!fileBuffer) {
-      return res.status(404).json({ success: false, message: '3D model asset not found' });
-    }
-
-    // 1. Check for valid HMAC-signed URL query parameters (for mobile AR / model-viewer)
     const { sig, exp } = req.query;
-    if (sig && exp && verifyAssetSignature(filename, Number(exp), String(sig))) {
+
+    // 1. Check for HMAC-signed URL query parameters (for mobile AR / model-viewer)
+    if (sig || exp) {
+      if (!sig || !exp || !verifyAssetSignature(filename, Number(exp), String(sig))) {
+        return res.status(401).json({
+          success: false,
+          message: 'Unauthorized: Asset signature is invalid or expired.'
+        });
+      }
+
+      // Valid cryptographic signature: retrieve asset buffer
+      const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+      let fileBuffer: Buffer | null = null;
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      } else {
+        const storageAdapter = getReconstructionStorageAdapter();
+        fileBuffer = await storageAdapter.getGLB(filename, false);
+      }
+
+      if (!fileBuffer) {
+        return res.status(404).json({ success: false, message: '3D model asset not found' });
+      }
+
       res.setHeader('Content-Type', 'model/gltf-binary');
       res.setHeader('Cache-Control', 'private, max-age=3600');
       return res.send(fileBuffer);
@@ -224,12 +307,26 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
     const job = await ReconstructionJob.findOne({
       $or: [
         { storageKey: filename },
+        { storageKey: `dineingo/reconstructions/${filename}` },
         { modelUrl: new RegExp(filename) }
       ]
     });
 
     // 3. If asset has been deliberately published as public menu item
     if (job && job.isPublic) {
+      const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+      let fileBuffer: Buffer | null = null;
+      if (fs.existsSync(filePath)) {
+        fileBuffer = fs.readFileSync(filePath);
+      } else {
+        const storageAdapter = getReconstructionStorageAdapter();
+        fileBuffer = await storageAdapter.getGLB(filename, true);
+      }
+
+      if (!fileBuffer) {
+        return res.status(404).json({ success: false, message: '3D model asset not found' });
+      }
+
       res.setHeader('Content-Type', 'model/gltf-binary');
       res.setHeader('Cache-Control', 'public, max-age=86400');
       return res.send(fileBuffer);
@@ -241,13 +338,32 @@ router.get('/assets/:filename', async (req: Request, res: Response) => {
       if (!job) {
         // If file exists but no job record is found, allow admins only
         if (authUser.isAdmin) {
-          res.setHeader('Content-Type', 'model/gltf-binary');
-          return res.send(fileBuffer);
+          const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+          const fileBuffer = fs.existsSync(filePath)
+            ? fs.readFileSync(filePath)
+            : await getReconstructionStorageAdapter().getGLB(filename, false);
+          if (fileBuffer) {
+            res.setHeader('Content-Type', 'model/gltf-binary');
+            return res.send(fileBuffer);
+          }
         }
         return res.status(404).json({ success: false, message: 'Asset metadata not found' });
       }
 
       if (job.userId === authUser.uid || authUser.isAdmin) {
+        const filePath = path.join(RECONSTRUCTION_STORAGE_DIR, filename);
+        let fileBuffer: Buffer | null = null;
+        if (fs.existsSync(filePath)) {
+          fileBuffer = fs.readFileSync(filePath);
+        } else {
+          const storageAdapter = getReconstructionStorageAdapter();
+          fileBuffer = await storageAdapter.getGLB(filename, false);
+        }
+
+        if (!fileBuffer) {
+          return res.status(404).json({ success: false, message: '3D model asset not found' });
+        }
+
         res.setHeader('Content-Type', 'model/gltf-binary');
         res.setHeader('Cache-Control', 'private, max-age=3600');
         return res.send(fileBuffer);

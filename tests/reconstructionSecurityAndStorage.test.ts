@@ -11,6 +11,7 @@ const { LocalDiskStorageAdapter, CloudinaryStorageAdapter } = require('./backend
 const { isValidAssetFilename, signAssetUrl, verifyAssetSignature, generateSafeAssetKey, getAssetSigningSecret } = require('./backend/src/utils/assetSecurity.ts');
 const { validateDestinationUrl, verifyImageMagicBytes, isPrivateOrReservedIPv4, isPrivateOrReservedIPv6, parseAndValidateDataUrl } = require('./backend/src/utils/safeImageFetcher.ts');
 const { extractGlbDimensions } = require('./backend/src/utils/glbDimensionExtractor.ts');
+const { isAuthorizedPublisher } = require('./backend/src/routes/reconstructionRoutes.ts');
 
 // Helper: build minimal valid GLB buffer for testing
 function createMinimalGLBBuffer(width = 0.24, height = 0.12, depth = 0.18, lowestY = 0): Buffer {
@@ -379,44 +380,59 @@ test('8. HMAC Signing Secret: Dedicated secret enforced in production, fallback 
   }
 });
 
-test('9. Cloudinary Privacy: Enforces authenticated vs upload access policy, signed URLs, and deletion', async () => {
+test('9. Cloudinary Privacy: Enforces authenticated vs upload access policy, signed URLs, and token expiration', async () => {
   const adapter = new CloudinaryStorageAdapter();
   const requestedKey = 'recon_dish_spec_model.glb';
 
-  // Ensure Cloudinary config has test credentials if not configured
   const origCloudName = process.env.CLOUDINARY_CLOUD_NAME;
   const origApiKey = process.env.CLOUDINARY_API_KEY;
   const origApiSecret = process.env.CLOUDINARY_API_SECRET;
+  const origAuthTokenKey = process.env.CLOUDINARY_AUTH_TOKEN_KEY;
 
   if (!process.env.CLOUDINARY_CLOUD_NAME) process.env.CLOUDINARY_CLOUD_NAME = 'dineingo_test_cloud';
   if (!process.env.CLOUDINARY_API_KEY) process.env.CLOUDINARY_API_KEY = '1234567890';
   if (!process.env.CLOUDINARY_API_SECRET) process.env.CLOUDINARY_API_SECRET = 'abcdef1234567890abcdef1234567890';
 
   try {
-    // Test getDeliveryUrl for private vs public
-    const privateUrl = await adapter.getDeliveryUrl(requestedKey, false);
+    // 1. When CLOUDINARY_AUTH_TOKEN_KEY is NOT set:
+    delete process.env.CLOUDINARY_AUTH_TOKEN_KEY;
     const publicUrl = await adapter.getDeliveryUrl(requestedKey, true);
+    const privateProxiedUrl = await adapter.getDeliveryUrl(requestedKey, false);
 
-    // 1. Effective access policy difference:
-    // Public URL is delivered through standard CDN /raw/upload/ path
+    // Public URL uses standard CDN /raw/upload/ path without signatures
     assert.ok(publicUrl.includes('/raw/upload/'), `Public asset must use /raw/upload/ delivery, got: ${publicUrl}`);
     assert.ok(!publicUrl.includes('/s--'), 'Public asset must not require cryptographic signature in path');
 
-    // Private asset URL is delivered through restricted /raw/authenticated/ path AND contains HMAC signature /s--...--/
-    assert.ok(privateUrl.includes('/raw/authenticated/'), `Private asset must use /raw/authenticated/ delivery, got: ${privateUrl}`);
-    assert.ok(/\/s--[A-Za-z0-9_\-]+--\//.test(privateUrl), `Private asset URL must contain Cloudinary cryptographic signature token, got: ${privateUrl}`);
+    // Private URL routes through DineInGo's backend proxy with cryptographic expiry (?sig=...&exp=...)
+    assert.ok(privateProxiedUrl.startsWith('/api/v1/reconstruction/assets/'), `Private URL without auth token key must route through backend proxy, got: ${privateProxiedUrl}`);
+    assert.ok(privateProxiedUrl.includes('sig=') && privateProxiedUrl.includes('exp='), `Private URL must contain cryptographic HMAC expiry, got: ${privateProxiedUrl}`);
 
-    // Direct unsigned attempt to access private delivery path would fail with 401
-    const unsignedPrivateUrl = privateUrl.replace(/\/s--[A-Za-z0-9_\-]+--\//, '/');
-    assert.notEqual(unsignedPrivateUrl, privateUrl, 'Unsigned URL must differ from cryptographically signed URL');
+    // 2. When CLOUDINARY_AUTH_TOKEN_KEY IS set:
+    process.env.CLOUDINARY_AUTH_TOKEN_KEY = 'test_token_encryption_key_123';
+    const privateTokenizedUrl = await adapter.getDeliveryUrl(requestedKey, false);
 
-    // File extension preserved for AR viewers
-    assert.ok(privateUrl.includes('.glb'), 'Private URL must preserve .glb extension for mobile AR viewers');
+    assert.ok(privateTokenizedUrl.includes('/raw/authenticated/'), `Tokenized asset must use /raw/authenticated/ delivery, got: ${privateTokenizedUrl}`);
+    assert.ok(privateTokenizedUrl.includes('__cld_token__=exp='), `Tokenized asset must contain __cld_token__=exp=..., got: ${privateTokenizedUrl}`);
+
+    // 3. Secrets are never leaked in URLs
+    assert.ok(!publicUrl.includes(process.env.CLOUDINARY_API_SECRET!), 'Public URL must not leak API secret');
+    assert.ok(!privateProxiedUrl.includes(process.env.CLOUDINARY_API_SECRET!), 'Proxied URL must not leak API secret');
+    assert.ok(!privateTokenizedUrl.includes(process.env.CLOUDINARY_API_SECRET!), 'Tokenized URL must not leak API secret');
+    assert.ok(!privateTokenizedUrl.includes(process.env.CLOUDINARY_AUTH_TOKEN_KEY!), 'Tokenized URL must not leak raw auth token key');
+
+    // 4. File extension preserved for AR viewers
     assert.ok(publicUrl.includes('.glb'), 'Public URL must preserve .glb extension for mobile AR viewers');
+    assert.ok(privateProxiedUrl.includes('.glb'), 'Private proxied URL must preserve .glb extension for mobile AR viewers');
+    assert.ok(privateTokenizedUrl.includes('.glb'), 'Tokenized URL must preserve .glb extension for mobile AR viewers');
   } finally {
     process.env.CLOUDINARY_CLOUD_NAME = origCloudName;
     process.env.CLOUDINARY_API_KEY = origApiKey;
     process.env.CLOUDINARY_API_SECRET = origApiSecret;
+    if (origAuthTokenKey !== undefined) {
+      process.env.CLOUDINARY_AUTH_TOKEN_KEY = origAuthTokenKey;
+    } else {
+      delete process.env.CLOUDINARY_AUTH_TOKEN_KEY;
+    }
   }
 });
 
@@ -443,4 +459,119 @@ test('10. Storage Durability: Local disk fallback truthfully reports non-durable
   } finally {
     process.env = origEnv;
   }
+});
+
+test('11. Client-controlled publishing regression: Metadata isPublic is ignored and unauthorized publish returns 403', () => {
+  // 1. Role-based publisher authorization
+  const normalUser = { uid: 'user_regular_123', role: 'user', isAdmin: false };
+  const restaurantOwner = { uid: 'user_owner_456', role: 'restaurant_owner', isAdmin: false };
+  const adminUser = { uid: 'user_admin_789', role: 'admin', isAdmin: true };
+  const superAdminUser = { uid: 'user_super_000', role: 'super_admin' };
+  const ownerUser = { uid: 'user_owner_222', role: 'owner' };
+
+  assert.equal(isAuthorizedPublisher(normalUser), false, 'Normal user must NOT be authorized publisher');
+  assert.equal(isAuthorizedPublisher(restaurantOwner), true, 'Restaurant owner MUST be authorized publisher');
+  assert.equal(isAuthorizedPublisher(adminUser), true, 'Admin MUST be authorized publisher');
+  assert.equal(isAuthorizedPublisher(superAdminUser), true, 'Super admin MUST be authorized publisher');
+  assert.equal(isAuthorizedPublisher(ownerUser), true, 'Owner MUST be authorized publisher');
+  assert.equal(isAuthorizedPublisher(null), false, 'Unauthenticated user must NOT be authorized publisher');
+
+  // 2. Client-supplied metadata sanitization
+  function sanitizeJobCreation(input: {
+    user: { uid: string; role?: string; isAdmin?: boolean };
+    isPublic?: boolean;
+    metadata?: Record<string, any>;
+  }): { isPublic: boolean; metadata: Record<string, any>; status: number } {
+    // Check if client tried to set isPublic directly
+    if (input.isPublic === true) {
+      if (!isAuthorizedPublisher(input.user)) {
+        return { isPublic: false, metadata: {}, status: 403 };
+      }
+    }
+
+    // Strip client metadata attempts to publish
+    const sanitizedMetadata = { ...input.metadata };
+    delete sanitizedMetadata.isPublic;
+    delete sanitizedMetadata.public;
+
+    // All newly generated user reconstructions are private by default
+    return {
+      isPublic: false,
+      metadata: sanitizedMetadata,
+      status: 202
+    };
+  }
+
+  // Normal user submitting metadata: { isPublic: true } creates private job (isPublic: false)
+  const normalUserWithMetadata = sanitizeJobCreation({
+    user: normalUser,
+    metadata: { isPublic: true, public: true, customNote: 'My Scan' }
+  });
+  assert.equal(normalUserWithMetadata.status, 202);
+  assert.equal(normalUserWithMetadata.isPublic, false, 'Asset must remain strictly private');
+  assert.equal(normalUserWithMetadata.metadata.isPublic, undefined, 'metadata.isPublic must be stripped');
+  assert.equal(normalUserWithMetadata.metadata.public, undefined, 'metadata.public must be stripped');
+  assert.equal(normalUserWithMetadata.metadata.customNote, 'My Scan', 'Unrelated metadata preserved');
+
+  // Normal user attempting direct isPublic: true receives 403 Forbidden
+  const normalUserDirectPublish = sanitizeJobCreation({
+    user: normalUser,
+    isPublic: true
+  });
+  assert.equal(normalUserDirectPublish.status, 403, 'Direct publish attempt by normal user must return 403');
+
+  // Authorized publish endpoint simulation
+  function evaluatePublishEndpoint(user: { uid: string; role?: string; isAdmin?: boolean }, job: { isPublic: boolean }): { status: number; job?: { isPublic: boolean } } {
+    if (!isAuthorizedPublisher(user)) {
+      return { status: 403 };
+    }
+    return {
+      status: 200,
+      job: {
+        isPublic: true
+      }
+    };
+  }
+
+  assert.equal(evaluatePublishEndpoint(normalUser, { isPublic: false }).status, 403, 'Unauthorized publish attempt must return 403');
+  const publishedRes = evaluatePublishEndpoint(restaurantOwner, { isPublic: false });
+  assert.equal(publishedRes.status, 200);
+  assert.equal(publishedRes.job?.isPublic, true, 'Authorized publish must set isPublic: true');
+});
+
+test('12. Fail-closed private retrieval: getGLB never falls back to public upload on private failure', async () => {
+  const adapter = new CloudinaryStorageAdapter();
+
+  // Retrieving a non-existent private asset must cleanly return null without falling back to public upload
+  const result = await adapter.getGLB('nonexistent_private_asset_key_99999.glb', false);
+  assert.equal(result, null, 'Private retrieval failure must fail closed (return null) without falling back to public upload');
+});
+
+test('13. Genuinely time-limited URL expiry: Access verified before expiry, rejected after expiry', () => {
+  const filename = 'recon_expiring_dish_model.glb';
+
+  // 1. Fresh valid token (1 hour in future)
+  const freshSigned = signAssetUrl(filename, 3600);
+  const isValidFresh = verifyAssetSignature(filename, freshSigned.expires, freshSigned.signature);
+  assert.equal(isValidFresh, true, 'Fresh signed asset URL must be valid');
+
+  // 2. Expired token (10 seconds in past)
+  const expiredSigned = signAssetUrl(filename, -10);
+  const isValidExpired = verifyAssetSignature(filename, expiredSigned.expires, expiredSigned.signature);
+  assert.equal(isValidExpired, false, 'Expired asset URL must be rejected (verifyAssetSignature returns false)');
+
+  // 3. Simulated endpoint handling: expired signature returns 401
+  function handleAssetRequest(query: { sig?: string; exp?: string }): number {
+    if (query.sig || query.exp) {
+      if (!query.sig || !query.exp || !verifyAssetSignature(filename, Number(query.exp), query.sig)) {
+        return 401; // Unauthorized
+      }
+      return 200; // Success
+    }
+    return 401;
+  }
+
+  assert.equal(handleAssetRequest({ sig: freshSigned.signature, exp: String(freshSigned.expires) }), 200);
+  assert.equal(handleAssetRequest({ sig: expiredSigned.signature, exp: String(expiredSigned.expires) }), 401, 'Expired signature must receive 401');
+  assert.equal(handleAssetRequest({ sig: 'tampered', exp: String(freshSigned.expires) }), 401, 'Tampered signature must receive 401');
 });

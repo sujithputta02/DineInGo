@@ -459,6 +459,12 @@ export class ReconstructionService {
     const provider = this.getActiveProvider();
     const internalJobId = 'rec_' + crypto.randomBytes(8).toString('hex');
 
+    // Reject and strip attempts to set publication status through arbitrary client metadata.
+    // All newly generated user-specific reconstructions are strictly private by default.
+    const sanitizedMetadata = { ...input.metadata };
+    delete sanitizedMetadata.isPublic;
+    delete sanitizedMetadata.public;
+
     // Create persistent record
     const job = new ReconstructionJob({
       jobId: internalJobId,
@@ -470,13 +476,13 @@ export class ReconstructionService {
       provider: provider.id as any,
       assetQuality: provider.id === 'hf-triposr' ? 'reconstructed-model' : 'illustrative-model',
       contactPlaneAligned: true,
-      isPublic: Boolean(input.metadata?.isPublic),
+      isPublic: false, // Strictly private by default
       // No arbitrary dimensions invented here; verified dimensions are derived from actual GLB geometry on completion
       dimensions: undefined,
       metadata: {
         requestedProvider: provider.id,
         referencePlateDiameterMeters: input.referencePlateDiameterMeters || 0.24,
-        ...input.metadata
+        ...sanitizedMetadata
       }
     });
 
@@ -498,34 +504,12 @@ export class ReconstructionService {
       job.progress = 20;
       await job.save();
 
-      // Check user-scoped cache for repeated scans of same confirmed dish
-      const existingUserJob = await ReconstructionJob.findOne({
-        userId: input.userId,
-        dishName: input.dishName.trim(),
-        status: 'completed',
-        modelUrl: { $exists: true, $ne: null }
-      }).sort({ createdAt: -1 });
-
-      if (existingUserJob && existingUserJob.modelUrl) {
-        job.status = 'completed';
-        job.progress = 100;
-        job.modelUrl = existingUserJob.modelUrl;
-        job.storageKey = existingUserJob.storageKey;
-        job.storageType = existingUserJob.storageType;
-        job.assetQuality = existingUserJob.assetQuality;
-        job.dimensions = existingUserJob.dimensions;
-        job.contactPlaneAligned = existingUserJob.contactPlaneAligned;
-        job.metadata = { ...job.metadata, cachedFromJobId: existingUserJob.jobId };
-        await job.save();
-        return;
-      }
-
       if (provider.id === 'hf-triposr') {
         const hfProvider = provider as HuggingFaceTripoSRProvider;
         const result = await hfProvider.reconstructRemote(input, async (pct) => {
           job.progress = pct;
           await job.save();
-        }, Boolean(job.isPublic));
+        }, false);
 
         job.status = 'completed';
         job.progress = 100;
@@ -573,6 +557,42 @@ export class ReconstructionService {
 
   async getJob(jobId: string): Promise<IReconstructionJob | null> {
     const job = await ReconstructionJob.findOne({ jobId });
+    return job;
+  }
+
+  /**
+   * Explicitly publishes a reconstructed 3D asset to the public restaurant catalog.
+   * Can only be called by authorized publishers (restaurant owners or administrators).
+   * Migrates the underlying storage asset to public CDN delivery and updates database record.
+   */
+  async publishJob(jobId: string, requestedByUserId: string): Promise<IReconstructionJob | null> {
+    const job = await ReconstructionJob.findOne({ jobId });
+    if (!job) return null;
+
+    if (job.isPublic) {
+      return job; // Already public
+    }
+
+    if (job.storageKey) {
+      const storageAdapter = getReconstructionStorageAdapter();
+      if (typeof (storageAdapter as any).publishGLB === 'function') {
+        const publishResult = await (storageAdapter as any).publishGLB(job.storageKey);
+        if (publishResult) {
+          job.modelUrl = publishResult.url;
+        }
+      } else {
+        job.modelUrl = await storageAdapter.getDeliveryUrl(job.storageKey, true);
+      }
+    }
+
+    job.isPublic = true;
+    job.metadata = {
+      ...job.metadata,
+      publishedAt: new Date().toISOString(),
+      publishedBy: requestedByUserId
+    };
+    await job.save();
+
     return job;
   }
 }

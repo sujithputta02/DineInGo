@@ -13,8 +13,9 @@ export interface StorageSaveResult {
 
 export interface IReconstructionStorageAdapter {
   saveGLB(buffer: Buffer, requestedFilename?: string, isPublic?: boolean): Promise<StorageSaveResult>;
-  getGLB(storageKey: string): Promise<Buffer | null>;
-  deleteGLB(storageKey: string): Promise<boolean>;
+  getGLB(storageKey: string, isPublic?: boolean): Promise<Buffer | null>;
+  deleteGLB(storageKey: string, isPublic?: boolean): Promise<boolean>;
+  publishGLB?(storageKey: string): Promise<StorageSaveResult | null>;
   getDeliveryUrl(storageKey: string, isPublic?: boolean, ttlSeconds?: number): Promise<string> | string;
   isDurable(): boolean;
 }
@@ -43,7 +44,7 @@ async function getCloudinaryClient(): Promise<any> {
  * Enforces explicit public vs authenticated access control:
  * - Public catalog assets (isPublic = true) use delivery type 'upload' (accessible via CDN)
  * - Private user-generated assets (isPublic = false) use delivery type 'authenticated'
- *   and require cryptographic HMAC signatures for retrieval, preventing unauthorized enumeration.
+ *   with genuine time-limiting (via auth_token or DineInGo backend proxy with HMAC expiry).
  */
 export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
   isDurable(): boolean {
@@ -70,24 +71,13 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
 
       const uploadStream = cl.uploader.upload_stream(
         uploadOptions,
-        (error: any, result: any) => {
+        async (error: any, result: any) => {
           if (error || !result) {
             return reject(new Error(`Cloudinary upload failed: ${error?.message || 'Unknown error'}`));
           }
 
           const actualPublicId = result.public_id || fullPublicId;
-          const deliveryUrl = isPublic
-            ? (result.secure_url || cl.url(actualPublicId, {
-                resource_type: 'raw',
-                type: 'upload',
-                secure: true
-              }))
-            : cl.url(actualPublicId, {
-                resource_type: 'raw',
-                type: 'authenticated',
-                sign_url: true,
-                secure: true
-              });
+          const deliveryUrl = await this.getDeliveryUrl(actualPublicId, isPublic);
 
           resolve({
             url: deliveryUrl,
@@ -103,7 +93,7 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
     });
   }
 
-  async getGLB(storageKey: string): Promise<Buffer | null> {
+  async getGLB(storageKey: string, isPublic = false): Promise<Buffer | null> {
     try {
       const cleanKey = storageKey
         .replace(/^dineingo\/reconstructions\//, '')
@@ -111,39 +101,58 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
       const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
       const cl = await getCloudinaryClient();
 
-      // Attempt 1: Fetch using authenticated signed URL (for private user assets)
+      if (isPublic) {
+        const publicUrl = cl.url(fullPublicId, {
+          resource_type: 'raw',
+          type: 'upload',
+          secure: true
+        });
+        const res = await fetch(publicUrl);
+        if (!res.ok) return null;
+        return Buffer.from(await res.arrayBuffer());
+      }
+
+      // Private asset retrieval: strictly use authenticated signed URL.
+      // Under NO circumstances fall back to public upload delivery when authenticated retrieval fails.
       const signedUrl = cl.url(fullPublicId, {
         resource_type: 'raw',
         type: 'authenticated',
         sign_url: true,
         secure: true
       });
-      let res = await fetch(signedUrl);
-
-      // Attempt 2: If rejected, fallback to public upload delivery URL (for public catalog assets)
+      const res = await fetch(signedUrl);
       if (!res.ok) {
-        const publicUrl = cl.url(fullPublicId, {
-          resource_type: 'raw',
-          type: 'upload',
-          secure: true
-        });
-        res = await fetch(publicUrl);
+        return null;
       }
-
-      if (!res.ok) return null;
       return Buffer.from(await res.arrayBuffer());
     } catch {
       return null;
     }
   }
 
-  async deleteGLB(storageKey: string): Promise<boolean> {
+  async deleteGLB(storageKey: string, isPublic?: boolean): Promise<boolean> {
     try {
       const cleanKey = storageKey
         .replace(/^dineingo\/reconstructions\//, '')
         .replace(/\.glb$/i, '');
       const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
       const cl = await getCloudinaryClient();
+
+      if (isPublic === true) {
+        const pubRes = await cl.uploader.destroy(fullPublicId, {
+          resource_type: 'raw',
+          type: 'upload'
+        });
+        return Boolean(pubRes && pubRes.result === 'ok');
+      }
+
+      if (isPublic === false) {
+        const authRes = await cl.uploader.destroy(fullPublicId, {
+          resource_type: 'raw',
+          type: 'authenticated'
+        });
+        return Boolean(authRes && authRes.result === 'ok');
+      }
 
       const authRes = await cl.uploader.destroy(fullPublicId, {
         resource_type: 'raw',
@@ -163,6 +172,68 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
     }
   }
 
+  /**
+   * Migrates a private authenticated asset to public CDN delivery when published to the catalog.
+   */
+  async publishGLB(storageKey: string): Promise<StorageSaveResult | null> {
+    try {
+      const cleanKey = storageKey
+        .replace(/^dineingo\/reconstructions\//, '')
+        .replace(/\.glb$/i, '');
+      const fullPublicId = `dineingo/reconstructions/${cleanKey}.glb`;
+      const cl = await getCloudinaryClient();
+
+      // 1. Fetch existing private asset using authenticated credentials
+      const buffer = await this.getGLB(storageKey, false);
+      if (!buffer) {
+        return null;
+      }
+
+      // 2. Re-upload as public upload delivery type to allow standard CDN delivery
+      const result: any = await new Promise((resolve, reject) => {
+        const uploadStream = cl.uploader.upload_stream(
+          {
+            folder: 'dineingo/reconstructions',
+            public_id: `${cleanKey}.glb`,
+            resource_type: 'raw',
+            type: 'upload',
+            access_mode: 'public',
+            overwrite: true
+          },
+          (error: any, uploadResult: any) => {
+            if (error || !uploadResult) {
+              return reject(error || new Error('Publish upload failed'));
+            }
+            resolve(uploadResult);
+          }
+        );
+        uploadStream.end(buffer);
+      });
+
+      // 3. Remove old private authenticated copy
+      await cl.uploader.destroy(fullPublicId, {
+        resource_type: 'raw',
+        type: 'authenticated'
+      }).catch(() => {});
+
+      const deliveryUrl = result.secure_url || cl.url(result.public_id || fullPublicId, {
+        resource_type: 'raw',
+        type: 'upload',
+        secure: true
+      });
+
+      return {
+        url: deliveryUrl,
+        storageType: 'cloudinary',
+        storageKey: `${cleanKey}.glb`,
+        byteSize: result.bytes || buffer.length,
+        isDurable: true
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async getDeliveryUrl(storageKey: string, isPublic = false, ttlSeconds = 86400): Promise<string> {
     const cleanKey = storageKey
       .replace(/^dineingo\/reconstructions\//, '')
@@ -178,21 +249,29 @@ export class CloudinaryStorageAdapter implements IReconstructionStorageAdapter {
       });
     }
 
-    const options: Record<string, any> = {
-      resource_type: 'raw',
-      type: 'authenticated',
-      sign_url: true,
-      secure: true
-    };
-
+    // 1. If CLOUDINARY_AUTH_TOKEN_KEY is configured, generate direct token-expiring URLs
+    //    which Cloudinary CDN enforces at the edge: ?__cld_token__=exp=...~hmac=...
     if (process.env.CLOUDINARY_AUTH_TOKEN_KEY) {
-      options.auth_token = {
-        key: process.env.CLOUDINARY_AUTH_TOKEN_KEY,
-        duration: ttlSeconds
-      };
+      return cl.url(fullPublicId, {
+        resource_type: 'raw',
+        type: 'authenticated',
+        sign_url: true,
+        secure: true,
+        auth_token: {
+          key: process.env.CLOUDINARY_AUTH_TOKEN_KEY,
+          duration: ttlSeconds
+        }
+      });
     }
 
-    return cl.url(fullPublicId, options);
+    // 2. If CLOUDINARY_AUTH_TOKEN_KEY is not configured:
+    // Cloudinary sign_url: true alone only signs the path with s--...-- without timestamp expiration.
+    // To ensure genuine cryptographic time-limiting without leaking secrets, route through
+    // DineInGo's backend-proxied HMAC-signed URL with cryptographic expiry:
+    // /api/v1/reconstruction/assets/${filename}?sig=...&exp=...
+    const filename = `${cleanKey}.glb`;
+    const { signedQuery } = signAssetUrl(filename, ttlSeconds);
+    return `/api/v1/reconstruction/assets/${filename}?${signedQuery}`;
   }
 }
 
@@ -240,7 +319,26 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
     };
   }
 
-  async getGLB(storageKey: string): Promise<Buffer | null> {
+  async publishGLB(storageKey: string): Promise<StorageSaveResult | null> {
+    if (!isValidAssetFilename(storageKey)) {
+      return null;
+    }
+    const targetPath = path.join(RECONSTRUCTION_STORAGE_DIR, storageKey);
+    if (!fs.existsSync(targetPath)) {
+      return null;
+    }
+    const stat = fs.statSync(targetPath);
+    const publicUrl = this.getDeliveryUrl(storageKey, true);
+    return {
+      url: publicUrl,
+      storageType: 'local',
+      storageKey,
+      byteSize: stat.size,
+      isDurable: this.persistent
+    };
+  }
+
+  async getGLB(storageKey: string, isPublic?: boolean): Promise<Buffer | null> {
     if (!isValidAssetFilename(storageKey)) {
       return null;
     }
@@ -251,7 +349,7 @@ export class LocalDiskStorageAdapter implements IReconstructionStorageAdapter {
     return fs.readFileSync(targetPath);
   }
 
-  async deleteGLB(storageKey: string): Promise<boolean> {
+  async deleteGLB(storageKey: string, isPublic?: boolean): Promise<boolean> {
     if (!isValidAssetFilename(storageKey)) {
       return false;
     }
