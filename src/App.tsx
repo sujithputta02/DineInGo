@@ -5,6 +5,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import LandingPage from './LandingPage';
 import CheckInPage from './pages/CheckInPage';
 const ARMenuPage = React.lazy(() => import('./pages/ARMenuPage'));
+const ARDemoPage = React.lazy(() => import('./pages/ARDemoPage'));
 import BusinessLandingPage from './BusinessLandingPage';
 import LoginPage from './LoginPage';
 import SignupPage from './SignupPage';
@@ -223,6 +224,11 @@ function App() {
                 <Route path="/auth/impersonate" element={<ImpersonationHandler />} />
                 <Route path="/onboarding" element={<OnboardingPage />} />
                 <Route path="/check-in/:bookingId" element={<CheckInPage />} />
+                {/* Dedicated Public AR Demo Route (Shareable without booking or login) */}
+                <Route path="/ar-demo" element={<ARDemoPage />} />
+                <Route path="/demo/ar" element={<Navigate to="/ar-demo" replace />} />
+                <Route path="/ar-experience/demo" element={<Navigate to="/ar-demo" replace />} />
+
                 <Route 
                   path="/ar-experience/:bookingId" 
                   element={

@@ -116,7 +116,8 @@ export const createMenuItem = async (req: Request, res: Response): Promise<void>
             preparationTime,
             calories,
             spiceLevel,
-            displayOrder
+            displayOrder,
+            modelUrl
         } = req.body;
 
         const menuItem = new MenuItem({
@@ -126,6 +127,7 @@ export const createMenuItem = async (req: Request, res: Response): Promise<void>
             description,
             price,
             image,
+            modelUrl,
             dietaryTags: dietaryTags || [],
             allergens: allergens || [],
             preparationTime,

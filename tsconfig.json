@@ -46,6 +46,7 @@
     "node_modules",
     ".next",
     "src/pages/api",
-    "server"
+    "server",
+    "src/backend"
   ]
 }
