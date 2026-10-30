@@ -1,17 +1,17 @@
 import dotenv from 'dotenv';
 import path from 'path';
 import fs from 'fs';
+import { createRequire } from 'module';
 
-// Load backend environment variables
+// Load environment variables before loading backend modules
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 dotenv.config({ path: path.resolve(process.cwd(), 'backend/.env') });
 
-import { createRequire } from 'module';
-const require = createRequire(process.cwd() + '/index.js');
+const require = createRequire(path.resolve(process.cwd(), 'scripts/test-live-hf-reconstruction.ts'));
 
-const { HuggingFaceTripoSRProvider } = require('./backend/src/services/reconstructionService.ts');
-const { extractGlbDimensions } = require('./backend/src/utils/glbDimensionExtractor.ts');
-const { getReconstructionStorageAdapter, LocalDiskStorageAdapter } = require('./backend/src/services/reconstructionStorageAdapter.ts');
-const { signAssetUrl, verifyAssetSignature } = require('./backend/src/utils/assetSecurity.ts');
+const { HuggingFaceTripoSRProvider } = require('../backend/src/services/reconstructionService.ts');
+const { getReconstructionStorageAdapter } = require('../backend/src/services/reconstructionStorageAdapter.ts');
+const { signAssetUrl, verifyAssetSignature } = require('../backend/src/utils/assetSecurity.ts');
 
 async function runLiveIntegrationTest() {
   console.log('================================================================================');
@@ -85,7 +85,8 @@ async function runLiveIntegrationTest() {
   console.log(`  Height: ${(result.dimensions.heightMeters * 100).toFixed(1)} cm`);
   console.log(`  Depth: ${(result.dimensions.depthMeters * 100).toFixed(1)} cm`);
   console.log(`  Tabletop contact plane aligned: ${result.contactPlaneAligned ? 'YES 🟢' : 'NO 🔴'}`);
-  console.log(`  Total mesh vertices: ${result.metadata?.totalVertices}`);
+  console.log(`  Total mesh vertices: ${result.metadata?.vertexCount || result.metadata?.totalVertices || 'N/A'}`);
+  console.log(`  Total mesh faces: ${result.metadata?.faceCount || result.metadata?.totalFaces || 'N/A'}`);
 
   // 5. Test Asset Access Control & URL Signing
   console.log('\n[Step 5/6] Verifying asset access control and HMAC signed token...');
