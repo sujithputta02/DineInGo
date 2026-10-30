@@ -10,11 +10,17 @@ import {
   ExternalLink,
   Flame,
   Building2,
-  Info
+  Info,
+  ScanLine,
+  Camera,
+  Box
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import { ARViewer } from './ARViewer';
 import { QRCodeModal } from './QRCodeModal';
+import { QRScannerModal } from './QRScannerModal';
+import { FoodCaptureModal } from './FoodCaptureModal';
 import ARMenuSection from './ARMenuSection';
 import {
   DEMO_MENU_ITEMS,
@@ -48,14 +54,15 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
   const [activeTab, setActiveTab] = useState<'3d-menu' | 'vision-scanner'>('3d-menu');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [isQRScannerOpen, setIsQRScannerOpen] = useState(false);
+  const [isFoodCaptureOpen, setIsFoodCaptureOpen] = useState(false);
+  const [reconstructedDishes, setReconstructedDishes] = useState<ResolvableDish[]>([]);
 
-  // Use provided dishes or fall back to curated verified demo dishes with real 3D models
+  // Use provided dishes + any newly reconstructed dishes or fallback to curated verified demo dishes
   const effectiveDishes: ResolvableDish[] = useMemo(() => {
-    if (menuItems && menuItems.length > 0) {
-      return menuItems;
-    }
-    return DEMO_MENU_ITEMS;
-  }, [menuItems]);
+    const base = (menuItems && menuItems.length > 0) ? menuItems : DEMO_MENU_ITEMS;
+    return [...reconstructedDishes, ...base];
+  }, [menuItems, reconstructedDishes]);
 
   // Selected dish ID state
   const [selectedDishId, setSelectedDishId] = useState<string>(() => {
@@ -93,6 +100,48 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
     ? `${window.location.origin}/ar-demo${selectedDishId ? `?dish=${selectedDishId}` : ''}`
     : 'https://dineingo.com/ar-demo';
 
+  // Handle successful QR scan
+  const handleScanSuccess = (payload: any) => {
+    setIsQRScannerOpen(false);
+
+    if (payload.dishId) {
+      const matched = effectiveDishes.find(
+        (d) => (d.id || d._id) === payload.dishId || d.name?.toLowerCase().includes(payload.dishId.toLowerCase())
+      );
+      if (matched) {
+        setSelectedDishId(matched._id || matched.id);
+        setActiveTab('3d-menu');
+        toast.success(`Loaded "${matched.name}" in 3D AR Viewer!`);
+        return;
+      }
+    }
+
+    if (payload.targetRoute) {
+      navigate(payload.targetRoute);
+    }
+  };
+
+  // Handle successful 3D model reconstruction with Hugging Face
+  const handleReconstructedModelReady = (modelUrl: string, dishName: string) => {
+    const newDish: ResolvableDish = {
+      id: `recon-${Date.now()}`,
+      name: dishName,
+      modelUrl: modelUrl,
+      categoryName: 'AI 3D Reconstruction',
+      price: 0,
+      description: `Reconstructed 3D food model synthesized from photo with Hugging Face ZeroGPU TripoSR.`,
+      dietaryTags: ['3D Reconstructed'],
+      calories: 320,
+      isDemoDish: false
+    };
+
+    setReconstructedDishes((prev) => [newDish, ...prev]);
+    setSelectedDishId(newDish.id!);
+    setActiveTab('3d-menu');
+    setIsFoodCaptureOpen(false);
+    toast.success(`🎉 3D model of "${dishName}" reconstructed with Hugging Face! Ready to explore in AR.`);
+  };
+
   return (
     <div className={`space-y-6 ${isDarkMode ? 'text-white' : 'text-gray-900'} font-['Outfit',sans-serif]`}>
       
@@ -126,38 +175,58 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
             </h1>
             <p className="text-xs sm:text-sm text-gray-400 mt-1 flex items-center gap-2">
               <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
-              <span>Explore realistic 3D dish twins, calibrate tabletop AR, and analyze nutritional composition.</span>
+              <span>Scan table QR codes to view dishes in AR, or take a food photo to reconstruct an authentic 3D model using Hugging Face AI.</span>
             </p>
           </div>
 
           {/* Action Controls & Tab Switcher */}
-          <div className="flex items-center gap-2 self-stretch md:self-auto justify-end">
+          <div className="flex items-center flex-wrap gap-2 self-stretch md:self-auto justify-end">
             
+            {/* Scan Table QR Button */}
+            <button
+              onClick={() => setIsQRScannerOpen(true)}
+              className="px-3 py-2 rounded-2xl bg-zinc-800 hover:bg-emerald-600 text-white border border-white/10 transition-all flex items-center justify-center gap-1.5 text-xs font-bold hover:scale-105 shadow-md"
+              title="Scan Table or Dish QR Code to view in AR"
+            >
+              <ScanLine size={15} className="text-emerald-400" />
+              <span>Scan Table QR</span>
+            </button>
+
+            {/* Hugging Face AI 3D Reconstruction Button */}
+            <button
+              onClick={() => setIsFoodCaptureOpen(true)}
+              className="px-3.5 py-2 rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-95 text-white border border-white/20 transition-all flex items-center justify-center gap-1.5 text-xs font-bold hover:scale-105 shadow-lg shadow-purple-600/30"
+              title="Snap food photo to reconstruct a 3D model with Hugging Face"
+            >
+              <Sparkles size={15} />
+              <span>AI 3D Reconstruct</span>
+            </button>
+
             {/* Tab Switcher Pills */}
             <div className={`p-1.5 rounded-2xl flex items-center gap-1 border ${
               isDarkMode ? 'bg-zinc-950/70 border-white/10' : 'bg-gray-100 border-gray-200'
             }`}>
               <button
                 onClick={() => setActiveTab('3d-menu')}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all ${
                   activeTab === '3d-menu'
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-600/30'
                     : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'
                 }`}
               >
-                <UtensilsCrossed size={14} />
-                <span>3D / AR Menu</span>
+                <UtensilsCrossed size={13} />
+                <span>3D Menu</span>
               </button>
 
               <button
                 onClick={() => setActiveTab('vision-scanner')}
-                className={`px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex items-center gap-1.5 transition-all ${
                   activeTab === 'vision-scanner'
                     ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-600/30'
                     : isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-black'
                 }`}
               >
-                <Scan size={14} />
+                <Scan size={13} />
                 <span>Vision Scanner</span>
               </button>
             </div>
@@ -165,21 +234,11 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
             {/* Share Modal Trigger */}
             <button
               onClick={() => setIsShareModalOpen(true)}
-              className="p-3 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 transition-all flex items-center justify-center hover:scale-105"
+              className="p-2.5 rounded-2xl bg-zinc-800 hover:bg-zinc-700 text-white border border-white/10 transition-all flex items-center justify-center hover:scale-105"
               title="Share Table AR Experience"
               aria-label="Share Table AR Experience"
             >
               <Share2 size={16} />
-            </button>
-
-            {/* Public Demo Link */}
-            <button
-              onClick={() => navigate('/ar-demo')}
-              className="hidden sm:flex p-3 rounded-2xl bg-zinc-800/60 hover:bg-zinc-700 text-gray-300 hover:text-white border border-white/10 transition-all items-center gap-1.5 text-xs font-bold"
-              title="Open Fullscreen AR Showcase"
-            >
-              <ExternalLink size={14} />
-              <span>Showcase</span>
             </button>
 
           </div>
@@ -203,15 +262,23 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
             
             <div className="flex items-center justify-between px-2 text-xs text-gray-400">
               <span className="flex items-center gap-1.5">
-                <Smartphone size={13} className="text-purple-400" />
-                <span>On Android (Chrome) or iOS (Safari), tap <strong>View in Your Space</strong> for tabletop AR.</span>
+                <Smartphone size={13} className="text-purple-400 shrink-0" />
+                <span>Tap <strong>View in Your Space</strong> on iOS Safari or Android Chrome for tabletop AR.</span>
               </span>
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="text-purple-400 hover:text-purple-300 font-bold underline flex items-center gap-1"
-              >
-                <Share2 size={12} /> Mobile QR
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsQRScannerOpen(true)}
+                  className="text-emerald-400 hover:text-emerald-300 font-bold flex items-center gap-1"
+                >
+                  <ScanLine size={12} /> Scan QR
+                </button>
+                <button
+                  onClick={() => setIsShareModalOpen(true)}
+                  className="text-purple-400 hover:text-purple-300 font-bold underline flex items-center gap-1"
+                >
+                  <Share2 size={12} /> Mobile QR
+                </button>
+              </div>
             </div>
           </div>
 
@@ -282,7 +349,7 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
                           {dish.name}
                         </h4>
                         <span className="text-sm font-black text-emerald-400 shrink-0">
-                          ${typeof dish.price === 'number' ? dish.price.toFixed(2) : dish.price}
+                          {dish.price ? `$${typeof dish.price === 'number' ? dish.price.toFixed(2) : dish.price}` : 'AI Model'}
                         </span>
                       </div>
 
@@ -337,10 +404,12 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
           translations={translations}
           menuItems={effectiveDishes}
           isLoading={isLoading}
+          onOpenQRScanner={() => setIsQRScannerOpen(true)}
+          onOpenFoodReconstruction={() => setIsFoodCaptureOpen(true)}
         />
       )}
 
-      {/* Share Table Experience QR Modal */}
+      {/* Table Share Modal */}
       <QRCodeModal
         isOpen={isShareModalOpen}
         onClose={() => setIsShareModalOpen(false)}
@@ -349,9 +418,24 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
         subtitle={`Let friends at your table explore ${restaurantName}'s menu in 3D and place dishes in real AR.`}
       />
 
+      {/* Cross-Device QR Scanner Modal (PC & Mobile) */}
+      <QRScannerModal
+        isOpen={isQRScannerOpen}
+        onClose={() => setIsQRScannerOpen(false)}
+        onScanSuccess={handleScanSuccess}
+        title="Scan Table or Dish QR Code"
+        subtitle="Point your camera or upload a QR code image to immediately open the dish in 3D AR."
+      />
+
+      {/* Hugging Face AI 3D Reconstruction Modal */}
+      <FoodCaptureModal
+        isOpen={isFoodCaptureOpen}
+        onClose={() => setIsFoodCaptureOpen(false)}
+        onReconstructedModelReady={handleReconstructedModelReady}
+      />
+
     </div>
   );
 };
 
 export default CustomerARSection;
-

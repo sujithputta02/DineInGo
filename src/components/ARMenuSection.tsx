@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle, Upload } from 'lucide-react';
+import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle, Upload, ScanLine } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
@@ -25,6 +25,8 @@ interface ARMenuSectionProps {
   translations: any;
   menuItems?: any[];
   isLoading?: boolean;
+  onOpenQRScanner?: () => void;
+  onOpenFoodReconstruction?: () => void;
 }
 
 interface NutritionInfo {
@@ -92,7 +94,9 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   isDarkMode,
   translations,
   menuItems = [],
-  isLoading = false
+  isLoading = false,
+  onOpenQRScanner,
+  onOpenFoodReconstruction
 }) => {
   // --- State ---
   const [isScanning, setIsScanning] = useState(false);
@@ -651,6 +655,22 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                 >
                   <Upload size={14} /> Upload Dish Photo
                 </button>
+                {onOpenQRScanner && (
+                  <button
+                    onClick={onOpenQRScanner}
+                    className="px-8 py-5 bg-zinc-800 text-emerald-400 rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-zinc-700 transition-all border border-white/5 flex items-center gap-2"
+                  >
+                    <ScanLine size={14} /> Scan Table QR
+                  </button>
+                )}
+                {onOpenFoodReconstruction && (
+                  <button
+                    onClick={onOpenFoodReconstruction}
+                    className="px-8 py-5 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:opacity-95 transition-all flex items-center gap-2 shadow-lg shadow-purple-600/30"
+                  >
+                    <Sparkles size={14} /> 3D AI Reconstruct
+                  </button>
+                )}
                 <button
                   onClick={() => setShowManualSelection(true)}
                   className="px-8 py-5 bg-zinc-800 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-zinc-700 transition-all border border-white/5"

@@ -13,22 +13,33 @@ import {
   ArrowRight,
   ShieldCheck,
   Info,
-  Scale
+  Scale,
+  RefreshCw,
+  Box,
+  Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-toastify';
 import { analyzeFoodImage, FoodAnalysisReport } from '../services/foodRecognitionService';
-import { VERIFIED_MODELS } from '../services/arModelService';
+import {
+  submitFoodReconstructionJob,
+  pollReconstructionJob,
+  type ReconstructionJobResponse
+} from '../services/reconstructionClientService';
+import { ARViewer } from './ARViewer';
 
 export interface FoodCaptureModalProps {
   isOpen: boolean;
   onClose: () => void;
   onConfirmDish?: (dishName: string, report: FoodAnalysisReport) => void;
+  onReconstructedModelReady?: (modelUrl: string, dishName: string, job?: ReconstructionJobResponse) => void;
 }
 
 export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
   isOpen,
   onClose,
-  onConfirmDish
+  onConfirmDish,
+  onReconstructedModelReady
 }) => {
   const navigate = useNavigate();
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -42,6 +53,12 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
   const [correctedName, setCorrectedName] = useState('');
   const [cameraError, setCameraError] = useState<string | null>(null);
 
+  // 3D Reconstruction states
+  const [isReconstructing, setIsReconstructing] = useState(false);
+  const [reconstructionProgress, setReconstructionProgress] = useState(0);
+  const [reconstructionStatus, setReconstructionStatus] = useState('');
+  const [reconstructedModelUrl, setReconstructedModelUrl] = useState<string | null>(null);
+
   const startCamera = async () => {
     setCameraError(null);
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -50,13 +67,24 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
     }
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: { ideal: 'environment' } }
-      });
+      let stream: MediaStream;
+      try {
+        // Try environment-facing rear camera first (mobile)
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' } }
+        });
+      } catch {
+        // Fallback to PC / Mac webcam
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+      }
+
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        videoRef.current.play().catch(() => {});
+        videoRef.current.setAttribute('playsinline', 'true');
+        await videoRef.current.play().catch(() => {});
       }
     } catch (err: any) {
       console.warn('[FoodCapture] Camera access failed:', err);
@@ -66,7 +94,11 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
 
   const stopCamera = () => {
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current.getTracks().forEach(t => {
+        try {
+          t.stop();
+        } catch {}
+      });
       streamRef.current = null;
     }
   };
@@ -107,6 +139,7 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
       processImage(dataUrl);
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const processImage = async (dataUrl: string, videoElement?: HTMLVideoElement) => {
@@ -126,7 +159,6 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
       setStep('review');
     } catch (err) {
       console.error('[FoodCapture] Analysis error:', err);
-      // Honest unrecognized report - never substitute French Onion Soup
       const honestFallback: FoodAnalysisReport = {
         primaryFood: {
           dishName: 'Unrecognized Dish',
@@ -157,14 +189,69 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
     }
   };
 
+  // Reconstruct 3D AR Model with Hugging Face ZeroGPU TripoSR Pipeline
+  const handleStart3DReconstruction = async () => {
+    const finalDishName = (isEditingName ? correctedName.trim() : report?.primaryFood.dishName) || 'Custom Dish';
+    setIsReconstructing(true);
+    setReconstructionProgress(15);
+    setReconstructionStatus('Uploading food photo to Hugging Face ZeroGPU...');
+
+    try {
+      const jobId = await submitFoodReconstructionJob({
+        dishName: finalDishName,
+        imageUrl: capturedImage || undefined
+      });
+
+      setReconstructionProgress(35);
+      setReconstructionStatus('ZeroGPU TripoSR generating 3D neural mesh...');
+
+      const result = await pollReconstructionJob(
+        jobId,
+        (progress, status) => {
+          setReconstructionProgress(Math.max(35, progress));
+          if (status === 'processing') {
+            setReconstructionStatus('Synthesizing 3D textures and tabletop surface bounds...');
+          }
+        },
+        50
+      );
+
+      if (result.status === 'completed' && result.modelUrl) {
+        setReconstructionProgress(100);
+        setReconstructedModelUrl(result.modelUrl);
+        setReconstructionStatus('3D Model generated successfully!');
+        toast.success(`3D model generated with Hugging Face TripoSR!`);
+
+        if (onReconstructedModelReady) {
+          onReconstructedModelReady(result.modelUrl, finalDishName, result);
+        }
+      } else {
+        throw new Error(result.error || 'Reconstruction did not complete.');
+      }
+    } catch (err: any) {
+      console.warn('[FoodCapture] 3D reconstruction notice:', err);
+      // If server returns error, notify user with honest feedback
+      toast.warn(err.message || 'ZeroGPU queue is busy. Fallback model available.');
+      setReconstructionStatus(err.message || 'ZeroGPU busy.');
+    } finally {
+      setIsReconstructing(false);
+    }
+  };
+
   const handleConfirmAndProceed = () => {
     const finalDishName = (isEditingName ? correctedName.trim() : report?.primaryFood.dishName) || 'Custom Dish';
-    
+
     if (onConfirmDish && report) {
       onConfirmDish(finalDishName, report);
     }
 
     onClose();
+
+    // If we have a reconstructed model, pass query or navigate
+    if (reconstructedModelUrl) {
+      navigate(`/ar-demo?dish=${encodeURIComponent(finalDishName)}&modelUrl=${encodeURIComponent(reconstructedModelUrl)}`);
+      return;
+    }
 
     // Map to known demo dish only if clearly matching, otherwise general view
     let targetParam = 'custom';
@@ -182,6 +269,9 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
     setCapturedImage(null);
     setReport(null);
     setIsEditingName(false);
+    setReconstructedModelUrl(null);
+    setIsReconstructing(false);
+    setReconstructionProgress(0);
     setStep('capture');
   };
 
@@ -199,12 +289,12 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
           {/* Header */}
           <div className="flex items-start justify-between">
             <div>
-              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-500/20 text-blue-400 text-xs font-black uppercase tracking-wider mb-2 border border-blue-500/30">
-                <Sparkles size={13} />
-                AI Vision Food Intelligence
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-purple-300 text-xs font-black uppercase tracking-wider mb-2 border border-purple-500/30">
+                <Sparkles size={13} className="text-purple-400" />
+                Hugging Face AI 3D Reconstruction
               </div>
-              <h3 className="text-xl font-black tracking-tight text-white">Food Recognition</h3>
-              <p className="text-xs text-gray-400 mt-1">Capture or upload food to identify nutrition and view in 3D AR.</p>
+              <h3 className="text-xl font-black tracking-tight text-white">Food Recognition & 3D AR</h3>
+              <p className="text-xs text-gray-400 mt-1">Capture or upload food to reconstruct a 3D model with Hugging Face TripoSR.</p>
             </div>
             <button
               onClick={onClose}
@@ -221,11 +311,11 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                 {cameraError ? (
                   <div className="p-6 text-center space-y-2">
                     <p className="text-sm font-semibold text-amber-300">Camera Unavailable</p>
-                    <p className="text-xs text-gray-400">{cameraError}</p>
+                    <p className="text-xs text-gray-400 leading-relaxed">{cameraError}</p>
                   </div>
                 ) : (
                   <>
-                    <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
+                    <video ref={videoRef} playsInline autoPlay muted className="w-full h-full object-cover" />
                     <div className="absolute inset-6 border border-white/30 rounded-xl pointer-events-none flex items-center justify-center">
                       <span className="text-[11px] font-bold text-white/60 bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
                         Center Dish in Frame
@@ -240,7 +330,7 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                 {!cameraError && (
                   <button
                     onClick={handleCapturePhoto}
-                    className="flex-1 py-3 px-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                    className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30"
                   >
                     <Camera size={16} />
                     <span>Snap Photo</span>
@@ -279,23 +369,23 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
           {step === 'analyzing' && (
             <div className="py-12 text-center space-y-4">
               <div className="relative mx-auto w-16 h-16">
-                <div className="w-16 h-16 rounded-full border-2 border-blue-500/20 border-t-blue-500 animate-spin" />
-                <Sparkles className="absolute inset-0 m-auto text-blue-400 animate-pulse" size={24} />
+                <div className="w-16 h-16 rounded-full border-2 border-purple-500/20 border-t-purple-500 animate-spin" />
+                <Sparkles className="absolute inset-0 m-auto text-purple-400 animate-pulse" size={24} />
               </div>
               <div>
                 <h4 className="text-base font-bold text-white">Analyzing Dish</h4>
-                <p className="text-xs text-blue-400 mt-1 font-mono">{analysisStatus}</p>
+                <p className="text-xs text-purple-400 mt-1 font-mono">{analysisStatus}</p>
               </div>
             </div>
           )}
 
-          {/* STEP 3: REVIEW & CONFIRM */}
+          {/* STEP 3: REVIEW & 3D RECONSTRUCTION */}
           {step === 'review' && report && (
             <div className="space-y-4">
               {/* Predicted Identity Header */}
               <div className="p-4 rounded-2xl bg-white/5 border border-white/10 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-blue-400">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-purple-400">
                     {report.primaryFood.category}
                   </span>
                   {report.primaryFood.confidence > 0 ? (
@@ -318,12 +408,12 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                       type="text"
                       value={correctedName}
                       onChange={(e) => setCorrectedName(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl bg-black border border-white/20 text-white font-bold text-sm focus:outline-none focus:border-blue-500"
+                      className="w-full px-3 py-2 rounded-xl bg-black border border-white/20 text-white font-bold text-sm focus:outline-none focus:border-purple-500"
                     />
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <h4 className="text-lg font-black text-white">{correctedName}</h4>
+                    <h4 className="text-lg font-black text-white">{correctedName || report.primaryFood.dishName}</h4>
                     <button
                       onClick={() => setIsEditingName(true)}
                       className="text-xs text-gray-400 hover:text-white flex items-center gap-1 transition-colors"
@@ -338,6 +428,64 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                   {report.primaryFood.visualEvidence}
                 </p>
               </div>
+
+              {/* RECONSTRUCTED MODEL PREVIEW IF FINISHED */}
+              {reconstructedModelUrl && (
+                <div className="p-4 rounded-2xl bg-purple-950/40 border border-purple-500/40 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black uppercase text-purple-300 flex items-center gap-1.5">
+                      <Sparkles size={14} className="text-purple-400" />
+                      Reconstructed 3D Food Model
+                    </span>
+                    <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      Hugging Face ZeroGPU
+                    </span>
+                  </div>
+                  
+                  <div className="h-56 w-full rounded-xl overflow-hidden bg-black border border-white/10">
+                    <ARViewer
+                      dish={{
+                        name: correctedName || report.primaryFood.dishName,
+                        modelUrl: reconstructedModelUrl
+                      }}
+                      showDetailsOverlay={false}
+                      autoRotateDefault={true}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* RECONSTRUCTION PROGRESS HUD */}
+              {isReconstructing && (
+                <div className="p-4 rounded-2xl bg-purple-900/30 border border-purple-500/30 space-y-3">
+                  <div className="flex items-center justify-between text-xs font-bold text-purple-300">
+                    <span className="flex items-center gap-2">
+                      <RefreshCw size={14} className="animate-spin text-purple-400" />
+                      {reconstructionStatus}
+                    </span>
+                    <span>{reconstructionProgress}%</span>
+                  </div>
+                  <div className="w-full h-2 bg-black/60 rounded-full overflow-hidden border border-white/10">
+                    <motion.div
+                      className="h-full bg-gradient-to-r from-purple-500 to-pink-500"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${reconstructionProgress}%` }}
+                      transition={{ ease: "easeInOut" }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Action: Reconstruct with Hugging Face TripoSR */}
+              {!reconstructedModelUrl && !isReconstructing && (
+                <button
+                  onClick={handleStart3DReconstruction}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 hover:opacity-95 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-xl shadow-purple-600/30 border border-white/20"
+                >
+                  <Sparkles size={15} />
+                  <span>Reconstruct 3D AR Model with Hugging Face AI</span>
+                </button>
+              )}
 
               {/* Portion Uncertainty & Visible Ingredients */}
               <div className="grid grid-cols-2 gap-3">
@@ -356,33 +504,10 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                     <span>3D Asset Status</span>
                   </div>
                   <p className="text-xs font-bold text-white">
-                    {report.primaryFood.matchedMenuItem?.hasModel ? 'Verified 3D Ready' : '3D Generation Available'}
+                    {reconstructedModelUrl ? 'Reconstructed 3D GLB Ready' : 'AI 3D Synthesis Ready'}
                   </p>
-                  <p className="text-[10px] text-emerald-400">Fixed Tabletop Scale</p>
+                  <p className="text-[10px] text-emerald-400">Tabletop Contact Aligned</p>
                 </div>
-              </div>
-
-              {/* Visible Ingredients */}
-              <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1.5">
-                <p className="text-[11px] font-bold text-gray-400 uppercase">Identified Ingredients:</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {report.primaryFood.visibleIngredients.map((ing, idx) => (
-                    <span key={idx} className="px-2 py-0.5 rounded-lg bg-white/10 text-gray-300 text-[11px]">
-                      {ing}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Undetermined Factors Notice */}
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <AlertTriangle size={13} />
-                  <span>Image Uncertainty Notice</span>
-                </div>
-                <p className="text-[11px] text-amber-200/80 leading-relaxed">
-                  Single photographs cannot reveal internal cooking fats, sodium, or exact sugar content. You can fine-tune portion size in the nutrition overlay.
-                </p>
               </div>
 
               {/* Confirmation CTA */}
@@ -396,9 +521,9 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
                 </button>
                 <button
                   onClick={handleConfirmAndProceed}
-                  className="flex-1 py-2.5 px-4 rounded-xl bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20"
+                  className="flex-1 py-2.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-black text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
                 >
-                  <span>Confirm Dish & Explore in AR</span>
+                  <span>{reconstructedModelUrl ? 'View Reconstructed Dish in AR' : 'Confirm Dish & Explore in AR'}</span>
                   <ArrowRight size={14} />
                 </button>
               </div>
@@ -409,3 +534,5 @@ export const FoodCaptureModal: React.FC<FoodCaptureModalProps> = ({
     </AnimatePresence>
   );
 };
+
+export default FoodCaptureModal;

@@ -55,6 +55,7 @@
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
     "jspdf": "^4.2.1",
+    "jsqr": "^1.4.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.331.0",
     "mixpanel-browser": "^2.77.0",
