@@ -67,7 +67,8 @@ import { VoiceSearchButton } from "../components/VoiceSearchButton";
 import mixpanel from "mixpanel-browser";
 import { SustainabilityBadge } from "../components/SustainabilityBadge";
 import AchievementsSection from "../components/AchievementsSection";
-import ARMenuSection from "../components/ARMenuSection";
+import CustomerARSection from "../components/CustomerARSection";
+import { DEMO_MENU_ITEMS } from "../services/arModelService";
 import { FeatureSticker } from "../components/FeatureSticker";
 import StarRating from "../components/StarRating";
 import EmojiPicker from "../components/EmojiPicker";
@@ -3723,15 +3724,30 @@ export default function DashboardPage() {
           setActiveSection('home');
           return null;
         }
-        return (
-          <ARMenuSection
-            isDarkMode={isDarkMode}
-            language={language}
-            translations={tProps as any}
-            menuItems={arMenuItems}
-            isLoading={isArMenuItemsLoading}
-          />
-        );
+        {
+          const arBooking =
+            bookings.find((b) => b.status === "confirmed" || b.status === "pending") ||
+            bookings[0];
+          const arRestaurantName =
+            (arBooking as any)?.restaurantName ||
+            (arBooking as any)?.businessName ||
+            (arBooking?.restaurantId as any)?.name ||
+            "L'Étoile Brasserie";
+          const arTableNumber = (arBooking as any)?.tableNumber;
+
+          return (
+            <CustomerARSection
+              isDarkMode={isDarkMode}
+              language={language}
+              translations={tProps as any}
+              menuItems={arMenuItems}
+              isLoading={isArMenuItemsLoading}
+              restaurantName={arRestaurantName}
+              tableNumber={arTableNumber}
+              userPreferences={(userData as any)?.preferences || null}
+            />
+          );
+        }
       case "pre-orders":
         if (!isEnabled('preOrders')) {
           if (shouldShow('preOrders')) {
@@ -3801,77 +3817,10 @@ export default function DashboardPage() {
             }
           }
 
-          // Fallback if all API calls return empty (common in dev environment)
-          setArMenuItems([
-            {
-              id: "m1",
-              name: "Truffle Burger",
-              description:
-                "Wagyu beef patty with truffle mayo, caramelized onions, and aged cheddar.",
-              price: 18.99,
-              ingredients: [
-                "Wagyu Beef",
-                "Truffle Mayo",
-                "Brioche Bun",
-                "Cheddar",
-              ],
-              allergens: ["Dairy", "Gluten", "Eggs"],
-              nutrition: {
-                calories: 850,
-                protein: 45,
-                carbs: 42,
-                fat: 55,
-                fiber: 3,
-                sodium: 920,
-              },
-              cookingMethod: "Grilled to perfection",
-              prepTime: 15,
-              spiceLevel: 1,
-              isVegetarian: false,
-              isVegan: false,
-              isGlutenFree: false,
-              sustainability: {
-                score: 85,
-                localIngredients: 70,
-                carbonFootprint: "Low",
-              },
-            },
-            {
-              id: "m2",
-              name: "Spicy Pasta",
-              description: "Penne arrabbiata with fresh basil and parmesan.",
-              price: 14.99,
-              ingredients: [
-                "Penne",
-                "Tomato Sauce",
-                "Chili",
-                "Garlic",
-                "Parmesan",
-              ],
-              allergens: ["Gluten", "Dairy"],
-              nutrition: {
-                calories: 650,
-                protein: 18,
-                carbs: 85,
-                fat: 22,
-                fiber: 6,
-                sodium: 750,
-              },
-              cookingMethod: "SautÃ©ed",
-              prepTime: 12,
-              spiceLevel: 3,
-              isVegetarian: true,
-              isVegan: false,
-              isGlutenFree: false,
-              sustainability: {
-                score: 92,
-                localIngredients: 85,
-                carbonFootprint: "Very Low",
-              },
-            },
-          ]);
+          // Fallback if all API calls return empty (verified 3D demo dishes with authentic models)
+          setArMenuItems(DEMO_MENU_ITEMS);
         } catch (err) {
-          // Error forcing initials avatar suppressed
+          setArMenuItems(DEMO_MENU_ITEMS);
         } finally {
           setIsArMenuItemsLoading(false);
         }
