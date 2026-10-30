@@ -31,10 +31,14 @@ async function runLiveIntegrationTest() {
 
   // 2. Load Real Food Image
   console.log('\n[Step 2/6] Loading real food input image...');
+  const repoFoodImgPath = path.resolve(process.cwd(), 'public/images/ar-demo/apple-tarte.jpg');
   const imageArtifactPath = '/Users/sujithputta/.gemini/antigravity-ide/brain/be871af0-71be-4b36-9a64-c416e2c2228b/apple_tarte_1792996224499.jpg';
 
   let imageBuffer: Buffer;
-  if (fs.existsSync(imageArtifactPath)) {
+  if (fs.existsSync(repoFoodImgPath)) {
+    imageBuffer = fs.readFileSync(repoFoodImgPath);
+    console.log(`  Loaded real food image (${imageBuffer.length} bytes): ${repoFoodImgPath}`);
+  } else if (fs.existsSync(imageArtifactPath)) {
     imageBuffer = fs.readFileSync(imageArtifactPath);
     console.log(`  Loaded real food image (${imageBuffer.length} bytes): ${imageArtifactPath}`);
   } else {
@@ -95,16 +99,8 @@ async function runLiveIntegrationTest() {
 
   // 6. Test Model Retrieval from Storage Adapter / CDN
   console.log('\n[Step 6/6] Retrieving model from persistent storage adapter / CDN...');
-  let retrievedGlb: Buffer | null = null;
-  if (result.storageType === 'cloudinary') {
-    const res = await fetch(result.modelUrl);
-    if (res.ok) {
-      retrievedGlb = Buffer.from(await res.arrayBuffer());
-    }
-  } else {
-    const adapter = getReconstructionStorageAdapter();
-    retrievedGlb = await adapter.getGLB(result.storageKey);
-  }
+  const adapter = getReconstructionStorageAdapter();
+  const retrievedGlb = await adapter.getGLB(result.storageKey);
 
   if (!retrievedGlb) {
     throw new Error(`Failed to retrieve GLB by key: ${result.storageKey}`);

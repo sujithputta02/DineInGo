@@ -376,6 +376,20 @@ export class HuggingFaceTripoSRProvider implements Food3DReconstructionProvider 
         };
       }
 
+      if (stage === 'SLEEPING' || stage === 'PAUSED') {
+        try {
+          await fetch(`https://huggingface.co/api/spaces/${spaceId}/restart`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+          });
+        } catch (_) {}
+        return {
+          ready: false,
+          host,
+          message: `Hugging Face Space "${spaceId}" was sleeping and is now waking up (restarting ZeroGPU container). Please retry in 30 seconds.`
+        };
+      }
+
       if (stage !== 'RUNNING') {
         return {
           ready: false,
@@ -501,7 +515,11 @@ export class HuggingFaceTripoSRProvider implements Food3DReconstructionProvider 
 
       const client = readiness.host.startsWith('https') ? https : http;
       const streamReq = client.get(`${readiness.host}/queue/data?session_hash=${sessionHash}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'text/event-stream',
+          'Cache-Control': 'no-cache'
+        }
       }, (streamRes) => {
         let buffer = '';
         streamRes.on('data', (chunk) => {
