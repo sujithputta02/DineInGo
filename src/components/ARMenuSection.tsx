@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle, Upload } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
@@ -16,6 +16,7 @@ import { getPersonalizedRecommendation, type UserProfile, type DishInfo } from '
 import { getNutritionForDish, estimateIndianDishNutrition } from '../services/usdaNutritionService';
 import { get3DVisualization } from '../services/free3DService';
 import { ARViewer } from './ARViewer';
+import { DEMO_MENU_ITEMS } from '../services/arModelService';
 
 // --- Types ---
 interface ARMenuSectionProps {
@@ -119,6 +120,13 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pendingStreamRef = useRef<MediaStream | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Guarantee dishes are never empty so "Browse Archive" and auto-matching always work
+  const effectiveDishes = useMemo(() => {
+    if (menuItems && menuItems.length > 0) return menuItems;
+    return DEMO_MENU_ITEMS;
+  }, [menuItems]);
 
   // Ref callback — fires the moment React mounts the <video> element
   const videoCallbackRef = (el: HTMLVideoElement | null) => {
@@ -162,13 +170,21 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   // --- Camera Controls ---
   const startCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      });
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+      } catch (camErr) {
+        // Fallback for laptop / desktop webcams without 'environment' rear camera
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true
+        });
+      }
       // Store stream so the ref callback can pick it up when video mounts
       pendingStreamRef.current = stream;
       setCameraStream(stream);
@@ -181,8 +197,85 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       }
     } catch (error) {
       console.error('Camera Error:', error);
-      toast.error('Camera permissions denied.');
+      toast.error('Camera permissions denied or webcam unavailable.');
     }
+  };
+
+  const analyzeImageBase64 = async (base64Data: string) => {
+    setIsProcessing(true);
+    setConfidence(0);
+    setActiveTier('Analyzing food photo...');
+    setActiveScanId(null);
+    setCapturedFrame(base64Data);
+    setAiRecommendation(null);
+
+    try {
+      const result = await identifyFoodFromCamera(
+        base64Data,
+        (tier) => {
+          setActiveTier(tier);
+          toast.info(tier, { autoClose: 1200, toastId: 'tier-status' });
+        },
+        base64Data
+      );
+
+      let finalResult = result;
+      if (!result && base64Data) {
+        setActiveTier('Trying Hugging Face Vision...');
+        const hfResult = await identifyFoodWithHF(
+          base64Data,
+          undefined,
+          effectiveDishes.map((item: any) => item.name)
+        );
+        if (hfResult) {
+          finalResult = {
+            label: hfResult.label,
+            confidence: hfResult.confidence,
+            tier: 'openrouter' as any,
+            imageData: base64Data
+          };
+        }
+      }
+
+      if (!finalResult) {
+        toast.warn("Dino 🦖 couldn't identify this dish. Please tell us what it is!");
+        setShowCorrection(true);
+        setCorrectionInput('');
+        return;
+      }
+
+      if (finalResult.scanId) setActiveScanId(finalResult.scanId);
+
+      const matched = matchLabelToMenu(finalResult.label, effectiveDishes);
+      if (matched && matched.score >= 0.15) {
+        setConfidence(Math.round(finalResult.confidence * 100));
+        await handleManualSelect(matched.item, true);
+        toast.success(`Identified: ${matched.item.name} via ${finalResult.tier}`);
+      } else {
+        toast.warn(`Detected "${finalResult.label}" — try selecting from the dish registry.`);
+        setShowManualSelection(true);
+      }
+    } catch (error) {
+      console.error('Vision analysis error:', error);
+      toast.error('Scan failed. Please try another image.');
+      setShowCorrection(true);
+      setCorrectionInput('');
+    } finally {
+      setIsProcessing(false);
+      setActiveTier('');
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result as string;
+      await analyzeImageBase64(base64);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
   };
 
   const fetchHistory = async () => {
@@ -251,7 +344,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
         const hfResult = await identifyFoodWithHF(
           cropBase64,
           undefined,
-          menuItems.map(item => item.name)
+          effectiveDishes.map((item: any) => item.name)
         );
         
         if (hfResult) {
@@ -277,7 +370,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       console.log(`[Vision] Result from ${finalResult.tier}:`, finalResult.label, finalResult.confidence);
 
       // Match AI label against the actual restaurant menu
-      const matched = matchLabelToMenu(finalResult.label, menuItems);
+      const matched = matchLabelToMenu(finalResult.label, effectiveDishes);
 
       if (matched && matched.score >= 0.15) {
         setConfidence(Math.round(finalResult.confidence * 100));
@@ -322,7 +415,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       setShowCorrection(false);
       setCorrectionInput('');
       
-      const matched = matchLabelToMenu(correctionInput, menuItems);
+      const matched = matchLabelToMenu(correctionInput, effectiveDishes);
       if (matched) handleManualSelect(matched.item);
     } catch (error: any) {
       console.error('Save Error:', error);
@@ -535,24 +628,38 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                 Instantly identify dishes and metadata using our hybrid local Neural Engine and Cloud AI.
               </p>
               
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept="image/*"
+                className="hidden"
+              />
+
+              <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
                 <button
                   onClick={startCamera}
                   disabled={engineStatus === 'loading'}
-                  className="px-12 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
+                  className="px-10 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                 >
                   <Camera className="w-5 h-5" />
                   Launch Scanner
                 </button>
                 <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-8 py-5 bg-zinc-800 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-zinc-700 transition-all border border-white/5 flex items-center gap-2"
+                >
+                  <Upload size={14} /> Upload Dish Photo
+                </button>
+                <button
                   onClick={() => setShowManualSelection(true)}
-                  className="px-10 py-5 bg-zinc-800 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-zinc-700 transition-all border border-white/5"
+                  className="px-8 py-5 bg-zinc-800 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-zinc-700 transition-all border border-white/5"
                 >
                   Browse Archive
                 </button>
                 <button
                   onClick={fetchHistory}
-                  className="px-10 py-5 bg-zinc-800/50 text-gray-400 rounded-full font-black uppercase tracking-widest text-[11px] hover:text-white transition-all border border-white/5 flex items-center gap-2"
+                  className="px-8 py-5 bg-zinc-800/50 text-gray-400 rounded-full font-black uppercase tracking-widest text-[11px] hover:text-white transition-all border border-white/5 flex items-center gap-2"
                 >
                   <Clock size={14} /> My History
                 </button>
@@ -647,18 +754,24 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
               </AnimatePresence>
             </div>
 
-            <div className="flex justify-center gap-4 mt-8">
+            <div className="flex flex-wrap justify-center gap-4 mt-8">
               <button
                 onClick={identifyDish}
                 disabled={isProcessing}
-                className="px-12 py-5 bg-white text-black rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-2xl disabled:opacity-50"
+                className="px-10 py-5 bg-white text-black rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-2xl disabled:opacity-50"
               >
                 <Scan className="w-5 h-5" />
                 Analyze Dish
               </button>
               <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-8 py-5 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all flex items-center gap-2"
+              >
+                <Upload size={14} /> Upload Instead
+              </button>
+              <button
                 onClick={stopCamera}
-                className="px-12 py-5 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all"
+                className="px-8 py-5 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all"
               >
                 Abort Mission
               </button>
@@ -898,7 +1011,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                 </button>
               </div>
               <div className="flex-1 overflow-y-auto p-10 space-y-4 scrollbar-hide">
-                {menuItems.map((dish) => (
+                {effectiveDishes.map((dish: any) => (
                   <button key={dish._id || dish.id} onClick={() => handleManualSelect(dish)} className="w-full p-8 bg-zinc-800/40 border border-white/5 rounded-[2rem] text-left hover:bg-purple-500/10 hover:border-purple-500/30 transition-all flex items-center justify-between group">
                     <div>
                       <p className="text-2xl font-black text-white group-hover:text-purple-400 transition-colors tracking-tight leading-none">{dish.name}</p>
