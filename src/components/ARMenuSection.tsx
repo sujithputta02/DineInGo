@@ -121,9 +121,15 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   const [isLoadingRecommendation, setIsLoadingRecommendation] = useState(false);
   const [showRecommendation, setShowRecommendation] = useState(false);
 
+  // Cross-device camera settings (mobile rear camera vs desktop webcam)
+  const isMobileDevice = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  const [facingMode, setFacingMode] = useState<'environment' | 'user'>(isMobileDevice ? 'environment' : 'user');
+  const [torchEnabled, setTorchEnabled] = useState(false);
+  const [hasTorch, setHasTorch] = useState(false);
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pendingStreamRef = useRef<MediaStream | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Guarantee dishes are never empty so "Browse Archive" and auto-matching always work
@@ -135,10 +141,18 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   // Ref callback — fires the moment React mounts the <video> element
   const videoCallbackRef = (el: HTMLVideoElement | null) => {
     videoRef.current = el;
-    if (el && pendingStreamRef.current) {
-      el.srcObject = pendingStreamRef.current;
-      el.play().catch(console.error);
-      pendingStreamRef.current = null;
+    if (el) {
+      el.muted = true;
+      el.playsInline = true;
+      el.setAttribute('playsinline', 'true');
+      el.setAttribute('muted', 'true');
+      const activeStream = streamRef.current;
+      if (activeStream && el.srcObject !== activeStream) {
+        el.srcObject = activeStream;
+        el.play().catch((err) => {
+          console.warn('[Camera] Autoplay deferred until user interaction:', err);
+        });
+      }
     }
   };
 
@@ -158,27 +172,49 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     initEngine();
   }, []);
 
-  // Ensure camera streams are completely stopped on unmount
+  // Ensure camera streams are completely stopped ONLY on actual component unmount
   useEffect(() => {
     return () => {
-      if (pendingStreamRef.current) {
-        pendingStreamRef.current.getTracks().forEach((track) => track.stop());
-        pendingStreamRef.current = null;
-      }
-      if (cameraStream) {
-        cameraStream.getTracks().forEach((track) => track.stop());
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
       }
     };
-  }, [cameraStream]);
+  }, []);
+
+  // Synchronize stream with video element whenever isScanning or stream changes
+  useEffect(() => {
+    if (isScanning && streamRef.current && videoRef.current) {
+      const el = videoRef.current;
+      const stream = streamRef.current;
+      el.muted = true;
+      el.playsInline = true;
+      el.setAttribute('playsinline', 'true');
+      el.setAttribute('muted', 'true');
+      if (el.srcObject !== stream) {
+        el.srcObject = stream;
+      }
+      if (el.paused) {
+        el.play().catch((err) => console.warn('[Camera] Play paused or blocked:', err));
+      }
+    }
+  }, [isScanning, cameraStream]);
 
   // --- Camera Controls ---
-  const startCamera = async () => {
+  const startCamera = async (overrideFacing?: 'environment' | 'user') => {
+    const targetFacing = overrideFacing || facingMode;
+    // Stop any existing stream before opening a new one
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+
     try {
       let stream: MediaStream;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: 'environment',
+            facingMode: { ideal: targetFacing },
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }
@@ -189,19 +225,51 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
           video: true
         });
       }
-      // Store stream so the ref callback can pick it up when video mounts
-      pendingStreamRef.current = stream;
+
+      streamRef.current = stream;
       setCameraStream(stream);
       setIsScanning(true);
-      // If video is already in DOM (e.g. re-scan), assign immediately
+
+      // Check for torch capability
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        const capabilities: any = typeof videoTrack.getCapabilities === 'function' ? videoTrack.getCapabilities() : {};
+        setHasTorch(Boolean(capabilities.torch));
+      }
+
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
+        videoRef.current.muted = true;
+        videoRef.current.playsInline = true;
+        videoRef.current.setAttribute('playsinline', 'true');
+        videoRef.current.setAttribute('muted', 'true');
         videoRef.current.play().catch(console.error);
-        pendingStreamRef.current = null;
       }
     } catch (error) {
       console.error('Camera Error:', error);
       toast.error('Camera permissions denied or webcam unavailable.');
+    }
+  };
+
+  const toggleCameraFacing = async () => {
+    const nextFacing = facingMode === 'environment' ? 'user' : 'environment';
+    setFacingMode(nextFacing);
+    await startCamera(nextFacing);
+  };
+
+  const toggleTorch = async () => {
+    if (!streamRef.current) return;
+    const track = streamRef.current.getVideoTracks()[0];
+    if (track && typeof track.applyConstraints === 'function') {
+      try {
+        const nextState = !torchEnabled;
+        await track.applyConstraints({
+          advanced: [{ torch: nextState } as any]
+        });
+        setTorchEnabled(nextState);
+      } catch (err) {
+        console.warn('Torch toggle failed:', err);
+      }
     }
   };
 
@@ -270,13 +338,68 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     }
   };
 
+  const resizeImageIfNeeded = (dataUrl: string, maxDim = 1280): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        if (img.width <= maxDim && img.height <= maxDim) {
+          resolve(dataUrl);
+          return;
+        }
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+        if (width > height) {
+          if (width > maxDim) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          }
+        } else {
+          if (height > maxDim) {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL('image/jpeg', 0.88));
+        } else {
+          resolve(dataUrl);
+        }
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file (JPEG, PNG, WebP).');
+      return;
+    }
+
+    // Stop active camera
+    stopCamera();
+
     const reader = new FileReader();
     reader.onload = async () => {
-      const base64 = reader.result as string;
-      await analyzeImageBase64(base64);
+      try {
+        const rawBase64 = reader.result as string;
+        const optimizedBase64 = await resizeImageIfNeeded(rawBase64, 1280);
+        await analyzeImageBase64(optimizedBase64);
+      } catch (err) {
+        console.error('Image processing error:', err);
+        toast.error('Could not process the uploaded photo.');
+      }
+    };
+    reader.onerror = () => {
+      toast.error('Failed to read image file.');
     };
     reader.readAsDataURL(file);
     e.target.value = '';
@@ -293,11 +416,16 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   };
 
   const stopCamera = () => {
-    if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
-      setCameraStream(null);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
     }
+    setCameraStream(null);
     setIsScanning(false);
+    setTorchEnabled(false);
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
   };
 
   // --- 3-Tier Vision Cascade + Hugging Face Enhancement ---
@@ -584,21 +712,44 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     );
   };
 
-  useEffect(() => {
-    // Fallback: assign srcObject if videoRef is available after render
-    if (isScanning && cameraStream && videoRef.current) {
-      if (!videoRef.current.srcObject) {
-        videoRef.current.srcObject = cameraStream;
-      }
-      if (videoRef.current.paused) {
-        videoRef.current.play().catch(console.error);
-      }
-    }
-  }, [isScanning, cameraStream]);
-
   // --- UI Components ---
   return (
     <div className="relative z-10 w-full max-w-7xl mx-auto space-y-8 pb-20">
+      {/* Permanent File Input for Reliable Uploads Across All Views */}
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileUpload}
+        accept="image/*"
+        className="hidden"
+      />
+
+      {/* Global Vision Processing Overlay */}
+      <AnimatePresence>
+        {isProcessing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[120] bg-zinc-950/85 backdrop-blur-2xl flex flex-col items-center justify-center p-6 text-center"
+          >
+            <div className="w-24 h-24 relative mb-8">
+              <div className="absolute inset-0 border-4 border-purple-500/10 rounded-full" />
+              <div className="absolute inset-0 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+            <p className="text-white font-black text-2xl sm:text-3xl tracking-tighter mb-2">Analyzing Food Image...</p>
+            <p className="text-sm font-bold text-purple-400 mb-6">{activeTier || 'Neural Vision Cascade in progress...'}</p>
+            <div className="w-72 sm:w-80 h-3 bg-white/5 rounded-full overflow-hidden border border-white/10">
+              <motion.div
+                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full shadow-[0_0_15px_rgba(168,85,247,0.8)]"
+                initial={{ width: 0 }}
+                animate={{ width: "100%" }}
+                transition={{ duration: 1.8, repeat: Infinity }}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Status Bar */}
       <div className="flex justify-center">
@@ -631,18 +782,10 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
               <p className="text-lg font-medium mb-12 text-gray-400">
                 Instantly identify dishes and metadata using our hybrid local Neural Engine and Cloud AI.
               </p>
-              
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept="image/*"
-                className="hidden"
-              />
 
               <div className="flex flex-col sm:flex-row flex-wrap items-center justify-center gap-4">
                 <button
-                  onClick={startCamera}
+                  onClick={() => startCamera()}
                   disabled={engineStatus === 'loading'}
                   className="px-10 py-5 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-full font-black uppercase tracking-widest text-[11px] hover:shadow-[0_0_50px_rgba(168,85,247,0.4)] transition-all flex items-center justify-center gap-3 active:scale-95 disabled:opacity-50"
                 >
@@ -699,11 +842,39 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                 autoPlay
                 playsInline
                 muted
-                className="w-full h-full object-cover opacity-90"
+                onLoadedMetadata={(e) => {
+                  e.currentTarget.play().catch(console.error);
+                }}
+                className="w-full h-full object-cover"
               />
 
               {/* HUD Elements */}
               <div className="absolute inset-0 pointer-events-none">
+                {/* Camera Quick Action Controls */}
+                <div className="absolute top-6 left-6 z-30 pointer-events-auto flex items-center gap-2">
+                  <button
+                    onClick={toggleCameraFacing}
+                    className="px-4 py-2 bg-black/60 hover:bg-black/80 text-white rounded-xl backdrop-blur-md border border-white/10 transition-all flex items-center gap-2 text-xs font-bold shadow-lg"
+                    title="Flip camera between front and back"
+                  >
+                    <RotateCcw className="w-4 h-4 text-purple-400" />
+                    <span>{facingMode === 'environment' ? 'Rear Camera' : 'Front Camera'}</span>
+                  </button>
+
+                  {hasTorch && (
+                    <button
+                      onClick={toggleTorch}
+                      className={`px-4 py-2 rounded-xl backdrop-blur-md border border-white/10 transition-all flex items-center gap-2 text-xs font-bold shadow-lg ${
+                        torchEnabled ? 'bg-amber-400 text-black border-amber-300' : 'bg-black/60 hover:bg-black/80 text-white'
+                      }`}
+                      title="Toggle camera flashlight"
+                    >
+                      {torchEnabled ? <Zap className="w-4 h-4 fill-current" /> : <ZapOff className="w-4 h-4 text-gray-400" />}
+                      <span>Torch</span>
+                    </button>
+                  )}
+                </div>
+
                 {/* Crosshair */}
                 {!isProcessing && (
                   <div className="absolute inset-0 flex items-center justify-center p-10">
@@ -723,7 +894,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                 )}
 
                 {/* Floating Meta Data Labels (Simulated) */}
-                <div className="absolute top-10 right-10 space-y-3">
+                <div className="absolute top-6 right-6 space-y-2 pointer-events-none">
                   <div className="px-4 py-2 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 flex items-center gap-3">
                     <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
                     <span className="text-[10px] font-black uppercase tracking-widest text-white">Neural Processing active</span>
