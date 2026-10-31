@@ -406,6 +406,7 @@ export const CustomerARSection: React.FC<CustomerARSectionProps> = ({
           isLoading={isLoading}
           onOpenQRScanner={() => setIsQRScannerOpen(true)}
           onOpenFoodReconstruction={() => setIsFoodCaptureOpen(true)}
+          userPreferences={userPreferences}
         />
       )}
 

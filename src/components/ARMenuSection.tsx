@@ -1,5 +1,5 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle, Upload, ScanLine } from 'lucide-react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import { Camera, Scan, Info, ChefHat, Leaf, Zap, Heart, X, RotateCcw, Sparkles, Box, Clock, ShieldCheck, ZapOff, TrendingUp, AlertTriangle, Upload, ScanLine, Play, CheckCircle2, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import {
@@ -17,6 +17,13 @@ import { getNutritionForDish, estimateIndianDishNutrition } from '../services/us
 import { get3DVisualization } from '../services/free3DService';
 import { ARViewer } from './ARViewer';
 import { DEMO_MENU_ITEMS } from '../services/arModelService';
+import {
+  evaluateDishMatch,
+  fetchAIPersonalizedSentence,
+  getSavedUserPreferences,
+  type DishMatchAnalysis,
+  type UserPreferencesContext
+} from '../services/personalizedDishScorer';
 
 // --- Types ---
 interface ARMenuSectionProps {
@@ -27,6 +34,7 @@ interface ARMenuSectionProps {
   isLoading?: boolean;
   onOpenQRScanner?: () => void;
   onOpenFoodReconstruction?: () => void;
+  userPreferences?: UserPreferencesContext | any;
 }
 
 interface NutritionInfo {
@@ -96,11 +104,13 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   menuItems = [],
   isLoading = false,
   onOpenQRScanner,
-  onOpenFoodReconstruction
+  onOpenFoodReconstruction,
+  userPreferences
 }) => {
   // --- State ---
   const [isScanning, setIsScanning] = useState(false);
   const [scannedDish, setScannedDish] = useState<any | null>(null);
+  const [dishMatch, setDishMatch] = useState<DishMatchAnalysis | null>(null);
   const [showNutrition, setShowNutrition] = useState(false);
   const [showIngredients, setShowIngredients] = useState(false);
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
@@ -124,6 +134,10 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
   // Cross-device camera settings (mobile rear camera vs desktop webcam)
   const isMobileDevice = typeof navigator !== 'undefined' && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
   const [facingMode, setFacingMode] = useState<'environment' | 'user'>(isMobileDevice ? 'environment' : 'user');
+  const [availableCameras, setAvailableCameras] = useState<MediaDeviceInfo[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string>('');
+  const [isCameraPaused, setIsCameraPaused] = useState(false);
+  const [isCapturingFlash, setIsCapturingFlash] = useState(false);
   const [torchEnabled, setTorchEnabled] = useState(false);
   const [hasTorch, setHasTorch] = useState(false);
 
@@ -138,7 +152,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     return DEMO_MENU_ITEMS;
   }, [menuItems]);
 
-  // Ref callback — fires the moment React mounts the <video> element
+  // Ref callback — attaches stream as soon as video element enters DOM
   const videoCallbackRef = (el: HTMLVideoElement | null) => {
     videoRef.current = el;
     if (el) {
@@ -149,8 +163,11 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       const activeStream = streamRef.current;
       if (activeStream && el.srcObject !== activeStream) {
         el.srcObject = activeStream;
-        el.play().catch((err) => {
+        el.play().then(() => {
+          setIsCameraPaused(false);
+        }).catch((err) => {
           console.warn('[Camera] Autoplay deferred until user interaction:', err);
+          setIsCameraPaused(true);
         });
       }
     }
@@ -182,6 +199,16 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     };
   }, []);
 
+  // Enumerate cameras when component mounts
+  useEffect(() => {
+    if (navigator.mediaDevices?.enumerateDevices) {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+        setAvailableCameras(videoInputs);
+      }).catch(console.warn);
+    }
+  }, []);
+
   // Synchronize stream with video element whenever isScanning or stream changes
   useEffect(() => {
     if (isScanning && streamRef.current && videoRef.current) {
@@ -194,15 +221,20 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       if (el.srcObject !== stream) {
         el.srcObject = stream;
       }
-      if (el.paused) {
-        el.play().catch((err) => console.warn('[Camera] Play paused or blocked:', err));
-      }
+      el.play().then(() => {
+        setIsCameraPaused(false);
+      }).catch((err) => {
+        console.warn('[Camera] Play paused or blocked:', err);
+        setIsCameraPaused(true);
+      });
     }
   }, [isScanning, cameraStream]);
 
   // --- Camera Controls ---
-  const startCamera = async (overrideFacing?: 'environment' | 'user') => {
+  const startCamera = async (overrideFacing?: 'environment' | 'user', overrideDeviceId?: string) => {
     const targetFacing = overrideFacing || facingMode;
+    const targetDeviceId = overrideDeviceId !== undefined ? overrideDeviceId : selectedCameraId;
+
     // Stop any existing stream before opening a new one
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
@@ -210,25 +242,54 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     }
 
     try {
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({
+      let constraints: MediaStreamConstraints;
+
+      if (targetDeviceId) {
+        constraints = {
+          video: {
+            deviceId: { exact: targetDeviceId },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+      } else if (isMobileDevice) {
+        constraints = {
           video: {
             facingMode: { ideal: targetFacing },
             width: { ideal: 1280 },
             height: { ideal: 720 }
           }
-        });
+        };
+      } else {
+        // Desktop / Mac / PC webcam
+        constraints = {
+          video: {
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        };
+      }
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
       } catch (camErr) {
-        // Fallback for laptop / desktop webcams without 'environment' rear camera
-        stream = await navigator.mediaDevices.getUserMedia({
-          video: true
-        });
+        // Fallback for laptop / desktop webcams
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
       }
 
       streamRef.current = stream;
       setCameraStream(stream);
       setIsScanning(true);
+      setIsCameraPaused(false);
+
+      // Refresh camera devices list
+      if (navigator.mediaDevices?.enumerateDevices) {
+        navigator.mediaDevices.enumerateDevices().then((devices) => {
+          const videoInputs = devices.filter((d) => d.kind === 'videoinput');
+          setAvailableCameras(videoInputs);
+        }).catch(console.warn);
+      }
 
       // Check for torch capability
       const videoTrack = stream.getVideoTracks()[0];
@@ -238,12 +299,18 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       }
 
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.muted = true;
-        videoRef.current.playsInline = true;
-        videoRef.current.setAttribute('playsinline', 'true');
-        videoRef.current.setAttribute('muted', 'true');
-        videoRef.current.play().catch(console.error);
+        const el = videoRef.current;
+        el.srcObject = stream;
+        el.muted = true;
+        el.playsInline = true;
+        el.setAttribute('playsinline', 'true');
+        el.setAttribute('muted', 'true');
+        el.play().then(() => {
+          setIsCameraPaused(false);
+        }).catch((err) => {
+          console.warn('[Camera] Play paused:', err);
+          setIsCameraPaused(true);
+        });
       }
     } catch (error) {
       console.error('Camera Error:', error);
@@ -251,10 +318,28 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     }
   };
 
+  const handleResumeVideo = async () => {
+    if (videoRef.current) {
+      try {
+        await videoRef.current.play();
+        setIsCameraPaused(false);
+      } catch (err) {
+        await startCamera();
+      }
+    } else {
+      await startCamera();
+    }
+  };
+
   const toggleCameraFacing = async () => {
     const nextFacing = facingMode === 'environment' ? 'user' : 'environment';
     setFacingMode(nextFacing);
     await startCamera(nextFacing);
+  };
+
+  const switchCameraDevice = async (deviceId: string) => {
+    setSelectedCameraId(deviceId);
+    await startCamera(facingMode, deviceId);
   };
 
   const toggleTorch = async () => {
@@ -271,6 +356,37 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
         console.warn('Torch toggle failed:', err);
       }
     }
+  };
+
+  const capturePhotoAndAnalyze = async () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+
+    if (video.videoWidth === 0 || video.videoHeight === 0 || video.paused) {
+      try {
+        await video.play();
+        setIsCameraPaused(false);
+      } catch (e) {
+        toast.warn('Please tap the screen to activate live camera feed.');
+        return;
+      }
+    }
+
+    // Trigger visual capture shutter flash
+    setIsCapturingFlash(true);
+    setTimeout(() => setIsCapturingFlash(false), 200);
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 1280;
+    canvas.height = video.videoHeight || 720;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const snapBase64 = canvas.toDataURL('image/jpeg', 0.88);
+    setCapturedFrame(snapBase64);
+
+    // Immediately run analysis with captured frame
+    await analyzeImageBase64(snapBase64);
   };
 
   const analyzeImageBase64 = async (base64Data: string) => {
@@ -430,97 +546,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
 
   // --- 3-Tier Vision Cascade + Hugging Face Enhancement ---
   const identifyDish = async () => {
-    if (!videoRef.current) return;
-    setIsProcessing(true);
-    setConfidence(0);
-    setActiveTier('');
-    setActiveScanId(null);
-    setCapturedFrame(null);
-    setAiRecommendation(null);
-
-    try {
-      // --- PRECISION CROP: Focus AI on the bounding box area ---
-      let cropBase64 = '';
-      if (videoRef.current) {
-        const video = videoRef.current;
-        const canvas = document.createElement('canvas');
-        
-        const cropSize = Math.min(video.videoWidth, video.videoHeight) * 0.7;
-        const sx = (video.videoWidth - cropSize) / 2;
-        const sy = (video.videoHeight - cropSize) / 2;
-        
-        canvas.width = 512;
-        canvas.height = 512;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, 512, 512);
-          cropBase64 = canvas.toDataURL('image/jpeg', 0.85);
-          setCapturedFrame(cropBase64);
-        }
-      }
-
-      // Try existing cascade first (Sarvam/OpenRouter/Local ML)
-      const result = await identifyFoodFromCamera(
-        videoRef.current,
-        (tier) => {
-          setActiveTier(tier);
-          toast.info(tier, { autoClose: 1200, toastId: 'tier-status' });
-        },
-        cropBase64
-      );
-
-      // If existing cascade fails, try Hugging Face as backup
-      let finalResult = result;
-      if (!result && cropBase64) {
-        setActiveTier('Trying Hugging Face Vision...');
-        const hfResult = await identifyFoodWithHF(
-          cropBase64,
-          undefined,
-          effectiveDishes.map((item: any) => item.name)
-        );
-        
-        if (hfResult) {
-          finalResult = {
-            label: hfResult.label,
-            confidence: hfResult.confidence,
-            tier: 'openrouter' as any, // Treat as similar tier
-            imageData: cropBase64
-          };
-          console.log('[HF] Identified:', hfResult.label);
-        }
-      }
-
-      if (!finalResult) {
-        toast.warn('Dino 🦖 couldn\'t identify this. Please tell us what it is!');
-        setShowCorrection(true);
-        setCorrectionInput('');
-        return;
-      }
-
-      if (finalResult.scanId) setActiveScanId(finalResult.scanId);
-
-      console.log(`[Vision] Result from ${finalResult.tier}:`, finalResult.label, finalResult.confidence);
-
-      // Match AI label against the actual restaurant menu
-      const matched = matchLabelToMenu(finalResult.label, effectiveDishes);
-
-      if (matched && matched.score >= 0.15) {
-        setConfidence(Math.round(finalResult.confidence * 100));
-        await handleManualSelect(matched.item, true); // Pass true to fetch real nutrition
-        toast.success(`Identified: ${matched.item.name} via ${finalResult.tier}`);
-      } else {
-        toast.warn(`Detected "${finalResult.label}" — but this specific dish isn't on this menu. Try selecting manually.`);
-      }
-
-    } catch (error) {
-      console.error('ID Error:', error);
-      toast.error('Scan failed. Ensure you have good lighting.');
-      setShowCorrection(true);
-      setCorrectionInput('');
-    } finally {
-      setIsProcessing(false);
-      setActiveTier('');
-    }
+    await capturePhotoAndAnalyze();
   };
 
   const submitCorrection = async () => {
@@ -592,7 +618,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
       ingredients: dish.ingredients || ['Artisan Flour', 'House Sauce', 'Organic Herbs'],
       allergens: dish.allergens || [],
       nutrition: nutritionData,
-      cookingMethod: dish.description || 'Modern molecular gastronomy preparation',
+      cookingMethod: dish.description || 'Modern culinary preparation',
       prepTime: dish.prepTime || 25,
       spiceLevel: dish.spiceLevel || 2,
       sustainability: dish.sustainability || { score: 9, localIngredients: 85, carbonFootprint: 'Ultra-Low' }
@@ -602,56 +628,41 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
     setShowManualSelection(false);
     stopCamera();
 
-    // Get AI recommendation (async, doesn't block UI)
-    if (fetchRealData) {
-      fetchAIRecommendation(mappedDish);
-    }
-  };
+    // 1. Instantly calculate Good Food Match percentage from user preferences (onboarding/settings)
+    const effectivePreferences = (userPreferences && (userPreferences.dietaryPreferences?.length || userPreferences.allergens?.length))
+      ? userPreferences
+      : getSavedUserPreferences();
 
-  // Fetch personalized AI recommendation
-  const fetchAIRecommendation = async (dish: any) => {
+    const instantMatch = evaluateDishMatch(mappedDish, effectivePreferences);
+    setDishMatch(instantMatch);
+
+    // 2. Fetch AI-enhanced sentence asynchronously with memory cache & zero rate limit
     setIsLoadingRecommendation(true);
-    try {
-      // Mock user profile - in production, this would come from user settings
-      const userProfile: UserProfile = {
-        dietary: ['vegetarian'], // Example
-        allergies: [],
-        healthGoals: ['balanced-diet'],
-        spicePreference: 'medium',
-        calorieTarget: 2000
-      };
-
-      const dishInfo: DishInfo = {
-        name: dish.name,
-        calories: dish.nutrition.calories,
-        protein: dish.nutrition.protein,
-        carbs: dish.nutrition.carbs,
-        fat: dish.nutrition.fat,
-        allergens: dish.allergens,
-        isVegetarian: dish.isVegetarian,
-        isVegan: dish.isVegan,
-        spiceLevel: dish.spiceLevel?.toString()
-      };
-
-      const recommendation = await getPersonalizedRecommendation(dishInfo, userProfile);
-      
-      if (recommendation) {
-        setAiRecommendation(recommendation);
-        setShowRecommendation(true);
-        toast.success('AI recommendation ready!', { autoClose: 2000 });
-      }
-    } catch (error) {
-      console.error('[AI Recommendation] Error:', error);
-    } finally {
-      setIsLoadingRecommendation(false);
-    }
+    fetchAIPersonalizedSentence(mappedDish, effectivePreferences, instantMatch.score, instantMatch.personalizedSentence)
+      .then((aiRes) => {
+        if (aiRes && aiRes.sentence) {
+          setDishMatch((prev) => prev ? {
+            ...prev,
+            personalizedSentence: aiRes.sentence,
+            isAI: aiRes.isAI
+          } : prev);
+        }
+      })
+      .catch((err) => {
+        console.warn('[AI Match] Async enhancement fallback used:', err);
+      })
+      .finally(() => {
+        setIsLoadingRecommendation(false);
+      });
   };
 
   const resetScan = () => {
     setScannedDish(null);
+    setDishMatch(null);
     setShowNutrition(false);
     setShowIngredients(false);
     setConfidence(0);
+    setCapturedFrame(null);
   };
 
   const renderNutritionChart = (nutrition: NutritionInfo) => {
@@ -836,22 +847,43 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
             animate={{ opacity: 1 }}
             className={`${isDarkMode ? 'bg-zinc-900/50 border border-white/5' : 'bg-white'} backdrop-blur-3xl rounded-[3rem] p-6 shadow-2xl relative overflow-hidden`}
           >
-            <div className="relative rounded-[2.5rem] overflow-hidden bg-black aspect-video sm:aspect-[21/9] border-4 border-white/5">
+            <div className="relative rounded-[2.5rem] overflow-hidden bg-black aspect-video sm:aspect-[21/9] border-4 border-white/5 flex items-center justify-center">
               <video
                 ref={videoCallbackRef}
                 autoPlay
                 playsInline
                 muted
+                onPlay={() => setIsCameraPaused(false)}
+                onPause={() => setIsCameraPaused(true)}
                 onLoadedMetadata={(e) => {
-                  e.currentTarget.play().catch(console.error);
+                  e.currentTarget.play().then(() => setIsCameraPaused(false)).catch(console.error);
                 }}
                 className="w-full h-full object-cover"
               />
 
+              {/* Shutter Flash Animation */}
+              {isCapturingFlash && (
+                <div className="absolute inset-0 bg-white z-40 pointer-events-none animate-ping" />
+              )}
+
+              {/* Camera Paused / Blocked Click-to-Play Overlay */}
+              {isCameraPaused && (
+                <div 
+                  onClick={handleResumeVideo}
+                  className="absolute inset-0 z-30 bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center cursor-pointer transition-all hover:bg-black/80"
+                >
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white mb-3 shadow-[0_0_30px_rgba(168,85,247,0.7)] transform hover:scale-110 active:scale-95 transition-transform">
+                    <Play className="w-7 h-7 fill-current ml-0.5" />
+                  </div>
+                  <p className="text-white font-black text-sm uppercase tracking-wider">Tap Screen to Activate Camera Stream</p>
+                  <p className="text-xs text-gray-400 mt-1 max-w-sm">Browser deferred autoplay video playback. Click anywhere inside this frame to activate video feed.</p>
+                </div>
+              )}
+
               {/* HUD Elements */}
               <div className="absolute inset-0 pointer-events-none">
                 {/* Camera Quick Action Controls */}
-                <div className="absolute top-6 left-6 z-30 pointer-events-auto flex items-center gap-2">
+                <div className="absolute top-6 left-6 z-30 pointer-events-auto flex flex-wrap items-center gap-2">
                   <button
                     onClick={toggleCameraFacing}
                     className="px-4 py-2 bg-black/60 hover:bg-black/80 text-white rounded-xl backdrop-blur-md border border-white/10 transition-all flex items-center gap-2 text-xs font-bold shadow-lg"
@@ -860,6 +892,22 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                     <RotateCcw className="w-4 h-4 text-purple-400" />
                     <span>{facingMode === 'environment' ? 'Rear Camera' : 'Front Camera'}</span>
                   </button>
+
+                  {/* Multiple Camera Device Selector */}
+                  {availableCameras.length > 1 && (
+                    <select
+                      value={selectedCameraId}
+                      onChange={(e) => switchCameraDevice(e.target.value)}
+                      className="px-3 py-2 bg-black/70 text-white text-xs font-bold rounded-xl border border-white/10 backdrop-blur-md focus:outline-none focus:ring-1 focus:ring-purple-500 shadow-lg"
+                    >
+                      <option value="">Default Camera</option>
+                      {availableCameras.map((cam, idx) => (
+                        <option key={cam.deviceId || idx} value={cam.deviceId}>
+                          {cam.label || `Camera ${idx + 1}`}
+                        </option>
+                      ))}
+                    </select>
+                  )}
 
                   {hasTorch && (
                     <button
@@ -945,27 +993,40 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
               </AnimatePresence>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-4 mt-8">
-              <button
-                onClick={identifyDish}
-                disabled={isProcessing}
-                className="px-10 py-5 bg-white text-black rounded-full font-black uppercase tracking-widest text-[11px] hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-2xl disabled:opacity-50"
-              >
-                <Scan className="w-5 h-5" />
-                Analyze Dish
-              </button>
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="px-8 py-5 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all flex items-center gap-2"
-              >
-                <Upload size={14} /> Upload Instead
-              </button>
-              <button
-                onClick={stopCamera}
-                className="px-8 py-5 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all"
-              >
-                Abort Mission
-              </button>
+            {/* Bottom Camera Controls with Capture & Analyze Shutter */}
+            <div className="flex flex-col items-center gap-4 mt-6">
+              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-6 py-4 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all flex items-center gap-2"
+                >
+                  <Upload size={14} /> Upload Instead
+                </button>
+
+                {/* Primary Shutter Button with Text & Shutter Icon */}
+                <button
+                  onClick={capturePhotoAndAnalyze}
+                  disabled={isProcessing}
+                  className="px-8 py-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-black uppercase tracking-widest text-[11px] shadow-[0_0_35px_rgba(168,85,247,0.5)] hover:shadow-[0_0_45px_rgba(168,85,247,0.7)] active:scale-95 transition-all flex items-center gap-3 disabled:opacity-50"
+                  title="Snap Photo & Analyze Dish"
+                >
+                  <div className="w-6 h-6 rounded-full bg-white text-black flex items-center justify-center">
+                    <Camera className="w-3.5 h-3.5 text-black" />
+                  </div>
+                  <span>Capture & Analyze Dish</span>
+                </button>
+
+                <button
+                  onClick={stopCamera}
+                  className="px-6 py-4 rounded-full bg-zinc-800 text-white font-black uppercase tracking-widest text-[11px] border border-white/10 hover:bg-zinc-700 transition-all"
+                >
+                  Abort Mission
+                </button>
+              </div>
+
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest text-center">
+                Position food within frame & tap "Capture & Analyze Dish" to get AR & Personalized Match
+              </p>
             </div>
           </motion.div>
         ) : (
@@ -984,25 +1045,101 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
               />
             </div>
 
-            {/* Right: Data & Analytics */}
+            {/* Right: Data, Analytics & Personalized Good Food Match */}
             <div className="space-y-6">
-              <div className={`${isDarkMode ? 'bg-zinc-900/40 border border-white/5 shadow-2xl' : 'bg-white shadow-xl'} backdrop-blur-3xl rounded-[3rem] p-10 relative overflow-hidden`}>
-                <div className="flex justify-between items-start mb-6">
+              <div className={`${isDarkMode ? 'bg-zinc-900/40 border border-white/5 shadow-2xl' : 'bg-white shadow-xl'} backdrop-blur-3xl rounded-[3rem] p-8 sm:p-10 relative overflow-hidden space-y-6`}>
+                <div className="flex justify-between items-start">
                   <div>
                     <div className="flex items-center gap-2 mb-3">
                       <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,1)]" />
-                      <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">{confidence}% Neural Match Accuracy</span>
+                      <span className="text-emerald-500 text-[10px] font-black uppercase tracking-widest">{confidence}% Neural Recognition Accuracy</span>
                     </div>
-                    <h2 className="text-5xl font-black text-white tracking-tighter leading-none mb-4">{scannedDish.name}</h2>
-                    <p className="text-gray-400 text-lg font-medium leading-relaxed">{scannedDish.description}</p>
+                    <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tighter leading-none mb-3">{scannedDish.name}</h2>
+                    <p className="text-gray-400 text-base font-medium leading-relaxed">{scannedDish.description}</p>
                   </div>
-                  <button onClick={resetScan} className="p-4 rounded-2xl bg-zinc-800 text-white hover:bg-red-500 transition-all border border-white/5">
+                  <button onClick={resetScan} className="p-4 rounded-2xl bg-zinc-800 text-white hover:bg-red-500 transition-all border border-white/5 shrink-0 ml-4">
                     <X size={20} />
                   </button>
                 </div>
 
+                {/* PERSONALIZED GOOD FOOD PERCENTAGE & AI SUGGESTION CARD */}
+                <div className={`p-6 rounded-[2rem] border ${
+                  dishMatch?.rating === 'excellent' ? 'bg-emerald-950/25 border-emerald-500/30 shadow-[0_0_35px_rgba(16,185,129,0.12)]' :
+                  dishMatch?.rating === 'good' ? 'bg-purple-950/25 border-purple-500/30 shadow-[0_0_35px_rgba(168,85,247,0.12)]' :
+                  dishMatch?.rating === 'moderate' ? 'bg-amber-950/25 border-amber-500/30 shadow-[0_0_35px_rgba(245,158,11,0.12)]' :
+                  'bg-red-950/25 border-red-500/30 shadow-[0_0_35px_rgba(239,68,68,0.12)]'
+                } backdrop-blur-xl space-y-4`}>
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-black text-2xl tracking-tighter ${
+                        dishMatch?.rating === 'excellent' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' :
+                        dishMatch?.rating === 'good' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40' :
+                        dishMatch?.rating === 'moderate' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                        'bg-red-500/20 text-red-300 border border-red-500/40'
+                      }`}>
+                        {dishMatch ? `${dishMatch.score}%` : `${confidence}%`}
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-gray-400 block">
+                          Onboarding Preference Match
+                        </span>
+                        <h4 className="text-xl font-black text-white tracking-tight">
+                          {dishMatch?.headline || (confidence >= 80 ? 'Recommended for You' : 'Moderate Match')}
+                        </h4>
+                      </div>
+                    </div>
+                    <div className={`px-3.5 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                      dishMatch?.rating === 'excellent' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' :
+                      dishMatch?.rating === 'good' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' :
+                      dishMatch?.rating === 'moderate' ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                      'bg-red-500/20 text-red-300 border border-red-500/30'
+                    }`}>
+                      {dishMatch?.badge || `${confidence}% Accuracy`}
+                    </div>
+                  </div>
+
+                  {/* AI Dining Concierge Sentence */}
+                  <div className="p-4 rounded-xl bg-black/40 border border-white/10 flex items-start gap-3">
+                    <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] font-black uppercase tracking-wider text-purple-300">
+                          AI Dietary Advisor
+                        </span>
+                        {dishMatch?.isAI && (
+                          <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-[8px] font-black text-purple-300 uppercase tracking-widest">
+                            AI Personalized
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-semibold text-gray-200 leading-relaxed">
+                        {dishMatch?.personalizedSentence || 'Analyzed against your saved dietary profile and fitness goals.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Pros and Warnings Badges */}
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    {dishMatch?.pros?.map((pro, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-[10px] font-black uppercase tracking-wider border border-emerald-500/20">
+                        <CheckCircle2 size={11} /> {pro}
+                      </span>
+                    ))}
+                    {dishMatch?.conflicts?.map((conflict, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-500/10 text-red-400 text-[10px] font-black uppercase tracking-wider border border-red-500/20">
+                        <AlertTriangle size={11} /> {conflict}
+                      </span>
+                    ))}
+                    {dishMatch?.cons?.map((con, i) => (
+                      <span key={i} className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/10 text-amber-400 text-[10px] font-black uppercase tracking-wider border border-amber-500/20">
+                        <AlertTriangle size={11} /> {con}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
                 {activeScanId && (
-                  <div className="mt-4 flex items-center justify-between p-4 bg-purple-500/10 rounded-2xl border border-purple-500/20">
+                  <div className="flex items-center justify-between p-4 bg-purple-500/10 rounded-2xl border border-purple-500/20">
                     <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest flex items-center gap-2">
                       <Sparkles size={12} /> Personalized Learning Active
                     </span>
@@ -1015,7 +1152,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4 mt-8">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="p-6 rounded-[2rem] bg-zinc-950/40 border border-white/5">
                     <span className="text-[10px] font-black uppercase tracking-widest text-gray-500 block mb-1">Metabolic Impact</span>
                     <span className="text-3xl font-black text-white tracking-tighter">{scannedDish.nutrition.calories} Cal</span>
@@ -1026,7 +1163,7 @@ const ARMenuSection: React.FC<ARMenuSectionProps> = ({
                   </div>
                 </div>
 
-                <div className="flex gap-3 mt-8">
+                <div className="flex gap-3">
                   <button
                     onClick={() => setShowNutrition(!showNutrition)}
                     className={`flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all ${

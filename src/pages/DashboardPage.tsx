@@ -3744,7 +3744,7 @@ export default function DashboardPage() {
               isLoading={isArMenuItemsLoading}
               restaurantName={arRestaurantName}
               tableNumber={arTableNumber}
-              userPreferences={(userData as any)?.preferences || null}
+              userPreferences={userPreferences || (userData as any)?.preferences || null}
             />
           );
         }
