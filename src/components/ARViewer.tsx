@@ -379,7 +379,7 @@ export const ARViewer: React.FC<ARViewerProps> = ({
             style={{
               width: '100%',
               height: '100%',
-              minHeight: '380px',
+              minHeight: '260px',
               backgroundColor: 'transparent',
               outline: 'none'
             }}

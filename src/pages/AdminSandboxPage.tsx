@@ -96,36 +96,36 @@ const AdminSandboxPage: React.FC = () => {
     }
 
     return (
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="p-3 sm:p-6 max-w-7xl mx-auto space-y-4 sm:space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                     <div className="flex items-center gap-3">
-                        <div className="p-3 bg-red-100 rounded-2xl shadow-lg shadow-red-100">
-                            <FlaskConical className="text-red-600" size={32} />
+                        <div className="p-2.5 sm:p-3 bg-red-100 rounded-2xl shadow-lg shadow-red-100 shrink-0">
+                            <FlaskConical className="text-red-600 w-6 h-6 sm:w-8 sm:h-8" />
                         </div>
                         <div>
-                            <h1 className="text-3xl font-black text-slate-900">Developer Sandbox</h1>
-                            <p className="text-slate-500 font-medium">Test unreleased features in an isolated production environment</p>
+                            <h1 className="text-2xl sm:text-3xl font-black text-slate-900">Developer Sandbox</h1>
+                            <p className="text-slate-500 text-xs sm:text-sm font-medium">Test unreleased features in an isolated production environment</p>
                         </div>
                     </div>
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-100 rounded-full border border-emerald-200">
+                <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 sm:py-2 bg-emerald-100 rounded-full border border-emerald-200 shrink-0">
                     <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                    <span className="text-xs font-black text-emerald-700 uppercase tracking-widest">LIVE DATA ACCESS</span>
+                    <span className="text-[10px] sm:text-xs font-black text-emerald-700 uppercase tracking-widest">LIVE DATA ACCESS</span>
                 </div>
             </div>
 
             {/* Sandbox Controls */}
-            <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-sm border border-slate-200">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
                     <div className="lg:col-span-1">
-                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                        <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 sm:mb-3 flex items-center gap-2">
                             <Info size={12} /> Target Business
                         </label>
                         <select
                             value={selectedBusinessId}
                             onChange={(e) => setSelectedBusinessId(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-5 py-4 text-sm font-bold focus:ring-4 focus:ring-red-100 outline-none transition-all appearance-none cursor-pointer"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl sm:rounded-2xl px-4 sm:px-5 py-3 sm:py-4 text-xs sm:text-sm font-bold focus:ring-4 focus:ring-red-100 outline-none transition-all appearance-none cursor-pointer"
                         >
                             {businesses.map(b => (
                                 <option key={b._id} value={b._id}>{b.name} • {b.type}</option>
@@ -133,20 +133,20 @@ const AdminSandboxPage: React.FC = () => {
                         </select>
                     </div>
                     <div className="lg:col-span-2">
-                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Feature Under Development</label>
-                         <div className="flex flex-wrap gap-3">
+                         <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 sm:mb-3">Feature Under Development</label>
+                         <div className="flex flex-wrap gap-2 sm:gap-3">
                              {availableFeatures.length > 0 ? (
                                  availableFeatures.map(feature => (
                                      <button
                                          key={feature.id}
                                          onClick={() => setSandboxTab(feature.id as any)}
-                                         className={`flex items-center gap-3 px-6 py-4 rounded-2xl font-bold text-sm transition-all ${
+                                         className={`flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-4 rounded-xl sm:rounded-2xl font-bold text-xs sm:text-sm transition-all ${
                                              sandboxTab === feature.id
                                                  ? 'bg-red-600 text-white shadow-xl shadow-red-200'
                                                  : 'bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                                          }`}
                                      >
-                                         <feature.icon size={20} />
+                                         <feature.icon className="w-4 h-4 sm:w-5 sm:h-5" />
                                          {feature.label}
                                      </button>
                                  ))
@@ -166,20 +166,20 @@ const AdminSandboxPage: React.FC = () => {
                 key={sandboxTab + selectedBusinessId}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="bg-white rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden min-h-[600px] relative"
+                className="bg-white rounded-2xl sm:rounded-[2rem] shadow-2xl border border-slate-200 overflow-hidden min-h-[500px] relative"
             >
-                <div className="bg-slate-900 text-white px-8 py-4 flex items-center justify-between sticky top-0 z-10">
+                <div className="bg-slate-900 text-white px-4 sm:px-8 py-3 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sticky top-0 z-10">
                     <div className="flex items-center gap-3">
                         <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.5)]"></div>
-                        <span className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Sandbox Preview Session</span>
+                        <span className="text-[10px] sm:text-xs font-black uppercase tracking-[0.2em] text-slate-400">Sandbox Preview Session</span>
                     </div>
-                    <div className="flex items-center gap-6 text-[10px] font-mono text-slate-500">
-                        <span>CONTEXT: {businesses.find(b => b._id === selectedBusinessId)?.name}</span>
-                        <span>UID: {selectedBusinessId}</span>
+                    <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-[10px] font-mono text-slate-400">
+                        <span>CONTEXT: {businesses.find(b => b._id === selectedBusinessId)?.name || 'Demo'}</span>
+                        <span className="hidden sm:inline">UID: {selectedBusinessId}</span>
                     </div>
                 </div>
 
-                 <div className="p-8">
+                 <div className="p-3 sm:p-6 lg:p-8">
                      {availableFeatures.length === 0 ? (
                          <div className="flex flex-col items-center justify-center py-20 text-center">
                              <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
@@ -191,19 +191,19 @@ const AdminSandboxPage: React.FC = () => {
                      ) : (
                          <>
                              {sandboxTab === 'pre-orders' && (
-                                 <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                                 <div className="bg-slate-50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-100">
                                      <PreOrderManagement businessId={selectedBusinessId} />
                                  </div>
                              )}
                              {sandboxTab === 'waitlist' && (
-                                 <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
+                                 <div className="bg-slate-50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-slate-100">
                                      <WaitlistManagement businessId={selectedBusinessId} />
                                  </div>
                              )}
                              {sandboxTab === 'ar-menu' && (
-                                 <div className="bg-slate-900 rounded-3xl overflow-hidden min-h-[500px]">
+                                 <div className="bg-slate-900 rounded-2xl sm:rounded-3xl overflow-hidden min-h-[400px]">
                                      {loadingARMenu ? (
-                                         <div className="flex flex-col items-center justify-center p-20 text-white">
+                                         <div className="flex flex-col items-center justify-center p-12 sm:p-20 text-white">
                                              <Loader2 className="w-10 h-10 text-red-500 animate-spin mb-4" />
                                              <p className="text-sm font-bold uppercase tracking-widest opacity-60">Loading AR Models...</p>
                                          </div>
@@ -222,7 +222,7 @@ const AdminSandboxPage: React.FC = () => {
                  </div>
 
                 {/* Developer Console Placeholder */}
-                <div className="absolute bottom-4 right-4 px-4 py-2 bg-slate-900/10 backdrop-blur-md border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">
+                <div className="absolute bottom-4 right-4 px-3 sm:px-4 py-1.5 sm:py-2 bg-slate-900/10 backdrop-blur-md border border-slate-200 rounded-xl text-[9px] sm:text-[10px] font-bold text-slate-400 uppercase tracking-widest pointer-events-none">
                     Dev Mode v1.0 Beta
                 </div>
             </motion.div>
