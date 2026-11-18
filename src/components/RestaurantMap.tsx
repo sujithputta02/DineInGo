@@ -169,6 +169,8 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
                 src={isStreetView ? streetViewUrl : mapUrl.replace('marker=', 'marker=').replace('zoom=15', 'zoom=18')}
                 style={{ border: 'none', filter: isStreetView ? 'none' : 'contrast(1.1) brightness(1.05)' }}
                 title={isStreetView ? "Street View" : "Map View"}
+                allow="accelerometer; gyroscope; fullscreen"
+                loading="lazy"
               />
             </div>
 
@@ -297,7 +299,7 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
 
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 opacity-0 group-hover:opacity-100 transition-all duration-500 translate-y-2 group-hover:translate-y-0">
            <div className="bg-black/80 backdrop-blur-2xl text-white px-8 py-3 rounded-full text-[9px] font-black uppercase tracking-[0.3em] shadow-2xl border border-white/10 whitespace-nowrap">
-             {isStreetView ? 'Enter Street View' : 'Explore Territory'}
+             Explore Territory
            </div>
         </div>
 
@@ -308,9 +310,11 @@ const RestaurantMap: React.FC<RestaurantMapProps> = ({
           scrolling="no"
           marginHeight={0}
           marginWidth={0}
-          src={isStreetView ? streetViewUrl : mapUrl}
-          style={{ border: 'none', pointerEvents: 'none', opacity: isStreetView ? 1 : 0.8 }}
-          title={isStreetView ? "Street View Preview" : "Map Preview"}
+          src={mapUrl}
+          style={{ border: 'none', pointerEvents: 'none', opacity: 0.85 }}
+          title="Map Preview"
+          allow="accelerometer; gyroscope; fullscreen"
+          loading="lazy"
         />
       </div>
 

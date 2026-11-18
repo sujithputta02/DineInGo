@@ -12,7 +12,31 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="description" content="Reserve tables, discover events, and enjoy premium dining experiences with DineInGo" />
   <meta name="strix-verification" content="strix-verify-eaae7701c0ea7e4627243fca0a6940cc">
+  <meta http-equiv="Permissions-Policy" content="accelerometer=*, gyroscope=*, camera=*, geolocation=*" />
   <title>DineInGo - Reserve Dining & Events</title>
+  
+  <!-- Optimize scroll responsiveness and eliminate non-passive touch/wheel event listener violations -->
+  <script type="text/javascript">
+    (function () {
+      try {
+        var originalAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function (type, listener, options) {
+          if (type === 'touchstart' || type === 'touchmove' || type === 'wheel' || type === 'mousewheel') {
+            if (typeof options === 'boolean') {
+              options = { capture: options, passive: true };
+            } else if (typeof options === 'object') {
+              if (options && options.passive === undefined) {
+                options.passive = true;
+              }
+            } else if (options === undefined) {
+              options = { passive: true };
+            }
+          }
+          return originalAddEventListener.call(this, type, listener, options);
+        };
+      } catch (e) {}
+    })();
+  </script>
   
   <!-- Suppress Google Maps API errors (fallback only) -->
   <script type="text/javascript">
