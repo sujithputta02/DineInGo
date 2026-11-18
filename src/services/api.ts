@@ -111,25 +111,27 @@ async function apiRequest(url: string, method: string = 'GET', data?: any, retri
       if (!response.ok) {
         const errorText = await response.text();
         
-        // 404 Not Found is often an expected state (e.g. new user check)
-        // We should throw but NOT retry on 404s.
-        if (response.status === 404) {
-          // Don't log 404s for user lookups as they're expected for new users
-          if (!url.includes('/api/v1/users/')) {
-            console.error(`API returned ${response.status}: ${errorText}`);
-          }
-          throw new Error(`404 Not Found: ${errorText}`);
+        // Don't log 404s for user lookups as they're expected for new users
+        const isExpected404 = response.status === 404 && url.includes('/api/v1/users/');
+        if (!isExpected404) {
+          console.error(`API returned ${response.status}: ${errorText}`);
         }
 
-        console.error(`API returned ${response.status}: ${errorText}`);
-        throw new Error(`${response.status} ${response.statusText}: ${errorText}`);
+        const httpError: any = new Error(`${response.status} ${response.statusText}: ${errorText}`);
+        httpError.status = response.status;
+        throw httpError;
       }
 
       return await response.json();
     } catch (error: any) {
-      if (error.message?.includes('404')) throw error; // Don't retry 404s (silently)
       // Clear timeout to prevent memory leaks
       clearTimeout(timeoutId);
+
+      // Do not retry 4xx client errors (e.g. 400 Bad Request, 401 Unauthorized, 403 Forbidden, 404 Not Found)
+      if (error.status && error.status >= 400 && error.status < 500) {
+        throw error;
+      }
+      if (error.message?.includes('404')) throw error;
 
       // Check if it's an abort error (timeout or cancelled)
       if (error.name === 'AbortError' || error.message.includes('aborted')) {
@@ -953,6 +955,9 @@ async function createCategory(data: any) {
   return apiRequest(`${API_URL}/api/v1/menu/categories`, 'POST', data);
 }
 async function getCategories(businessId: string) {
+  if (!businessId || /^[0-9]{1,3}$/.test(businessId)) {
+    return { success: true, data: [] };
+  }
   return apiRequest(`${API_URL}/api/v1/menu/categories/${businessId}`);
 }
 async function updateCategory(categoryId: string, data: any) {
@@ -967,6 +972,9 @@ async function createMenuItem(data: any) {
   return apiRequest(`${API_URL}/api/v1/menu/items`, 'POST', data);
 }
 async function getMenuItems(businessId: string, filters?: { categoryId?: string, dietaryTags?: string, available?: boolean }) {
+  if (!businessId || /^[0-9]{1,3}$/.test(businessId)) {
+    return { success: true, data: [] };
+  }
   const params = new URLSearchParams();
   if (filters?.categoryId) params.append('categoryId', filters.categoryId);
   if (filters?.dietaryTags) params.append('dietaryTags', filters.dietaryTags);
@@ -976,6 +984,9 @@ async function getMenuItems(businessId: string, filters?: { categoryId?: string,
   return apiRequest(`${API_URL}/api/v1/menu/items/${businessId}${queryString ? `?${queryString}` : ''}`);
 }
 async function getFullMenuInApi(businessId: string) {
+  if (!businessId || /^[0-9]{1,3}$/.test(businessId)) {
+    return { success: true, data: [] };
+  }
   return apiRequest(`${API_URL}/api/v1/menu/menu/${businessId}`);
 }
 async function updateMenuItem(itemId: string, data: any) {

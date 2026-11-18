@@ -106,12 +106,22 @@ async function verifyBusinessOwnership(businessId: string, requester: any): Prom
     const isAdmin = requester.role === 'admin' || requester.role === 'super_admin' || requester.isAdmin;
     if (isAdmin) return true;
 
-    if (!mongoose.Types.ObjectId.isValid(businessId)) return false;
+    // Check if businessId matches requester's UID directly
+    if (businessId === requester.uid) return true;
 
-    const business = await Business.findById(businessId);
-    if (!business) return false;
+    if (mongoose.Types.ObjectId.isValid(businessId)) {
+        const business = await Business.findById(businessId);
+        if (business) {
+            return business.ownerId === requester.uid;
+        }
+    }
 
-    return business.ownerId === requester.uid;
+    const businessByOwner = await Business.findOne({ ownerId: requester.uid });
+    if (businessByOwner && (businessByOwner._id.toString() === businessId || businessByOwner.ownerId === businessId)) {
+        return true;
+    }
+
+    return false;
 }
 
 // ============================================================================
@@ -122,7 +132,7 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
     try {
         const { businessId, name, description, displayOrder } = req.body;
 
-        if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
+        if (!businessId || typeof businessId !== 'string' || businessId.trim().length === 0) {
             res.status(400).json({ success: false, message: 'Invalid or missing businessId' });
             return;
         }
@@ -142,7 +152,7 @@ export const createCategory = async (req: Request, res: Response): Promise<void>
         }
 
         const category = new MenuCategory({
-            businessId,
+            businessId: businessId.trim(),
             name: name.trim(),
             description: description || '',
             displayOrder: typeof displayOrder === 'number' ? displayOrder : 0
@@ -164,12 +174,12 @@ export const getCategories = async (req: Request, res: Response): Promise<void> 
     try {
         const { businessId } = req.params;
 
-        if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
-            res.status(400).json({ success: false, message: 'Invalid businessId format' });
+        if (!businessId || typeof businessId !== 'string' || businessId.trim().length === 0) {
+            res.status(400).json({ success: false, message: 'Invalid or missing businessId' });
             return;
         }
 
-        const categories = await MenuCategory.find({ businessId, isActive: true })
+        const categories = await MenuCategory.find({ businessId: businessId.trim(), isActive: true })
             .sort({ displayOrder: 1, name: 1 });
 
         res.json({
@@ -290,7 +300,7 @@ export const createMenuItem = async (req: Request, res: Response): Promise<void>
             modelUrl
         } = req.body;
 
-        if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
+        if (!businessId || typeof businessId !== 'string' || businessId.trim().length === 0) {
             res.status(400).json({ success: false, message: 'Invalid or missing businessId' });
             return;
         }
@@ -325,7 +335,7 @@ export const createMenuItem = async (req: Request, res: Response): Promise<void>
         }
 
         const menuItem = new MenuItem({
-            businessId,
+            businessId: businessId.trim(),
             categoryId: categoryId || undefined,
             name: name.trim(),
             description: description || '',
@@ -356,14 +366,14 @@ export const getMenuItems = async (req: Request, res: Response): Promise<void> =
     try {
         const { businessId } = req.params;
 
-        if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
-            res.status(400).json({ success: false, message: 'Invalid businessId format' });
+        if (!businessId || typeof businessId !== 'string' || businessId.trim().length === 0) {
+            res.status(400).json({ success: false, message: 'Invalid or missing businessId' });
             return;
         }
 
         const { categoryId, dietaryTags, available } = req.query;
 
-        const query: any = { businessId };
+        const query: any = { businessId: businessId.trim() };
 
         if (categoryId) {
             query.categoryId = categoryId;
@@ -395,16 +405,17 @@ export const getFullMenu = async (req: Request, res: Response): Promise<void> =>
     try {
         const { businessId } = req.params;
 
-        if (!businessId || !mongoose.Types.ObjectId.isValid(businessId)) {
-            res.status(400).json({ success: false, message: 'Invalid businessId format' });
+        if (!businessId || typeof businessId !== 'string' || businessId.trim().length === 0) {
+            res.status(400).json({ success: false, message: 'Invalid or missing businessId' });
             return;
         }
 
-        const categories = await MenuCategory.find({ businessId, isActive: true })
+        const trimmedBusinessId = businessId.trim();
+        const categories = await MenuCategory.find({ businessId: trimmedBusinessId, isActive: true })
             .sort({ displayOrder: 1, name: 1 })
             .lean();
 
-        const menuItems = await MenuItem.find({ businessId, isAvailable: true })
+        const menuItems = await MenuItem.find({ businessId: trimmedBusinessId, isAvailable: true })
             .sort({ displayOrder: 1, name: 1 })
             .lean();
 

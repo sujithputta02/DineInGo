@@ -3791,7 +3791,9 @@ export default function DashboardPage() {
               (relevantBooking.restaurantId as any)?._id ||
               (relevantBooking as any).restaurantId;
 
-            if (bId) {
+            const isMockBId = typeof bId === "string" && /^[0-9]{1,3}$/.test(bId);
+
+            if (bId && !isMockBId) {
               const res = await menuApi.getItems(bId);
               const items = Array.isArray(res) ? res : res.data || [];
               if (items.length > 0) {
@@ -3800,8 +3802,9 @@ export default function DashboardPage() {
               }
             }
 
-            if (restaurants.length > 0) {
-              const res = await menuApi.getItems(restaurants[0].id);
+            const realRest = restaurants.find((r) => r.id && !/^[0-9]{1,3}$/.test(r.id));
+            if (realRest) {
+              const res = await menuApi.getItems(realRest.id);
               const items = Array.isArray(res) ? res : res.data || [];
               if (items.length > 0) {
                 setArMenuItems(items);
@@ -3809,11 +3812,14 @@ export default function DashboardPage() {
               }
             }
           } else if (restaurants.length > 0) {
-            const res = await menuApi.getItems(restaurants[0].id);
-            const items = Array.isArray(res) ? res : res.data || [];
-            if (items.length > 0) {
-              setArMenuItems(items);
-              return;
+            const realRest = restaurants.find((r) => r.id && !/^[0-9]{1,3}$/.test(r.id));
+            if (realRest) {
+              const res = await menuApi.getItems(realRest.id);
+              const items = Array.isArray(res) ? res : res.data || [];
+              if (items.length > 0) {
+                setArMenuItems(items);
+                return;
+              }
             }
           }
 

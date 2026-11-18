@@ -43,6 +43,7 @@ const ALLERGENS = ['nuts', 'peanuts', 'dairy', 'eggs', 'soy', 'wheat', 'shellfis
 
 function DigitalMenuEditor() {
     const { currentUser } = useAuth();
+    const activeBusinessId = (typeof window !== 'undefined' && localStorage.getItem('selectedBusinessId')) || currentUser?.uid || '';
     const [categories, setCategories] = useState<Category[]>([]);
     const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
     const [loading, setLoading] = useState(true);
@@ -70,17 +71,18 @@ function DigitalMenuEditor() {
     const [selectedFileName, setSelectedFileName] = useState<string>('');
 
     useEffect(() => {
-        if (currentUser?.uid) {
+        if (activeBusinessId) {
             fetchMenuData();
         }
-    }, [currentUser]);
+    }, [activeBusinessId]);
 
     const fetchMenuData = async () => {
+        if (!activeBusinessId) return;
         try {
             setLoading(true);
             const [categoriesRes, itemsRes] = await Promise.all([
-                menuApi.getCategories(currentUser!.uid),
-                menuApi.getItems(currentUser!.uid)
+                menuApi.getCategories(activeBusinessId),
+                menuApi.getItems(activeBusinessId)
             ]);
 
             if (categoriesRes.success) setCategories(categoriesRes.data);
@@ -97,7 +99,7 @@ function DigitalMenuEditor() {
         e.preventDefault();
         try {
             const data = {
-                businessId: currentUser!.uid,
+                businessId: activeBusinessId,
                 name: categoryForm.name,
                 description: categoryForm.description,
                 displayOrder: categories.length
@@ -164,7 +166,7 @@ function DigitalMenuEditor() {
         e.preventDefault();
         try {
             const data = {
-                businessId: currentUser!.uid,
+                businessId: activeBusinessId,
                 ...itemForm,
                 price: parseFloat(itemForm.price),
                 displayOrder: menuItems.filter(i => i.categoryId === itemForm.categoryId).length

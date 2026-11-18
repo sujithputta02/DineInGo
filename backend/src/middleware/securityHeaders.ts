@@ -29,7 +29,7 @@ export const securityHeaders = helmet({
 
 export const customSecurityHeaders = (req: Request, res: Response, next: NextFunction) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self), interest-cohort=()');
+  res.setHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self), accelerometer=(self "https://*.google.com" "https://*.googleapis.com"), gyroscope=(self "https://*.google.com" "https://*.googleapis.com"), interest-cohort=()');
   if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
   }
